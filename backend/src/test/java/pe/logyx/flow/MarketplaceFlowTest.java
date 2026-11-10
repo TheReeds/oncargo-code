@@ -110,6 +110,7 @@ class MarketplaceFlowTest {
         as(driver).post(base + stops.get(0) + "/complete").then().statusCode(200)
                 .body("data.status", is("IN_TRANSIT"));
         as(driver).post(base + stops.get(1) + "/arrive").then().statusCode(200);
+        deliveryPhoto(driver, shipmentId, stops.get(1));   // RF37: sin foto no se completa la entrega
         as(driver).post(base + stops.get(1) + "/complete").then().statusCode(200)
                 .body("data.status", is("DELIVERED"));
 

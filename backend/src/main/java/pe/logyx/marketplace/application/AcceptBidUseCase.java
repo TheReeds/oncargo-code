@@ -1,8 +1,10 @@
 package pe.logyx.marketplace.application;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import pe.logyx.marketplace.application.event.BidAccepted;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.BidRepository;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
@@ -30,6 +32,7 @@ public class AcceptBidUseCase {
     @Inject RequestSummaries summaries;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
+    @Inject Event<BidAccepted> bidAccepted;
 
     @Transactional
     public AcceptOutcome accept(UUID bidId) {
@@ -39,6 +42,15 @@ public class AcceptBidUseCase {
         if (!r.isPublished() || !bid.isPending()) {
             throw BusinessException.conflict("LOGYX-BID-004", "La solicitud ya no admite aceptar ofertas");
         }
+        return award(r, bid, "BID_ACCEPTED");
+    }
+
+    /**
+     * Adjudica la solicitud a {@code bid} (RN05): cierra la subasta, rechaza las demás ofertas y genera el envío.
+     * Lo usan la aceptación de la PYME y la asignación manual del operador (RN10), cada una con su RLS.
+     */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public AcceptOutcome award(ShipmentRequest r, Bid bid, String auditAction) {
         Auction a = auctions.findByRequest(r.id()).orElseThrow();
         a.closeIfOpen(Auction.CloseReason.ACCEPTED, OffsetDateTime.now());
         auctions.save(a);
@@ -56,8 +68,11 @@ public class AcceptBidUseCase {
         UUID shipmentId = shipments.createFromAcceptedBid(new CreateShipmentCommand(
                 r.id(), bid.id(), r.requesterOrgId(), bid.carrierOrgId(), bid.vehicleId(), bid.amount(),
                 c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress()));
-        audit.record(tenant.profileId(), tenant.orgId(), "BID_ACCEPTED", "bid", bid.id(),
+        audit.record(tenant.profileId(), tenant.orgId(), auditAction, "bid", bid.id(),
                 "monto=" + bid.amount() + " envio=" + shipmentId);
+        bidAccepted.fire(new BidAccepted(bid.id(), r.id(), shipmentId, r.requesterOrgId(), bid.carrierOrgId(),
+                bid.amount(), r.routeLabel(), bid.assignedByOperator(),
+                others.stream().map(o -> new BidAccepted.RejectedBid(o.id(), o.carrierOrgId())).toList()));
         return new AcceptOutcome(shipmentId, summaries.bids(List.of(bid)).getFirst(),
                 others.stream().map(Bid::id).toList());
     }

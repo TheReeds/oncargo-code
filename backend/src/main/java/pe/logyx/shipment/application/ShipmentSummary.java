@@ -6,6 +6,20 @@ import pe.logyx.shipment.domain.model.ShipmentStop;
 
 import java.util.List;
 
-/** Envío con sus paradas, nombres de las partes y datos de la carga. */
+/**
+ * Envío con sus paradas, nombres de las partes y datos de la carga. {@code activeIncident}: hay una incidencia
+ * activa que congela el avance de paradas (RN11).
+ */
 public record ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName,
-                              String carrierName, RequestInfo request) {}
+                              String carrierName, RequestInfo request, boolean activeIncident) {
+
+    /** "Lima → Juliaca", para textos de notificaciones. */
+    public String routeLabel() {
+        return request == null ? "" : request.originCity().label + " → " + request.destinationCity().label;
+    }
+
+    public ShipmentStop stop(java.util.UUID stopId) {
+        return stops.stream().filter(s -> s.id().equals(stopId)).findFirst()
+                .orElseThrow(() -> pe.logyx.shared.domain.BusinessException.notFound("Parada"));
+    }
+}

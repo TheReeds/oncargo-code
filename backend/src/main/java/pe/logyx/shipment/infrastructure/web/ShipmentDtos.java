@@ -29,14 +29,16 @@ public final class ShipmentDtos {
                                BigDecimal weightKg, BigDecimal agreedPrice, String vehiclePlate,
                                UUID driverId, String driverName, Shipment.Status status,
                                OffsetDateTime createdAt, OffsetDateTime deliveredAt,
-                               List<StopView> stops) {
+                               List<StopView> stops,
+                               /** RN11: hay una incidencia activa; el conductor no puede avanzar paradas. */
+                               boolean hasActiveIncident) {
         static ShipmentView of(ShipmentSummary sum) {
             Shipment s = sum.shipment();
             var r = sum.request();
             return new ShipmentView(s.id(), s.requestId(), sum.requesterName(), sum.carrierName(),
                     r.originCity(), r.destinationCity(), r.cargoDescription(), r.weightKg(), s.agreedPrice(),
                     s.vehiclePlate(), s.driverId(), s.driverName(), s.status(), s.createdAt(), s.deliveredAt(),
-                    sum.stops().stream().map(StopView::of).toList());
+                    sum.stops().stream().map(StopView::of).toList(), sum.activeIncident());
         }
 
         static List<ShipmentView> of(List<ShipmentSummary> list) {

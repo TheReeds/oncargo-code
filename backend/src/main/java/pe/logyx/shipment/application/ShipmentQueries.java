@@ -12,6 +12,7 @@ import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.domain.Paged;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.TenantContext;
+import pe.logyx.shipment.application.port.out.IncidentHoldProvider;
 import pe.logyx.shipment.application.port.out.RequestInfoProvider;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.application.port.out.ShipmentStopRepository;
@@ -37,6 +38,7 @@ public class ShipmentQueries {
     @Inject OrganizationDirectory organizations;
     @Inject FleetService fleet;
     @Inject TenantContext tenant;
+    @Inject IncidentHoldProvider holds;
 
     public List<ShipmentSummary> mine() {
         UUID org = tenant.orgId();
@@ -63,6 +65,20 @@ public class ShipmentQueries {
                 shipments.countByStatus(org, carrier, List.of(Shipment.Status.IN_TRANSIT)),
                 shipments.countByStatus(org, carrier, List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT)),
                 shipments.countDeliveredSince(org, carrier, monthStart));
+    }
+
+    /** Métricas globales del operador (RLS shipments_operator: lectura de todos los envíos). */
+    public OperatorShipmentCounts operatorCounts() {
+        return new OperatorShipmentCounts(shipments.countAllByStatus(Shipment.Status.PENDING),
+                shipments.countAllByStatus(Shipment.Status.IN_TRANSIT),
+                shipments.countAllByStatus(Shipment.Status.DELIVERED),
+                shipments.countAllByStatus(Shipment.Status.CANCELLED));
+    }
+
+    /** Envíos por id visibles para el usuario actual (otros módulos: incident, operator). */
+    public List<ShipmentSummary> byIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) return List.of();
+        return summaries(shipments.listByIds(ids));
     }
 
     public ShipmentSummary detail(UUID id) {
@@ -107,8 +123,10 @@ public class ShipmentQueries {
         Set<UUID> orgIds = new HashSet<>();
         list.forEach(s -> { orgIds.add(s.requesterOrgId()); orgIds.add(s.carrierOrgId()); });
         Map<UUID, Organization> orgs = organizations.byIds(orgIds);
+        Set<UUID> onHold = holds.withActiveIncident(list.stream().map(Shipment::id).toList());
         return list.stream().map(s -> new ShipmentSummary(s, byShipment.getOrDefault(s.id(), List.of()),
-                name(orgs.get(s.requesterOrgId())), name(orgs.get(s.carrierOrgId())), infos.get(s.requestId())))
+                name(orgs.get(s.requesterOrgId())), name(orgs.get(s.carrierOrgId())), infos.get(s.requestId()),
+                onHold.contains(s.id())))
                 .toList();
     }
 

@@ -1,0 +1,123 @@
+package pe.logyx.negotiation.application;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import pe.logyx.identity.application.OrganizationDirectory;
+import pe.logyx.marketplace.application.BidNegotiation;
+import pe.logyx.marketplace.domain.model.Bid;
+import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.negotiation.application.event.CounterOfferUpdated;
+import pe.logyx.negotiation.application.event.MessagePosted;
+import pe.logyx.negotiation.application.port.out.CounterOfferRepository;
+import pe.logyx.negotiation.application.port.out.MessageRepository;
+import pe.logyx.negotiation.domain.ThreadAccessPolicy;
+import pe.logyx.negotiation.domain.model.CounterOffer;
+import pe.logyx.negotiation.domain.model.Message;
+import pe.logyx.shared.audit.AuditService;
+import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.Money;
+import pe.logyx.shared.tenancy.TenantContext;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+/** Chat por solicitud (RF25, RN07) y contra-ofertas (RF27, RF28). */
+@ApplicationScoped
+public class NegotiationService {
+
+    @Inject ChatThreads threads;
+    @Inject MessageRepository messages;
+    @Inject CounterOfferRepository counterOffers;
+    @Inject BidNegotiation bids;
+    @Inject OrganizationDirectory organizations;
+    @Inject AuditService audit;
+    @Inject TenantContext tenant;
+    @Inject Event<MessagePosted> messagePosted;
+    @Inject Event<CounterOfferUpdated> counterOfferUpdated;
+
+    @Transactional
+    public MessageSummary post(UUID requestId, UUID carrierOrgId, String body) {
+        ShipmentRequest r = threads.open(requestId, carrierOrgId);
+        ThreadAccessPolicy.ensureCanPost(state(r), carrierOrgId.equals(r.assignedCarrierOrgId()));
+        UUID me = tenant.orgId();
+        Message m = Message.write(r.id(), r.requesterOrgId(), carrierOrgId, me, tenant.profileId(), body);   // RN07
+        messages.insert(m);
+        String sender = organizations.get(me).legalName();
+        UUID recipient = me.equals(carrierOrgId) ? r.requesterOrgId() : carrierOrgId;
+        messagePosted.fire(new MessagePosted(m.id(), r.id(), carrierOrgId, me, recipient, sender, preview(m.body())));
+        return new MessageSummary(m, sender, true);
+    }
+
+    /** RF27: la PYME propone un nuevo monto sobre una oferta pendiente (≥ piso RN03, una vigente por oferta). */
+    @Transactional
+    public CounterOffer propose(UUID bidId, BigDecimal amount, String message) {
+        Bid b = bids.ensureNegotiable(bidId, amount);
+        if (!tenant.orgId().equals(b.requesterOrgId())) {
+            throw BusinessException.forbidden("Solo la PYME de la solicitud propone contra-ofertas");
+        }
+        if (counterOffers.hasPending(b.id())) {
+            throw BusinessException.conflict("LOGYX-NEG-004", "Ya hay una contra-oferta pendiente para esta oferta");
+        }
+        CounterOffer co = CounterOffer.propose(b.id(), b.requestId(), b.requesterOrgId(), b.carrierOrgId(),
+                tenant.profileId(), b.amount(), amount, message);
+        counterOffers.save(co);
+        String text = "Contra-oferta: " + Money.soles(amount) + " (oferta original " + Money.soles(b.amount()) + ")"
+                + (co.message() == null ? "" : ". " + co.message());
+        messages.insert(Message.system(b.requestId(), b.requesterOrgId(), b.carrierOrgId(), tenant.orgId(), text,
+                amount));
+        audit.record(tenant.profileId(), tenant.orgId(), "COUNTER_OFFER_PROPOSED", "counter_offer", co.id(),
+                "bid=" + b.id() + " monto=" + amount);
+        fire(co);
+        return co;
+    }
+
+    /** RF28: el transportista acepta; el monto de su oferta pasa a ser el de la contra-oferta. */
+    @Transactional
+    public CounterOffer accept(UUID counterOfferId) {
+        CounterOffer co = forCarrier(counterOfferId);
+        co.accept(OffsetDateTime.now());
+        bids.reviseAmount(co.bidId(), co.amount());
+        counterOffers.save(co);
+        messages.insert(Message.system(co.requestId(), co.requesterOrgId(), co.carrierOrgId(), tenant.orgId(),
+                "Contra-oferta aceptada: la oferta ahora es de " + Money.soles(co.amount()), co.amount()));
+        audit.record(tenant.profileId(), tenant.orgId(), "COUNTER_OFFER_ACCEPTED", "counter_offer", co.id(),
+                "bid=" + co.bidId() + " monto=" + co.amount());
+        fire(co);
+        return co;
+    }
+
+    @Transactional
+    public CounterOffer reject(UUID counterOfferId) {
+        CounterOffer co = forCarrier(counterOfferId);
+        co.reject(OffsetDateTime.now());
+        counterOffers.save(co);
+        messages.insert(Message.system(co.requestId(), co.requesterOrgId(), co.carrierOrgId(), tenant.orgId(),
+                "Contra-oferta de " + Money.soles(co.amount()) + " rechazada", co.amount()));
+        fire(co);
+        return co;
+    }
+
+    private CounterOffer forCarrier(UUID id) {
+        CounterOffer co = counterOffers.findById(id).orElseThrow(() -> BusinessException.notFound("Contra-oferta"));
+        if (!tenant.orgId().equals(co.carrierOrgId())) {
+            throw BusinessException.forbidden("Solo el transportista de la oferta responde la contra-oferta");
+        }
+        return co;
+    }
+
+    private void fire(CounterOffer co) {
+        counterOfferUpdated.fire(new CounterOfferUpdated(co.id(), co.bidId(), co.requestId(), co.requesterOrgId(),
+                co.carrierOrgId(), co.status(), co.amount()));
+    }
+
+    private static ThreadAccessPolicy.RequestState state(ShipmentRequest r) {
+        return ThreadAccessPolicy.RequestState.valueOf(r.status().name());
+    }
+
+    private static String preview(String body) {
+        return body.length() <= 120 ? body : body.substring(0, 117) + "...";
+    }
+}

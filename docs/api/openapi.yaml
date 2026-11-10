@@ -15,6 +15,15 @@ components:
             type: string
             format: uuid
             pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    AddIncidentComment:
+      type: object
+      required:
+      - body
+      properties:
+        body:
+          type: string
+          pattern: \S
+          maxLength: 2000
     ApiResponseAcceptResult:
       type: object
       properties:
@@ -36,6 +45,13 @@ components:
           $ref: "#/components/schemas/BidView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseCounterOfferView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/CounterOfferView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseDashboardSummaryView:
       type: object
       properties:
@@ -43,11 +59,34 @@ components:
           $ref: "#/components/schemas/DashboardSummaryView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseDocumentView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/DocumentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseDriverView:
       type: object
       properties:
         data:
           $ref: "#/components/schemas/DriverView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseIncidentView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/IncidentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListAssignmentCandidateView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignmentCandidateView"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseListBidView:
@@ -68,6 +107,15 @@ components:
             $ref: "#/components/schemas/CargoItem"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseListChatThreadView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatThreadView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseListCityItem:
       type: object
       properties:
@@ -75,6 +123,24 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CityItem"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListCounterOfferView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CounterOfferView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListDocumentView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentView"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseListDriverView:
@@ -86,6 +152,33 @@ components:
             $ref: "#/components/schemas/DriverView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseListIncidentView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IncidentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListMessageView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListNotificationView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseListRequestView:
       type: object
       properties:
@@ -93,6 +186,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RequestView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListReviewView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewView"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseListShipmentView:
@@ -113,6 +215,48 @@ components:
             $ref: "#/components/schemas/VehicleView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseManualAssignmentResult:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ManualAssignmentResult"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseMarkedRead:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/MarkedRead"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseMessageView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/MessageView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseNotificationView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/NotificationView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseOperatorAlertsView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/OperatorAlertsView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseOperatorMetricsView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/OperatorMetricsView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponsePublicOrganization:
       type: object
       properties:
@@ -127,6 +271,13 @@ components:
           $ref: "#/components/schemas/Quote"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseReputationView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ReputationView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseRequestView:
       type: object
       properties:
@@ -134,11 +285,32 @@ components:
           $ref: "#/components/schemas/RequestView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseReviewView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ReviewView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseShipmentReviewsView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ShipmentReviewsView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseShipmentView:
       type: object
       properties:
         data:
           $ref: "#/components/schemas/ShipmentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseUnreadCount:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/UnreadCount"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseUserInfo:
@@ -162,6 +334,25 @@ components:
       properties:
         driverId:
           $ref: "#/components/schemas/UUID"
+    AssignmentCandidateView:
+      type: object
+      properties:
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        carrierRucVerified:
+          type: boolean
+        carrierTrustScore:
+          type: number
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        vehiclePlate:
+          type: string
+        vehicleType:
+          $ref: "#/components/schemas/Type"
+        maxWeightKg:
+          type: number
     AuctionView:
       type: object
       properties:
@@ -216,6 +407,10 @@ components:
           $ref: "#/components/schemas/Type"
         vehiclePlate:
           type: string
+        carrierTrustScore:
+          type: number
+        assignedByOperator:
+          type: boolean
     CargoItem:
       type: object
       properties:
@@ -232,6 +427,38 @@ components:
       - HAZARDOUS
       - BULK
       - OVERSIZED
+    ChangeIncidentStatus:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          $ref: "#/components/schemas/IncidentStatus"
+        resolutionNotes:
+          type: string
+          maxLength: 2000
+    ChatThreadView:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        bidId:
+          $ref: "#/components/schemas/UUID"
+        bidAmount:
+          type: number
+        bidStatus:
+          $ref: "#/components/schemas/Status3"
+        messageCount:
+          type: integer
+          format: int64
+        lastMessage:
+          type: string
+        lastMessageAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     City:
       type: string
       enum:
@@ -266,6 +493,38 @@ components:
       - MAX_BIDS
       - ACCEPTED
       - CANCELLED
+    CounterOfferStatus:
+      type: string
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      - EXPIRED
+    CounterOfferView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        bidId:
+          $ref: "#/components/schemas/UUID"
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        offeredByOrgId:
+          $ref: "#/components/schemas/UUID"
+        previousAmount:
+          type: number
+        amount:
+          type: number
+        message:
+          type: string
+        status:
+          $ref: "#/components/schemas/CounterOfferStatus"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        respondedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     CreateRequest:
       type: object
       required:
@@ -333,6 +592,39 @@ components:
         deliveredThisMonth:
           type: integer
           format: int64
+    DocumentType:
+      type: string
+      enum:
+      - SERVICE_ORDER
+      - REMISSION_GUIDE
+      - RECEIPT
+      - DELIVERY_PHOTO
+      - SIGNATURE
+      - OTHER
+    DocumentView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        stopId:
+          $ref: "#/components/schemas/UUID"
+        type:
+          $ref: "#/components/schemas/DocumentType"
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedByOrgId:
+          $ref: "#/components/schemas/UUID"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        downloadUrl:
+          type: string
     DriverRequest:
       type: object
       required:
@@ -370,6 +662,96 @@ components:
           type: string
         status:
           $ref: "#/components/schemas/Status1"
+    IncidentAlertView:
+      type: object
+      properties:
+        incidentId:
+          $ref: "#/components/schemas/UUID"
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        category:
+          $ref: "#/components/schemas/IncidentCategory"
+        status:
+          $ref: "#/components/schemas/IncidentStatus"
+        requesterName:
+          type: string
+        carrierName:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        reportedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        hoursOpen:
+          type: integer
+          format: int64
+    IncidentCategory:
+      type: string
+      enum:
+      - CARGO_DAMAGE
+      - DELAY
+      - LOST_CARGO
+      - WRONG_DELIVERY
+      - DRIVER_CONDUCT
+      - OTHER
+    IncidentCommentView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        authorOrgId:
+          $ref: "#/components/schemas/UUID"
+        authorName:
+          type: string
+        body:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+    IncidentStatus:
+      type: string
+      enum:
+      - OPEN
+      - IN_REVIEW
+      - RESOLVED
+      - CLOSED
+    IncidentView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        requesterOrgId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        reportedByOrgId:
+          $ref: "#/components/schemas/UUID"
+        category:
+          $ref: "#/components/schemas/IncidentCategory"
+        description:
+          type: string
+        status:
+          $ref: "#/components/schemas/IncidentStatus"
+        active:
+          type: boolean
+        resolutionNotes:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        updatedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        resolvedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/IncidentCommentView"
     Instant:
       type: string
       format: date-time
@@ -392,6 +774,78 @@ components:
         password:
           type: string
           pattern: \S
+    ManualAssignment:
+      type: object
+      required:
+      - carrierOrgId
+      - vehicleId
+      properties:
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        amount:
+          type: number
+          minimum: 1
+        notes:
+          type: string
+          maxLength: 300
+    ManualAssignmentResult:
+      type: object
+      properties:
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        bidId:
+          $ref: "#/components/schemas/UUID"
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        amount:
+          type: number
+        vehiclePlate:
+          type: string
+        bidStatus:
+          $ref: "#/components/schemas/Status3"
+        assignedByOperator:
+          type: boolean
+        rejectedBidIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    MarkedRead:
+      type: object
+      properties:
+        updated:
+          type: integer
+          format: int32
+    MessageView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        senderOrgId:
+          $ref: "#/components/schemas/UUID"
+        senderName:
+          type: string
+        mine:
+          type: boolean
+        body:
+          type: string
+        proposedPrice:
+          type: number
+        system:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     Meta:
       type: object
       properties:
@@ -406,11 +860,109 @@ components:
         total:
           type: integer
           format: int64
+        nextCursor:
+          type: string
+    NotificationTarget:
+      type: string
+      enum:
+      - REQUEST
+      - BID
+      - COUNTER_OFFER
+      - SHIPMENT
+      - INCIDENT
+      - REVIEW
+    NotificationType:
+      type: string
+      enum:
+      - NEW_BID
+      - BID_ACCEPTED
+      - BID_REJECTED
+      - COUNTER_OFFER
+      - NEW_MESSAGE
+      - SHIPMENT_STATUS_CHANGE
+      - INCIDENT_REPORTED
+      - INCIDENT_RESOLVED
+      - NEW_REVIEW
+    NotificationView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        body:
+          type: string
+        relatedType:
+          $ref: "#/components/schemas/NotificationTarget"
+        relatedId:
+          $ref: "#/components/schemas/UUID"
+        read:
+          type: boolean
+        readAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     OffsetDateTime:
       type: string
       format: date-time
       examples:
       - 2022-03-10T12:15:50-04:00
+    OperatorAlertsView:
+      type: object
+      properties:
+        slaHours:
+          type: integer
+          format: int64
+        expiringWindowMinutes:
+          type: integer
+          format: int64
+        requestsWithoutBids:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlaRequestView"
+        expiringAuctions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlaRequestView"
+        shipmentsWithIncidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/IncidentAlertView"
+    OperatorMetricsView:
+      type: object
+      properties:
+        openRequests:
+          type: integer
+          format: int64
+        requestsAtRisk:
+          type: integer
+          format: int64
+        matchedRequests:
+          type: integer
+          format: int64
+        cancelledRequests:
+          type: integer
+          format: int64
+        shipmentsPending:
+          type: integer
+          format: int64
+        shipmentsInTransit:
+          type: integer
+          format: int64
+        shipmentsDelivered:
+          type: integer
+          format: int64
+        activeIncidents:
+          type: integer
+          format: int64
+        pymes:
+          type: integer
+          format: int64
+        carriers:
+          type: integer
+          format: int64
     OrgType:
       type: string
       enum:
@@ -431,6 +983,26 @@ components:
         notes:
           type: string
           maxLength: 300
+    PostMessage:
+      type: object
+      required:
+      - body
+      properties:
+        body:
+          type: string
+          pattern: \S
+          maxLength: 1000
+    ProposeCounterOffer:
+      type: object
+      required:
+      - amount
+      properties:
+        amount:
+          type: number
+          minimum: 1
+        message:
+          type: string
+          maxLength: 500
     PublicOrganization:
       type: object
       properties:
@@ -521,6 +1093,53 @@ components:
           maxLength: 72
         acceptPrivacyPolicy:
           type: boolean
+    ReportIncident:
+      type: object
+      required:
+      - category
+      - description
+      properties:
+        category:
+          $ref: "#/components/schemas/IncidentCategory"
+        description:
+          type: string
+          pattern: \S
+          maxLength: 2000
+    ReputationView:
+      type: object
+      properties:
+        organizationId:
+          $ref: "#/components/schemas/UUID"
+        legalName:
+          type: string
+        type:
+          $ref: "#/components/schemas/OrgType"
+        rucVerified:
+          type: boolean
+        city:
+          type: string
+        trustScore:
+          type: number
+        totalReviews:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+        averagePunctuality:
+          type: number
+        averageCargoCondition:
+          type: number
+        averageCommunication:
+          type: number
+        priorMean:
+          type: number
+        priorWeight:
+          type: integer
+          format: int32
+        recentReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewView"
     RequestView:
       type: object
       properties:
@@ -566,6 +1185,43 @@ components:
           type: boolean
         minVehicleType:
           $ref: "#/components/schemas/Type"
+        requesterTrustScore:
+          type: number
+    ReviewDirection:
+      type: string
+      enum:
+      - PYME_TO_CARRIER
+      - CARRIER_TO_PYME
+    ReviewView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        reviewerOrgId:
+          $ref: "#/components/schemas/UUID"
+        reviewerName:
+          type: string
+        reviewedOrgId:
+          $ref: "#/components/schemas/UUID"
+        direction:
+          $ref: "#/components/schemas/ReviewDirection"
+        punctuality:
+          type: integer
+          format: int32
+        cargoCondition:
+          type: integer
+          format: int32
+        communication:
+          type: integer
+          format: int32
+        rating:
+          type: number
+        comment:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     Role:
       type: string
       enum:
@@ -573,6 +1229,19 @@ components:
       - OPS
       - VIEWER
       - DRIVER
+    ShipmentReviewsView:
+      type: object
+      properties:
+        canReview:
+          type: boolean
+        blockedCode:
+          type: string
+        blockedReason:
+          type: string
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewView"
     ShipmentView:
       type: object
       properties:
@@ -610,6 +1279,43 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StopView"
+        hasActiveIncident:
+          type: boolean
+    SlaRequestView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        requesterOrgId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        cargoType:
+          $ref: "#/components/schemas/CargoType"
+        weightKg:
+          type: number
+        pickupDate:
+          $ref: "#/components/schemas/LocalDate"
+        suggestedPrice:
+          type: number
+        priceFloor:
+          type: number
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        bidCount:
+          type: integer
+          format: int64
+        hoursWithoutBids:
+          type: integer
+          format: int64
+        auctionStatus:
+          $ref: "#/components/schemas/Status4"
+        auctionClosesAt:
+          $ref: "#/components/schemas/OffsetDateTime"
     Status:
       type: string
       enum:
@@ -680,6 +1386,31 @@ components:
           $ref: "#/components/schemas/OffsetDateTime"
         completedAt:
           $ref: "#/components/schemas/OffsetDateTime"
+    SubmitReview:
+      type: object
+      required:
+      - punctuality
+      - cargoCondition
+      - communication
+      properties:
+        punctuality:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
+        cargoCondition:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
+        communication:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
+        comment:
+          type: string
+          maxLength: 1000
     Type:
       type: string
       enum:
@@ -699,6 +1430,12 @@ components:
       type: string
       format: uuid
       pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    UnreadCount:
+      type: object
+      properties:
+        unread:
+          type: integer
+          format: int64
     UserInfo:
       type: object
       properties:
@@ -843,6 +1580,65 @@ paths:
       security:
       - SecurityScheme:
         - PYME
+  /api/v1/bids/{id}/counter-offers:
+    post:
+      summary: La PYME propone un nuevo monto (≥ piso RN03; una contra-oferta pendiente
+        por oferta)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeCounterOffer"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCounterOfferView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListCounterOfferView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Counter Offers
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
   /api/v1/catalog/cargo-types:
     get:
       responses:
@@ -867,6 +1663,57 @@ paths:
       summary: Cities
       tags:
       - Catalog Resource
+  /api/v1/counter-offers/{id}/accept:
+    post:
+      summary: "El transportista acepta: el monto de su oferta pasa a ser el de la\
+        \ contra-oferta"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCounterOfferView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/counter-offers/{id}/reject:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCounterOfferView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Reject
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
   /api/v1/dashboard/summary:
     get:
       responses:
@@ -887,6 +1734,82 @@ paths:
       - SecurityScheme:
         - PYME
         - CARRIER
+  /api/v1/documents:
+    get:
+      summary: "Documentos de todos los envíos de mi organización (RF48), recientes\
+        \ primero"
+      parameters:
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: Filtra por tipo de documento.
+        name: type
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDocumentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Document Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+  /api/v1/documents/{id}/file:
+    get:
+      summary: Descarga el archivo (solo las partes del envío y el operador)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Contenido del archivo
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+            image/png:
+              schema:
+                format: binary
+                type: string
+            application/pdf:
+              schema:
+                format: binary
+                type: string
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Document Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
   /api/v1/driver/shipments:
     get:
       responses:
@@ -970,6 +1893,354 @@ paths:
       security:
       - SecurityScheme:
         - CARRIER
+  /api/v1/incidents:
+    get:
+      summary: "Incidencias de mis envíos (operador: todas), recientes primero"
+      parameters:
+      - description: true = solo activas (OPEN o IN_REVIEW).
+        name: active
+        in: query
+        schema:
+          type: boolean
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Estados separados por coma (OPEN,IN_REVIEW,RESOLVED,CLOSED)."
+        name: status
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/incidents/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Detail
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
+  /api/v1/incidents/{id}/comments:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddIncidentComment"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Comment
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
+  /api/v1/incidents/{id}/status:
+    post:
+      summary: "Operador: cambia el estado (IN_REVIEW, RESOLVED con notas, CLOSED)"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeIncidentStatus"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
+  /api/v1/notifications:
+    get:
+      summary: "Notificaciones de mi organización, recientes primero (siempre paginado)"
+      parameters:
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: true = solo no leídas.
+        name: unread
+        in: query
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListNotificationView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Notification Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/notifications/read-all:
+    post:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMarkedRead"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Mark All Read
+      tags:
+      - Notification Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/notifications/unread-count:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseUnreadCount"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Unread Count
+      tags:
+      - Notification Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/notifications/{id}/read:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseNotificationView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Mark Read
+      tags:
+      - Notification Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/operator/metrics:
+    get:
+      summary: Métricas globales de la plataforma
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOperatorMetricsView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
+  /api/v1/operator/requests/{id}/assign:
+    post:
+      summary: "RN10: asigna un transportista a una solicitud con SLA vencido; genera\
+        \ oferta y envío"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualAssignment"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseManualAssignmentResult"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
+  /api/v1/operator/requests/{id}/candidates:
+    get:
+      summary: Vehículos disponibles con capacidad para la solicitud (para asignar
+        manualmente)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListAssignmentCandidateView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
+  /api/v1/operator/sla-alerts:
+    get:
+      summary: "Alertas SLA: sin ofertas > 24 h (RN10), subastas por vencer, enví\
+        os con incidencia (RN11)"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOperatorAlertsView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
   /api/v1/organizations/{id}:
     get:
       parameters:
@@ -992,6 +2263,67 @@ paths:
       summary: Get
       tags:
       - Organization Resource
+      security:
+      - SecurityScheme: []
+  /api/v1/organizations/{id}/reputation:
+    get:
+      summary: "Perfil público de reputación: Trust Score (RN09), promedios y últimas\
+        \ calificaciones"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseReputationView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Organization Reputation Resource
+      security:
+      - SecurityScheme: []
+  /api/v1/organizations/{id}/reviews:
+    get:
+      summary: "Calificaciones recibidas por la organización, recientes primero"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListReviewView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Organization Reputation Resource
       security:
       - SecurityScheme: []
   /api/v1/pricing/calculate:
@@ -1276,6 +2608,117 @@ paths:
       security:
       - SecurityScheme:
         - PYME
+  /api/v1/shipment-requests/{id}/threads:
+    get:
+      summary: "Hilos de chat de la solicitud (PYME: uno por transportista; transportista:\
+        \ el suyo)"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListChatThreadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+  /api/v1/shipment-requests/{id}/threads/{carrierOrgId}/messages:
+    post:
+      summary: "Envía un mensaje; bloquea teléfonos, emails, URLs y usuarios de redes\
+        \ (RN07, LOGYX-NEG-001)"
+      parameters:
+      - name: carrierOrgId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostMessage"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMessageView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+    get:
+      summary: "Historial del hilo por cursor, en orden cronológico; meta.nextCursor\
+        \ = valor para 'before'"
+      parameters:
+      - name: carrierOrgId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - description: "Id de mensaje: devuelve los anteriores a él (omitir = los má\
+          s recientes)."
+        name: before
+        in: query
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - description: "Máximo de mensajes (1-100, por omisión 30)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMessageView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Negotiation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
   /api/v1/shipments:
     get:
       parameters:
@@ -1337,6 +2780,86 @@ paths:
         - CARRIER
         - DRIVER
         - OPERATOR
+  /api/v1/shipments/{id}/documents:
+    post:
+      summary: "Sube un documento o evidencia de entrega (multipart: file, type, stopId)"
+      description: "JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes\
+        \ (10 MB). DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor,\
+        \ stopId de la parada de entrega ya con llegada registrada. Completar la entrega\
+        \ exige al menos una DELIVERY_PHOTO."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                type:
+                  type: string
+                  enum:
+                  - SERVICE_ORDER
+                  - REMISSION_GUIDE
+                  - RECEIPT
+                  - DELIVERY_PHOTO
+                  - SIGNATURE
+                  - OTHER
+                stopId:
+                  type: string
+                  format: uuid
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDocumentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Document Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDocumentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: By Shipment
+      tags:
+      - Document Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
   /api/v1/shipments/{id}/driver:
     put:
       parameters:
@@ -1370,6 +2893,131 @@ paths:
       security:
       - SecurityScheme:
         - CARRIER
+  /api/v1/shipments/{id}/incidents:
+    post:
+      summary: Reporta una incidencia; congela el avance de paradas hasta que el operador
+        la resuelva (RN11)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportIncident"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListIncidentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: By Shipment
+      tags:
+      - Incident Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
+  /api/v1/shipments/{id}/reviews:
+    post:
+      summary: Califica a la otra parte de un envío entregado con foto de evidencia
+        (RN06)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitReview"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseReviewView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      tags:
+      - Reputation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+    get:
+      summary: Calificaciones del envío y si puedo calificarlo (RF45)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseShipmentReviewsView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Reputation Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
   /api/v1/shipments/{id}/stops/{stopId}/arrive:
     post:
       parameters:

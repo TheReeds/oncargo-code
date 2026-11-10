@@ -34,6 +34,12 @@ public class PanacheVehicleRepository implements VehicleRepository {
     }
 
     @Override
+    public List<Vehicle> listAvailableWithCapacity(java.math.BigDecimal minKg) {
+        return VehicleEntity.<VehicleEntity>list("status = ?1 and maxWeightKg >= ?2 order by maxWeightKg, plate",
+                Vehicle.Status.AVAILABLE, minKg).stream().map(VehicleEntity::toDomain).toList();
+    }
+
+    @Override
     public void save(Vehicle vehicle) {
         VehicleEntity e = VehicleEntity.findById(vehicle.id());
         if (e == null) {

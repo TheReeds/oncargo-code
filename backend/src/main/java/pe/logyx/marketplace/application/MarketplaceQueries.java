@@ -91,6 +91,46 @@ public class MarketplaceQueries {
         return summaries.of(r, !isOwner);
     }
 
+    // ----- Para negotiation
+
+    /**
+     * Solicitud visible para el usuario actual (RLS): la PYME dueña, un transportista si está publicada o
+     * adjudicada a él, o el operador. Una PYME ajena recibe 404.
+     */
+    public ShipmentRequest requestForParticipant(UUID requestId) {
+        ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
+        if (tenant.orgType() == OrgType.PYME && !r.isOwnedBy(tenant.orgId())) throw BusinessException.notFound("Solicitud");
+        return r;
+    }
+
+    /** Oferta de un transportista en una solicitud, si existe (visible para la PYME dueña y ese transportista). */
+    public java.util.Optional<Bid> bidOfCarrier(UUID requestId, UUID carrierOrgId) {
+        return bids.listByRequestsAndCarrier(List.of(requestId), carrierOrgId).stream().findFirst();
+    }
+
+    /** Oferta en la que el usuario actual es parte (PYME de la solicitud o transportista dueño); si no, 404. */
+    public Bid bidForParty(UUID bidId) {
+        UUID me = tenant.orgId();
+        return bids.findById(bidId).filter(b -> me.equals(b.requesterOrgId()) || me.equals(b.carrierOrgId()))
+                .orElseThrow(() -> BusinessException.notFound("Oferta"));
+    }
+
+    // ----- Operador (RLS *_operator: lectura global)
+
+    /** RN10: publicadas hace más de {@code cutoff} sin ofertas, las más antiguas primero. */
+    public List<RequestSummary> withoutBidsSince(java.time.OffsetDateTime cutoff) {
+        return summaries.of(requests.listPublishedWithoutBidsCreatedBefore(cutoff), false);
+    }
+
+    /** Subastas abiertas que cierran antes de {@code until}. */
+    public List<RequestSummary> auctionsClosingBefore(java.time.OffsetDateTime until) {
+        return summaries.of(requests.listWithOpenAuctionClosingBefore(until), false);
+    }
+
+    public long countRequests(ShipmentRequest.Status status) {
+        return requests.countByStatus(status);
+    }
+
     /** Para otros módulos (shipment): solicitudes visibles para el usuario actual. */
     public List<ShipmentRequest> requestsByIds(Collection<UUID> ids) {
         if (ids.isEmpty()) return List.of();

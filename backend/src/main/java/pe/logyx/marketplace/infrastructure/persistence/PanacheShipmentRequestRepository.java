@@ -57,6 +57,29 @@ public class PanacheShipmentRequestRepository implements ShipmentRequestReposito
     }
 
     @Override
+    public List<ShipmentRequest> listPublishedWithoutBidsCreatedBefore(java.time.OffsetDateTime cutoff) {
+        return map(ShipmentRequestEntity.list("status = ?1 and createdAt <= ?2 and id not in "
+                + "(select b.requestId from BidEntity b) order by createdAt", ShipmentRequest.Status.PUBLISHED, cutoff));
+    }
+
+    @Override
+    public List<ShipmentRequest> listWithOpenAuctionClosingBefore(java.time.OffsetDateTime until) {
+        return ShipmentRequestEntity.getEntityManager().createQuery(
+                        "select r from ShipmentRequestEntity r, AuctionEntity a where a.requestId = r.id "
+                                + "and r.status = :published and a.status = :open and a.closesAt <= :until "
+                                + "order by a.closesAt", ShipmentRequestEntity.class)
+                .setParameter("published", ShipmentRequest.Status.PUBLISHED)
+                .setParameter("open", Auction.Status.OPEN)
+                .setParameter("until", until)
+                .getResultList().stream().map(ShipmentRequestEntity::toDomain).toList();
+    }
+
+    @Override
+    public long countByStatus(ShipmentRequest.Status status) {
+        return ShipmentRequestEntity.count("status", status);
+    }
+
+    @Override
     public long countPublishedByRequester(UUID requesterOrgId) {
         return ShipmentRequestEntity.count("requesterOrgId = ?1 and status = ?2", requesterOrgId,
                 ShipmentRequest.Status.PUBLISHED);

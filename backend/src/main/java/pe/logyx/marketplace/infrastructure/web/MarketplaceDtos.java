@@ -56,7 +56,9 @@ public final class MarketplaceDtos {
                               /** true si la organización solicitante tiene el RUC verificado. */
                               boolean requesterRucVerified,
                               /** Vehículo mínimo sugerido según peso y tipo de carga (VehicleRequirementPolicy). */
-                              Vehicle.Type minVehicleType) {
+                              Vehicle.Type minVehicleType,
+                              /** Trust Score 0–100 de la PYME solicitante (RN09; 75 sin calificaciones). */
+                              BigDecimal requesterTrustScore) {
 
         static RequestView of(RequestSummary s) {
             ShipmentRequest r = s.request();
@@ -70,7 +72,7 @@ public final class MarketplaceDtos {
                     c.cargoType(), c.cargoDescription(), c.weightKg(), c.volumeM3(), c.pickupDate(),
                     p.distanceKm(), p.suggestedPrice(), p.priceFloor(), r.status(), r.createdAt(), av,
                     s.myBid() == null ? null : BidView.of(s.myBid()), s.requesterRucVerified(),
-                    VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()));
+                    VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()), s.requesterTrustScore());
         }
 
         static List<RequestView> of(List<RequestSummary> list) {
@@ -93,13 +95,17 @@ public final class MarketplaceDtos {
                           /** Tipo del vehículo ofertado (copiado al ofertar). */
                           Vehicle.Type vehicleType,
                           /** Placa del vehículo ofertado (copiada al ofertar). */
-                          String vehiclePlate) {
+                          String vehiclePlate,
+                          /** Trust Score 0–100 del transportista (RN09; 75 sin calificaciones). */
+                          BigDecimal carrierTrustScore,
+                          /** true si la registró el operador al asignar manualmente (RN10). */
+                          boolean assignedByOperator) {
 
         static BidView of(BidSummary s) {
             Bid b = s.bid();
             return new BidView(b.id(), b.requestId(), b.carrierOrgId(), s.carrierName(), s.carrierRucVerified(),
                     b.vehicleId(), b.amount(), b.notes(), b.status(), b.createdAt(),
-                    b.vehicleType(), b.vehiclePlate());
+                    b.vehicleType(), b.vehiclePlate(), s.carrierTrustScore(), b.assignedByOperator());
         }
     }
 

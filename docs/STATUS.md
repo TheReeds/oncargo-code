@@ -11,11 +11,18 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 | catalog (ciudades, tipos de carga) | ✅ | `City`/`CargoType` = vocabulario compartido en `catalog.domain` |
 | pricing (motor de costos por reglas) | ✅ | Haversine × 1.35; ORS pendiente · `TariffCalculator` + `PriceFloorPolicy` |
 | marketplace (solicitudes, subasta inversa, ofertas) | ✅ | |
-| shipment (envíos, paradas, app conductor) | ✅ | Falta evidencia foto/firma |
+| shipment (envíos, paradas, app conductor) | ✅ | 2026-11-10 fase 2: completar la entrega exige foto (`LOGYX-TRK-006`), incidencia activa congela paradas (`LOGYX-TRK-005`), `ShipmentView.hasActiveIncident` |
 | Refactor a hexagonal por módulo (ADR-0002) | ✅ | 2026-11-10 agente backend · contrato HTTP/OpenAPI sin cambios (diff idéntico) · `ModuleBoundariesTest` vigila capas · 38 tests |
 | Seed de datos demo (perfil dev) | ✅ | 2026-11-10 · `devdata.DemoDataSeeder`; cuentas en `backend/AGENTS.md` |
 | Contrato aditivo 2026-11-10 (BidView.vehicleType/vehiclePlate, RequestView.requesterRucVerified/minVehicleType, UserInfo.organizationCity, `field` en errores de negocio, montos `S/ 1,850.00`, filtros+paginación, `GET /driver/shipments/active`, `GET /dashboard/summary`) | ✅ | 2026-11-10 agente contrato API · migración V3 · módulo nuevo `dashboard` · 54 tests · OpenAPI solo adiciones · detalle y ejemplos en `docs/api/CHANGELOG.md` · **web/android deben regenerar clientes** |
-| negotiation, reputation, documents, notification, incident, operator, smartload, returnload | ⬜ | |
+| negotiation (chat RN07 + contra-ofertas) | ✅ | 2026-11-10 líder backend fase 2 · V4 · chat por cursor (`meta.nextCursor`) |
+| documents (evidencia foto/firma, guías; almacenamiento local) | ✅ | 2026-11-10 · V5 · ADR-0005 · multipart jpg/png/pdf ≤ 10 MB |
+| reputation (calificaciones RN06, Trust Score RN09) | ✅ | 2026-11-10 · V6 · `GET /organizations/{id}/reputation`, `carrierTrustScore`/`requesterTrustScore` · métricas compuestas RF42/RF43 pendientes |
+| incident (RN11, comentarios, estados) | ✅ | 2026-11-10 · V7 · resolución no fija el estado final del envío (RF55 parcial) |
+| notification (in-app por eventos de dominio) | ✅ | 2026-11-10 · V8 · ADR-0004 · sin email (RF50) ni push/tiempo real; los conductores no tienen centro propio |
+| operator (alertas SLA, métricas, asignación manual RN10) | ✅ | 2026-11-10 · V9 · cuenta `operator@logyx.pe` en el seed |
+| Fase 2 backend — integración | ✅ | 2026-11-10 · 107 tests verdes (ModuleBoundaries + RLS con 6 casos) · OpenAPI solo adiciones (+24 paths, +53 schemas; `BidView`, `RequestView`, `ShipmentView`, `Meta` con campos nuevos) · **cambio de comportamiento: completar entrega exige foto** · detalle en `docs/api/CHANGELOG.md` · **web/android deben regenerar clientes y agregar upload de evidencia antes de completar la entrega** |
+| smartload, returnload, trip (RN12), email/push, SUNAT, ORS | ⬜ | |
 
 ## Web (Astro)
 | Pantalla | Estado |

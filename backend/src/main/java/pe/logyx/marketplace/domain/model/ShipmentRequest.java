@@ -60,6 +60,9 @@ public final class ShipmentRequest {
 
     public boolean isPublished() { return status == Status.PUBLISHED; }
 
+    /** "Lima → Juliaca", para textos de notificaciones. */
+    public String routeLabel() { return cargo.originCity().label + " → " + cargo.destinationCity().label; }
+
     public boolean isOwnedBy(UUID orgId) { return requesterOrgId.equals(orgId); }
 
     public void ensureOpenForBids() {

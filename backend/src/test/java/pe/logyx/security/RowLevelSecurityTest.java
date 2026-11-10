@@ -5,7 +5,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import pe.logyx.identity.application.AuthService;
 import pe.logyx.support.Api;
+import pe.logyx.support.Flows;
 import pe.logyx.support.Api.Session;
 
 import java.util.Map;
@@ -23,6 +25,9 @@ class RowLevelSecurityTest {
     @Inject
     EntityManager em;
 
+    @Inject
+    AuthService auth;
+
     private long countAs(Session s, String orgType, String sql) {
         return QuarkusTransaction.requiringNew().call(() -> {
             em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true)")
@@ -30,6 +35,22 @@ class RowLevelSecurityTest {
             em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
             return ((Number) em.createNativeQuery(sql).getSingleResult()).longValue();
         });
+    }
+
+    /** Ejecuta un INSERT/UPDATE como logyx_app con el contexto de {@code s}; devuelve filas afectadas. */
+    private int executeAs(Session s, String orgType, String sql) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true)")
+                    .setParameter(1, s.orgId()).setParameter(2, orgType).getSingleResult();
+            em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
+            return em.createNativeQuery(sql).executeUpdate();
+        });
+    }
+
+    private Session operator() {
+        var r = auth.provisionOperator("RLS Operador " + System.nanoTime() % 1000, Api.newRuc(), "Op",
+                "op" + System.nanoTime() + "@logyx.pe", "Operador123");
+        return new Session(r.accessToken(), r.user().organization().id().toString(), null);
     }
 
     private long countAsOwner(String sql) {
@@ -101,6 +122,91 @@ class RowLevelSecurityTest {
                 (String) em.createNativeQuery("SELECT current_user").getSingleResult());
         assertNotEquals("logyx_app", role, "fuera de una petición se usa el rol dueño");
         Api.as(a).get("/api/v1/vehicles").then().statusCode(200);
+    }
+
+    @Test
+    void chatYContraOfertasSoloLasVenLasDosPartes() {
+        Flows.Bidding b = Flows.bidding("RLS Chat");
+        Session other = register("CARRIER", "RLS Chat Otro");
+        Session otherPyme = register("PYME", "RLS Chat Otra Pyme");
+        String thread = "/api/v1/shipment-requests/" + b.requestId() + "/threads/" + b.carrier().orgId() + "/messages";
+        Api.as(b.carrier()).body(Map.of("body", "Consulta")).post(thread).then().statusCode(201);
+        Api.as(b.pyme()).body(Map.of("amount", b.above(50))).post("/api/v1/bids/" + b.bidId() + "/counter-offers")
+                .then().statusCode(201);
+
+        String msgs = "SELECT count(*) FROM messages WHERE request_id = '" + b.requestId() + "'";
+        String cos = "SELECT count(*) FROM counter_offers WHERE request_id = '" + b.requestId() + "'";
+        assertEquals(2, countAs(b.carrier(), "CARRIER", msgs), "mensaje + aviso de contra-oferta");
+        assertEquals(2, countAs(b.pyme(), "PYME", msgs));
+        assertEquals(0, countAs(other, "CARRIER", msgs), "otro transportista no lee el hilo");
+        assertEquals(0, countAs(otherPyme, "PYME", msgs));
+        assertEquals(2, countAs(operator(), "OPERATOR", msgs), "el operador lee");
+        assertEquals(1, countAs(b.carrier(), "CARRIER", cos));
+        assertEquals(0, countAs(other, "CARRIER", cos));
+
+        // No se puede escribir en nombre de otro ni en un hilo ajeno; el historial es inmutable
+        var ex = assertThrows(Exception.class, () -> executeAs(other, "CARRIER",
+                "INSERT INTO messages (request_id, requester_org_id, carrier_org_id, sender_org_id, body) VALUES ('"
+                        + b.requestId() + "','" + b.pyme().orgId() + "','" + b.carrier().orgId() + "','"
+                        + b.carrier().orgId() + "','falso')"));
+        assertTrue(rootMessage(ex).contains("row-level security"), rootMessage(ex));
+        var ex2 = assertThrows(Exception.class, () -> executeAs(b.carrier(), "CARRIER", "UPDATE messages SET body = 'x'"));
+        assertTrue(rootMessage(ex2).contains("permission denied"), rootMessage(ex2));
+    }
+
+    @Test
+    void documentosIncidenciasYNotificacionesSonPrivadosReputacionPublica() {
+        Session op = operator();
+        Flows.Awarded a = Flows.delivered("RLS Docs");
+        Session stranger = register("PYME", "RLS Docs Ajena");
+        String sid = a.shipmentId();
+        Api.as(a.pyme()).body(Map.of("punctuality", 4, "cargoCondition", 4, "communication", 4))
+                .post("/api/v1/shipments/" + sid + "/reviews").then().statusCode(201);
+        Api.as(a.carrier()).body(Map.of("category", "CARGO_DAMAGE", "description", "Caja abollada"))
+                .post("/api/v1/shipments/" + sid + "/incidents").then().statusCode(201);
+
+        String docs = "SELECT count(*) FROM documents WHERE shipment_id = '" + sid + "'";
+        assertEquals(1, countAs(a.pyme(), "PYME", docs));
+        assertEquals(1, countAs(a.carrier(), "CARRIER", docs));
+        assertEquals(0, countAs(stranger, "PYME", docs), "un tercero no ve la evidencia");
+        assertEquals(1, countAs(op, "OPERATOR", docs));
+
+        String incidents = "SELECT count(*) FROM incidents WHERE shipment_id = '" + sid + "'";
+        assertEquals(1, countAs(a.pyme(), "PYME", incidents));
+        assertEquals(0, countAs(stranger, "PYME", incidents));
+        assertEquals(1, countAs(op, "OPERATOR", incidents));
+        assertEquals(0, executeAs(a.carrier(), "CARRIER", "UPDATE incidents SET status = 'CLOSED' WHERE shipment_id = '"
+                + sid + "'"), "las partes no cambian el estado (solo el operador)");
+        assertEquals(1, executeAs(op, "OPERATOR", "UPDATE incidents SET status = 'IN_REVIEW' WHERE shipment_id = '"
+                + sid + "'"));
+
+        // Reputación pública; solo el recálculo de sistema la escribe
+        String reviews = "SELECT count(*) FROM reviews WHERE shipment_id = '" + sid + "'";
+        assertEquals(1, countAs(stranger, "PYME", reviews), "las calificaciones son públicas (RF44)");
+        assertEquals(1, countAs(stranger, "PYME", "SELECT count(*) FROM reputation_scores WHERE org_id = '"
+                + a.carrier().orgId() + "'"));
+        var ex = assertThrows(Exception.class, () -> executeAs(a.carrier(), "CARRIER",
+                "UPDATE reputation_scores SET trust_score = 100 WHERE org_id = '" + a.carrier().orgId() + "'"));
+        assertTrue(rootMessage(ex).contains("permission denied"), rootMessage(ex));
+        var ex2 = assertThrows(Exception.class, () -> executeAs(stranger, "PYME",
+                "INSERT INTO reviews (shipment_id, requester_org_id, carrier_org_id, reviewer_org_id, reviewed_org_id, "
+                        + "direction, punctuality, cargo_condition, communication, rating) VALUES ('" + sid + "','"
+                        + a.pyme().orgId() + "','" + a.carrier().orgId() + "','" + a.pyme().orgId() + "','"
+                        + a.carrier().orgId() + "','PYME_TO_CARRIER',1,1,1,1)"));
+        assertTrue(rootMessage(ex2).contains("row-level security"), rootMessage(ex2));
+
+        // Notificaciones: cada organización solo las suyas; ningún usuario inserta
+        String notif = "SELECT count(*) FROM notifications WHERE org_id = '" + a.pyme().orgId() + "'";
+        long own = countAs(a.pyme(), "PYME", notif);
+        assertTrue(own > 0);
+        assertEquals(own, countAsOwner(notif));
+        assertEquals(0, countAs(a.carrier(), "CARRIER", notif), "el transportista no lee las de la PYME");
+        assertEquals(0, executeAs(a.carrier(), "CARRIER", "UPDATE notifications SET read_at = now() WHERE org_id = '"
+                + a.pyme().orgId() + "'"));
+        var ex3 = assertThrows(Exception.class, () -> executeAs(a.pyme(), "PYME",
+                "INSERT INTO notifications (org_id, type, title, body) VALUES ('" + a.pyme().orgId()
+                        + "','NEW_BID','x','y')"));
+        assertTrue(rootMessage(ex3).contains("permission denied"), rootMessage(ex3));
     }
 
     private static String rootMessage(Throwable t) {

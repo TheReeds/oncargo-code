@@ -42,10 +42,10 @@ Especificación funcional completa: repo hermano `../ProyectoEPE-LOGYX/docs/soft
 | Usuario de PYME | `PYME` | `org_id`, `org_type=PYME`, `role` |
 | Usuario de transportista | `CARRIER` | `org_id`, `org_type=CARRIER`, `role` |
 | Conductor | `DRIVER` (solo) | `org_id` del transportista, `role=DRIVER` |
-| Operador LOGYX | `OPERATOR` | (fase posterior) |
+| Operador LOGYX | `OPERATOR` | `org_type=OPERATOR`; cuentas creadas por LOGYX (no hay registro público). Solo usa la web. |
 
 ## Cuentas demo (perfil dev del backend)
-`pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
+`pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe`, `operator@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
 
 ## Cómo levantar todo
 ```bash

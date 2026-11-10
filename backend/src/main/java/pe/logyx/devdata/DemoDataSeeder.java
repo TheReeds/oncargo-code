@@ -1,5 +1,7 @@
 package pe.logyx.devdata;
 
+import pe.logyx.incident.domain.model.IncidentCategory;
+import pe.logyx.documents.domain.model.DocumentType;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.profile.IfBuildProfile;
 import io.quarkus.logging.Log;
@@ -11,7 +13,16 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import jakarta.persistence.EntityManager;
 import pe.logyx.catalog.domain.CargoType;
+import pe.logyx.documents.application.DocumentService;
+import pe.logyx.documents.application.UploadDocumentCommand;
+import pe.logyx.documents.domain.model.Document;
+import pe.logyx.incident.application.IncidentService;
+import pe.logyx.incident.domain.model.Incident;
+import pe.logyx.negotiation.application.NegotiationService;
+import pe.logyx.reputation.application.ReviewService;
 import pe.logyx.fleet.application.AddDriverCommand;
 import pe.logyx.fleet.application.AddVehicleCommand;
 import pe.logyx.fleet.application.FleetService;
@@ -26,6 +37,7 @@ import pe.logyx.shipment.application.AssignDriverUseCase;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.TrackStopsUseCase;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -41,6 +53,10 @@ import java.util.function.Supplier;
  * JWT, se instala como identidad de un contexto de petición y todo corre con
  * RLS exactamente como una llamada HTTP. Así el seed respeta las reglas de negocio.
  * Es idempotente: si {@code pyme@logyx.pe} existe, no hace nada.
+ *
+ * <p>Fase 2: operador {@code operator@logyx.pe}, un envío entregado con foto/firma/guía, calificaciones en ambas
+ * direcciones y una incidencia abierta; chats, una contra-oferta aceptada y otra pendiente; dos solicitudes con SLA
+ * vencido (sin ofertas hace más de 24 h) y las notificaciones que generan esos eventos.
  */
 @IfBuildProfile("dev")
 @ApplicationScoped
@@ -51,6 +67,7 @@ public class DemoDataSeeder {
     public static final String CARRIER_EMAIL = "carrier@logyx.pe";
     public static final String CARRIER2_EMAIL = "carrier2@logyx.pe";
     public static final String DRIVER_EMAIL = "driver@logyx.pe";
+    public static final String OPERATOR_EMAIL = "operator@logyx.pe";
 
     @Inject AuthService auth;
     @Inject UserAccounts accounts;
@@ -61,6 +78,11 @@ public class DemoDataSeeder {
     @Inject AssignDriverUseCase assignDriver;
     @Inject TrackStopsUseCase tracking;
     @Inject ShipmentQueries shipments;
+    @Inject NegotiationService negotiation;
+    @Inject DocumentService documents;
+    @Inject ReviewService reviews;
+    @Inject IncidentService incidents;
+    @Inject EntityManager em;
     @Inject CurrentIdentityAssociation identity;
     @Inject JWTParser jwtParser;
 
@@ -70,8 +92,8 @@ public class DemoDataSeeder {
             return;
         }
         seed();
-        Log.infof("Datos demo creados: %s, %s, %s, %s (contraseña %s)",
-                PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, PASSWORD);
+        Log.infof("Datos demo creados: %s, %s, %s, %s, %s (contraseña %s)",
+                PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL, PASSWORD);
     }
 
     private void seed() {
@@ -82,6 +104,10 @@ public class DemoDataSeeder {
                 "20602345671", "Arequipa", "959876543", "Carlos Huamán Ccori", CARRIER_EMAIL, PASSWORD));
         AuthResult carrier2 = auth.register(new RegisterCommand(OrgType.CARRIER, "Logística Titicaca EIRL",
                 "20603456786", "Puno", "951112233", "Rosa Condori Apaza", CARRIER2_EMAIL, PASSWORD));
+
+        // Operador LOGYX: no hay registro público, lo crea la plataforma
+        AuthResult operator = auth.provisionOperator("LOGYX Operaciones SAC", "20604567891", "Lucía Ramos Torres",
+                OPERATOR_EMAIL, PASSWORD);
 
         // ---------- Flotas
         record Fleet(UUID medium, UUID large, UUID reefer, UUID driver) {}
@@ -95,6 +121,36 @@ public class DemoDataSeeder {
         Fleet2 titicaca = as(carrier2, () -> new Fleet2(
                 vehicle("LTT-401", Vehicle.Type.TRUCK_SMALL, 4000, 20),
                 vehicle("LTT-502", Vehicle.Type.PLATFORM, 15000, 60)));
+
+        // ---------- Envío ya entregado con evidencia, calificaciones e incidencia abierta (post-entrega)
+        RequestSummary delivered = as(pyme, () -> request("AREQUIPA", "Av. Alfonso Ugarte 300, Cercado",
+                "JULIACA", "Jr. Mariano Núñez 210, Juliaca", CargoType.GENERAL, "Cemento en bolsas de 42.5 kg",
+                7000, 0));
+        UUID deliveredBid = as(carrier, () -> bid(delivered, sur.large(), "0.95", "Unidad con toldo, salida inmediata"));
+        UUID deliveredShipment = as(pyme, () -> acceptBid.accept(deliveredBid).shipmentId());
+        as(carrier, () -> assignDriver.assign(deliveredShipment, sur.driver()));
+        as(lookup(DRIVER_EMAIL), () -> {
+            var stops = shipments.detail(deliveredShipment).stops();
+            UUID pickup = stops.get(0).id(), delivery = stops.get(1).id();
+            tracking.arrive(deliveredShipment, pickup);
+            tracking.complete(deliveredShipment, pickup);
+            tracking.arrive(deliveredShipment, delivery);
+            upload(deliveredShipment, DocumentType.DELIVERY_PHOTO, delivery, "entrega-juliaca.png",
+                    DemoFiles.photo("Entrega en Juliaca — 140 bolsas"));
+            upload(deliveredShipment, DocumentType.SIGNATURE, delivery, "firma-receptor.png", DemoFiles.signature());
+            return tracking.complete(deliveredShipment, delivery);
+        });
+        as(pyme, () -> {
+            upload(deliveredShipment, DocumentType.REMISSION_GUIDE, null, "guia-remision-EG07-000123.pdf",
+                    DemoFiles.pdf("Guia de remision EG07-000123"));
+            return reviews.submit(deliveredShipment, 5, 4, 5, "Llegó antes de lo previsto; dos bolsas rotas, "
+                    + "lo vemos en la incidencia.");
+        });
+        as(carrier, () -> reviews.submit(deliveredShipment, 5, 5, 4, "Carga lista a la hora y bien declarada."));
+        UUID incidentId = as(pyme, () -> incidents.report(deliveredShipment, IncidentCategory.CARGO_DAMAGE,
+                "Dos bolsas de cemento llegaron rotas en la descarga.").incident().id());
+        as(carrier, () -> incidents.comment(incidentId, "Revisamos el estibado; proponemos reponer las dos bolsas."));
+        as(operator, () -> incidents.comment(incidentId, "Recibido. Revisamos la evidencia con ambas partes."));
 
         // ---------- Solicitudes publicadas en el corredor
         List<RequestSummary> r = as(pyme, () -> {
@@ -125,12 +181,34 @@ public class DemoDataSeeder {
             bid(r.get(4), sur.large(), "0.92", null);
             return id;
         });
-        as(carrier2, () -> {
+        record Bids2(UUID tacna, UUID quinua) {}
+        Bids2 bids2 = as(carrier2, () -> {
             bid(r.get(0), titicaca.platform(), "1.05", null);
-            bid(r.get(3), titicaca.small(), "0.90", "Disponible desde mañana");
-            bid(r.get(4), titicaca.platform(), "0.95", null);
-            return null;
+            UUID tacna = bid(r.get(3), titicaca.small(), "0.90", "Disponible desde mañana");
+            UUID quinua = bid(r.get(4), titicaca.platform(), "0.95", null);
+            return new Bids2(tacna, quinua);
         });
+
+        // ---------- Negociación: chats y contra-ofertas
+        UUID surOrg = carrier.user().organization().id();
+        UUID titicacaOrg = carrier2.user().organization().id();
+        UUID lacteos = r.get(1).request().id();
+        as(carrier, () -> negotiation.post(lacteos, surOrg,
+                "Buenos días, ¿la carga debe ir entre 2 y 4 °C todo el trayecto?"));
+        as(pyme, () -> negotiation.post(lacteos, surOrg, "Sí, entre 2 y 4 °C. El recojo es a las 7:00 en el parque industrial."));
+        as(carrier, () -> negotiation.post(lacteos, surOrg,
+                "Perfecto, el ASA-303 tiene registrador de temperatura; le compartimos el reporte al entregar."));
+        as(carrier2, () -> negotiation.post(r.get(2).request().id(), titicacaOrg,
+                "¿Los electrodomésticos van paletizados y con esquineros?"));
+        // contra-oferta aceptada (Tacna → Arequipa) y otra pendiente (quinua a Lima)
+        UUID accepted = as(pyme, () -> negotiation.propose(bids2.tacna(), discount(r.get(3), "0.85"),
+                "¿Podemos cerrar en este monto? Tenemos carga semanal en la ruta.").id());
+        as(carrier2, () -> negotiation.accept(accepted));
+        as(pyme, () -> negotiation.propose(bids2.quinua(), discount(r.get(4), "0.88"), "Es nuestro presupuesto."));
+
+        // ---------- SLA (RN10): dos solicitudes sin ofertas publicadas hace más de 24 h
+        backdate(r.get(6).request().id(), 30);
+        backdate(r.get(7).request().id(), 27);
 
         // ---------- Adjudicación y envío en tránsito
         UUID shipmentId = as(pyme, () -> acceptBid.accept(winning).shipmentId());
@@ -143,6 +221,23 @@ public class DemoDataSeeder {
     }
 
     // ------------------------------------------------------------ helpers
+
+    private void upload(UUID shipmentId, DocumentType type, UUID stopId, String name, byte[] content) {
+        documents.upload(new UploadDocumentCommand(shipmentId, type, stopId, name, content.length,
+                () -> new ByteArrayInputStream(content)));
+    }
+
+    private static BigDecimal discount(RequestSummary request, String factor) {
+        return request.request().pricing().suggestedPrice().multiply(new BigDecimal(factor))
+                .setScale(0, RoundingMode.HALF_UP);
+    }
+
+    /** Simula una solicitud publicada hace {@code hours} horas (solo dev, como dueño del esquema). */
+    private void backdate(UUID requestId, int hours) {
+        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+                        "UPDATE shipment_requests SET created_at = now() - make_interval(hours => ?1) WHERE id = ?2")
+                .setParameter(1, hours).setParameter(2, requestId).executeUpdate());
+    }
 
     private UUID vehicle(String plate, Vehicle.Type type, int kg, int m3) {
         return fleet.addVehicle(new AddVehicleCommand(plate, type, BigDecimal.valueOf(kg), BigDecimal.valueOf(m3))).id();

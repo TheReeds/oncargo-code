@@ -1,6 +1,7 @@
 package pe.logyx.shipment.application;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import pe.logyx.fleet.application.FleetService;
@@ -8,8 +9,12 @@ import pe.logyx.fleet.domain.model.Driver;
 import pe.logyx.shared.audit.AuditService;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.tenancy.TenantContext;
+import pe.logyx.shipment.application.event.ShipmentStatusChanged;
+import pe.logyx.shipment.application.port.out.DeliveryEvidenceProvider;
+import pe.logyx.shipment.application.port.out.IncidentHoldProvider;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.application.port.out.ShipmentStopRepository;
+import pe.logyx.shipment.domain.DeliveryEvidencePolicy;
 import pe.logyx.shipment.domain.StopSequencePolicy;
 import pe.logyx.shipment.domain.model.Shipment;
 import pe.logyx.shipment.domain.model.ShipmentStop;
@@ -18,7 +23,10 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/** App del conductor: llegada y cierre de cada parada, en orden (RN08). */
+/**
+ * App del conductor: llegada y cierre de cada parada, en orden (RN08). Una incidencia activa congela el avance
+ * (RN11) y la parada de entrega solo se completa con al menos una foto de evidencia subida antes (RF37).
+ */
 @ApplicationScoped
 public class TrackStopsUseCase {
 
@@ -26,8 +34,11 @@ public class TrackStopsUseCase {
     @Inject ShipmentStopRepository stops;
     @Inject FleetService fleet;
     @Inject ShipmentQueries queries;
+    @Inject IncidentHoldProvider holds;
+    @Inject DeliveryEvidenceProvider evidence;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
+    @Inject Event<ShipmentStatusChanged> statusChanged;
 
     @Transactional
     public ShipmentSummary arrive(UUID shipmentId, UUID stopId) {
@@ -43,6 +54,7 @@ public class TrackStopsUseCase {
         Shipment s = driverShipment(shipmentId);
         List<ShipmentStop> all = stops.listByShipment(s.id());
         ShipmentStop stop = StopSequencePolicy.requireNext(all, stopId);
+        DeliveryEvidencePolicy.ensureEvidence(stop.type(), evidence.hasDeliveryPhoto(s.id(), stop.id()));
         OffsetDateTime now = OffsetDateTime.now();
         stop.complete(now);
         stops.save(stop);
@@ -54,13 +66,22 @@ public class TrackStopsUseCase {
             fleet.finishTrip(s.vehicleId(), s.driverId());
             audit.record(tenant.profileId(), tenant.orgId(), "SHIPMENT_DELIVERED", "shipment", s.id(), null);
         }
-        return queries.detail(s.id());
+        ShipmentSummary result = queries.detail(s.id());
+        if (progress.tripStarted() || progress.delivered()) {
+            statusChanged.fire(new ShipmentStatusChanged(s.id(), s.requesterOrgId(), s.carrierOrgId(), s.status(),
+                    result.routeLabel()));
+        }
+        return result;
     }
 
     private Shipment driverShipment(UUID id) {
         Driver d = queries.currentDriver();
         Shipment s = shipments.findForDriver(id, d.id()).orElseThrow(() -> BusinessException.notFound("Envío"));
         s.ensureOpen();
+        if (holds.hasActiveIncident(s.id())) {                                                            // RN11
+            throw BusinessException.conflict("LOGYX-TRK-005",
+                    "El envío tiene una incidencia activa: no se puede avanzar hasta que el operador la resuelva (RN11)");
+        }
         return s;
     }
 }

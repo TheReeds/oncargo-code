@@ -10,10 +10,12 @@ import pe.logyx.marketplace.application.port.out.BidRepository;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.reputation.application.ReputationQueries;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shared.tenancy.TenantContext;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +32,7 @@ public class RequestSummaries {
     @Inject OrganizationDirectory organizations;
     @Inject TenantContext tenant;
     @Inject SystemTx system;
+    @Inject ReputationQueries reputation;
 
     public RequestSummary of(ShipmentRequest r, boolean includeMyBid) {
         return of(List.of(r), includeMyBid).getFirst();
@@ -47,12 +50,13 @@ public class RequestSummaries {
                 ? bids(bids.listByRequestsAndCarrier(ids, tenant.orgId())).stream()
                     .collect(Collectors.toMap(b -> b.bid().requestId(), Function.identity()))
                 : Map.of();
+        Map<UUID, BigDecimal> trust = reputation.trustScores(requesters.keySet());
         return list.stream().map(r -> {
             Auction a = byRequest.get(r.id());
             Organization o = requesters.get(r.requesterOrgId());
             return new RequestSummary(r, a, a == null ? 0 : counts.getOrDefault(a.id(), 0L),
                     o == null ? null : o.legalName(), myBids.get(r.id()),
-                    o != null && o.rucVerified());
+                    o != null && o.rucVerified(), trust.get(r.requesterOrgId()));
         }).toList();
     }
 
@@ -60,9 +64,10 @@ public class RequestSummaries {
         if (list.isEmpty()) return List.of();
         Map<UUID, Organization> carriers = organizations.byIds(
                 list.stream().map(Bid::carrierOrgId).collect(Collectors.toSet()));
+        Map<UUID, BigDecimal> trust = reputation.trustScores(carriers.keySet());
         return list.stream().map(b -> {
             Organization c = carriers.get(b.carrierOrgId());
-            return new BidSummary(b, c.legalName(), c.rucVerified());
+            return new BidSummary(b, c.legalName(), c.rucVerified(), trust.get(b.carrierOrgId()));
         }).toList();
     }
 

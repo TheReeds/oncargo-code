@@ -1,10 +1,12 @@
 package pe.logyx.marketplace.application;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
+import pe.logyx.marketplace.application.event.BidPlaced;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.BidRepository;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
@@ -31,6 +33,7 @@ public class PlaceBidUseCase {
     @Inject RequestSummaries summaries;
     @Inject TenantContext tenant;
     @Inject SystemTx system;
+    @Inject Event<BidPlaced> bidPlaced;
 
     @Transactional
     public BidSummary placeBid(UUID requestId, PlaceBidCommand cmd) {
@@ -62,6 +65,10 @@ public class PlaceBidUseCase {
             a.close(Auction.CloseReason.MAX_BIDS, now);
             auctions.save(a);
         }
-        return summaries.bids(java.util.List.of(b)).getFirst();
+        BidSummary summary = summaries.bids(java.util.List.of(b)).getFirst();
+        // Notificación a la PYME (módulo notification) tras el commit
+        bidPlaced.fire(new BidPlaced(b.id(), r.id(), r.requesterOrgId(), me, summary.carrierName(), b.amount(),
+                r.routeLabel()));
+        return summary;
     }
 }

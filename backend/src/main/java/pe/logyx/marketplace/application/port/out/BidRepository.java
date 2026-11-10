@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface BidRepository {
+    /** Visible para el usuario actual (RLS: la PYME de la solicitud, el transportista dueño o el operador). */
+    Optional<Bid> findById(UUID bidId);
     Optional<Bid> findForRequester(UUID bidId, UUID requesterOrgId);
     /** Por monto ascendente y luego por antigüedad. */
     List<Bid> listByRequest(UUID requestId);

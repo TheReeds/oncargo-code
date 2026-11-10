@@ -210,6 +210,7 @@ class ContractAdditionsFlowTest {
         as(pyme).get("/api/v1/dashboard/summary").then().body("data.shipmentsInTransit", is(1));
 
         as(driver).post(path + stops.get(1) + "/arrive").then().statusCode(200);
+        deliveryPhoto(driver, shipmentId, stops.get(1));   // RF37: sin foto no se completa la entrega
         as(driver).post(path + stops.get(1) + "/complete").then().statusCode(200);
         as(driver).get("/api/v1/driver/shipments/active").then().statusCode(404);
         as(pyme).get("/api/v1/dashboard/summary").then()

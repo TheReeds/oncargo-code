@@ -64,6 +64,19 @@ public class FleetService {
     }
 
     /**
+     * Vehículo de un transportista dado, para la asignación manual del operador (RN10). Bajo RLS solo el
+     * operador (vehicles_operator) o el propio transportista pueden leerlo; si no pertenece a esa organización, 404.
+     */
+    public Vehicle vehicleOfCarrier(UUID carrierOrgId, UUID vehicleId) {
+        return vehicles.findOwned(vehicleId, carrierOrgId).orElseThrow(() -> BusinessException.notFound("Vehículo"));
+    }
+
+    /** Vehículos disponibles con capacidad ≥ {@code minKg} de todos los transportistas (lectura del operador). */
+    public List<Vehicle> availableVehiclesForOperator(java.math.BigDecimal minKg) {
+        return vehicles.listAvailableWithCapacity(minKg);
+    }
+
+    /**
      * Placa a copiar en el contrato de envío. La flota es privada del
      * transportista (RLS) y quien acepta es la PYME: se lee en contexto de
      * sistema, una sola vez, y solo la placa.

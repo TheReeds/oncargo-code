@@ -47,9 +47,12 @@ public class BidEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
+    @Column(name = "assigned_by_operator")
+    public boolean assignedByOperator;
+
     Bid toDomain() {
         return new Bid(id, auctionId, requestId, requesterOrgId, carrierOrgId, vehicleId, vehicleType,
-                vehiclePlate, amount, notes, status, createdAt);
+                vehiclePlate, amount, notes, status, createdAt, assignedByOperator);
     }
 
     void apply(Bid b) {
@@ -65,5 +68,6 @@ public class BidEntity extends PanacheEntityBase {
         notes = b.notes();
         status = b.status();
         createdAt = b.createdAt();
+        assignedByOperator = b.assignedByOperator();
     }
 }

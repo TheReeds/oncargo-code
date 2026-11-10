@@ -22,6 +22,9 @@ public interface ShipmentRepository {
     long countByStatus(UUID orgId, boolean asCarrier, Collection<Shipment.Status> statuses);
     /** Envíos entregados desde {@code since} (inclusive). */
     long countDeliveredSince(UUID orgId, boolean asCarrier, OffsetDateTime since);
+    /** Todos los visibles (RLS) en ese estado. */
+    long countAllByStatus(Shipment.Status status);
+    List<Shipment> listByIds(Collection<UUID> ids);
     /** Inserta o actualiza. */
     void save(Shipment shipment);
 }

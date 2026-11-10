@@ -59,6 +59,17 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     }
 
     @Override
+    public long countAllByStatus(Shipment.Status status) {
+        return ShipmentEntity.count("status", status);
+    }
+
+    @Override
+    public List<Shipment> listByIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) return List.of();
+        return map(ShipmentEntity.list("id in ?1 order by createdAt desc", ids));
+    }
+
+    @Override
     public void save(Shipment shipment) {
         ShipmentEntity e = ShipmentEntity.findById(shipment.id());
         if (e == null) {

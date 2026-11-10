@@ -11,6 +11,8 @@ public interface VehicleRepository {
     Optional<Vehicle> findOwned(UUID id, UUID organizationId);
     List<Vehicle> listByOrganization(UUID organizationId);
     boolean plateExists(String plate);
+    /** AVAILABLE y con capacidad ≥ minKg, de todas las organizaciones visibles (RLS), menor capacidad primero. */
+    List<Vehicle> listAvailableWithCapacity(java.math.BigDecimal minKg);
     /** Inserta o actualiza. */
     void save(Vehicle vehicle);
 }

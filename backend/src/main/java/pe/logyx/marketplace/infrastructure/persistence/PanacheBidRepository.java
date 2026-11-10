@@ -16,6 +16,11 @@ import java.util.stream.Collectors;
 public class PanacheBidRepository implements BidRepository {
 
     @Override
+    public Optional<Bid> findById(UUID bidId) {
+        return BidEntity.<BidEntity>findByIdOptional(bidId).map(BidEntity::toDomain);
+    }
+
+    @Override
     public Optional<Bid> findForRequester(UUID bidId, UUID requesterOrgId) {
         return BidEntity.<BidEntity>find("id = ?1 and requesterOrgId = ?2", bidId, requesterOrgId)
                 .firstResultOptional().map(BidEntity::toDomain);

@@ -48,6 +48,18 @@ public final class Organization {
                 city, phone, OffsetDateTime.now());
     }
 
+    /**
+     * Organización operadora de LOGYX. No hay autoregistro de operadores: la crea la plataforma
+     * (seed de desarrollo o un proceso interno), nunca un endpoint público.
+     */
+    public static Organization provisionOperator(String legalName, String ruc, String city) {
+        if (!RucValidator.isValid(ruc)) {
+            throw BusinessException.badRequest("LOGYX-ORG-001", "El RUC no es válido (dígito verificador)", "ruc");
+        }
+        return new Organization(UUID.randomUUID(), OrgType.OPERATOR, legalName.trim(), ruc, RucVerification.CHECKSUM,
+                city, null, OffsetDateTime.now());
+    }
+
     public boolean rucVerified() {
         return rucVerification != RucVerification.NONE;
     }
