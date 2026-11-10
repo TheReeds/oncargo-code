@@ -71,7 +71,7 @@ class RequestsViewModelsTest {
         val repo = FakeRequests(listOf(bid("a", 1900.0)), Result.failure(ApiException(409, "LOGYX-MKT-009", "La solicitud ya fue adjudicada")))
         val vm = RequestDetailViewModel("r1", repo, FakeCatalog())
         vm.askAccept(bid("a", 1900.0)); vm.confirmAccept()
-        assertEquals("La solicitud ya fue adjudicada", vm.state.value.message)
+        assertEquals("La solicitud ya fue adjudicada", vm.state.value.message?.text)
         assertNull(vm.state.value.createdShipmentId)
     }
 }

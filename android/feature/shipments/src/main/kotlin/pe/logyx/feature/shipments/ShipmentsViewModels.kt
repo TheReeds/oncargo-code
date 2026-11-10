@@ -13,6 +13,7 @@ import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
 import pe.logyx.core.data.userMessage
+import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.model.DriverStatus
 import pe.logyx.core.model.DriverView
 import pe.logyx.core.model.GeoPoint
@@ -68,7 +69,7 @@ data class ShipmentDetailUiState(
     val drivers: List<DriverView>? = null,
     val driversLoading: Boolean = false,
     val assigning: Boolean = false,
-    val message: String? = null,
+    val message: UiMessage? = null,
 ) {
     val canAssign: Boolean get() = isCarrier && shipment?.status == ShipmentStatus.PENDING
 }
@@ -108,21 +109,21 @@ class ShipmentDetailViewModel(
         viewModelScope.launch {
             repo.drivers().fold(
                 onSuccess = { list -> _state.update { it.copy(drivers = list.filter { d -> d.status != DriverStatus.OFF_DUTY }, driversLoading = false) } },
-                onFailure = { e -> _state.update { it.copy(drivers = null, driversLoading = false, message = e.userMessage()) } },
+                onFailure = { e -> _state.update { it.copy(drivers = null, driversLoading = false, message = UiMessage.error(e.userMessage())) } },
             )
         }
     }
 
     fun dismissDriverSheet() = _state.update { if (it.assigning) it else it.copy(drivers = null) }
-    fun messageShown() = _state.update { it.copy(message = null) }
+    fun onMessageShown() = _state.update { it.copy(message = null) }
 
     fun assign(driver: DriverView) {
         if (_state.value.assigning) return
         _state.update { it.copy(assigning = true) }
         viewModelScope.launch {
             repo.assignDriver(shipmentId, driver.id).fold(
-                onSuccess = { sh -> _state.update { it.copy(assigning = false, drivers = null, shipment = sh, message = "Conductor asignado: ${driver.fullName}") } },
-                onFailure = { e -> _state.update { it.copy(assigning = false, message = e.userMessage()) } },
+                onSuccess = { sh -> _state.update { it.copy(assigning = false, drivers = null, shipment = sh, message = UiMessage.success("Conductor asignado")) } },
+                onFailure = { e -> _state.update { it.copy(assigning = false, message = UiMessage.error(e.userMessage())) } },
             )
         }
     }

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_back">Volver</string>
+    <string name="ds_close">Cerrar</string>
+    <string name="ds_loading">Cargando…</string>
+    <string name="ds_retry">Reintentar</string>
+    <string name="ds_error_title">No pudimos cargar la información</string>
+    <string name="ds_select">Seleccionar</string>
+    <string name="ds_search">Buscar</string>
+    <string name="ds_search_cities">Buscar ciudad</string>
+    <string name="ds_no_results">Sin resultados</string>
+    <string name="ds_no_results_hint">Prueba con otro nombre.</string>
+    <string name="ds_clear">Quitar selección</string>
+    <string name="ds_selected">Seleccionado</string>
+    <string name="ds_required_suffix">(opcional)</string>
+    <string name="ds_cancel">Cancelar</string>
+    <string name="ds_accept">Aceptar</string>
+    <string name="ds_today">Hoy</string>
+    <string name="ds_tomorrow">Mañana</string>
+    <string name="ds_next_7_days">Próximos 7 días</string>
+    <string name="ds_pick_date">Elige una fecha</string>
+    <string name="ds_pick_date_range">Elige un rango de fechas</string>
+    <string name="ds_apply">Aplicar</string>
+    <string name="ds_open_calendar">Abrir calendario</string>
+    <string name="ds_loading_action">Procesando…</string>
+    <string name="ds_banner_dismiss">Descartar aviso</string>
+    <string name="ds_verified_company">Empresa verificada</string>
+    <string name="ds_error_prefix">Error:</string>
+    <string name="ds_success_prefix">Listo:</string>
+    <string name="ds_info_prefix">Aviso:</string>
+    <string name="ds_auction_closed">Subasta cerrada</string>
+    <string name="ds_closes_in">Cierra en %1$s</string>
+    <string name="ds_reference_price">Precio referencial</string>
+    <string name="ds_pickup_on">Recojo %1$s</string>
+    <string name="ds_compatible">Compatible</string>
+    <string name="ds_bids_count">%1$d/%2$d ofertas</string>
+    <string name="ds_company">Empresa</string>
+    <string name="ds_view_my_bid">Ver mi oferta</string>
+    <string name="ds_view_load_and_bid">Ver carga y ofertar</string>
+    <string name="ds_stop_completed">Completada · %1$s</string>
+    <string name="ds_stop_arrived">En el punto desde %1$s</string>
+    <string name="ds_stop_next">Siguiente parada</string>
+</resources>

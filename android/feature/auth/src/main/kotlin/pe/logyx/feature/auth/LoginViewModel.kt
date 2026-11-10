@@ -10,12 +10,14 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.userMessage
 
+enum class LoginFieldError { InvalidEmail, EmptyPassword }
+
 data class LoginUiState(
     val email: String = "",
     val password: String = "",
     val loading: Boolean = false,
-    val emailError: String? = null,
-    val passwordError: String? = null,
+    val emailError: LoginFieldError? = null,
+    val passwordError: LoginFieldError? = null,
     /** Error de la API o de red (credenciales inválidas, sin conexión...). */
     val error: String? = null,
 )
@@ -33,8 +35,8 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
     fun submit() {
         val s = _state.value
         if (s.loading) return
-        val emailError = if (!s.email.contains("@") || s.email.isBlank()) "Ingresa un correo válido" else null
-        val passwordError = if (s.password.isBlank()) "Ingresa tu contraseña" else null
+        val emailError = if (!s.email.contains("@") || s.email.isBlank()) LoginFieldError.InvalidEmail else null
+        val passwordError = if (s.password.isBlank()) LoginFieldError.EmptyPassword else null
         if (emailError != null || passwordError != null) {
             _state.update { it.copy(emailError = emailError, passwordError = passwordError) }
             return

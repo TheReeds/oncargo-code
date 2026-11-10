@@ -22,7 +22,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private val user = UserInfo("u1", "c@logyx.pe", "Carla Quispe", Role.ADMIN, "org1", "Andes SAC", OrgType.CARRIER, true)
+private val user = UserInfo("u1", "c@logyx.pe", "Carla Quispe", Role.ADMIN, "org1", "Andes SAC", OrgType.CARRIER, true, organizationCity = "Lima")
 
 private class FakeAuth : AuthRepository {
     override val state: StateFlow<SessionState> = MutableStateFlow(SessionState.LoggedIn(user))
@@ -53,7 +53,20 @@ private class FakeLoads(
     var placeResult: Result<BidView>? = null,
 ) : LoadsRepository {
     var lastBid: Triple<String, Double, String?>? = null
+    var lastFilter: MarketplaceFilter? = null
+    var dash: Result<DashboardSummary>? = null
     override suspend fun marketplace() = market
+    override suspend fun marketplacePage(filter: MarketplaceFilter, page: Int, size: Int): Result<Page<RequestView>> {
+        lastFilter = filter
+        return market.map { all ->
+            var l = all
+            filter.originCity?.let { c -> l = l.filter { it.originCity == c } }
+            filter.maxWeightKg?.let { w -> l = l.filter { it.weightKg <= w } }
+            if (filter.sort == MarketplaceSort.PRICE_DESC) l = l.sortedByDescending { it.suggestedPrice ?: 0.0 }
+            Page(l.drop(page * size).take(size), page, size, l.size)
+        }
+    }
+    override suspend fun dashboard() = dash ?: Result.failure(UnsupportedOperationException())
     override suspend fun load(id: String) = market.map { l -> l.first { it.id == id } }
     override suspend fun myBids() = Result.success(bids)
     override suspend fun vehicles() = Result.success(fleet)
@@ -74,35 +87,74 @@ class LoadsViewModelsTest {
         req("3", "LIMA", 4000.0, 2100.0, created = "2026-11-10T11:00:00-05:00"),
     )
 
-    @Test fun `feed filtra por mi vehiculo, mejor pago y cerca de mi`() = runTest {
+    @Test fun `feed manda filtros al servidor`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
         val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog("Lima"))
-        val s = vm.state.value
-        assertEquals(listOf("3", "2", "1"), s.visible.map { it.id }, "por defecto: más recientes primero")
+        assertEquals(3, vm.state.value.visible.size)
+        assertEquals(3, vm.state.value.total)
+        assertEquals(3, vm.state.value.cities.size)
 
         vm.toggle(LoadFilter.MyVehicle)
-        assertEquals(listOf("3", "1"), vm.state.value.visible.map { it.id }, "2 pesa 12 t y no cabe")
+        assertEquals(5000.0, repo.lastFilter?.maxWeightKg)
+        assertEquals(listOf("1", "3"), vm.state.value.visible.map { it.id }.sorted(), "2 pesa 12 t y no cabe")
 
         vm.toggle(LoadFilter.BestPay)
+        assertEquals(MarketplaceSort.PRICE_DESC, repo.lastFilter?.sort)
         assertEquals(listOf("3", "1"), vm.state.value.visible.map { it.id })
-        vm.toggle(LoadFilter.MyVehicle)
-        assertEquals(listOf("2", "3", "1"), vm.state.value.visible.map { it.id }, "mejor pago = mayor precio")
 
-        vm.toggle(LoadFilter.BestPay); vm.toggle(LoadFilter.Nearby)
-        assertEquals(listOf("3", "1"), vm.state.value.visible.map { it.id }, "origen en Lima")
+        vm.toggle(LoadFilter.Nearby)
+        assertEquals("LIMA", repo.lastFilter?.originCity)
+
+        vm.clearFilters()
+        assertEquals(MarketplaceFilter(), repo.lastFilter)
+        assertEquals(3, vm.state.value.visible.size)
+    }
+
+    @Test fun `origen y destino elegidos se envian y excluyen cerca de mi`() = runTest {
+        val repo = FakeLoads(Result.success(loads))
+        val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog())
+        vm.toggle(LoadFilter.Nearby)
+        vm.setOrigin(CityItem("AREQUIPA", "Arequipa", -16.4, -71.5))
+        assertEquals("AREQUIPA", repo.lastFilter?.originCity)
+        assertTrue(LoadFilter.Nearby !in vm.state.value.filters)
+        assertEquals(listOf("2"), vm.state.value.visible.map { it.id })
+        vm.setCargoType(CargoType.FRAGILE)
+        assertEquals(CargoType.FRAGILE, repo.lastFilter?.cargoType)
+        assertEquals(2, vm.state.value.advancedCount)
+    }
+
+    @Test fun `scroll infinito agrega paginas sin duplicar`() = runTest {
+        val many = (1..45).map { req("$it", "LIMA", 1000.0, it.toDouble()) }
+        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.success(many)), FakeCatalog())
+        assertEquals(20, vm.state.value.items.size)
+        assertEquals(45, vm.state.value.total)
+        assertTrue(vm.state.value.hasMore)
+        vm.loadMore(); vm.loadMore()
+        assertEquals(45, vm.state.value.items.size)
+        assertEquals(45, vm.state.value.items.map { it.id }.toSet().size)
+        assertTrue(!vm.state.value.hasMore)
+        vm.loadMore()
+        assertEquals(45, vm.state.value.items.size)
     }
 
     @Test fun `cerca de mi sin ciudad de organizacion avisa`() = runTest {
-        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.success(loads)), FakeCatalog(orgCity = null))
+        val noCity = object : AuthRepository {
+            override val state: StateFlow<SessionState> = MutableStateFlow(SessionState.LoggedIn(user.copy(organizationCity = null)))
+            override suspend fun login(email: String, password: String) = Result.success(user)
+            override suspend fun logout() {}
+        }
+        val repo = FakeLoads(Result.success(loads))
+        val vm = LoadsFeedViewModel(noCity, repo, FakeCatalog(orgCity = null))
         vm.toggle(LoadFilter.Nearby)
         assertTrue(vm.state.value.nearbyUnavailable)
+        assertNull(repo.lastFilter?.originCity)
         assertEquals(3, vm.state.value.visible.size)
     }
 
     @Test fun `feed muestra error del API si falla`() = runTest {
         val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.failure(ApiException(0, "NETWORK", "Sin conexión"))), FakeCatalog())
         assertEquals("Sin conexión", vm.state.value.error)
-        assertTrue(vm.state.value.all.isEmpty())
+        assertTrue(vm.state.value.items.isEmpty())
     }
 
     @Test fun `home sugiere solo cargas compatibles y sin oferta`() = runTest {
@@ -125,19 +177,41 @@ class LoadsViewModelsTest {
 
         vm.onAmountChange("500")
         vm.submitBid()
-        assertTrue(vm.state.value.form?.error!!.contains("piso"), "monto bajo el piso local")
+        assertTrue(vm.state.value.form?.amountError!!.contains("piso"), "monto bajo el piso local")
         assertNull(repo.lastBid)
 
         repo.placeResult = Result.failure(ApiException(400, "LOGYX-MKT-004", "La subasta ya cerró", "amount"))
         vm.onAmountChange("1,250.50")
         vm.submitBid()
-        assertEquals("La subasta ya cerró", vm.state.value.form?.error)
+        assertEquals("La subasta ya cerró", vm.state.value.form?.amountError)
         assertEquals(1250.5, repo.lastBid?.second)
 
         repo.placeResult = null
         vm.submitBid()
         assertNull(vm.state.value.form)
-        assertEquals("¡Oferta enviada!", vm.state.value.message)
+        assertEquals("Oferta enviada", vm.state.value.message?.text)
+    }
+
+    @Test fun `error de campo de la API se muestra en el campo`() = runTest {
+        val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
+        val vm = LoadDetailViewModel("1", repo, FakeCatalog())
+        vm.openBidSheet()
+        vm.onAmountChange("1200")
+        repo.placeResult = Result.failure(ApiException(400, "X", "Monto bajo el piso", "amount"))
+        vm.requestConfirm()
+        assertTrue(vm.state.value.form?.confirming == true)
+        vm.submitBid()
+        assertEquals("Monto bajo el piso", vm.state.value.form?.amountError)
+        assertNull(vm.state.value.form?.error)
+    }
+
+    @Test fun `home usa el resumen del dashboard`() = runTest {
+        val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
+        repo.dash = Result.success(DashboardSummary(compatibleLoads = 9, pendingBids = 4, activeShipments = 2, deliveredThisMonth = 7))
+        val s = CarrierHomeViewModel(FakeAuth(), repo, FakeShipments()).state.value
+        assertEquals(9, s.compatibleCount)
+        assertEquals(4, s.pendingBids)
+        assertEquals(7, s.deliveredThisMonth)
     }
 
     @Test fun `sin vehiculo compatible no hay opciones`() = runTest {

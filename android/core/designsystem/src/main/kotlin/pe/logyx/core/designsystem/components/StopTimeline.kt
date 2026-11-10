@@ -18,6 +18,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import pe.logyx.core.designsystem.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -60,9 +62,9 @@ fun StopTimeline(stops: List<StopView>, modifier: Modifier = Modifier, large: Bo
                         Text(it, style = if (large) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     val detail = when (stop.status) {
-                        StopStatus.COMPLETED -> "Completada · ${Fmt.time(stop.completedAt)}"
-                        StopStatus.ARRIVED -> "En el punto desde ${Fmt.time(stop.arrivedAt)}"
-                        StopStatus.PENDING -> if (isCurrent) "Siguiente parada" else stop.status.label
+                        StopStatus.COMPLETED -> stringResource(R.string.ds_stop_completed, Fmt.time(stop.completedAt))
+                        StopStatus.ARRIVED -> stringResource(R.string.ds_stop_arrived, Fmt.time(stop.arrivedAt))
+                        StopStatus.PENDING -> if (isCurrent) stringResource(R.string.ds_stop_next) else stop.status.label
                     }
                     Text(
                         detail,

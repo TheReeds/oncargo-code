@@ -27,6 +27,7 @@ private fun trip(status: ShipmentStatus, vararg stops: StopView) =
 /** Simula el backend: arrive/complete avanzan la máquina de estados de las paradas. */
 private class FakeShipments(var current: ShipmentView, var failNext: ApiException? = null) : ShipmentsRepository {
     override suspend fun driverShipments() = Result.success(listOf(current))
+    override suspend fun driverActive() = Result.success<ShipmentView?>(current)
     private fun update(stopId: String, to: StopStatus): Result<ShipmentView> {
         failNext?.let { failNext = null; return Result.failure(it) }
         val stops = current.stops.map { if (it.id == stopId) it.copy(status = to) else it }
@@ -59,34 +60,36 @@ class DriverViewModelTest {
     )
 
     @Test fun `la accion sigue la secuencia llegue - recogida - destino - entregado`() {
-        val labels = mutableListOf<String?>()
+        val labels = mutableListOf<DriverStep?>()
         var t = fresh
         fun step(op: (StopView) -> StopStatus) {
-            labels += t.driverAction()?.label
+            labels += t.driverAction()?.step
             val a = t.driverAction() ?: return
             t = t.copy(stops = t.stops.map { if (it.id == a.stop.id) it.copy(status = op(it)) else it })
         }
         repeat(4) { i -> step { if (i % 2 == 0) StopStatus.ARRIVED else StopStatus.COMPLETED } }
-        labels += t.driverAction()?.label
-        assertEquals(listOf("Llegué al recojo", "Carga recogida", "Llegué a destino", "Entregado", null), labels)
+        labels += t.driverAction()?.step
+        assertEquals(listOf(DriverStep.ARRIVE_PICKUP, DriverStep.PICKED_UP, DriverStep.ARRIVE_DESTINATION, DriverStep.DELIVERED, null), labels)
     }
 
     @Test fun `avanzar el viaje completo hasta entregado`() = runTest {
         val repo = FakeShipments(fresh)
         val vm = DriverTripViewModel(repo, FakeCatalog())
         assertNotNull(vm.state.value.origin)
-        assertEquals("Llegué al recojo", vm.state.value.action?.label)
+        assertEquals(DriverStep.ARRIVE_PICKUP, vm.state.value.action?.step)
         assertEquals(StopOp.ARRIVE, vm.state.value.action?.op)
 
-        vm.advance(); assertEquals("Carga recogida", vm.state.value.action?.label)
+        vm.advance(); assertEquals(DriverStep.PICKED_UP, vm.state.value.action?.step)
         assertEquals(StopOp.COMPLETE, vm.state.value.action?.op)
-        vm.advance(); assertEquals("Llegué a destino", vm.state.value.action?.label)
-        vm.advance(); assertEquals("Entregado", vm.state.value.action?.label)
+        vm.advance(); assertEquals(DriverStep.ARRIVE_DESTINATION, vm.state.value.action?.step)
+        vm.advance(); assertEquals(DriverStep.DELIVERED, vm.state.value.action?.step)
         assertEquals(false, vm.state.value.delivered)
         vm.advance()
         assertTrue(vm.state.value.delivered)
         assertNull(vm.state.value.action)
         assertEquals(ShipmentStatus.DELIVERED, vm.state.value.trip?.status)
+        assertEquals(DriverNotice.DELIVERED, vm.state.value.notice)
+        vm.onNoticeShown(); assertNull(vm.state.value.notice)
     }
 
     @Test fun `error al avanzar conserva el viaje y muestra el mensaje`() = runTest {
@@ -94,14 +97,8 @@ class DriverViewModelTest {
         val vm = DriverTripViewModel(repo, FakeCatalog())
         vm.advance()
         assertEquals("La parada anterior no está completada", vm.state.value.actionError)
-        assertEquals("Llegué al recojo", vm.state.value.action?.label)
+        assertEquals(DriverStep.ARRIVE_PICKUP, vm.state.value.action?.step)
         assertEquals(false, vm.state.value.acting)
     }
 
-    @Test fun `prefiere el viaje en transito`() {
-        val a = trip(ShipmentStatus.PENDING).copy(id = "a")
-        val b = trip(ShipmentStatus.IN_TRANSIT).copy(id = "b")
-        assertEquals("b", pickTrip(listOf(a, b))?.id)
-        assertNull(pickTrip(listOf(trip(ShipmentStatus.CANCELLED))))
-    }
 }

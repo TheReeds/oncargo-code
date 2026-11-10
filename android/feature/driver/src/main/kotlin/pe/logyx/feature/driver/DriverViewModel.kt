@@ -23,7 +23,13 @@ import pe.logyx.core.model.toGeoPoint
 enum class StopOp { ARRIVE, COMPLETE }
 
 /** La única acción que el conductor puede hacer ahora mismo: un botón, un estado. */
-data class DriverAction(val stop: StopView, val op: StopOp, val label: String)
+data class DriverAction(val stop: StopView, val op: StopOp, val step: DriverStep)
+
+/** Los cuatro pasos del viaje; la pantalla resuelve el texto de cada uno. */
+enum class DriverStep { ARRIVE_PICKUP, PICKED_UP, ARRIVE_DESTINATION, DELIVERED }
+
+/** Resultado exitoso de avanzar; la pantalla lo traduce a un mensaje. */
+enum class DriverNotice { STOP_UPDATED, DELIVERED }
 
 /**
  * Avanza el viaje: Llegué al recojo → Carga recogida → Llegué a destino → Entregado.
@@ -34,17 +40,11 @@ fun ShipmentView.driverAction(): DriverAction? {
     val stop = nextStop() ?: return null
     val pickup = stop.type == StopType.PICKUP
     return when (stop.status) {
-        StopStatus.PENDING -> DriverAction(stop, StopOp.ARRIVE, if (pickup) "Llegué al recojo" else "Llegué a destino")
-        StopStatus.ARRIVED -> DriverAction(stop, StopOp.COMPLETE, if (pickup) "Carga recogida" else "Entregado")
+        StopStatus.PENDING -> DriverAction(stop, StopOp.ARRIVE, if (pickup) DriverStep.ARRIVE_PICKUP else DriverStep.ARRIVE_DESTINATION)
+        StopStatus.ARRIVED -> DriverAction(stop, StopOp.COMPLETE, if (pickup) DriverStep.PICKED_UP else DriverStep.DELIVERED)
         StopStatus.COMPLETED -> null
     }
 }
-
-/** Elige el viaje a mostrar: en tránsito primero, luego por recoger; si no hay, el último entregado. */
-internal fun pickTrip(list: List<ShipmentView>): ShipmentView? =
-    list.firstOrNull { it.status == ShipmentStatus.IN_TRANSIT }
-        ?: list.firstOrNull { it.status == ShipmentStatus.PENDING }
-        ?: list.firstOrNull { it.status == ShipmentStatus.DELIVERED }
 
 data class DriverUiState(
     val loading: Boolean = true,
@@ -57,6 +57,8 @@ data class DriverUiState(
     val acting: Boolean = false,
     /** Error al avanzar el viaje (se muestra sobre el botón, sin perder el viaje en pantalla). */
     val actionError: String? = null,
+    /** Éxito de la última acción (se muestra una vez con MessageEffect). */
+    val notice: DriverNotice? = null,
 ) {
     val action: DriverAction? get() = trip?.driverAction()
     val delivered: Boolean get() = trip?.status == ShipmentStatus.DELIVERED
@@ -76,9 +78,8 @@ class DriverTripViewModel(
     private fun load(initial: Boolean) {
         _state.update { it.copy(loading = initial && it.trip == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
-            repo.driverShipments().fold(
-                onSuccess = { list ->
-                    val trip = pickTrip(list)
+            repo.driverActive().fold(
+                onSuccess = { trip ->
                     val cities = catalog.cities().getOrDefault(emptyList())
                     fun geo(code: String?) = code?.let { c -> cities.firstOrNull { normalizeCity(it.code) == normalizeCity(c) }?.toGeoPoint() }
                     _state.update {
@@ -106,9 +107,16 @@ class DriverTripViewModel(
                 StopOp.COMPLETE -> repo.complete(trip.id, action.stop.id)
             }
             result.fold(
-                onSuccess = { updated -> _state.update { it.copy(acting = false, trip = updated) } },
+                onSuccess = { updated ->
+                    val notice = if (updated.status == ShipmentStatus.DELIVERED) DriverNotice.DELIVERED else DriverNotice.STOP_UPDATED
+                    _state.update { it.copy(acting = false, trip = updated, notice = notice) }
+                },
                 onFailure = { e -> _state.update { it.copy(acting = false, actionError = e.userMessage()) } },
             )
         }
     }
+
+    fun onNoticeShown() = _state.update { it.copy(notice = null) }
+
+    fun dismissActionError() = _state.update { it.copy(actionError = null) }
 }

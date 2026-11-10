@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shipments_title">Envíos</string>
+    <string name="shipments_filter_all">Todos</string>
+    <string name="shipments_filter_pending">Por recoger</string>
+    <string name="shipments_filter_in_transit">En tránsito</string>
+    <string name="shipments_filter_delivered">Entregados</string>
+    <string name="shipments_empty_title">Aún no tienes envíos</string>
+    <string name="shipments_empty_carrier">Cuando una PYME acepte tu oferta, el envío aparecerá aquí para que asignes un conductor.</string>
+    <string name="shipments_empty_pyme">Cuando aceptes una oferta, podrás seguir tu envío aquí.</string>
+    <string name="shipments_empty_filtered_title">Sin envíos en este estado</string>
+    <string name="shipments_empty_filtered_message">Cambia el filtro para ver tus otros envíos.</string>
+    <string name="shipments_empty_filtered_action">Ver todos los envíos</string>
+    <string name="shipments_client_format">Cliente: %1$s</string>
+    <string name="shipments_carrier_format">Transporta: %1$s</string>
+    <string name="shipments_driver_format">Conductor: %1$s</string>
+    <string name="shipments_driver_missing">Falta asignar conductor</string>
+    <string name="shipments_no_value">—</string>
+
+    <string name="shipments_detail_title">Seguimiento</string>
+    <string name="shipments_detail_not_found">No encontramos este envío. Vuelve a la lista e inténtalo de nuevo.</string>
+    <string name="shipments_detail_map_description">Mapa de la ruta de %1$s a %2$s</string>
+    <string name="shipments_detail_cargo_default">Carga</string>
+    <string name="shipments_detail_no_vehicle">Sin vehículo</string>
+    <string name="shipments_detail_requester">Cliente</string>
+    <string name="shipments_detail_carrier">Transportista</string>
+    <string name="shipments_detail_driver">Conductor</string>
+    <string name="shipments_detail_driver_pending">Por asignar</string>
+    <string name="shipments_detail_stops">Paradas</string>
+    <string name="shipments_detail_no_stops">Las paradas aparecerán cuando el transportista inicie el viaje.</string>
+    <string name="shipments_detail_delivered_format">Entregado el %1$s</string>
+    <string name="shipments_assign_action">Asignar conductor</string>
+    <string name="shipments_change_action">Cambiar conductor</string>
+
+    <string name="shipments_sheet_title">Elige un conductor</string>
+    <string name="shipments_sheet_license_format">Licencia %1$s</string>
+    <string name="shipments_sheet_license_missing">Sin licencia registrada</string>
+    <string name="shipments_sheet_empty_title">No tienes conductores disponibles</string>
+    <string name="shipments_sheet_empty_message">Registra un conductor en la web de LOGYX y vuelve a intentarlo.</string>
+    <string name="shipments_sheet_continue">Continuar con %1$s</string>
+    <string name="shipments_sheet_continue_none">Elige un conductor para continuar</string>
+    <string name="shipments_driver_selected">Seleccionado</string>
+    <string name="shipments_driver_available">Disponible</string>
+    <string name="shipments_driver_on_duty">En servicio</string>
+
+    <string name="shipments_confirm_title">¿Asignar a %1$s?</string>
+    <string name="shipments_confirm_message">Le llegará este envío de %1$s a %2$s a su app de conductor. Podrás cambiarlo mientras esté por recoger.</string>
+    <string name="shipments_confirm_action">Asignar conductor</string>
+    <string name="shipments_confirm_dismiss">Volver</string>
+
+    <string name="shipments_msg_assigned">Conductor asignado</string>
+</resources>

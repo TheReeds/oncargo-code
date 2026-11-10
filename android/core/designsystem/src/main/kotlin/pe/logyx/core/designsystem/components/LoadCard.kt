@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.res.stringResource
+import pe.logyx.core.designsystem.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,11 +42,11 @@ fun AuctionCountdown(auction: AuctionView?, modifier: Modifier = Modifier) {
     val instant = java.time.Instant.ofEpochMilli(now)
     val remaining = Fmt.remaining(auction.closesAt, instant)
     if (auction.status != AuctionStatus.OPEN || remaining == null) {
-        StatusPill("Subasta cerrada", PillTone.Neutral, modifier)
+        StatusPill(stringResource(R.string.ds_auction_closed), PillTone.Neutral, modifier)
         return
     }
     val urgent = (Fmt.remainingSeconds(auction.closesAt, instant) ?: Long.MAX_VALUE) < 300
-    StatusPill("Cierra en $remaining", if (urgent) PillTone.Amber else PillTone.Petrol, modifier)
+    StatusPill(stringResource(R.string.ds_closes_in, remaining), if (urgent) PillTone.Amber else PillTone.Petrol, modifier)
 }
 
 /**
@@ -63,7 +63,7 @@ fun LoadCard(
 ) {
     LogyxCard(modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            PriceTag(request.suggestedPrice, label = "Precio referencial")
+            PriceTag(request.suggestedPrice, label = stringResource(R.string.ds_reference_price))
             AuctionCountdown(request.auction)
         }
         Spacer(Modifier.height(14.dp))
@@ -71,27 +71,31 @@ fun LoadCard(
             origin = cityLabel(request.originCity),
             destination = cityLabel(request.destinationCity),
             distance = request.distanceKm?.let { Fmt.km(it) },
-            originSub = "Recojo ${Fmt.date(request.pickupDate)}",
+            originSub = stringResource(R.string.ds_pickup_on, Fmt.date(request.pickupDate)),
             destinationSub = null,
         )
         Spacer(Modifier.height(12.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             InfoChip(request.cargoType.label)
             InfoChip(Fmt.tons(request.weightKg))
-            if (compatible) InfoChip("Compatible", emphasized = true, icon = Icons.Rounded.CheckCircle)
-            request.auction?.let { InfoChip("${it.bidCount}/${it.maxBids} ofertas", icon = Icons.Rounded.Timer) }
+            if (request.requesterRucVerified) VerifiedBadge()
+            if (compatible) InfoChip(stringResource(R.string.ds_compatible), emphasized = true, icon = Icons.Rounded.CheckCircle)
+            request.auction?.let { InfoChip(stringResource(R.string.ds_bids_count, it.bidCount, it.maxBids), icon = Icons.Rounded.Timer) }
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(request.requesterName ?: "Empresa", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Text(request.requesterName ?: stringResource(R.string.ds_company), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 Text(request.cargoDescription ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             Spacer(Modifier.size(8.dp))
-            Button(
+            LogyxButton(
+                text = stringResource(if (request.myBid != null) R.string.ds_view_my_bid else R.string.ds_view_load_and_bid),
                 onClick = onClick,
-                colors = ButtonDefaults.buttonColors(containerColor = LogyxTheme.colors.moneyStrong, contentColor = androidx.compose.ui.graphics.Color.White),
-            ) { Text(if (request.myBid != null) "Ver mi oferta" else "Ver carga y ofertar") }
+                variant = ButtonVariant.Money,
+                size = ButtonSize.Medium,
+                fullWidth = false,
+            )
         }
     }
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="requests_title">Mis solicitudes</string>
+    <string name="requests_filter_all">Todas</string>
+    <string name="requests_filter_active">Activas</string>
+    <string name="requests_filter_matched">Adjudicadas</string>
+    <string name="requests_filter_cancelled">Canceladas</string>
+    <string name="requests_empty_title">Aún no tienes solicitudes</string>
+    <string name="requests_empty_message">Publica tu primera carga desde la web de LOGYX. Aquí podrás comparar ofertas y seguir tu envío.</string>
+    <string name="requests_empty_filtered_title">Sin solicitudes en este filtro</string>
+    <string name="requests_empty_filtered_message">Prueba con otro estado para ver el resto de tus solicitudes.</string>
+    <string name="requests_filter_description">Filtrar solicitudes por estado</string>
+    <string name="requests_pickup">Recojo %1$s</string>
+    <string name="requests_no_bids">Sin ofertas aún</string>
+    <plurals name="requests_bids_count">
+        <item quantity="one">%1$d/%2$d oferta</item>
+        <item quantity="other">%1$d/%2$d ofertas</item>
+    </plurals>
+
+    <string name="requests_detail_title">Solicitud</string>
+    <string name="requests_not_found">No encontramos esta solicitud. Vuelve atrás e inténtalo de nuevo.</string>
+    <string name="requests_map_description">Mapa de la ruta de tu carga</string>
+    <string name="requests_suggested_price">Precio sugerido</string>
+    <string name="requests_price_floor">Precio mínimo</string>
+    <string name="requests_bids_title">Ofertas recibidas</string>
+    <string name="requests_bids_title_count">Ofertas recibidas (%1$d/%2$d)</string>
+    <string name="requests_bids_title_count_open">Ofertas recibidas (%1$d)</string>
+    <string name="requests_bids_empty_title">Aún no hay ofertas</string>
+    <string name="requests_bids_empty_message">Los transportistas ya ven tu carga. Desliza hacia abajo para actualizar cuando quieras.</string>
+    <string name="requests_best_price">Mejor precio</string>
+    <string name="requests_carrier_fallback">Transportista</string>
+    <string name="requests_diff_below">%1$d%% bajo el sugerido</string>
+    <string name="requests_diff_above">%1$d%% sobre el sugerido</string>
+    <string name="requests_diff_equal">Igual al sugerido</string>
+    <string name="requests_accept_offer">Aceptar oferta</string>
+    <string name="requests_cancel_request">Cancelar solicitud</string>
+    <string name="requests_min_vehicle">Vehículo mínimo: %1$s</string>
+    <string name="requests_requester_verified">Tu empresa tiene RUC verificado</string>
+    <string name="requests_accept_vehicle"> en un %1$s (placa %2$s)</string>
+    <string name="requests_accept_vehicle_no_plate"> en un %1$s</string>
+    <string name="requests_notes_quote">“%1$s”</string>
+
+    <string name="requests_accept_title">¿Aceptar esta oferta?</string>
+    <string name="requests_accept_message">Contratarás a %1$s por %2$s%3$s. Rechazaremos las demás ofertas y crearemos tu envío.</string>
+    <string name="requests_accept_carrier_fallback">este transportista</string>
+    <string name="requests_dismiss_back">Volver</string>
+    <string name="requests_cancel_title">¿Cancelar la solicitud?</string>
+    <string name="requests_cancel_message">Cerraremos la subasta y los transportistas dejarán de ver tu carga. No podrás deshacerlo.</string>
+    <string name="requests_cancel_confirm">Sí, cancelar solicitud</string>
+    <string name="requests_cancel_dismiss">No, mantenerla</string>
+</resources>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_brand">LOGYX</string>
+    <string name="auth_tagline">Fletes entre Lima y la Sierra Sur</string>
+    <string name="auth_login_title">Inicia sesión</string>
+    <string name="auth_login_subtitle">Ingresa con tu cuenta para ver tus cargas, ofertas y envíos.</string>
+    <string name="auth_email">Correo</string>
+    <string name="auth_email_placeholder">tucorreo@empresa.pe</string>
+    <string name="auth_password">Contraseña</string>
+    <string name="auth_show_password">Mostrar contraseña</string>
+    <string name="auth_hide_password">Ocultar contraseña</string>
+    <string name="auth_email_error">Tu correo no parece válido. Revisa que incluya @ y vuelve a intentarlo.</string>
+    <string name="auth_password_error">Falta tu contraseña. Escríbela para continuar.</string>
+    <string name="auth_login_error_title">No pudimos iniciar sesión</string>
+    <string name="auth_login_action">Iniciar sesión</string>
+    <string name="auth_register_action">Crear cuenta en la web</string>
+    <string name="auth_no_account">¿Aún no tienes cuenta?</string>
+    <string name="auth_demo_title">Cuentas demo (solo desarrollo)</string>
+    <string name="auth_open_catalog">Catálogo UI</string>
+
+    <string name="auth_account_title">Cuenta</string>
+    <string name="auth_no_session">No encontramos tu sesión. Vuelve a iniciar sesión.</string>
+    <string name="auth_role_driver">Conductor</string>
+    <string name="auth_role_carrier">Transportista</string>
+    <string name="auth_role_pyme">Empresa (PYME)</string>
+    <string name="auth_role_operator">Operador</string>
+    <string name="auth_section_data">Tus datos</string>
+    <string name="auth_data_name">Nombre</string>
+    <string name="auth_data_email">Correo</string>
+    <string name="auth_data_org">Organización</string>
+    <string name="auth_data_role">Rol</string>
+    <string name="auth_section_app">Aplicación</string>
+    <string name="auth_version">Versión</string>
+    <string name="auth_api">Servidor (API)</string>
+    <string name="auth_avatar_description">Iniciales de %1$s</string>
+    <string name="auth_logout_action">Cerrar sesión</string>
+    <string name="auth_logout_title">¿Cerrar tu sesión?</string>
+    <string name="auth_logout_message">Tendrás que volver a ingresar tu correo y contraseña para usar LOGYX.</string>
+</resources>

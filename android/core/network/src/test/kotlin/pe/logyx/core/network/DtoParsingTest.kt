@@ -106,6 +106,48 @@ class DtoParsingTest {
         assertEquals(listOf(u2), accept.rejectedBidIds)
     }
 
+    @Test fun `contrato aditivo 2026-11-10 - vehiculo en oferta, RUC y vehiculo minimo, ciudad de la organizacion`() {
+        val bid = LogyxJson.decodeFromString<pe.logyx.core.model.BidView>(
+            """{"id":"$u1","requestId":"$u1","amount":1850.0,"status":"PENDING","vehicleType":"TRUCK_MEDIUM","vehiclePlate":"ASA-101"}""",
+        )
+        assertEquals(VehicleType.TRUCK_MEDIUM, bid.vehicleType)
+        assertEquals("ASA-101", bid.vehiclePlate)
+        val req = LogyxJson.decodeFromString<RequestView>(
+            requestJson.dropLast(1) + ""","requesterRucVerified":true,"minVehicleType":"REFRIGERATED"}""",
+        )
+        assertTrue(req.requesterRucVerified)
+        assertEquals(VehicleType.REFRIGERATED, req.minVehicleType)
+        val user = LogyxJson.decodeFromString<pe.logyx.core.model.UserInfo>(userJson.dropLast(1) + ""","organizationCity":"Juliaca"}""")
+        assertEquals("Juliaca", user.organizationCity)
+    }
+
+    @Test fun `marketplace envia filtros y pagina leyendo meta`() = runTest {
+        var url = ""
+        val c = createLogyxHttpClient("http://x/", { "t" }, MockEngine { req ->
+            url = req.url.toString()
+            respond("""{"data":[$requestJson],"meta":{"timestamp":"2026-11-10T15:00:00Z","page":0,"size":20,"total":37}}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        })
+        val page = LogyxApi(c).marketplacePage(
+            pe.logyx.core.model.MarketplaceFilter(originCity = "LIMA", cargoType = pe.logyx.core.model.CargoType.GENERAL, sort = pe.logyx.core.model.MarketplaceSort.PRICE_DESC),
+            page = 0,
+        )
+        assertTrue("originCity=LIMA" in url && "cargoType=GENERAL" in url && "sort=price_desc" in url && "page=0" in url && "size=20" in url, url)
+        assertEquals(37, page.total)
+        assertEquals(0, page.page)
+        assertTrue(page.hasMore)
+        assertEquals(1, page.items.size)
+    }
+
+    @Test fun `dashboard summary y envio activo 404`() = runTest {
+        val s = LogyxApi(client(HttpStatusCode.OK, """{"data":{"role":"CARRIER","compatibleLoads":8,"pendingBids":2,"activeShipments":3,"deliveredThisMonth":9},$ts}""")).dashboardSummary()
+        assertEquals(8, s.compatibleLoads)
+        assertNull(s.activeRequests)
+        val e = assertFailsWith<ApiException> {
+            LogyxApi(client(HttpStatusCode.NotFound, """{"error":{"code":"LOGYX-SHP-002","message":"No tienes un envío activo","field":null},$ts}""")).driverActiveShipment()
+        }
+        assertEquals(404, e.status)
+    }
+
     @Test fun `error de la API se traduce a ApiException`() = runTest {
         val body = """{"error":{"code":"LOGYX-MKT-012","message":"El monto está por debajo del piso","field":"amount"},$ts}"""
         val api = LogyxApi(client(HttpStatusCode.BadRequest, body))

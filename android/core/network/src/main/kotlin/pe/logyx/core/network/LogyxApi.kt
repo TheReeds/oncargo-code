@@ -3,6 +3,7 @@ package pe.logyx.core.network
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -20,7 +21,10 @@ import pe.logyx.core.model.AuthResponse
 import pe.logyx.core.model.BidView
 import pe.logyx.core.model.CargoItem
 import pe.logyx.core.model.CityItem
+import pe.logyx.core.model.DashboardSummary
 import pe.logyx.core.model.DriverView
+import pe.logyx.core.model.MarketplaceFilter
+import pe.logyx.core.model.Page
 import pe.logyx.core.model.LoginRequest
 import pe.logyx.core.model.PlaceBidRequest
 import pe.logyx.core.model.PublicOrganization
@@ -52,6 +56,24 @@ class LogyxApi(
 
     // --- Marketplace (transportista) ---
     suspend fun marketplace(): List<RequestView> = get("api/v1/shipment-requests")
+
+    /** Marketplace con filtros/orden y paginación en servidor (por omisión 20 por página). */
+    suspend fun marketplacePage(filter: MarketplaceFilter = MarketplaceFilter(), page: Int = 0, size: Int = 20): Page<RequestView> {
+        val envelope = callEnvelope<List<RequestView>> {
+            client.get("api/v1/shipment-requests") {
+                filter.originCity?.let { parameter("originCity", it) }
+                filter.destinationCity?.let { parameter("destinationCity", it) }
+                filter.pickupFrom?.let { parameter("pickupFrom", it) }
+                filter.pickupTo?.let { parameter("pickupTo", it) }
+                filter.maxWeightKg?.let { parameter("maxWeightKg", it) }
+                filter.cargoType?.let { parameter("cargoType", it.name) }
+                parameter("sort", filter.sort.param)
+                parameter("page", page)
+                parameter("size", size)
+            }
+        }
+        return Page(envelope.data, envelope.meta?.page ?: page, envelope.meta?.size ?: size, envelope.meta?.total ?: envelope.data.size)
+    }
     suspend fun myBids(): List<RequestView> = get("api/v1/shipment-requests/my-bids")
     suspend fun request(id: String): RequestView = get("api/v1/shipment-requests/$id")
     suspend fun placeBid(requestId: String, body: PlaceBidRequest): BidView =
@@ -74,6 +96,12 @@ class LogyxApi(
         put("api/v1/shipments/$shipmentId/driver", AssignDriverRequest(driverId))
 
     suspend fun driverShipments(): List<ShipmentView> = get("api/v1/driver/shipments")
+
+    /** Envío activo del conductor; lanza [ApiException] 404 `LOGYX-SHP-002` si no tiene. */
+    suspend fun driverActiveShipment(): ShipmentView = get("api/v1/driver/shipments/active")
+
+    // --- Dashboard ---
+    suspend fun dashboardSummary(): DashboardSummary = get("api/v1/dashboard/summary")
     suspend fun arriveAtStop(shipmentId: String, stopId: String): ShipmentView =
         post("api/v1/shipments/$shipmentId/stops/$stopId/arrive")
 
@@ -98,7 +126,9 @@ class LogyxApi(
         client.patch(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 
-    private suspend inline fun <reified T> call(request: () -> HttpResponse): T {
+    private suspend inline fun <reified T> call(request: () -> HttpResponse): T = callEnvelope<T>(request).data
+
+    private suspend inline fun <reified T> callEnvelope(request: () -> HttpResponse): ApiEnvelope<T> {
         val response = try {
             request()
         } catch (e: CancellationException) {
@@ -108,7 +138,7 @@ class LogyxApi(
         }
         if (!response.status.isSuccess()) throw response.toApiException()
         return try {
-            response.body<ApiEnvelope<T>>().data
+            response.body<ApiEnvelope<T>>()
         } catch (e: SerializationException) {
             throw ApiException(response.status.value, "PARSE", "Respuesta inesperada del servidor.")
         }

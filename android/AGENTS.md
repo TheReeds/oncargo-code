@@ -67,15 +67,24 @@ pull-to-refresh con `Refreshable`, mensajes de la API mostrados tal cual (`Throw
 `organizationType == CARRIER` → transportista; `PYME` → PYME; operador → aviso "usa la web".
 Un 401 en cualquier llamada cierra sesión automáticamente (`dataModule`).
 
-## Tema y tokens (`core/designsystem`)
+## Diseño y tokens (`core/designsystem`) — skill `logyx-design-system` (`.claude/skills/logyx-design-system/references/android.md`)
 - `LogyxTheme { }` mapea los tokens de `docs/design/DESIGN.md` a Material 3 (claro y oscuro). `LogyxPalette` = hex del documento.
 - Extras fuera de M3 vía `LogyxTheme.colors`: `money` (esmeralda de marca: iconos/relleno), `moneyStrong` (botones, AA con texto blanco),
   `moneyText` (precios como texto), `warning*`, `route`.
 - Tipografía: Geist Sans (UI) y Geist Mono (`LogyxText.moneyLarge/mono/kpi`, números tabulares) — fuentes variables en `res/font` con licencia OFL (`OFL-Geist.txt`).
 - Formatos en `Fmt`: `Fmt.money(1850.0)` → `S/ 1,850.00`; `Fmt.dateTime(iso)` → `28 nov · 08:00` (hora de Lima); `Fmt.remaining(...)`.
-- Componentes: `LoadCard`, `RouteLine`, `StatusPill`/`InfoChip`, `StopTimeline`, `KpiTile`, `PriceTag`, `EmptyState`/`ErrorState`/`LoadingState`,
-  `TruckIllustration(type)` (siluetas con Canvas por tipo de vehículo), `AuctionCountdown`, `RouteMap` (MapLibre + OpenFreeMap positron, sin key),
-  `Refreshable`, `LogyxScreen`. Etiquetas en español para enums en `Labels.kt` (`status.pill()`).
+- Componentes (catálogo completo con firmas y ejemplos en `../.claude/skills/logyx-design-system/references/android.md`):
+  botones `LogyxButton` (Primary/Money/Secondary/Ghost/Destructive; Medium/Large/Xl; `loading`), formularios `LogyxTextField`, `MoneyField`,
+  `LogyxDropdown`, `LogyxCombobox`, `LogyxDateField`/`LogyxDateRangeField` (es-PE), mensajes `UiMessage` + `MessageEffect` + `LogyxSnackbarHost`,
+  `AlertBanner`, `LogyxConfirmDialog`, `LogyxBottomSheet`, `LogyxFilterChip`, `SegmentedControl`, badges, skeletons (`SkeletonList`),
+  `LogyxScreen`/`LogyxTopBar`/`LogyxBottomBar`, y los de dominio: `LoadCard`, `RouteLine`, `StatusPill`/`InfoChip`, `StopTimeline`, `KpiTile`, `PriceTag`,
+  `EmptyState`/`ErrorState`/`LoadingState`, `TruckIllustration`, `AuctionCountdown`, `RouteMap`, `Refreshable`. Etiquetas de enums en `Labels.kt`.
+- **Regla:** los features NO usan controles Material crudos (`OutlinedTextField`, `Button`, `AlertDialog`, `ModalBottomSheet`, `SnackbarHostState`, `FilterChip`…);
+  si falta un componente se crea en `:core:designsystem` con `@Preview` y entrada en el catálogo. Acciones irreversibles/con dinero -> `LogyxConfirmDialog`.
+- **Mensajes desde ViewModels:** el estado lleva `message: UiMessage?` (`UiMessage.success("Oferta enviada")`, `.error("qué pasó + qué hacer")`) y `onMessageShown()`;
+  la pantalla usa `MessageEffect(state.message, snackbar, onMessageShown)` con `rememberLogyxSnackbarState()` y `LogyxScreen(snackbar = …)`.
+- **Catálogo UI** (`UiCatalogScreen`, paquete `designsystem.catalog`): solo accesible en debug desde el login (botón "Catálogo UI"). Agrega ahí todo componente nuevo.
+- Textos visibles en `res/values/strings.xml` de cada módulo (prefijo del módulo). Copy: español peruano, "tú", botones verbo+objeto.
 - Contraste: no pongas texto blanco sobre `money` (#10B981); usa `moneyStrong`.
 
 ## Dependencias con requisitos ocultos

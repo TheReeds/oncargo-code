@@ -1,5 +1,6 @@
 package pe.logyx.feature.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,38 +15,59 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Logout
-import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pe.logyx.core.designsystem.LogyxPalette
 import pe.logyx.core.designsystem.LogyxTheme
+import pe.logyx.core.designsystem.components.AlertBanner
+import pe.logyx.core.designsystem.components.ButtonVariant
+import pe.logyx.core.designsystem.components.ChipRow
+import pe.logyx.core.designsystem.components.LogyxBadge
+import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
+import pe.logyx.core.designsystem.components.LogyxConfirmDialog
+import pe.logyx.core.designsystem.components.LogyxFilterChip
 import pe.logyx.core.designsystem.components.LogyxScreen
+import pe.logyx.core.designsystem.components.LogyxTextField
+import pe.logyx.core.designsystem.components.MessageKind
+import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.designsystem.components.TruckIllustration
+import pe.logyx.core.designsystem.components.VerifiedBadge
+import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.model.OrgType
 import pe.logyx.core.model.Role
 import pe.logyx.core.model.UserInfo
@@ -55,7 +77,12 @@ import pe.logyx.core.model.VehicleType
 data class DemoAccount(val label: String, val email: String, val password: String)
 
 @Composable
-fun LoginRoute(onOpenRegister: () -> Unit, demoAccounts: List<DemoAccount> = emptyList(), viewModel: LoginViewModel = koinViewModel()) {
+fun LoginRoute(
+    onOpenRegister: () -> Unit,
+    demoAccounts: List<DemoAccount> = emptyList(),
+    onOpenCatalog: (() -> Unit)? = null,
+    viewModel: LoginViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LoginScreen(
         state = state,
@@ -65,6 +92,7 @@ fun LoginRoute(onOpenRegister: () -> Unit, demoAccounts: List<DemoAccount> = emp
         onOpenRegister = onOpenRegister,
         demoAccounts = demoAccounts,
         onDemo = { viewModel.fill(it.email, it.password) },
+        onOpenCatalog = onOpenCatalog,
     )
 }
 
@@ -77,67 +105,134 @@ fun LoginScreen(
     onOpenRegister: () -> Unit,
     demoAccounts: List<DemoAccount> = emptyList(),
     onDemo: (DemoAccount) -> Unit = {},
+    onOpenCatalog: (() -> Unit)? = null,
 ) {
+    var showPassword by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         // Cabecera oscura de marca con camión
         Box(
             Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(LogyxPalette.Ink900, LogyxPalette.Petrol700)))
-                .statusBarsPadding().padding(horizontal = 24.dp, vertical = 28.dp),
+                .statusBarsPadding().padding(horizontal = 20.dp, vertical = 24.dp),
         ) {
-            Column {
-                Text("LOGYX", style = MaterialTheme.typography.headlineMedium, color = Color.White)
-                Text("Fletes entre Lima y la Sierra Sur", style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f))
-                Spacer(Modifier.height(12.dp))
-                TruckIllustration(VehicleType.TRUCK_MEDIUM, Modifier.size(width = 150.dp, height = 84.dp).align(Alignment.End))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.auth_brand), style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.auth_tagline),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.85f),
+                    )
+                }
+                Spacer(Modifier.size(12.dp))
+                Box(Modifier.clearAndSetSemantics { }) {
+                    TruckIllustration(VehicleType.TRUCK_MEDIUM, Modifier.size(width = 130.dp, height = 74.dp))
+                }
             }
         }
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp).navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Inicia sesión", style = MaterialTheme.typography.headlineSmall)
-            OutlinedTextField(
-                value = state.email, onValueChange = onEmailChange, label = { Text("Correo") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                isError = state.emailError != null, supportingText = state.emailError?.let { { Text(it) } },
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.auth_login_title), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.auth_login_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.error != null) {
+                AlertBanner(
+                    text = state.error,
+                    kind = MessageKind.Error,
+                    title = stringResource(R.string.auth_login_error_title),
+                )
+            }
+            LogyxTextField(
+                value = state.email,
+                onValueChange = onEmailChange,
+                label = stringResource(R.string.auth_email),
+                placeholder = stringResource(R.string.auth_email_placeholder),
+                error = state.emailError?.let { stringResource(R.string.auth_email_error) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             )
-            OutlinedTextField(
-                value = state.password, onValueChange = onPasswordChange, label = { Text("Contraseña") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                isError = state.passwordError != null, supportingText = state.passwordError?.let { { Text(it) } },
+            LogyxTextField(
+                value = state.password,
+                onValueChange = onPasswordChange,
+                label = stringResource(R.string.auth_password),
+                error = state.passwordError?.let { stringResource(R.string.auth_password_error) },
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                trailing = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                            contentDescription = stringResource(
+                                if (showPassword) R.string.auth_hide_password else R.string.auth_show_password,
+                            ),
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onSubmit() }),
             )
-            if (state.error != null) {
-                Row(
-                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.small).padding(12.dp),
-                ) { Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+            LogyxButton(
+                text = stringResource(R.string.auth_login_action),
+                onClick = onSubmit,
+                loading = state.loading,
+            )
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    stringResource(R.string.auth_no_account),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LogyxButton(
+                    text = stringResource(R.string.auth_register_action),
+                    onClick = onOpenRegister,
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Medium,
+                    fullWidth = false,
+                )
             }
-            Button(onClick = onSubmit, enabled = !state.loading, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                if (state.loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text("Ingresar", style = MaterialTheme.typography.titleMedium)
-            }
-            OutlinedButton(onClick = onOpenRegister, modifier = Modifier.fillMaxWidth()) {
-                Text("¿Sin cuenta? Regístrate en la web")
+            if (demoAccounts.isNotEmpty() || onOpenCatalog != null) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
             if (demoAccounts.isNotEmpty()) {
-                Text("Cuentas demo (solo desarrollo)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    demoAccounts.forEach { AssistChip(onClick = { onDemo(it) }, label = { Text(it.label) }) }
+                Text(
+                    stringResource(R.string.auth_demo_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ChipRow {
+                    demoAccounts.forEach { LogyxFilterChip(label = it.label, selected = state.email == it.email, onClick = { onDemo(it) }) }
                 }
+            }
+            if (onOpenCatalog != null) {
+                LogyxButton(
+                    text = stringResource(R.string.auth_open_catalog),
+                    onClick = onOpenCatalog,
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Medium,
+                    fullWidth = false,
+                )
             }
         }
     }
 }
 
-private fun roleLabel(user: UserInfo) = when {
-    user.role == Role.DRIVER -> "Conductor"
-    user.organizationType == OrgType.CARRIER -> "Transportista"
-    user.organizationType == OrgType.PYME -> "Empresa (PYME)"
-    else -> "Operador"
-}
+@Composable
+private fun roleLabel(user: UserInfo) = stringResource(
+    when {
+        user.role == Role.DRIVER -> R.string.auth_role_driver
+        user.organizationType == OrgType.CARRIER -> R.string.auth_role_carrier
+        user.organizationType == OrgType.PYME -> R.string.auth_role_pyme
+        else -> R.string.auth_role_operator
+    },
+)
+
+private fun initials(name: String): String =
+    name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.first().uppercase() }.ifEmpty { "?" }
 
 @Composable
 fun AccountRoute(apiUrl: String, versionName: String, viewModel: AccountViewModel = koinViewModel()) {
@@ -147,30 +242,111 @@ fun AccountRoute(apiUrl: String, versionName: String, viewModel: AccountViewMode
 
 @Composable
 fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout: () -> Unit) {
-    LogyxScreen("Cuenta") { padding ->
-        Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var confirmLogout by rememberSaveable { mutableStateOf(false) }
+    LogyxScreen(stringResource(R.string.auth_account_title)) { padding ->
+        Column(
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             if (user != null) {
                 LogyxCard(Modifier.fillMaxWidth()) {
-                    Text(user.fullName, style = MaterialTheme.typography.titleLarge)
-                    Text(user.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(user.organizationName ?: "—", style = MaterialTheme.typography.titleSmall)
-                        if (user.rucVerified) {
-                            Spacer(Modifier.size(6.dp))
-                            Icon(Icons.Rounded.Verified, "Empresa verificada", Modifier.size(18.dp), tint = LogyxTheme.colors.money)
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val avatarDescription = stringResource(R.string.auth_avatar_description, user.fullName)
+                        Box(
+                            Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .semantics { contentDescription = avatarDescription },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(initials(user.fullName), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(user.fullName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                        Text(
+                            user.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            LogyxBadge(roleLabel(user), tone = PillTone.Petrol)
+                            if (user.rucVerified) VerifiedBadge()
                         }
                     }
-                    Text(roleLabel(user), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                }
+                LogyxCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionTitle(stringResource(R.string.auth_section_data))
+                        InfoRow(stringResource(R.string.auth_data_name), user.fullName)
+                        InfoRow(stringResource(R.string.auth_data_email), user.email)
+                        InfoRow(stringResource(R.string.auth_data_org), user.organizationName ?: "—")
+                        InfoRow(stringResource(R.string.auth_data_role), roleLabel(user))
+                    }
+                }
+            } else {
+                AlertBanner(stringResource(R.string.auth_no_session), kind = MessageKind.Warning)
+            }
+            LogyxCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionTitle(stringResource(R.string.auth_section_app))
+                    InfoRow(stringResource(R.string.auth_version), versionName)
+                    InfoRow(stringResource(R.string.auth_api), apiUrl)
                 }
             }
-            OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Rounded.Logout, null)
-                Spacer(Modifier.size(8.dp))
-                Text("Cerrar sesión")
-            }
-            Text("LOGYX $versionName · API $apiUrl", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            LogyxButton(
+                text = stringResource(R.string.auth_logout_action),
+                onClick = { confirmLogout = true },
+                variant = ButtonVariant.Secondary,
+                icon = Icons.AutoMirrored.Rounded.Logout,
+            )
         }
+    }
+    if (confirmLogout) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.auth_logout_title),
+            message = stringResource(R.string.auth_logout_message),
+            confirmLabel = stringResource(R.string.auth_logout_action),
+            onConfirm = { confirmLogout = false; onLogout() },
+            onDismiss = { confirmLogout = false },
+            destructive = true,
+            icon = Icons.AutoMirrored.Rounded.Logout,
+        )
     }
 }
 
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium)
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun LoginScreenPreview() {
+    LogyxTheme {
+        LoginScreen(
+            state = LoginUiState(email = "carrier@logyx.pe", passwordError = LoginFieldError.EmptyPassword, error = "Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo."),
+            onEmailChange = {}, onPasswordChange = {}, onSubmit = {}, onOpenRegister = {},
+            demoAccounts = listOf(DemoAccount("Transportista", "carrier@logyx.pe", "x"), DemoAccount("PYME", "pyme@logyx.pe", "x")),
+            onOpenCatalog = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun AccountScreenPreview() {
+    LogyxTheme {
+        AccountScreen(
+            user = UserInfo("1", "carrier@logyx.pe", "Ana Quispe", Role.ADMIN, "2", "Transportes Andinos SAC", OrgType.CARRIER, true),
+            apiUrl = "http://10.0.2.2:8080", versionName = "1.0.0", onLogout = {},
+        )
+    }
+}

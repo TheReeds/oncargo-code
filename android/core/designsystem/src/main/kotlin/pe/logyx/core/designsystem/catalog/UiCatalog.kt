@@ -1,0 +1,268 @@
+package pe.logyx.core.designsystem.catalog
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LocalShipping
+import androidx.compose.material.icons.rounded.NearMe
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import pe.logyx.core.designsystem.Fmt
+import pe.logyx.core.designsystem.LogyxText
+import pe.logyx.core.designsystem.LogyxTheme
+import pe.logyx.core.designsystem.components.AlertBanner
+import pe.logyx.core.designsystem.components.ButtonSize
+import pe.logyx.core.designsystem.components.ButtonVariant
+import pe.logyx.core.designsystem.components.ChipRow
+import pe.logyx.core.designsystem.components.CountBadge
+import pe.logyx.core.designsystem.components.EmptyState
+import pe.logyx.core.designsystem.components.ErrorState
+import pe.logyx.core.designsystem.components.InfoChip
+import pe.logyx.core.designsystem.components.KpiTile
+import pe.logyx.core.designsystem.components.LogyxBadge
+import pe.logyx.core.designsystem.components.LogyxBottomBar
+import pe.logyx.core.designsystem.components.LogyxBottomSheet
+import pe.logyx.core.designsystem.components.LogyxButton
+import pe.logyx.core.designsystem.components.LogyxCombobox
+import pe.logyx.core.designsystem.components.LogyxConfirmDialog
+import pe.logyx.core.designsystem.components.LogyxDateField
+import pe.logyx.core.designsystem.components.LogyxDateRangeField
+import pe.logyx.core.designsystem.components.LogyxDropdown
+import pe.logyx.core.designsystem.components.LogyxFilterChip
+import pe.logyx.core.designsystem.components.LogyxNavItem
+import pe.logyx.core.designsystem.components.LogyxScreen
+import pe.logyx.core.designsystem.components.LogyxTextField
+import pe.logyx.core.designsystem.components.MessageKind
+import pe.logyx.core.designsystem.components.MoneyField
+import pe.logyx.core.designsystem.components.PillTone
+import pe.logyx.core.designsystem.components.PriceTag
+import pe.logyx.core.designsystem.components.RouteLine
+import pe.logyx.core.designsystem.components.SegmentedControl
+import pe.logyx.core.designsystem.components.SkeletonList
+import pe.logyx.core.designsystem.components.StatusPill
+import pe.logyx.core.designsystem.components.StopTimeline
+import pe.logyx.core.designsystem.components.TruckIllustration
+import pe.logyx.core.designsystem.components.UiMessage
+import pe.logyx.core.designsystem.components.VerifiedBadge
+import pe.logyx.core.designsystem.components.parseMoney
+import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
+import pe.logyx.core.model.StopStatus
+import pe.logyx.core.model.StopType
+import pe.logyx.core.model.StopView
+import pe.logyx.core.model.VehicleType
+
+/** Catálogo del sistema de diseño (solo se enlaza desde builds debug). Muestra cada componente y variante. */
+@Composable
+fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val snackbar = rememberLogyxSnackbarState()
+    val scope = rememberCoroutineScope()
+    LogyxScreen("Catálogo UI", modifier, subtitle = "Sistema de diseño LOGYX", onBack = onBack, snackbar = snackbar) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
+            Section("Colores y tipografía") { ColorsAndType() }
+            Section("Botones") { Buttons() }
+            Section("Campos de texto") { TextFields() }
+            Section("Selectores") { Pickers() }
+            Section("Chips, segmentado y badges") { ChipsSection() }
+            Section("Mensajes") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LogyxButton("Éxito", { scope.launch { snackbar.show(UiMessage.success("Oferta enviada")) } }, Modifier.weight(1f), ButtonVariant.Money, ButtonSize.Medium)
+                    LogyxButton("Error", { scope.launch { snackbar.show(UiMessage.error("No pudimos enviar tu oferta. Revisa tu conexión e inténtalo de nuevo.", "Reintentar")) } }, Modifier.weight(1f), ButtonVariant.Destructive, ButtonSize.Medium)
+                    LogyxButton("Info", { scope.launch { snackbar.show(UiMessage.info("Actualizamos las cargas cerca de ti")) } }, Modifier.weight(1f), ButtonVariant.Secondary, ButtonSize.Medium)
+                }
+                AlertBanner("Oferta enviada. Te avisaremos si la PYME la elige.", kind = MessageKind.Success)
+                AlertBanner("No pudimos cargar tus envíos. Desliza hacia abajo para reintentar.", kind = MessageKind.Error, title = "Sin conexión")
+                AlertBanner("La subasta cierra en 4 min.", kind = MessageKind.Warning)
+                AlertBanner("Los precios incluyen peajes y combustible.", kind = MessageKind.Info, onDismiss = {})
+            }
+            Section("Diálogos y hojas") { Overlays() }
+            Section("Estados de pantalla") {
+                EmptyState("Aún no tienes ofertas", "Cuando envíes una oferta la verás aquí.", actionLabel = "Buscar cargas", onAction = {})
+                ErrorState("Revisa tu conexión e inténtalo de nuevo.", onRetry = {})
+                SkeletonList(Modifier.padding(0.dp), count = 1)
+            }
+            Section("Datos de negocio") { Domain() }
+            Section("Navegación") {
+                var sel by remember { mutableStateOf(1) }
+                LogyxBottomBar(
+                    listOf(
+                        LogyxNavItem("Inicio", Icons.Rounded.Home),
+                        LogyxNavItem("Cargas", Icons.Rounded.Search),
+                        LogyxNavItem("Ofertas", Icons.Rounded.Gavel, badgeCount = 2),
+                        LogyxNavItem("Envíos", Icons.Rounded.LocalShipping),
+                    ),
+                    sel, { sel = it },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineSmall)
+        content()
+    }
+}
+
+@Composable
+private fun ColorsAndType() {
+    val c = LogyxTheme.colors
+    val s = MaterialTheme.colorScheme
+    ChipRow {
+        listOf(
+            "Petróleo" to s.primary, "Esmeralda AA" to c.moneyStrong, "Ámbar AA" to c.onWarningContainer,
+            "Rojo AA" to c.dangerText, "Tinta" to s.onSurface,
+        ).forEach { (name, color) ->
+            Row(
+                Modifier.padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                androidx.compose.foundation.layout.Box(Modifier.size(18.dp).background(color, androidx.compose.foundation.shape.CircleShape))
+                Text(name, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+    Text("Titular 24 · Geist Sans", style = MaterialTheme.typography.headlineSmall)
+    Text("Título 16 semibold", style = MaterialTheme.typography.titleMedium)
+    Text("Cuerpo 14 regular: Lima a Juliaca, 1,010 km.", style = MaterialTheme.typography.bodyMedium)
+    Text("S/ 1,850.00", style = LogyxText.moneyLarge, color = c.moneyText)
+    Text("ABC-123 · 2.5 t · 1,010 km", style = LogyxText.mono)
+}
+
+@Composable
+private fun Buttons() {
+    LogyxButton("Enviar oferta", {}, icon = Icons.Rounded.LocalShipping)
+    LogyxButton("Aceptar oferta", {}, variant = ButtonVariant.Money)
+    LogyxButton("Ver detalle", {}, variant = ButtonVariant.Secondary)
+    LogyxButton("Omitir por ahora", {}, variant = ButtonVariant.Ghost)
+    LogyxButton("Cancelar solicitud", {}, variant = ButtonVariant.Destructive)
+    LogyxButton("Enviando oferta…", {}, loading = true)
+    LogyxButton("No disponible", {}, enabled = false)
+    LogyxButton("Mediano", {}, size = ButtonSize.Medium)
+    LogyxButton("Llegué al recojo", {}, size = ButtonSize.Xl, icon = Icons.Rounded.NearMe)
+}
+
+@Composable
+private fun TextFields() {
+    var email by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var money by remember { mutableStateOf("1850.5") }
+    LogyxTextField(email, { email = it }, "Correo", hint = "Usa el correo de tu empresa", placeholder = "tu@empresa.pe")
+    LogyxTextField("hola", {}, "Contraseña", error = "La contraseña no es correcta. Revísala e inténtalo de nuevo.")
+    LogyxTextField(note, { note = it }, "Nota para la PYME", optional = true, singleLine = false, minLines = 3)
+    MoneyField(money, { money = it }, "Tu oferta", hint = "Monto mínimo ${Fmt.money(1200.0)} · Escribiste: ${Fmt.money(parseMoney(money))}")
+    MoneyField("", {}, "Monto con error", error = "Ingresa un monto mayor a S/ 1,200.00.")
+}
+
+@Composable
+private fun Pickers() {
+    var vehicle by remember { mutableStateOf<VehicleType?>(VehicleType.TRUCK_SMALL) }
+    var city by remember { mutableStateOf<String?>(null) }
+    var date by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    var s by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    var e by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    LogyxDropdown("Tipo de vehículo", VehicleType.entries, vehicle, { vehicle = it }, { it.name.lowercase().replace('_', ' ') })
+    LogyxCombobox(
+        "Ciudad de origen", listOf("Lima", "Arequipa", "Cusco", "Juliaca", "Puno", "Ayacucho", "Huancayo", "Tacna", "Ica", "Nasca"),
+        city, { city = it }, { it }, searchPlaceholder = "Buscar ciudad", clearable = true,
+    )
+    LogyxDateField("Fecha de recojo", date, { date = it })
+    LogyxDateRangeField("Rango de entrega", s, e, { a, b -> s = a; e = b })
+}
+
+@Composable
+private fun ChipsSection() {
+    var f by remember { mutableStateOf(setOf("near")) }
+    var seg by remember { mutableStateOf("Activas") }
+    ChipRow {
+        LogyxFilterChip("Cerca de mí", "near" in f, { f = f.toggle("near") }, leadingIcon = Icons.Rounded.NearMe)
+        LogyxFilterChip("Mi vehículo", "mine" in f, { f = f.toggle("mine") })
+        LogyxFilterChip("Mejor pago", "pay" in f, { f = f.toggle("pay") })
+    }
+    SegmentedControl(listOf("Activas", "Cerradas", "Todas"), seg, { seg = it }, { it })
+    ChipRow {
+        StatusPill("Publicada", PillTone.Petrol)
+        StatusPill("Adjudicada", PillTone.Emerald)
+        StatusPill("Por recoger", PillTone.Amber)
+        StatusPill("Rechazada", PillTone.Red)
+        StatusPill("Cancelada", PillTone.Neutral)
+    }
+    ChipRow {
+        LogyxBadge("Compatible", tone = PillTone.Emerald)
+        LogyxBadge("Mejor precio", tone = PillTone.Petrol)
+        VerifiedBadge()
+        CountBadge(3)
+        InfoChip("Carga general")
+    }
+}
+
+private fun Set<String>.toggle(k: String) = if (k in this) this - k else this + k
+
+@Composable
+private fun Overlays() {
+    var confirm by remember { mutableStateOf(false) }
+    var destructive by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf(false) }
+    LogyxButton("Confirmación", { confirm = true }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
+    LogyxButton("Confirmación destructiva", { destructive = true }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
+    LogyxButton("Hoja inferior", { sheet = true }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
+    if (confirm) LogyxConfirmDialog(
+        "¿Aceptar esta oferta?", "Se rechazarán las demás ofertas y se creará el envío por S/ 1,850.00.",
+        "Aceptar oferta", { confirm = false }, { confirm = false }, dismissLabel = "Volver",
+    )
+    if (destructive) LogyxConfirmDialog(
+        "¿Cancelar la solicitud?", "Se cerrará la subasta y los transportistas dejarán de ver tu carga. No se puede deshacer.",
+        "Cancelar solicitud", { destructive = false }, { destructive = false }, dismissLabel = "No, mantener", destructive = true,
+    )
+    if (sheet) LogyxBottomSheet({ sheet = false }, title = "Enviar oferta") {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            MoneyField("1850", {}, "Tu oferta")
+            LogyxButton("Enviar oferta", { sheet = false }, variant = ButtonVariant.Money)
+        }
+    }
+}
+
+@Composable
+private fun Domain() {
+    PriceTag(1850.0, label = "Precio referencial")
+    RouteLine("Lima", "Juliaca", distance = "1,010 km", originSub = "Recojo 28 nov")
+    ChipRow { VehicleType.entries.take(4).forEach { TruckIllustration(it) } }
+    KpiTile("3", "Por recoger hoy", context = "2 en tránsito")
+    StopTimeline(
+        listOf(
+            StopView("1", 1, StopType.PICKUP, "LIMA", "Av. Argentina 123", StopStatus.COMPLETED),
+            StopView("2", 2, StopType.DELIVERY, "JULIACA", "Jr. Lima 456", StopStatus.PENDING),
+        ),
+    )
+}
+
+@Preview(showBackground = true, heightDp = 2400)
+@Composable
+private fun CatalogPreview() {
+    LogyxTheme { UiCatalogScreen({}) }
+}

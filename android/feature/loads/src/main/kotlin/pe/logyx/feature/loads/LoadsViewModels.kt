@@ -2,6 +2,7 @@ package pe.logyx.feature.loads
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,8 +15,16 @@ import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
 import pe.logyx.core.data.userMessage
+import pe.logyx.core.designsystem.Fmt
+import pe.logyx.core.designsystem.components.UiMessage
+import pe.logyx.core.network.ApiException
+import java.time.LocalDate
 import pe.logyx.core.model.BidStatus
+import pe.logyx.core.model.CargoType
 import pe.logyx.core.model.CityItem
+import pe.logyx.core.model.DashboardSummary
+import pe.logyx.core.model.MarketplaceFilter
+import pe.logyx.core.model.MarketplaceSort
 import pe.logyx.core.model.GeoPoint
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ShipmentView
@@ -41,6 +50,8 @@ data class CarrierHomeUiState(
     val totalBids: Int = 0,
     val activeShipment: ShipmentView? = null,
     val vehicles: List<VehicleView> = emptyList(),
+    val activeShipments: Int? = null,
+    val deliveredThisMonth: Int? = null,
 )
 
 class CarrierHomeViewModel(
@@ -62,10 +73,12 @@ class CarrierHomeViewModel(
             val fleet = async { loads.vehicles() }
             val bids = async { loads.myBids() }
             val ships = async { shipments.list() }
+            val dash = async { loads.dashboard().getOrNull() }
             val marketRes = market.await()
             val vehicles = fleet.await().getOrDefault(emptyList())
             val myBids = bids.await().getOrDefault(emptyList())
             val active = ships.await().getOrDefault(emptyList()).firstOrNull { it.isActive }
+            val summary: DashboardSummary? = dash.await()
             marketRes.fold(
                 onSuccess = { all ->
                     val compatible = all.filter { it.myBid == null && it.isCompatibleWith(vehicles) }
@@ -73,8 +86,10 @@ class CarrierHomeViewModel(
                         it.copy(
                             loading = false, refreshing = false, error = null,
                             suggested = compatible.sortedByDescending { r -> r.suggestedPrice ?: 0.0 }.take(5),
-                            compatibleCount = compatible.size,
-                            pendingBids = myBids.count { r -> r.myBid?.status == BidStatus.PENDING },
+                            compatibleCount = summary?.compatibleLoads ?: compatible.size,
+                            pendingBids = summary?.pendingBids ?: myBids.count { r -> r.myBid?.status == BidStatus.PENDING },
+                            activeShipments = summary?.activeShipments,
+                            deliveredThisMonth = summary?.deliveredThisMonth,
                             totalBids = myBids.size,
                             activeShipment = active,
                             vehicles = vehicles,
@@ -91,31 +106,54 @@ class CarrierHomeViewModel(
 
 enum class LoadFilter { MyVehicle, BestPay, Nearby }
 
+private const val FEED_PAGE_SIZE = 20
+
 data class LoadsFeedUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
+    val loadingMore: Boolean = false,
     val error: String? = null,
-    val all: List<RequestView> = emptyList(),
+    val items: List<RequestView> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 0,
+    val hasMore: Boolean = false,
     val vehicles: List<VehicleView> = emptyList(),
+    val cities: List<CityItem> = emptyList(),
     val userCity: String? = null,
     val filters: Set<LoadFilter> = emptySet(),
+    val originCity: CityItem? = null,
+    val destinationCity: CityItem? = null,
+    val dateFrom: LocalDate? = null,
+    val dateTo: LocalDate? = null,
+    val cargoType: CargoType? = null,
+    val message: UiMessage? = null,
 ) {
     fun isCompatible(r: RequestView) = r.isCompatibleWith(vehicles)
 
-    val visible: List<RequestView>
-        get() {
-            var list = all
-            if (LoadFilter.MyVehicle in filters) list = list.filter { isCompatible(it) }
-            if (LoadFilter.Nearby in filters && userCity != null) {
-                val city = normalizeCity(userCity)
-                list = list.filter { normalizeCity(it.originCity) == city }
-            }
-            return if (LoadFilter.BestPay in filters) list.sortedByDescending { it.suggestedPrice ?: 0.0 }
-            else list.sortedByDescending { it.createdAt.orEmpty() }
-        }
+    /** El servidor ya filtra y ordena; la lista visible es la cargada. */
+    val visible: List<RequestView> get() = items
 
     /** "Cerca de mí" requiere la ciudad de la organización. */
     val nearbyUnavailable: Boolean get() = LoadFilter.Nearby in filters && userCity == null
+
+    /** Filtros del panel "Más filtros" activos (origen, destino, fechas, tipo). */
+    val advancedCount: Int
+        get() = listOf(originCity != null, destinationCity != null, dateFrom != null, cargoType != null).count { it }
+
+    val hasActiveFilters: Boolean get() = filters.isNotEmpty() || advancedCount > 0
+
+    fun toServerFilter(): MarketplaceFilter {
+        val nearby = if (LoadFilter.Nearby in filters && userCity != null) normalizeCity(userCity) else null
+        return MarketplaceFilter(
+            originCity = originCity?.code ?: nearby,
+            destinationCity = destinationCity?.code,
+            pickupFrom = dateFrom?.toString(),
+            pickupTo = dateTo?.toString(),
+            maxWeightKg = if (LoadFilter.MyVehicle in filters) vehicles.maxOfOrNull { it.maxWeightKg } else null,
+            cargoType = cargoType,
+            sort = if (LoadFilter.BestPay in filters) MarketplaceSort.PRICE_DESC else MarketplaceSort.PICKUP,
+        )
+    }
 }
 
 class LoadsFeedViewModel(
@@ -123,29 +161,71 @@ class LoadsFeedViewModel(
     private val loads: LoadsRepository,
     private val catalog: CatalogRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(LoadsFeedUiState())
+    private val _state = MutableStateFlow(LoadsFeedUiState(userCity = auth.currentUser()?.organizationCity))
     val state: StateFlow<LoadsFeedUiState> = _state.asStateFlow()
+    private var job: Job? = null
 
-    init { load(initial = true) }
-
-    fun refresh() = load(initial = false)
-
-    fun toggle(filter: LoadFilter) = _state.update {
-        it.copy(filters = if (filter in it.filters) it.filters - filter else it.filters + filter)
+    init {
+        viewModelScope.launch {
+            val fleet = async { loads.vehicles() }
+            val cities = async { catalog.cities() }
+            _state.update { it.copy(vehicles = fleet.await().getOrDefault(emptyList()), cities = cities.await().getOrDefault(emptyList())) }
+            reload(refreshing = false)
+        }
     }
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.all.isEmpty(), refreshing = !initial, error = null) }
-        viewModelScope.launch {
-            val market = async { loads.marketplace() }
-            val fleet = async { loads.vehicles() }
-            val city = async { auth.currentUser()?.let { u -> catalog.organization(u.organizationId).getOrNull()?.city } }
-            market.await().fold(
-                onSuccess = { all ->
+    fun refresh() = reload(refreshing = true)
+
+    fun toggle(filter: LoadFilter) {
+        _state.update {
+            it.copy(
+                filters = if (filter in it.filters) it.filters - filter else it.filters + filter,
+                // El chip de cercanía y el origen elegido se excluyen entre sí.
+                originCity = if (filter == LoadFilter.Nearby && filter !in it.filters) null else it.originCity,
+            )
+        }
+        reload(refreshing = false)
+    }
+
+    fun setOrigin(city: CityItem?) {
+        _state.update { it.copy(originCity = city, filters = if (city != null) it.filters - LoadFilter.Nearby else it.filters) }
+        reload(refreshing = false)
+    }
+
+    fun setDestination(city: CityItem?) {
+        _state.update { it.copy(destinationCity = city) }
+        reload(refreshing = false)
+    }
+
+    fun setDates(from: LocalDate?, to: LocalDate?) {
+        _state.update { it.copy(dateFrom = from, dateTo = to) }
+        reload(refreshing = false)
+    }
+
+    fun setCargoType(type: CargoType?) {
+        _state.update { it.copy(cargoType = type) }
+        reload(refreshing = false)
+    }
+
+    fun clearFilters() {
+        _state.update {
+            it.copy(filters = emptySet(), originCity = null, destinationCity = null, dateFrom = null, dateTo = null, cargoType = null)
+        }
+        reload(refreshing = false)
+    }
+
+    /** Primera página con los filtros actuales; cancela cualquier carga en curso. */
+    private fun reload(refreshing: Boolean) {
+        job?.cancel()
+        _state.update { it.copy(loading = !refreshing, refreshing = refreshing, loadingMore = false, error = null) }
+        val filter = _state.value.toServerFilter()
+        job = viewModelScope.launch {
+            loads.marketplacePage(filter, 0, FEED_PAGE_SIZE).fold(
+                onSuccess = { p ->
                     _state.update {
                         it.copy(
-                            loading = false, refreshing = false, all = all,
-                            vehicles = fleet.await().getOrDefault(emptyList()), userCity = city.await(),
+                            loading = false, refreshing = false, items = p.items.distinctBy { r -> r.id },
+                            total = p.total, page = p.page, hasMore = p.hasMore,
                         )
                     }
                 },
@@ -153,6 +233,32 @@ class LoadsFeedViewModel(
             )
         }
     }
+
+    /** Siguiente página (scroll infinito), sin duplicar elementos. */
+    fun loadMore() {
+        val s = _state.value
+        if (!s.hasMore || s.loadingMore || s.loading || s.refreshing) return
+        _state.update { it.copy(loadingMore = true) }
+        val filter = s.toServerFilter()
+        job = viewModelScope.launch {
+            loads.marketplacePage(filter, s.page + 1, FEED_PAGE_SIZE).fold(
+                onSuccess = { p ->
+                    _state.update {
+                        val known = it.items.mapTo(HashSet()) { r -> r.id }
+                        it.copy(
+                            loadingMore = false, items = it.items + p.items.filter { r -> known.add(r.id) },
+                            total = p.total, page = p.page, hasMore = p.hasMore,
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _state.update { it.copy(loadingMore = false, hasMore = false, message = UiMessage.error(e.userMessage())) }
+                },
+            )
+        }
+    }
+
+    fun messageShown() = _state.update { it.copy(message = null) }
 }
 
 // ───────────────────────── Detalle + ofertar ─────────────────────────
@@ -163,9 +269,15 @@ data class BidFormState(
     val amountText: String = "",
     val notes: String = "",
     val submitting: Boolean = false,
-    /** Error de validación local o mensaje de la API (se muestra tal cual). */
+    /** Error general del envío: mensaje de la API tal cual (monto bajo el piso, subasta cerrada, ya ofertaste). */
     val error: String? = null,
-)
+    val vehicleError: String? = null,
+    val amountError: String? = null,
+    /** Muestra el diálogo "¿Enviar oferta de S/ X?" antes de mandar la oferta. */
+    val confirming: Boolean = false,
+) {
+    val amount: Double? get() = parseAmount(amountText)
+}
 
 data class LoadDetailUiState(
     val loading: Boolean = true,
@@ -177,7 +289,7 @@ data class LoadDetailUiState(
     val vehicles: List<VehicleView> = emptyList(),
     val form: BidFormState? = null,
     /** Mensaje efímero (snackbar); la UI lo consume con [LoadDetailViewModel.messageShown]. */
-    val message: String? = null,
+    val message: UiMessage? = null,
 ) {
     val compatibleVehicles: List<VehicleView>
         get() = request?.let { r -> vehicles.filter { it.canCarry(r) } } ?: emptyList()
@@ -227,13 +339,36 @@ class LoadDetailViewModel(
 
     fun dismissBidSheet() = _state.update { if (it.form?.submitting == true) it else it.copy(form = null) }
 
-    fun selectVehicle(id: String) = updateForm { it.copy(vehicleId = id, error = null) }
-    fun onAmountChange(text: String) = updateForm { it.copy(amountText = text.filter { c -> c.isDigit() || c == '.' || c == ',' }, error = null) }
+    fun selectVehicle(id: String) = updateForm { it.copy(vehicleId = id, error = null, vehicleError = null) }
+    fun onAmountChange(text: String) = updateForm { it.copy(amountText = text.filter { c -> c.isDigit() || c == '.' || c == ',' }, error = null, amountError = null) }
     fun onNotesChange(text: String) = updateForm { it.copy(notes = text.take(300)) }
 
     private fun updateForm(f: (BidFormState) -> BidFormState) = _state.update { s -> s.form?.let { s.copy(form = f(it)) } ?: s }
 
     fun messageShown() = _state.update { it.copy(message = null) }
+
+    /** Valida el formulario y, si es válido, pide confirmación antes de enviar. */
+    fun requestConfirm() {
+        val s = _state.value
+        val form = s.form ?: return
+        val request = s.request ?: return
+        if (form.submitting) return
+        val amount = parseAmount(form.amountText)
+        val floor = request.priceFloor
+        val vehicleError = if (form.vehicleId == null) "Elige el vehículo con el que harás el viaje." else null
+        val amountError = when {
+            amount == null || amount <= 0 -> "Ingresa un monto válido, por ejemplo 1,850.00."
+            floor != null && amount < floor -> "Tu oferta es menor al piso de ${Fmt.money(floor)}. Sube el monto para poder enviarla."
+            else -> null
+        }
+        if (vehicleError != null || amountError != null) {
+            updateForm { it.copy(vehicleError = vehicleError, amountError = amountError, error = null) }
+            return
+        }
+        updateForm { it.copy(confirming = true, error = null) }
+    }
+
+    fun dismissConfirm() = updateForm { if (it.submitting) it else it.copy(confirming = false) }
 
     fun submitBid() {
         val s = _state.value
@@ -242,25 +377,34 @@ class LoadDetailViewModel(
         if (form.submitting) return
         val amount = parseAmount(form.amountText)
         val floor = request.priceFloor
-        val error = when {
-            form.vehicleId == null -> "Elige el vehículo con el que harás el viaje."
-            amount == null || amount <= 0 -> "Ingresa un monto válido."
-            floor != null && amount < floor -> "El monto no puede ser menor al piso de ${pe.logyx.core.designsystem.Fmt.money(floor)}."
+        val vehicleError = if (form.vehicleId == null) "Elige el vehículo con el que harás el viaje." else null
+        val amountError = when {
+            amount == null || amount <= 0 -> "Ingresa un monto válido, por ejemplo 1,850.00."
+            floor != null && amount < floor -> "Tu oferta es menor al piso de ${Fmt.money(floor)}. Sube el monto para poder enviarla."
             else -> null
         }
-        if (error != null) {
-            updateForm { it.copy(error = error) }
+        if (vehicleError != null || amountError != null) {
+            updateForm { it.copy(vehicleError = vehicleError, amountError = amountError, confirming = false) }
             return
         }
-        updateForm { it.copy(submitting = true, error = null) }
+        updateForm { it.copy(submitting = true, error = null, vehicleError = null, amountError = null) }
         viewModelScope.launch {
             loads.placeBid(request.id, form.vehicleId!!, amount!!, form.notes).fold(
                 onSuccess = {
-                    _state.update { st -> st.copy(form = null, message = "¡Oferta enviada!") }
+                    _state.update { st -> st.copy(form = null, message = UiMessage.success("Oferta enviada")) }
                     load(initial = false)
                 },
                 // Se muestra el mensaje de la API (p. ej. monto bajo el piso, subasta cerrada, ya ofertaste).
-                onFailure = { e -> updateForm { it.copy(submitting = false, error = e.userMessage()) } },
+                onFailure = { e ->
+                    val field = (e as? ApiException)?.field
+                    updateForm {
+                        when (field) {
+                            "amount" -> it.copy(submitting = false, confirming = false, amountError = e.userMessage())
+                            "vehicleId" -> it.copy(submitting = false, confirming = false, vehicleError = e.userMessage())
+                            else -> it.copy(submitting = false, confirming = false, error = e.userMessage())
+                        }
+                    }
+                },
             )
         }
     }

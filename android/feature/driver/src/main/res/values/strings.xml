@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="driver_title_default">Mi viaje</string>
+    <string name="driver_empty_title">Sin viaje asignado</string>
+    <string name="driver_empty_message">Cuando tu transportista te asigne un envío aparecerá aquí. Desliza hacia abajo para actualizar.</string>
+
+    <string name="driver_next_stop">Siguiente parada</string>
+    <string name="driver_stop_progress">Parada %1$d de %2$d</string>
+    <string name="driver_stop_progress_a11y">Vas en la parada %1$d de %2$d</string>
+    <string name="driver_arrived_since">En el punto desde %1$s</string>
+    <string name="driver_stops_title">Paradas del viaje</string>
+    <string name="driver_cargo_default">Carga</string>
+    <string name="driver_map_a11y">Mapa de la ruta de %1$s a %2$s</string>
+
+    <string name="driver_delivered_title">Viaje entregado</string>
+    <string name="driver_delivered_message">Buen trabajo. Entregaste el %1$s.</string>
+
+    <string name="driver_action_arrive_pickup">Llegué al recojo</string>
+    <string name="driver_action_picked_up">Carga recogida</string>
+    <string name="driver_action_arrive_destination">Llegué a destino</string>
+    <string name="driver_action_delivered">Entregado</string>
+
+    <string name="driver_confirm_arrive_pickup_title">¿Confirmas que llegaste al recojo?</string>
+    <string name="driver_confirm_arrive_pickup_message">Avisaremos que ya estás en el punto de carga.</string>
+    <string name="driver_confirm_arrive_pickup_button">Confirmar llegada</string>
+    <string name="driver_confirm_picked_up_title">¿Confirmas que recogiste la carga?</string>
+    <string name="driver_confirm_picked_up_message">Registraremos la carga como recogida y seguirás hacia destino.</string>
+    <string name="driver_confirm_picked_up_button">Confirmar recojo</string>
+    <string name="driver_confirm_arrive_destination_title">¿Confirmas que llegaste a destino?</string>
+    <string name="driver_confirm_arrive_destination_message">Avisaremos que ya estás en el punto de entrega.</string>
+    <string name="driver_confirm_arrive_destination_button">Confirmar llegada</string>
+    <string name="driver_confirm_delivered_title">¿Confirmas que entregaste la carga?</string>
+    <string name="driver_confirm_delivered_message">El viaje se cerrará y no podrás deshacerlo.</string>
+    <string name="driver_confirm_delivered_button">Confirmar entrega</string>
+    <string name="driver_confirm_not_yet">Todavía no</string>
+
+    <string name="driver_notice_stop_updated">Parada actualizada</string>
+    <string name="driver_notice_delivered">Entrega registrada</string>
+    <string name="driver_action_error_title">No pudimos actualizar la parada</string>
+    <string name="driver_action_error_retry">Reintentar</string>
+</resources>

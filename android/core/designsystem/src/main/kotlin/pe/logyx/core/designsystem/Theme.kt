@@ -19,6 +19,8 @@ object LogyxPalette {
     val Ink900 = Color(0xFF0E1726)
     val Ink700 = Color(0xFF334155)
     val Ink400 = Color(0xFF94A3B8)
+    /** Borde de campos y texto de ayuda: 4.7:1 sobre blanco (AA para controles). */
+    val Ink500 = Color(0xFF64748B)
     val Steel100 = Color(0xFFEEF2F6)
     val Steel200 = Color(0xFFE2E8F0)
     val Surface = Color(0xFFFFFFFF)
@@ -33,6 +35,7 @@ object LogyxPalette {
     val Amber50 = Color(0xFFFFFBEB)
     val Red600 = Color(0xFFDC2626)
     val Red50 = Color(0xFFFEF2F2)
+    val Red700 = Color(0xFFB91C1C)
     val DarkBg = Color(0xFF0B1220)
     val DarkSurface = Color(0xFF111A2B)
 }
@@ -52,6 +55,12 @@ data class LogyxColors(
     val warningContainer: Color,
     val route: Color,
     val dangerContainer: Color,
+    /** Rojo legible como texto pequeño (AA) sobre superficie y sobre dangerContainer. */
+    val dangerText: Color,
+    /** Borde de campos de formulario (contraste >= 3:1). */
+    val fieldBorder: Color,
+    val infoContainer: Color,
+    val onInfoContainer: Color,
 )
 
 private val LightExtra = LogyxColors(
@@ -65,6 +74,10 @@ private val LightExtra = LogyxColors(
     warningContainer = LogyxPalette.Amber50,
     route = LogyxPalette.Petrol700,
     dangerContainer = LogyxPalette.Red50,
+    dangerText = LogyxPalette.Red700,
+    fieldBorder = LogyxPalette.Ink500,
+    infoContainer = LogyxPalette.Petrol50,
+    onInfoContainer = LogyxPalette.Petrol700,
 )
 
 private val DarkExtra = LightExtra.copy(
@@ -75,6 +88,10 @@ private val DarkExtra = LightExtra.copy(
     warningContainer = Color(0xFF2E2108),
     route = LogyxPalette.Petrol400,
     dangerContainer = Color(0xFF3B1414),
+    dangerText = Color(0xFFFCA5A5),
+    fieldBorder = Color(0xFF7C8CA3),
+    infoContainer = Color(0xFF0F3A4F),
+    onInfoContainer = Color(0xFFBFE4F2),
 )
 
 val LocalLogyxColors = staticCompositionLocalOf { LightExtra }

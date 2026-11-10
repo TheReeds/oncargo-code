@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.RequestsRepository
 import pe.logyx.core.data.userMessage
+import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.BidView
 import pe.logyx.core.model.GeoPoint
@@ -66,7 +67,7 @@ data class RequestDetailUiState(
     val confirmBid: BidView? = null,
     val confirmCancel: Boolean = false,
     val busy: Boolean = false,
-    val message: String? = null,
+    val message: UiMessage? = null,
     /** Se llena al aceptar: la UI navega al seguimiento y llama [RequestDetailViewModel.navigationHandled]. */
     val createdShipmentId: String? = null,
 ) {
@@ -119,31 +120,31 @@ class RequestDetailViewModel(
     fun askAccept(bid: BidView) = _state.update { it.copy(confirmBid = bid) }
     fun dismissDialogs() = _state.update { it.copy(confirmBid = null, confirmCancel = false) }
     fun askCancel() = _state.update { it.copy(confirmCancel = true) }
-    fun messageShown() = _state.update { it.copy(message = null) }
+    fun onMessageShown() = _state.update { it.copy(message = null) }
     fun navigationHandled() = _state.update { it.copy(createdShipmentId = null) }
 
     fun confirmAccept() {
         val bid = _state.value.confirmBid ?: return
         if (_state.value.busy) return
-        _state.update { it.copy(busy = true, confirmBid = null) }
+        _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             repo.acceptBid(bid.id).fold(
                 onSuccess = { res ->
-                    _state.update { it.copy(busy = false, createdShipmentId = res.shipmentId, message = "Oferta aceptada. Se creó tu envío.") }
+                    _state.update { it.copy(busy = false, confirmBid = null, createdShipmentId = res.shipmentId, message = UiMessage.success("Oferta aceptada. Creamos tu envío.")) }
                     load(initial = false)
                 },
-                onFailure = { e -> _state.update { it.copy(busy = false, message = e.userMessage()) } },
+                onFailure = { e -> _state.update { it.copy(busy = false, confirmBid = null, message = UiMessage.error(e.userMessage())) } },
             )
         }
     }
 
     fun confirmCancel() {
         if (_state.value.busy) return
-        _state.update { it.copy(busy = true, confirmCancel = false) }
+        _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             repo.cancel(requestId).fold(
-                onSuccess = { _state.update { it.copy(busy = false, message = "Solicitud cancelada.") }; load(initial = false) },
-                onFailure = { e -> _state.update { it.copy(busy = false, message = e.userMessage()) } },
+                onSuccess = { _state.update { it.copy(busy = false, confirmCancel = false, message = UiMessage.success("Solicitud cancelada")) }; load(initial = false) },
+                onFailure = { e -> _state.update { it.copy(busy = false, confirmCancel = false, message = UiMessage.error(e.userMessage())) } },
             )
         }
     }

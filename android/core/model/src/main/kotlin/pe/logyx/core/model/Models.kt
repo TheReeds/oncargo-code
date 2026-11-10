@@ -15,6 +15,7 @@ data class UserInfo(
     val organizationName: String? = null,
     val organizationType: OrgType,
     val rucVerified: Boolean = false,
+    val organizationCity: String? = null,
 )
 
 @Serializable
@@ -61,6 +62,8 @@ data class BidView(
     val notes: String? = null,
     val status: BidStatus,
     val createdAt: String? = null,
+    val vehicleType: VehicleType? = null,
+    val vehiclePlate: String? = null,
 )
 
 @Serializable
@@ -84,6 +87,8 @@ data class RequestView(
     val createdAt: String? = null,
     val auction: AuctionView? = null,
     val myBid: BidView? = null,
+    val requesterRucVerified: Boolean = false,
+    val minVehicleType: VehicleType? = null,
 )
 
 @Serializable
@@ -149,6 +154,41 @@ data class DriverView(
     val licenseNumber: String? = null,
     val status: DriverStatus,
 )
+
+/** Resumen de `GET /dashboard/summary`; los campos que no aplican al rol vienen null. */
+@Serializable
+data class DashboardSummary(
+    val role: String? = null,
+    // PYME
+    val activeRequests: Int? = null,
+    val bidsToReview: Int? = null,
+    val shipmentsInTransit: Int? = null,
+    // CARRIER
+    val compatibleLoads: Int? = null,
+    val pendingBids: Int? = null,
+    val activeShipments: Int? = null,
+    // ambos
+    val deliveredThisMonth: Int? = null,
+)
+
+/** Orden del marketplace (`sort`). */
+enum class MarketplaceSort(val param: String) { PICKUP("pickup"), PRICE_DESC("price_desc"), RECENT("recent") }
+
+/** Filtros del marketplace enviados al servidor (todos opcionales). Fechas ISO `yyyy-MM-dd`. */
+data class MarketplaceFilter(
+    val originCity: String? = null,
+    val destinationCity: String? = null,
+    val pickupFrom: String? = null,
+    val pickupTo: String? = null,
+    val maxWeightKg: Double? = null,
+    val cargoType: CargoType? = null,
+    val sort: MarketplaceSort = MarketplaceSort.PICKUP,
+)
+
+/** Página de resultados con `meta.page/size/total` (total sin paginar). */
+data class Page<T>(val items: List<T>, val page: Int, val size: Int, val total: Int) {
+    val hasMore: Boolean get() = (page + 1) * size < total
+}
 
 /** Punto geográfico para mapas. */
 data class GeoPoint(val lat: Double, val lng: Double)

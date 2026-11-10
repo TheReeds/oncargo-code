@@ -11,7 +11,7 @@ val LogyxJson = Json {
 }
 
 @Serializable
-data class Meta(val timestamp: String? = null)
+data class Meta(val timestamp: String? = null, val page: Int? = null, val size: Int? = null, val total: Int? = null)
 
 /** Respuesta exitosa: `{ "data": ..., "meta": {...} }`. */
 @Serializable

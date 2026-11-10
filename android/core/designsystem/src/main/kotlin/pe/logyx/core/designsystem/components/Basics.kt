@@ -3,6 +3,9 @@ package pe.logyx.core.designsystem.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.res.stringResource
+import pe.logyx.core.designsystem.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,14 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -47,7 +48,7 @@ fun StatusPill(text: String, tone: PillTone, modifier: Modifier = Modifier) {
         PillTone.Petrol -> scheme.primaryContainer to scheme.onPrimaryContainer
         PillTone.Emerald -> c.moneyContainer to c.onMoneyContainer
         PillTone.Amber -> c.warningContainer to c.onWarningContainer
-        PillTone.Red -> c.dangerContainer to scheme.error
+        PillTone.Red -> c.dangerContainer to c.dangerText
         PillTone.Neutral -> scheme.surfaceVariant to scheme.onSurfaceVariant
     }
     Row(
@@ -119,7 +120,7 @@ fun KpiTile(value: String, label: String, modifier: Modifier = Modifier, context
 }
 
 @Composable
-fun LoadingState(modifier: Modifier = Modifier, message: String = "Cargando…") {
+fun LoadingState(modifier: Modifier = Modifier, message: String = stringResource(R.string.ds_loading)) {
     Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         CircularProgressIndicator()
         Spacer(Modifier.height(12.dp))
@@ -149,26 +150,38 @@ fun EmptyState(
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = onAction) { Text(actionLabel) }
+            LogyxButton(actionLabel, onAction, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, fullWidth = false)
         }
     }
 }
 
+/** Error de carga: camión averiado con aviso rojo, qué pasó ([message]) y botón para reintentar. */
 @Composable
-fun ErrorState(message: String, onRetry: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun ErrorState(
+    message: String,
+    onRetry: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.ds_error_title),
+) {
     Column(
         modifier.fillMaxWidth().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Rounded.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
-        Spacer(Modifier.height(12.dp))
-        Text("No pudimos cargar la información", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Box {
+            TruckIllustration(VehicleType.TRUCK_MEDIUM, Modifier.size(width = 160.dp, height = 90.dp), muted = true)
+            Box(
+                Modifier.align(Alignment.TopEnd).size(34.dp).background(LogyxTheme.colors.dangerContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.ErrorOutline, null, Modifier.size(22.dp), tint = LogyxTheme.colors.dangerText) }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(4.dp))
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (onRetry != null) {
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text("Reintentar") }
+            LogyxButton(stringResource(R.string.ds_retry), onRetry, size = ButtonSize.Medium, fullWidth = false)
         }
     }
 }

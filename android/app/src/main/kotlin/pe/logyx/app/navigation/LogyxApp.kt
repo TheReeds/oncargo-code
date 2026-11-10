@@ -17,12 +17,14 @@ import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +44,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import org.koin.compose.koinInject
 import pe.logyx.app.AppConfig
+import pe.logyx.app.R
+import androidx.compose.ui.res.stringResource
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.SessionState
+import pe.logyx.core.designsystem.catalog.UiCatalogScreen
 import pe.logyx.core.designsystem.components.LoadingState
+import pe.logyx.core.designsystem.components.LogyxBottomBar
+import pe.logyx.core.designsystem.components.LogyxNavItem
 import pe.logyx.core.model.OrgType
 import pe.logyx.core.model.Role
 import pe.logyx.core.model.UserInfo
@@ -69,10 +76,18 @@ fun LogyxApp(auth: AuthRepository = koinInject(), config: AppConfig = koinInject
         SessionState.Loading -> Box(Modifier.fillMaxSize()) { LoadingState() }
         SessionState.LoggedOut -> {
             val context = LocalContext.current
-            LoginRoute(
-                onOpenRegister = { context.startActivity(Intent(Intent.ACTION_VIEW, "${config.webBaseUrl}/registro".toUri())) },
-                demoAccounts = if (config.debug) DEMO_ACCOUNTS else emptyList(),
-            )
+            // Catálogo del sistema de diseño: solo en builds debug.
+            var showCatalog by rememberSaveable { mutableStateOf(false) }
+            if (config.debug && showCatalog) {
+                BackHandler { showCatalog = false }
+                UiCatalogScreen(onBack = { showCatalog = false })
+            } else {
+                LoginRoute(
+                    onOpenRegister = { context.startActivity(Intent(Intent.ACTION_VIEW, "${config.webBaseUrl}/registro".toUri())) },
+                    demoAccounts = if (config.debug) DEMO_ACCOUNTS else emptyList(),
+                    onOpenCatalog = if (config.debug) ({ showCatalog = true }) else null,
+                )
+            }
         }
         // `key` recrea la navegación si cambia el usuario (cierre de sesión + otro rol).
         is SessionState.LoggedIn -> key(s.user.id) { RoleShell(s.user, config) }
@@ -94,23 +109,23 @@ private fun UserInfo.appRole() = when {
     else -> AppRole.Unsupported
 }
 
-private data class Tab(val label: String, val icon: ImageVector, val route: Any)
+private data class Tab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector, val route: Any)
 
 private val CARRIER_TABS = listOf(
-    Tab("Inicio", Icons.Rounded.Home, CarrierHome),
-    Tab("Cargas", Icons.Rounded.Search, CarrierFeed),
-    Tab("Ofertas", Icons.Rounded.Gavel, CarrierBids),
-    Tab("Envíos", Icons.Rounded.LocalShipping, ShipmentsTab),
-    Tab("Cuenta", Icons.Rounded.AccountCircle, Account),
+    Tab(R.string.tab_home, Icons.Rounded.Home, CarrierHome),
+    Tab(R.string.tab_loads, Icons.Rounded.Search, CarrierFeed),
+    Tab(R.string.tab_bids, Icons.Rounded.Gavel, CarrierBids),
+    Tab(R.string.tab_shipments, Icons.Rounded.LocalShipping, ShipmentsTab),
+    Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
 )
 private val PYME_TABS = listOf(
-    Tab("Solicitudes", Icons.Rounded.Inventory2, RequestsTab),
-    Tab("Envíos", Icons.Rounded.LocalShipping, ShipmentsTab),
-    Tab("Cuenta", Icons.Rounded.AccountCircle, Account),
+    Tab(R.string.tab_requests, Icons.Rounded.Inventory2, RequestsTab),
+    Tab(R.string.tab_shipments, Icons.Rounded.LocalShipping, ShipmentsTab),
+    Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
 )
 private val DRIVER_TABS = listOf(
-    Tab("Mi viaje", Icons.Rounded.Route, DriverTrip),
-    Tab("Cuenta", Icons.Rounded.AccountCircle, Account),
+    Tab(R.string.tab_trip, Icons.Rounded.Route, DriverTrip),
+    Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
 )
 
 @Composable
@@ -118,8 +133,8 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
     val role = user.appRole()
     if (role == AppRole.Unsupported) {
         Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Esta cuenta se gestiona desde la web", style = MaterialTheme.typography.titleLarge)
-            Text("Los operadores de LOGYX usan el panel web.", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.unsupported_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.unsupported_message), style = MaterialTheme.typography.bodyMedium)
             Box(Modifier.padding(top = 16.dp)) { AccountRoute(config.apiBaseUrl, config.versionName) }
         }
         return
@@ -139,16 +154,12 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBar) {
-                NavigationBar {
-                    tabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true,
-                            onClick = { nav.navigateTab(tab.route) },
-                            icon = { Icon(tab.icon, null) },
-                            label = { Text(tab.label) },
-                        )
-                    }
-                }
+                val selectedIndex = tabs.indexOfFirst { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
+                LogyxBottomBar(
+                    items = tabs.map { LogyxNavItem(stringResource(it.label), it.icon) },
+                    selectedIndex = selectedIndex,
+                    onSelect = { nav.navigateTab(tabs[it].route) },
+                )
             }
         },
     ) { inner ->

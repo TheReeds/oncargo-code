@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home -->
+    <string name="loads_home_title">Tu actividad</string>
+    <string name="loads_home_greeting">Hola, %1$s</string>
+    <string name="loads_home_default_name">transportista</string>
+    <plurals name="loads_home_summary">
+        <item quantity="one">Hay %1$d carga que tu flota puede llevar hoy.</item>
+        <item quantity="other">Hay %1$d cargas que tu flota puede llevar hoy.</item>
+    </plurals>
+    <string name="loads_home_summary_none">Aún no hay cargas compatibles con tu flota.</string>
+    <string name="loads_kpi_for_you">Para ti</string>
+    <string name="loads_kpi_compatible_context">cargas compatibles</string>
+    <string name="loads_kpi_bids">Ofertas</string>
+    <string name="loads_kpi_bids_context">pendientes de %1$d</string>
+    <string name="loads_home_suggested">Cargas sugeridas</string>
+    <string name="loads_home_see_all">Ver todas</string>
+    <string name="loads_home_see_my_bids">Ver mis ofertas</string>
+    <string name="loads_home_empty_title">Sin cargas sugeridas</string>
+    <string name="loads_home_empty_no_fleet">Registra tus vehículos en la web para ver cargas compatibles con tu flota.</string>
+    <string name="loads_home_empty_with_fleet">Cuando una PYME publique una carga para tu flota, aparecerá aquí.</string>
+    <string name="loads_home_empty_action">Explorar cargas</string>
+    <string name="loads_active_trip">Viaje activo</string>
+    <string name="loads_no_driver">Sin conductor</string>
+
+    <!-- Feed -->
+    <string name="loads_feed_title">Cargas disponibles</string>
+    <string name="loads_filter_my_vehicle">Mi vehículo</string>
+    <string name="loads_filter_best_pay">Mejor pago</string>
+    <string name="loads_filter_nearby">Cerca de mí</string>
+    <string name="loads_feed_filters_title">Filtros</string>
+    <plurals name="loads_feed_count">
+        <item quantity="one">%1$d carga</item>
+        <item quantity="other">%1$d cargas</item>
+    </plurals>
+    <string name="loads_feed_nearby_banner_title">No podemos filtrar por cercanía</string>
+    <string name="loads_feed_nearby_banner">Tu empresa no tiene una ciudad registrada. Complétala en la web para ver cargas cerca de ti.</string>
+    <string name="loads_feed_empty_title">Sin cargas por ahora</string>
+    <string name="loads_feed_empty_message">Cuando las PYMEs publiquen cargas las verás aquí. Desliza hacia abajo para actualizar.</string>
+    <string name="loads_feed_no_match_title">Ninguna carga coincide</string>
+    <string name="loads_feed_no_match_message">Quita algún filtro para ver más cargas.</string>
+
+    <!-- Detalle -->
+    <string name="loads_detail_title">Detalle de carga</string>
+    <string name="loads_detail_not_found">No encontramos esta carga. Vuelve atrás e inténtalo de nuevo.</string>
+    <string name="loads_reference_price">Precio referencial</string>
+    <string name="loads_cargo_section">La carga</string>
+    <string name="loads_pickup_on">Recojo %1$s</string>
+    <string name="loads_bids_count">%1$d/%2$d ofertas</string>
+    <string name="loads_compatible_with_fleet">Compatible con tu flota</string>
+    <string name="loads_published_by">Publica: %1$s</string>
+    <string name="loads_min_bid">Monto mínimo para ofertar: %1$s</string>
+    <string name="loads_your_bid">Tu oferta</string>
+    <string name="loads_volume">%1$s m³</string>
+    <string name="loads_map_description">Mapa de la ruta de %1$s a %2$s</string>
+    <string name="loads_auction_closed_title">Subasta cerrada</string>
+    <string name="loads_auction_closed">Esta carga ya no recibe ofertas. Explora otras cargas disponibles.</string>
+    <string name="loads_action_bid">Hacer una oferta</string>
+
+    <!-- Hoja de oferta -->
+    <string name="loads_sheet_title">Hacer una oferta</string>
+    <string name="loads_sheet_route">%1$s → %2$s · %3$s</string>
+    <string name="loads_sheet_vehicle">Vehículo</string>
+    <string name="loads_sheet_vehicle_placeholder">Elige tu vehículo</string>
+    <string name="loads_sheet_vehicle_option">%1$s · hasta %2$s</string>
+    <string name="loads_sheet_no_vehicle_title">Ningún vehículo puede llevar esta carga</string>
+    <string name="loads_sheet_no_vehicle">Ninguno de tus vehículos disponibles soporta %1$s. Registra o libera un vehículo en la web para poder ofertar.</string>
+    <string name="loads_sheet_amount">Tu oferta</string>
+    <string name="loads_sheet_amount_hint_both">Piso %1$s · Referencial %2$s</string>
+    <string name="loads_sheet_amount_hint_floor">Piso %1$s</string>
+    <string name="loads_sheet_amount_hint_ref">Referencial %1$s</string>
+    <string name="loads_quick_floor">Piso %1$s</string>
+    <string name="loads_quick_reference">Referencial %1$s</string>
+    <string name="loads_sheet_notes">Nota para la PYME</string>
+    <string name="loads_sheet_notes_hint">%1$d/300</string>
+    <string name="loads_sheet_error_title">No pudimos enviar tu oferta</string>
+    <string name="loads_sheet_submit">Enviar oferta</string>
+    <string name="loads_confirm_title">¿Enviar oferta de %1$s?</string>
+    <string name="loads_confirm_message">La PYME recibirá tu oferta con el vehículo %1$s. Revisa el monto antes de continuar.</string>
+    <string name="loads_confirm_message_no_vehicle">La PYME recibirá tu oferta. Revisa el monto antes de continuar.</string>
+    <string name="loads_confirm_review">Revisar monto</string>
+
+    <!-- Mis ofertas -->
+    <string name="loads_bids_title">Mis ofertas</string>
+    <string name="loads_bids_empty_title">Aún no has ofertado</string>
+    <string name="loads_bids_empty_message">Explora las cargas disponibles y envía tu primera oferta. Aquí verás si ganas la carga.</string>
+
+    <!-- Filtros avanzados y paginación -->
+    <string name="loads_filter_more">Más filtros</string>
+    <string name="loads_filter_more_count">Más filtros (%1$d)</string>
+    <string name="loads_filters_title">Filtros</string>
+    <string name="loads_filter_origin">Origen</string>
+    <string name="loads_filter_destination">Destino</string>
+    <string name="loads_filter_city_any">Cualquier ciudad</string>
+    <string name="loads_filter_dates">Fecha de recojo</string>
+    <string name="loads_filter_cargo_type">Tipo de carga</string>
+    <string name="loads_filter_cargo_any">Todos los tipos</string>
+    <string name="loads_filter_clear">Limpiar filtros</string>
+    <string name="loads_filter_apply">Ver %1$s</string>
+    <string name="loads_load_more_error">No pudimos cargar más cargas. Desliza hacia abajo para actualizar.</string>
+
+    <!-- Extras -->
+    <string name="loads_min_vehicle">Vehículo mínimo: %1$s</string>
+    <string name="loads_min_vehicle_chip">Mín. %1$s</string>
+    <string name="loads_bid_vehicle">Con %1$s · %2$s</string>
+    <string name="loads_bid_vehicle_plate">Con el vehículo %1$s</string>
+    <string name="loads_kpi_active">En curso</string>
+    <string name="loads_kpi_active_context">envíos activos</string>
+    <string name="loads_kpi_delivered">Entregados</string>
+    <string name="loads_kpi_delivered_context">este mes</string>
+</resources>
