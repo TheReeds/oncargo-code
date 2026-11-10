@@ -3,7 +3,7 @@ package pe.logyx.shared.tenancy;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.JsonWebToken;
-import pe.logyx.shared.api.BusinessException;
+import pe.logyx.shared.domain.BusinessException;
 
 import java.util.Optional;
 import java.util.UUID;

@@ -1,6 +1,7 @@
 package pe.logyx.shared.api;
 
 import io.quarkus.logging.Log;
+import pe.logyx.shared.domain.BusinessException;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
