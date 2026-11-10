@@ -5,6 +5,7 @@ import { CheckCircle2, MoreHorizontal, Plus, Route, Truck, UserRound, Wrench } f
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { NumberInput } from '@/components/ui/number-input';
@@ -100,7 +101,7 @@ function DriverDialog({ open, onClose }: { open: boolean; onClose: () => void })
         <Field label="Nombre completo" htmlFor="d-name" error={errors.fullName}><Input id="d-name" value={v.fullName} onChange={set('fullName')} placeholder="Luis Quispe Mamani" autoComplete="off" aria-invalid={!!errors.fullName} /></Field>
         <Field label="N.° de licencia" htmlFor="d-lic" error={errors.licenseNumber}><Input id="d-lic" value={v.licenseNumber} onChange={set('licenseNumber')} placeholder="Q12345678" className="font-mono" autoComplete="off" aria-invalid={!!errors.licenseNumber} /></Field>
         <Field label="Correo de acceso" htmlFor="d-email" error={errors.email}><Input id="d-email" type="email" value={v.email} onChange={set('email')} placeholder="luis@empresa.pe" autoComplete="off" aria-invalid={!!errors.email} /></Field>
-        <Field label="Contraseña inicial" htmlFor="d-pass" error={errors.password} hint="Mínimo 8 caracteres. El conductor podrá cambiarla luego."><Input id="d-pass" type="password" value={v.password} onChange={set('password')} autoComplete="new-password" aria-invalid={!!errors.password} /></Field>
+        <Field label="Contraseña inicial" htmlFor="d-pass" error={errors.password} hint="Mínimo 8 caracteres. El conductor podrá cambiarla luego."><PasswordInput id="d-pass" value={v.password} onChange={set('password')} autoComplete="new-password" aria-invalid={!!errors.password} /></Field>
       </form>
     </Dialog>
   );

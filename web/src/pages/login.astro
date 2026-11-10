@@ -1,16 +1,13 @@
 ---
 import Public from '@/layouts/Public.astro';
 import LoginForm from '@/features/auth/components/LoginForm';
+import { AuthCard } from '@/components/ui/auth-card';
 const next = Astro.url.searchParams.get('next') ?? undefined;
 const expired = Astro.url.searchParams.has('expired');
 ---
 <Public title="Ingresar">
-  <div class="mx-auto w-full max-w-md px-4 py-10 sm:py-16">
-    <div class="rounded-card border border-steel-200 bg-surface p-6 shadow-sm sm:p-8">
-      <h1 class="text-2xl font-semibold tracking-tight text-ink-900">Ingresa a tu cuenta</h1>
-      <p class="mb-6 mt-1.5 text-sm text-ink-500">Gestiona tus cargas, ofertas y envíos.</p>
-      <LoginForm client:load next={next} expired={expired} />
-    </div>
-    <p class="mt-5 text-center text-sm text-ink-500">¿Aún no tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/registro">Crea una cuenta</a></p>
-  </div>
+  <AuthCard title="Ingresa a tu cuenta" subtitle="Gestiona tus cargas, ofertas y envíos.">
+    <LoginForm client:load next={next} expired={expired} />
+    <Fragment slot="footer">¿Aún no tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/registro">Crea una cuenta</a></Fragment>
+  </AuthCard>
 </Public>

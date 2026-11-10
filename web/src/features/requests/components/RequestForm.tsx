@@ -12,9 +12,12 @@ import { flash, toast } from '@/components/ui/toaster';
 import { Alert } from '@/components/ui/alert';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatKm, formatMoney } from '@/lib/format';
+import { splitActionError } from '@/lib/action-error';
 import type { Quote } from '@/lib/api/server';
 
 type Item = { code?: string; name?: string };
+/** `error.field` de la API → id del control del formulario. */
+const FIELD_KEYS: Record<string, string> = { originCity: 'originCity', originAddress: 'originAddress', destinationCity: 'destinationCity', destinationAddress: 'destinationAddress', cargoType: 'cargoType', cargoDescription: 'cargoDescription', weightKg: 'weightKg', volumeM3: 'volumeM3', pickupDate: 'pickupDate' };
 
 function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: 'money' }) {
   return (
@@ -57,7 +60,7 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
       setQuoting(false);
       if (error) {
         setQuote(null);
-        setQuoteError(error.message);
+        setQuoteError(splitActionError(error).message);
       } else {
         setQuote(data);
         setQuoteError(null);
@@ -90,8 +93,16 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
       cargoType: v.cargoType as any, cargoDescription: g('cargoDescription'), weightKg: weight, volumeM3: vol > 0 ? vol : undefined, pickupDate: v.pickupDate,
     });
     if (error) {
-      setError(error.message);
-      toast.error(error.message);
+      // `field` de la API → error bajo el campo; sin campo → Alert + toast.
+      const { message, field } = splitActionError(error);
+      const key = field ? FIELD_KEYS[field] : undefined;
+      if (key) {
+        setErrors({ [key]: message });
+        requestAnimationFrame(() => document.getElementById(key)?.focus());
+      } else {
+        setError(message);
+        toast.error(message);
+      }
       setBusy(false);
       return;
     }

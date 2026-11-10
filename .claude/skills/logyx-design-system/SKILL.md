@@ -26,7 +26,7 @@ Fuente de verdad visual y de contenido del monorepo. Si vas a escribir UI, léel
 ## Tokens
 | Token | Hex | Uso |
 |---|---|---|
-| ink-900 / 700 / 500 / 400 | #0E1726 / #334155 / #64748B / #94A3B8 | Texto principal / secundario / terciario (AA) / bordes fuertes |
+| ink-900 / 700 / 500 / 400 | #0E1726 / #334155 / #5B6B7F (web; Android #64748B) / #94A3B8 | Texto principal / secundario / terciario (AA ≥4.5 sobre blanco, steel-100 y petrol-50) / bordes fuertes |
 | steel-100 / 200 | #EEF2F6 / #E2E8F0 | Fondo de app / bordes y divisores |
 | surface | #FFFFFF | Tarjetas, tablas, controles |
 | petrol-700 / 800 / 50 | #0B4F6C / #093F56 / #E6F1F5 | Primario (botón, links, selección, ruta) / hover / fondo selección |
@@ -68,6 +68,11 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Listados largos | `Table` + `Pagination` · cargando: `Skeleton`/`SkeletonRows` · sin datos: `EmptyState` |
 | Estado de entidad / ruta / KPI / cuenta regresiva | `StatusPill` / `RouteLine` / `KpiTile` / `Countdown` |
 | Identidad de empresa o persona | `Avatar` |
+| Contraseña | `PasswordInput` (mostrar/ocultar) |
+| Barra de filtros de un listado | `FilterBar` |
+| Paradas / hitos de un proceso | `Timeline` (`StopTimeline` para envíos) |
+| RUC verificado | `VerifiedBadge` (`variant="icon"` en listas densas) |
+| Pantalla de login/registro | `AuthCard` |
 
 ## Flujo de trabajo para agentes
 1. Lee esta skill + la referencia de la plataforma. 2. Revisa `/dev/ui` (web) para ver qué existe. 3. Construye con componentes compartidos y copy de CONTENT.md. 4. Verifica: web `cd web && npm run check && npm run build`; Android `./gradlew assembleDebug`. 5. Actualiza `docs/STATUS.md` si cambió el estado de una pantalla.

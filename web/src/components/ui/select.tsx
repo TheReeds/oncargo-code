@@ -9,10 +9,10 @@ export type Option = { value: string; label: string; hint?: string; disabled?: b
  * Select estilizado (Radix). Valor controlado con `value`/`onValueChange`; '' = sin selección (muestra placeholder).
  * Usa `id` con <Field htmlFor>. Para listas de más de ~8 opciones con búsqueda usa <Combobox>.
  */
-export function Select({ value, onValueChange, options, placeholder = 'Selecciona…', id, invalid, disabled, className, name }: { value: string; onValueChange: (v: string) => void; options: Option[]; placeholder?: string; id?: string; invalid?: boolean; disabled?: boolean; className?: string; name?: string }) {
+export function Select({ value, onValueChange, options, placeholder = 'Selecciona…', id, invalid, disabled, className, name, 'aria-label': ariaLabel }: { 'aria-label'?: string; value: string; onValueChange: (v: string) => void; options: Option[]; placeholder?: string; id?: string; invalid?: boolean; disabled?: boolean; className?: string; name?: string }) {
   return (
     <S.Root value={value || undefined} onValueChange={onValueChange} disabled={disabled} name={name}>
-      <S.Trigger id={id} aria-invalid={invalid || undefined} className={cn(fieldClass, 'flex h-10 items-center justify-between gap-2 text-left data-[placeholder]:text-ink-500', className)}>
+      <S.Trigger id={id} aria-label={ariaLabel} aria-invalid={invalid || undefined} className={cn(fieldClass, 'flex h-10 items-center justify-between gap-2 text-left data-[placeholder]:text-ink-500', className)}>
         <span className="truncate"><S.Value placeholder={placeholder} /></span>
         <S.Icon><ChevronDown className="size-4 text-ink-500" aria-hidden="true" /></S.Icon>
       </S.Trigger>

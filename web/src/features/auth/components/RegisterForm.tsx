@@ -3,6 +3,8 @@ import { actions } from 'astro:actions';
 import { Building2, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { splitActionError } from '@/lib/action-error';
 import { Field } from '@/components/ui/field';
 import { Combobox } from '@/components/ui/combobox';
 import { Checkbox, RadioGroup, RadioGroupItem } from '@/components/ui/form-controls';
@@ -10,6 +12,8 @@ import { toast } from '@/components/ui/toaster';
 
 type City = { code?: string; name?: string };
 type OrgType = 'PYME' | 'CARRIER';
+/** Campos del formulario que la API puede señalar en `error.field`. */
+const FIELDS = ['legalName', 'ruc', 'city', 'phone', 'fullName', 'email', 'password'];
 
 const TYPES: { v: OrgType; title: string; desc: string; Icon: typeof Building2 }[] = [
   { v: 'PYME', title: 'Soy una empresa', desc: 'Necesito enviar carga', Icon: Building2 },
@@ -62,14 +66,14 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
     }
     const { data, error } = res;
     if (error) {
-      // La acción solo entrega el mensaje (sin `field`): lo asociamos al campo por su contenido.
-      const m = error.message.toLowerCase();
-      const field = /\bruc\b/.test(m) ? 'ruc' : /correo|email/.test(m) ? 'email' : null;
-      if (field) {
-        setErrors({ [field]: error.message });
+      // `field` viene de la API (ruc, email…): el error va bajo el campo; si no hay campo, toast.
+      const { message, field } = splitActionError(error);
+      if (field && FIELDS.includes(field)) {
+        setErrors({ [field]: message });
         requestAnimationFrame(() => document.getElementById(field)?.focus());
+      } else {
+        toast.error(message);
       }
-      toast.error(error.message);
       setBusy(false);
       return;
     }
@@ -122,7 +126,7 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
             <Input id="email" name="email" type="email" autoComplete="email" placeholder="nombre@empresa.pe" aria-invalid={!!errors.email} />
           </Field>
           <Field label="Contraseña" htmlFor="password" error={errors.password} hint="Mínimo 8 caracteres">
-            <Input id="password" name="password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} />
+            <PasswordInput id="password" name="password" autoComplete="new-password" aria-invalid={!!errors.password} />
           </Field>
         </div>
       </section>

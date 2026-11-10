@@ -10,7 +10,7 @@
 
   --color-ink-900: #0e1726;
   --color-ink-700: #334155;
-  --color-ink-500: #64748b; /* texto terciario con contraste AA sobre blanco */
+  --color-ink-500: #5b6b7f; /* texto terciario: AA (≥4.5) sobre blanco, steel-100 y petrol-50 */
   --color-ink-400: #94a3b8;
   --color-steel-100: #eef2f6;
   --color-steel-200: #e2e8f0;

@@ -13,12 +13,13 @@ export default function UserMenu({ name, email, role, verified }: { name: string
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-input p-1 pr-2 outline-offset-2 transition-colors hover:bg-steel-100 data-[state=open]:bg-steel-100" aria-label={`Menú de ${name}`}>
-        <Avatar name={name} />
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-input p-1 pr-2 outline-offset-2 transition-colors hover:bg-steel-100 data-[state=open]:bg-steel-100">
+        <span aria-hidden="true"><Avatar name={name} /></span>
         <span className="hidden text-left text-xs leading-tight sm:block">
           <span className="block max-w-40 truncate font-medium text-ink-900">{name}</span>
           <span className="block text-ink-500">{role}</span>
         </span>
+        <span className="sr-only">Menú de cuenta</span>
         <ChevronDown className="size-4 text-ink-500" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64">

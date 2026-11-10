@@ -84,5 +84,5 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
 
   useEffect(draw, [shipments, selectedId, cities]);
 
-  return <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-card border border-steel-200 bg-steel-100" role="img" aria-label="Mapa de la ruta del envío" />;
+  return <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-card border border-steel-200 bg-steel-100" role="region" aria-label="Mapa de la ruta del envío" />;
 }

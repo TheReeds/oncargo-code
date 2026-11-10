@@ -31,7 +31,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 
   // Control de acceso por rol
   const driverOnly = home === '/conductor';
-  if (driverOnly && pathname !== '/conductor') return ctx.redirect('/conductor');
+  if (driverOnly && pathname !== '/conductor' && pathname !== '/logout') return ctx.redirect('/conductor');
   if (pathname.startsWith('/pyme') && session.orgType !== 'PYME') return ctx.redirect(home);
   if (pathname.startsWith('/transportista') && session.orgType !== 'CARRIER') return ctx.redirect(home);
   if (pathname === '/conductor' && !driverOnly) return ctx.redirect(home);

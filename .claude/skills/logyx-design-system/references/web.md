@@ -23,8 +23,12 @@ Importa siempre con alias: `import { Button } from '@/components/ui/button'`.
 | `dropdown-menu` | `DropdownMenu`, `…Trigger`, `…Content`, `…Item` (`destructive`), `…Label`, `…Separator` | menú de acciones |
 | `pagination` | `Pagination` | `page` (base 1), `size`, `total`, `onPageChange` — directo de `meta` |
 | `table` | `Table`, `Th`, `Td`, `Tr` | usar con `font-mono tabular-nums` en cifras |
+| `password-input` | `PasswordInput` | `Input` con botón mostrar/ocultar; dentro de `Field`, `id={htmlFor}` (su botón se llama "Mostrar contraseña": en tests usa `getByLabel('Contraseña', { exact: true })`) |
+| `filter-bar` | `FilterBar` | barra de filtros de listados: hijos = `Field`s (rejilla), `extra` = 2.ª fila, `sort`, `count`+`noun`, `active`+`onClear` ("Limpiar filtros"); `role="search"` |
+| `timeline` | `Timeline`, tipo `TimelineItem` | pasos/paradas: `items=[{id,title,detail?,meta?,status:'done'\|'current'\|'pending'}]`, `orientation` horizontal (apila en móvil) o vertical, `label` obligatorio. Paradas de envío: `StopTimeline`/`stopsToItems` (features/shipments) |
+| `auth-card` | `AuthCard` | tarjeta de login/registro: `title`, `subtitle`, `footer` (en `.astro`: `<Fragment slot="footer">`), `className` para el ancho (`max-w-md` default) |
 | `card`, `badge`, `skeleton`, `avatar`, `kbd` | `Card`/`CardHeader`/`CardTitle`/`CardBody`, `Badge`, `Skeleton`/`SkeletonRows`, `Avatar`, `Kbd` | |
-Dominio (`components/domain`): `StatusPill`, `RouteLine`, `KpiTile`, `EmptyState`, `Countdown`. Formatos: `lib/format.ts`.
+Dominio (`components/domain`): `StatusPill`, `RouteLine`, `KpiTile`, `EmptyState`, `Countdown`, `VerifiedBadge` (`variant="badge"` chip "Empresa verificada" | `"icon"` escudo con tooltip para listas densas; no renderiza si `verified` es falso). Formatos: `lib/format.ts`.
 
 ## Ejemplos
 ```tsx
@@ -60,7 +64,7 @@ Errores por campo de la API (`error.field`): `run()` los codifica en el mensaje;
 const { message, field } = splitActionError(error);
 if (field === 'amount') setErrors({ amount: message }); else toast.error(message);
 ```
-Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los parámetros de listado. `error.message` directo sigue funcionando (el separador es invisible).
+Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los parámetros de listado. Registro (`RegisterForm`) y nueva solicitud (`RequestForm`) ya mapean `field` → control (nunca parsees el texto del mensaje). `error.message` directo sigue funcionando (el separador es invisible).
 
 ## Do / Don't
 - DO `Field` + `id` para todo control. DON'T `<label>` ni `<select>`/`<input type="date">` sueltos.
@@ -70,6 +74,14 @@ Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los p
 - DO valores de fecha `YYYY-MM-DD` tal cual los espera la API. DON'T `new Date('2026-11-28')` (corre un día por zona horaria): usa `parseISODate`.
 - DO tokens (`text-ink-500`, `bg-petrol-50`). DON'T hex, `gray-*`, `blue-*`, sombras pesadas.
 - Si falta un componente: créalo en `components/ui`, agrégalo a `/dev/ui` y a esta tabla.
+
+## Accesibilidad (verificada con axe en `web/tests/e2e/a11y.spec.ts`)
+- Texto pequeño: `text-ink-500` (#5b6b7f) ya cumple AA sobre blanco/steel-100/petrol-50; no uses `ink-400` para texto.
+- Un control con `aria-label` debe contener el texto visible (regla `label-content-name-mismatch`): mejor `sr-only` dentro del botón que `aria-label` distinto.
+- `Tabs` sin `TabsContent` (solo filtros): pasa `aria-controls={undefined}` al `TabsTrigger`.
+- `<dl>` solo con `dt`/`dd` directos (en un `div` envolvente no cabe nada más); para tarjetas de dato con ícono usa `ul/li`.
+- Contenedores con controles internos (mapa) no llevan `role="img"`; usa `role="region"` + `aria-label`.
+- `Select` acepta `aria-label` cuando no hay `Field` visible (p. ej. orden de un listado).
 
 ## Trampas
 - **Radix Select no admite `value=""`**: por eso `Select` convierte `''` en "sin valor" y muestra placeholder.

@@ -2,7 +2,7 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from "@/components/ui/badge";
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { Alert } from '@/components/ui/alert';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
@@ -32,7 +32,7 @@ const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_
 <AppShell title="Detalle de solicitud" active="solicitudes">
   <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/pyme/solicitudes">Solicitudes</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Detalle</span></nav>
   <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)}`}>
-    <div slot="actions" class="flex flex-wrap items-center gap-3">{r.requesterRucVerified && <Badge tone="emerald">Empresa verificada</Badge>}<StatusPill status={r.status!} />{published && <CancelRequestButton client:load id={r.id!} />}</div>
+    <div slot="actions" class="flex flex-wrap items-center gap-3"><VerifiedBadge verified={r.requesterRucVerified} /><StatusPill status={r.status!} />{published && <CancelRequestButton client:load id={r.id!} />}</div>
   </PageHeader>
 
   {created && <Alert tone="success" className="mb-4">Solicitud publicada. La subasta ya está abierta para los transportistas.</Alert>}

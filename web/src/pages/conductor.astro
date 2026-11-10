@@ -5,10 +5,19 @@ import { Avatar } from '@/components/ui/avatar';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { StopTimeline } from '@/features/shipments/components/StopTimeline';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { activeShipment } from '@/features/driver/server';
+import { formatMoney, formatTons } from '@/lib/format';
+import { ApiError } from '@/lib/api/client';
 import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut } from '@lucide/astro';
 
 const session = Astro.locals.session!;
 const user = await me(session.token);
+let active = null;
+let activeError = false;
+try { active = await activeShipment(session.token); } catch (e) { if (e instanceof ApiError && e.status === 401) throw e; activeError = true; }
 const name = user?.fullName ?? session.email;
 const first = name.split(/\s+/)[0];
 const tasks = [
@@ -26,6 +35,30 @@ const tasks = [
         <h1 class="truncate text-2xl font-semibold tracking-tight text-ink-900">Hola, {first}</h1>
       </div>
     </div>
+
+    {active ? (
+      <section aria-labelledby="viaje" class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
+        <div class="flex items-center justify-between gap-2">
+          <h2 id="viaje" class="text-base font-semibold text-ink-900">Tu viaje activo</h2>
+          <StatusPill status={active.status!} />
+        </div>
+        <div class="mt-4"><RouteLine origin={active.originCity!} destination={active.destinationCity!} /></div>
+        <dl class="mt-4 grid grid-cols-2 gap-3 border-t border-steel-200 pt-4 text-sm">
+          <div class="col-span-2"><dt class="text-xs text-ink-500">Carga</dt><dd class="font-medium">{active.cargoDescription}</dd></div>
+          <div><dt class="text-xs text-ink-500">Peso</dt><dd class="font-mono font-medium">{formatTons(active.weightKg)}</dd></div>
+          <div><dt class="text-xs text-ink-500">Vehículo</dt><dd class="font-mono font-medium">{active.vehiclePlate ?? '—'}</dd></div>
+          <div class="col-span-2"><dt class="text-xs text-ink-500">Solicitante</dt><dd class="font-medium">{active.requesterName ?? '—'}</dd></div>
+        </dl>
+        <h3 class="mb-3 mt-5 text-sm font-semibold text-ink-900">Paradas</h3>
+        <StopTimeline stops={active.stops ?? []} orientation="vertical" />
+        <p class="mt-4 text-xs text-ink-500">Registra tus llegadas y la entrega desde la app móvil.</p>
+      </section>
+    ) : (
+      <section class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
+        <h2 class="text-base font-semibold text-ink-900">{activeError ? 'No pudimos cargar tu viaje' : 'No tienes un viaje activo'}</h2>
+        <p class="mt-1 text-sm text-ink-700">{activeError ? 'Recarga la página para intentarlo de nuevo.' : 'Cuando tu transportista te asigne un envío, lo verás aquí.'}</p>
+      </section>
+    )}
 
     <div class="mt-6">
       <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre LOGYX en tu celular para trabajar.</Alert>

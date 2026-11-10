@@ -12,6 +12,7 @@ npm install                        # postinstall copia el worker de MapLibre a p
 npm run dev                        # http://localhost:4321
 npm run check && npm run build     # obligatorio antes de dar algo por terminado
 npm start                          # producción (node dist/server/entry.mjs); en local sin HTTPS usa INSECURE_COOKIES=1
+npm run test:e2e                   # suite Playwright (ver "Tests e2e")
 ```
 Cuentas demo: ver `../AGENTS.md`. Solo el servidor de Astro habla con la API (`API_URL`); el JWT vive en la cookie httpOnly `logyx_session`.
 
@@ -26,8 +27,8 @@ src/
 │   ├── server.ts           #   llamadas a la API (solo servidor)
 │   ├── actions.ts          #   Astro Actions (mutaciones), registradas en src/actions/index.ts
 │   └── components/         #   islas React de la feature
-├── components/ui/          # biblioteca compartida (ver sección Componentes): button, field, input, select, combobox, date-picker, number-input, confirm-dialog, toaster, dialog, sheet, tabs, tooltip, dropdown-menu, pagination, table, card, badge, alert, skeleton, avatar, kbd, form-controls
-├── components/domain/      # StatusPill, RouteLine, KpiTile, EmptyState, Countdown (React; sirven en SSR y en islas)
+├── components/ui/          # biblioteca compartida (ver sección Componentes): button, field, input, password-input, select, combobox, date-picker, number-input, confirm-dialog, toaster, dialog, sheet, tabs, tooltip, dropdown-menu, pagination, table, filter-bar, timeline, auth-card, card, badge, alert, skeleton, avatar, kbd, form-controls
+├── components/domain/      # StatusPill, RouteLine, KpiTile, EmptyState, Countdown, VerifiedBadge (React; sirven en SSR y en islas)
 ├── components/layout/      # AppShell (sidebar + topbar por rol), PageHeader, Logo
 ├── components/dev/         # UiCatalog (página /dev/ui)
 ├── layouts/                # Base.astro (monta <Overlays/>: Toaster + ConfirmHost), Public.astro
@@ -69,8 +70,19 @@ Estilo shadcn/ui con código propio sobre primitivas MIT: Radix UI (select, popo
 - Si falta un componente, créalo en `components/ui`, agrégalo a `components/dev/UiCatalog.tsx` y a `.claude/skills/logyx-design-system/references/web.md`; nunca una copia local en una feature.
 - Tras instalar dependencias nuevas reinicia `npm run dev` (Vite: 504 "Outdated Optimize Dep").
 
+## Tests e2e (Playwright)
+`web/tests/e2e/` (`auth`, `flows`, `a11y` + `helpers/api.ts` y `helpers/ui.ts`), config en `web/playwright.config.ts`. Cada test crea sus propias cuentas (RUC válido aleatorio, correos únicos) vía API, así que es repetible; solo lee las cuentas demo para login. Las pantallas se prueban por UI; los datos de arranque (vehículos, solicitudes, ofertas) se crean por API.
+```bash
+# 1) Backend en perfil dev (datos demo), p. ej. en otro puerto si el 8080 está ocupado:
+cd backend && JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./mvnw quarkus:dev -Dquarkus.http.port=8180
+# 2) Suite (levanta su propio `astro dev` en :4322 si no defines E2E_BASE_URL):
+cd web && E2E_API_URL=http://localhost:8180 npm run test:e2e
+```
+Variables: `E2E_API_URL` (API para preparar datos, default `http://localhost:8180`), `E2E_BASE_URL` (web ya levantada; entonces no se arranca servidor — esa web debe tener el mismo `API_URL`), `E2E_SERVER=prod` (build + `node dist/server/entry.mjs`). Primera vez: `npx playwright install chromium`.
+Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (islas `astro-island[ssr]`) antes de interactuar; localiza por rol/label (los botones de fecha/combobox se nombran por su `<Label>`); un control con `aria-label` que contenga "Contraseña" choca con `getByLabel('Contraseña')`, usa `{ exact: true }`. `a11y.spec.ts` falla con violaciones axe `serious`/`critical` (WCAG 2.1 AA): úsalo al agregar pantallas.
+
 ## Convenciones de UI (ver DESIGN.md)
-- Tokens (Tailwind): `ink-900/700/500/400`, `steel-100/200`, `surface`, `petrol-700/800/50`, `emerald-500/700/50`, `amber-500/700/50`, `red-600/50`. `ink-500` y `emerald-700`/`amber-700` son variantes con contraste AA para texto (los hex de DESIGN.md sobre blanco no llegan a AA en texto pequeño).
+- Tokens (Tailwind): `ink-900/700/500/400`, `steel-100/200`, `surface`, `petrol-700/800/50`, `emerald-500/700/50`, `amber-500/700/50`, `red-600/50`. `ink-500` (`#5b6b7f` en web, ≥4.5:1 sobre blanco, steel-100 y petrol-50) y `emerald-700`/`amber-700` son variantes con contraste AA para texto (los hex de DESIGN.md no llegan a AA en texto pequeño).
 - Dinero y oportunidad = emerald (`.money`: mono, tabulares, emerald-700). Cifras técnicas (placas, km, toneladas, montos en tabla) en `font-mono`.
 - Radio: tarjetas `rounded-card` (10px), inputs `rounded-input` (8px), chips `rounded-full`.
 - Siempre `StatusPill` para estados, `RouteLine` para rutas, `KpiTile` (máx. 4 por fila), `EmptyState` con camión.
@@ -78,4 +90,4 @@ Estilo shadcn/ui con código propio sobre primitivas MIT: Radix UI (select, popo
 - Accesibilidad: todo input con `<Label>`/`Field`, errores con `role="alert"`, foco visible global, enlace "Saltar al contenido", navegación lateral colapsable en tablet/móvil.
 
 ## Pendientes conocidos
-Modo oscuro, evidencia (foto/firma) de entrega, auto-refresco/polling de ofertas y tracking, mapa con ruta por carretera (hoy línea recta entre ciudades), tests e2e automatizados (el flujo se recorrió con Playwright ad hoc; capturas en `docs/screenshots/`).
+Modo oscuro, evidencia (foto/firma) de entrega, auto-refresco/polling de ofertas y tracking, mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

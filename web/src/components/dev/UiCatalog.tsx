@@ -28,6 +28,11 @@ import { RouteLine } from '@/components/domain/RouteLine';
 import { KpiTile } from '@/components/domain/KpiTile';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { PasswordInput } from '@/components/ui/password-input';
+import { FilterBar } from '@/components/ui/filter-bar';
+import { Timeline } from '@/components/ui/timeline';
+import { AuthCard } from '@/components/ui/auth-card';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
 
 const cities = Object.entries(CITY_LABELS).map(([value, label]) => ({ value, label }));
@@ -55,7 +60,7 @@ function Section({ id, title, note, children }: { id: string; title: string; not
   );
 }
 
-const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['formatos', 'Formatos']];
+const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['formatos', 'Formatos']];
 
 export default function UiCatalog() {
   const [city, setCity] = useState('');
@@ -131,6 +136,7 @@ export default function UiCatalog() {
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               <Field label="Dirección de recojo" htmlFor="d-in" hint="Calle, número y distrito"><Input id="d-in" placeholder="Av. Argentina 1234, Callao" /></Field>
               <Field label="Campo con error" htmlFor="d-err" error="Ingresa la dirección de recojo."><Input id="d-err" aria-invalid defaultValue="Av" /></Field>
+              <Field label="Contraseña (PasswordInput)" htmlFor="d-pw" hint="Con botón mostrar/ocultar"><PasswordInput id="d-pw" defaultValue="Logyx2026!" autoComplete="off" /></Field>
               <Field label="Deshabilitado" htmlFor="d-dis"><Input id="d-dis" disabled value="No editable" readOnly /></Field>
               <Field label="Tipo de carga (Select)" htmlFor="d-sel"><Select id="d-sel" value={cargo} onValueChange={setCargo} options={cargos} /></Field>
               <Field label="Select inválido" htmlFor="d-sel2" error="Selecciona un vehículo."><Select id="d-sel2" value="" onValueChange={() => {}} options={cargos} invalid /></Field>
@@ -243,6 +249,26 @@ export default function UiCatalog() {
             <div className="flex flex-wrap items-center gap-2"><StatusPill status="PUBLISHED" /><StatusPill status="MATCHED" /><StatusPill status="CANCELLED" /><StatusPill status="PENDING" /><StatusPill status="IN_TRANSIT" /><StatusPill status="DELIVERED" /><StatusPill status="REJECTED" /><StatusPill status="MAINTENANCE" /></div>
             <div className="flex items-center gap-2 text-sm">Cierra en <Countdown closesAt={new Date(Date.now() + 3 * 60_000).toISOString()} /> · <Countdown closesAt={new Date(Date.now() + 5 * 3600_000).toISOString()} /></div>
           </CardBody></Card>
+        </Section>
+
+        <Section id="composicion" title="Composición" note="Piezas compartidas para pantallas completas: FilterBar (listados), Timeline (paradas/hitos), VerifiedBadge (RUC verificado), AuthCard (login/registro).">
+          <Card>
+            <FilterBar count={12} noun={['carga', 'cargas']} active onClear={() => toast.info('Filtros limpiados')} sort={<Select id="d-fb-s" aria-label="Ordenar por" value="pickup" onValueChange={() => {}} options={[{ value: 'pickup', label: 'Recojo más próximo' }]} className="h-9 w-44" />}>
+              <Field label="Origen" htmlFor="d-fb-o"><Combobox id="d-fb-o" value="" onValueChange={() => {}} options={[{ value: 'LIMA', label: 'Lima' }]} placeholder="Todas las ciudades" allowClear /></Field>
+              <Field label="Destino" htmlFor="d-fb-d"><Combobox id="d-fb-d" value="" onValueChange={() => {}} options={[{ value: 'JULIACA', label: 'Juliaca' }]} placeholder="Todas las ciudades" allowClear /></Field>
+            </FilterBar>
+            <CardBody className="space-y-6">
+              <Timeline label="Paradas de ejemplo" items={[
+                { id: '1', title: 'Recojo · Lima', detail: 'Av. Argentina 2450, Callao', meta: 'Completada · 28 nov · 08:10', status: 'done' },
+                { id: '2', title: 'Entrega · Juliaca', detail: 'Jr. San Román 456', meta: 'El conductor llegó', status: 'current' },
+                { id: '3', title: 'Cierre', detail: 'Confirmación de entrega', meta: 'Pendiente', status: 'pending' },
+              ]} />
+              <div className="flex flex-wrap items-center gap-4"><VerifiedBadge /><VerifiedBadge variant="icon" /></div>
+              <AuthCard title="Ingresa a tu cuenta" subtitle="Tarjeta de acceso (AuthCard)" footer="Pie con enlaces">
+                <p className="text-sm text-ink-700">Contenido del formulario.</p>
+              </AuthCard>
+            </CardBody>
+          </Card>
         </Section>
 
         <Section id="formatos" title="Formatos" note="Siempre vía lib/format.ts; nunca formatees a mano.">

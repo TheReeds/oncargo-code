@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, SearchX, ShieldCheck, X } from 'lucide-react';
+import { CheckCircle2, SearchX, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar } from '@/components/ui/avatar';
+import { FilterBar } from '@/components/ui/filter-bar';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -66,14 +67,13 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
   return (
     <>
       <Card>
-        <div className="space-y-4 border-b border-steel-200 p-4 sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Origen" htmlFor="m-o"><Combobox id="m-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
-            <Field label="Destino" htmlFor="m-d"><Combobox id="m-d" value={f.dest} onValueChange={(v) => set({ dest: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
-            <Field label="Fecha de recojo" htmlFor="m-f"><DateRangePicker id="m-f" value={range} onValueChange={(r) => set({ from: r.from, to: r.to })} placeholder="Cualquier fecha" /></Field>
-            <Field label="Tipo de carga" htmlFor="m-c"><Select id="m-c" value={f.cargo} onValueChange={(v) => set({ cargo: v === 'ALL' ? '' : v })} options={cargoOptions} placeholder="Todos los tipos" /></Field>
-          </div>
-          <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+        <FilterBar
+          count={total}
+          noun={['carga', 'cargas']}
+          active={hasFilters}
+          onClear={clear}
+          sort={<Select id="m-s" value={f.sort} onValueChange={(v) => set({ sort: v })} options={SORT_OPTIONS} className="h-9 w-44" aria-label="Ordenar por" />}
+          extra={<>
             <Field label="Peso máximo" htmlFor="m-w" className="w-full sm:w-44"><NumberInput id="m-w" value={f.maxKg} onValueChange={(v) => setF({ ...f, maxKg: v })} suffix="kg" placeholder="Sin límite" /></Field>
             <Tooltip content={maxCap > 0 ? `Tu vehículo disponible con más capacidad lleva ${formatTons(maxCap)}.` : 'Agrega un vehículo disponible para filtrar por compatibilidad.'}>
               <label htmlFor="m-compat" className="flex h-10 cursor-pointer items-center gap-2 text-sm text-ink-700">
@@ -82,13 +82,13 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                 {maxCap > 0 && <span className="font-mono text-xs text-ink-500">≤ {formatTons(maxCap)}</span>}
               </label>
             </Tooltip>
-            <div className="ml-auto flex h-10 items-center gap-3">
-              <span className="text-sm text-ink-500" aria-live="polite"><span className="font-mono font-semibold text-ink-900">{total}</span> {total === 1 ? 'carga' : 'cargas'}</span>
-              <Select id="m-s" value={f.sort} onValueChange={(v) => set({ sort: v })} options={SORT_OPTIONS} className="h-9 w-44" />
-              {hasFilters && <Button variant="ghost" size="sm" onClick={clear}><X /> Limpiar filtros</Button>}
-            </div>
-          </div>
-        </div>
+          </>}
+        >
+          <Field label="Origen" htmlFor="m-o"><Combobox id="m-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+          <Field label="Destino" htmlFor="m-d"><Combobox id="m-d" value={f.dest} onValueChange={(v) => set({ dest: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+          <Field label="Fecha de recojo" htmlFor="m-f"><DateRangePicker id="m-f" value={range} onValueChange={(r) => set({ from: r.from, to: r.to })} placeholder="Cualquier fecha" /></Field>
+          <Field label="Tipo de carga" htmlFor="m-c"><Select id="m-c" value={f.cargo} onValueChange={(v) => set({ cargo: v === 'ALL' ? '' : v })} options={cargoOptions} placeholder="Todos los tipos" /></Field>
+        </FilterBar>
         {rows.length === 0 ? (
           !hasFilters ? (
             <EmptyState title="No hay cargas abiertas por ahora" description="Cuando una PYME publique una solicitud, la verás aquí con su subasta en curso." />
@@ -96,31 +96,32 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
             <EmptyState title="No hay cargas con estos filtros" description="Prueba con otra ciudad o amplía el rango de fechas." action={<Button variant="outline" onClick={clear}><SearchX /> Limpiar filtros</Button>} />
           )
         ) : (
-          <Table className="[&_td]:px-3 [&_th]:px-3 sm:[&_td:first-child]:pl-5 sm:[&_th:first-child]:pl-5">
-            <thead><tr><Th>Recojo</Th><Th className="hidden text-right xl:table-cell">Distancia</Th><Th>Entrega</Th><Th>Carga</Th><Th className="hidden lg:table-cell">Vehículo mínimo</Th><Th>Ofertas</Th><Th className="text-right">Sugerido</Th><Th className="sticky right-0 bg-steel-100"><span className="sr-only">Acción</span></Th></tr></thead>
+          <Table className="[&_td]:px-3 [&_th]:px-3 sm:[&_td:first-child]:pl-5 sm:[&_th:first-child]:pl-5 sm:[&_td:last-child]:pr-5">
+            <thead><tr><Th>Ruta</Th><Th>Carga</Th><Th>Subasta</Th><Th className="text-right">Precio</Th><Th><span className="sr-only">Acción</span></Th></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const ok = isCompatible(r);
                 return (
                   <Tr key={r.id}>
-                    <Td><div className="font-medium">{CITY_LABELS[r.originCity!]}</div><div className="max-w-44 truncate text-xs text-ink-500">{r.originAddress}</div><div className="text-xs text-ink-700">{formatDate(r.pickupDate)}</div></Td>
-                    <Td className="hidden whitespace-nowrap text-right font-mono tabular-nums text-ink-700 xl:table-cell">{formatKm(r.distanceKm)}</Td>
-                    <Td><div className="font-medium">{CITY_LABELS[r.destinationCity!]} <span className="font-mono text-xs font-normal text-ink-500 xl:hidden">· {formatKm(r.distanceKm)}</span></div><div className="hidden max-w-44 truncate text-xs text-ink-500 xl:block">{r.destinationAddress}</div></Td>
-                    <Td>
-                      <div className="whitespace-nowrap">{CARGO_LABELS[r.cargoType!]} · <span className="font-mono">{formatTons(r.weightKg)}</span></div>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-500">
-                        {r.requesterName && <span className="hidden items-center gap-1.5 xl:flex"><Avatar name={r.requesterName} size="sm" className="size-5 text-[9px]" /><span className="max-w-32 truncate">{r.requesterName}</span></span>}
-                        {r.requesterRucVerified && <Badge tone="petrol"><ShieldCheck className="size-3" aria-hidden="true" />Empresa verificada</Badge>}
-                        {ok && <Badge tone="emerald">Compatible</Badge>}
+                    <Td className="min-w-0">
+                      <div className="font-medium">{CITY_LABELS[r.originCity!]} <span className="text-ink-500" aria-hidden="true">→</span><span className="sr-only">a</span> {CITY_LABELS[r.destinationCity!]}</div>
+                      <div className="text-xs text-ink-700"><span className="font-mono">{formatKm(r.distanceKm)}</span> · recojo {formatDate(r.pickupDate)}</div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-500">
+                        {r.requesterName && <span className="max-w-40 truncate">{r.requesterName}</span>}
+                        <VerifiedBadge verified={r.requesterRucVerified} variant="icon" />
                       </div>
                     </Td>
-                    <Td className="hidden whitespace-nowrap lg:table-cell">{r.minVehicleType ? VEHICLE_LABELS[r.minVehicleType] : '—'}</Td>
+                    <Td>
+                      <div>{CARGO_LABELS[r.cargoType!]} · <span className="font-mono">{formatTons(r.weightKg)}</span></div>
+                      <div className="text-xs text-ink-500">Mín. {r.minVehicleType ? VEHICLE_LABELS[r.minVehicleType] : '—'}</div>
+                      {ok && <Badge tone="emerald" className="mt-1">Compatible</Badge>}
+                    </Td>
                     <Td className="whitespace-nowrap">
-                      <div className="font-mono text-sm tabular-nums">{r.auction?.bidCount ?? 0}/{r.auction?.maxBids ?? 5}</div>
+                      <div className="font-mono text-sm tabular-nums">{r.auction?.bidCount ?? 0}/{r.auction?.maxBids ?? 5} <span className="font-sans text-xs text-ink-500">ofertas</span></div>
                       <Countdown closesAt={r.auction?.closesAt} className="text-xs" />
                     </Td>
-                    <Td className="whitespace-nowrap text-right"><div className="money">{formatMoney(r.suggestedPrice)}</div><div className="font-mono text-xs text-ink-500">piso {formatMoney(r.priceFloor)}</div></Td>
-                    <Td className="sticky right-0 whitespace-nowrap bg-surface text-right shadow-[-8px_0_8px_-8px_rgba(14,23,38,0.15)]">
+                    <Td className="whitespace-nowrap text-right"><div className="money" title="Precio sugerido">{formatMoney(r.suggestedPrice)}</div><div className="font-mono text-xs text-ink-500">piso {formatMoney(r.priceFloor)}</div></Td>
+                    <Td className="whitespace-nowrap text-right">
                       {r.myBid ? (
                         <div className="flex flex-col items-end gap-0.5"><Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ofertada</Badge><span className="font-mono text-xs tabular-nums text-ink-700">{formatMoney(r.myBid.amount)}</span></div>
                       ) : (

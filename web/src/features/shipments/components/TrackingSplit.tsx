@@ -90,8 +90,8 @@ export default function TrackingSplit({ shipments, cities, initialId, perspectiv
       <Card className="flex flex-col overflow-hidden lg:max-h-[calc(100vh-9rem)]">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as 'active' | 'all')}>
           <TabsList className="px-3" aria-label="Filtrar envíos">
-            <TabsTrigger value="active">En curso <span className="ml-1 font-mono text-xs">{activeCount}</span></TabsTrigger>
-            <TabsTrigger value="all">Todos <span className="ml-1 font-mono text-xs">{shipments.length}</span></TabsTrigger>
+            <TabsTrigger value="active" aria-controls={undefined}>En curso <span className="ml-1 font-mono text-xs">{activeCount}</span></TabsTrigger>
+            <TabsTrigger value="all" aria-controls={undefined}>Todos <span className="ml-1 font-mono text-xs">{shipments.length}</span></TabsTrigger>
           </TabsList>
         </Tabs>
         <ul className="max-h-80 flex-1 divide-y divide-steel-200 overflow-y-auto lg:max-h-none">
@@ -126,13 +126,13 @@ export default function TrackingSplit({ shipments, cities, initialId, perspectiv
               <div className="text-right"><div className="text-xs text-ink-500">Precio acordado</div><div className="money text-xl">{formatMoney(selected.agreedPrice)}</div></div>
             </CardHeader>
             <CardBody className="space-y-6">
-              <dl className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
-                <div className="flex items-center gap-3"><Avatar name={(perspective === 'PYME' ? selected.carrierName : selected.requesterName) ?? '?'} /><div className="min-w-0"><dt className="text-xs text-ink-500">{party}</dt><dd className="truncate font-medium">{(perspective === 'PYME' ? selected.carrierName : selected.requesterName) ?? '—'}</dd></div></div>
-                <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><User className="size-4" aria-hidden="true" /></span><div><dt className="text-xs text-ink-500">Conductor</dt><dd className={cn('font-medium', !selected.driverName && 'text-amber-700')}>{selected.driverName ?? 'Sin asignar'}</dd></div></div>
-                <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Truck className="size-4" aria-hidden="true" /></span><div><dt className="text-xs text-ink-500">Vehículo</dt><dd className="font-mono font-medium">{selected.vehiclePlate ?? '—'}</dd></div></div>
-                <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Weight className="size-4" aria-hidden="true" /></span><div><dt className="text-xs text-ink-500">Carga</dt><dd className="font-mono font-medium">{formatTons(selected.weightKg)}</dd></div></div>
-                <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Calendar className="size-4" aria-hidden="true" /></span><div><dt className="text-xs text-ink-500">{selected.deliveredAt ? 'Entregado' : 'Creado'}</dt><dd className="font-medium">{formatDateTime(selected.deliveredAt ?? selected.createdAt)}</dd></div></div>
-              </dl>
+              <ul className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                <li className="flex items-center gap-3"><Avatar name={(perspective === 'PYME' ? selected.carrierName : selected.requesterName) ?? '?'} /><div className="min-w-0"><span className="block text-xs text-ink-500">{party}</span><span className="block truncate font-medium">{(perspective === 'PYME' ? selected.carrierName : selected.requesterName) ?? '—'}</span></div></li>
+                <li className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><User className="size-4" aria-hidden="true" /></span><div><span className="block text-xs text-ink-500">Conductor</span><span className={cn('block font-medium', !selected.driverName && 'text-amber-700')}>{selected.driverName ?? 'Sin asignar'}</span></div></li>
+                <li className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Truck className="size-4" aria-hidden="true" /></span><div><span className="block text-xs text-ink-500">Vehículo</span><span className="block font-mono font-medium">{selected.vehiclePlate ?? '—'}</span></div></li>
+                <li className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Weight className="size-4" aria-hidden="true" /></span><div><span className="block text-xs text-ink-500">Carga</span><span className="block font-mono font-medium">{formatTons(selected.weightKg)}</span></div></li>
+                <li className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-steel-100 text-ink-700"><Calendar className="size-4" aria-hidden="true" /></span><div><span className="block text-xs text-ink-500">{selected.deliveredAt ? 'Entregado' : 'Creado'}</span><span className="block font-medium">{formatDateTime(selected.deliveredAt ?? selected.createdAt)}</span></div></li>
+              </ul>
               <div className="border-t border-steel-200 pt-5">
                 <h3 className="mb-3 text-sm font-semibold text-ink-900">Paradas</h3>
                 <StopTimeline stops={selected.stops ?? []} />

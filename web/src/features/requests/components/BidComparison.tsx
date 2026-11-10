@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
-import { BadgeCheck, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip } from '@/components/ui/tooltip';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { flash, toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
@@ -64,7 +64,7 @@ export default function BidComparison({ bids, suggested, canAccept }: { bids: Bi
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 font-medium">
                       <span className="truncate">{b.carrierName}</span>
-                      {b.carrierRucVerified && <Tooltip content="RUC verificado"><span className="inline-flex"><BadgeCheck className="size-4 text-emerald-700" aria-label="Empresa verificada" /></span></Tooltip>}
+                      <VerifiedBadge verified={b.carrierRucVerified} variant="icon" />
                     </div>
                     <div className="text-xs text-ink-500">
                       {b.vehicleType ? <>{VEHICLE_LABELS[b.vehicleType] ?? b.vehicleType}{b.vehiclePlate && <> · <span className="font-mono">{b.vehiclePlate}</span></>} · </> : null}{formatDateTime(b.createdAt)}
