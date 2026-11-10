@@ -1,0 +1,10 @@
+# Gradle / Android Studio (los módulos anidados generan su propio build/)
+.gradle/
+build/
+**/build/
+.kotlin/
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/

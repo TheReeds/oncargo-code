@@ -1,0 +1,29 @@
+package pe.logyx.app
+
+import android.app.Application
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
+import org.koin.dsl.module
+import pe.logyx.core.data.dataModule
+import pe.logyx.feature.auth.authModule
+import pe.logyx.feature.driver.driverModule
+import pe.logyx.feature.loads.loadsModule
+import pe.logyx.feature.requests.requestsModule
+import pe.logyx.feature.shipments.shipmentsModule
+
+/** Configuración de build expuesta por DI (evita que los features dependan de BuildConfig). */
+class AppConfig(val apiBaseUrl: String, val webBaseUrl: String, val versionName: String, val debug: Boolean)
+
+class LogyxApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        startKoin {
+            androidContext(this@LogyxApplication)
+            modules(
+                module { single { AppConfig(BuildConfig.API_BASE_URL, BuildConfig.WEB_BASE_URL, BuildConfig.VERSION_NAME, BuildConfig.DEBUG) } },
+                dataModule(BuildConfig.API_BASE_URL),
+                authModule, loadsModule, requestsModule, shipmentsModule, driverModule,
+            )
+        }
+    }
+}
