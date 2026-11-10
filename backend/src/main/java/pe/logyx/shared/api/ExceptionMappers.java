@@ -14,7 +14,7 @@ public class ExceptionMappers {
 
     @ServerExceptionMapper
     public Response business(BusinessException e) {
-        return Response.status(e.status()).entity(ApiError.of(e.code(), e.getMessage(), null)).build();
+        return Response.status(e.status()).entity(ApiError.of(e.code(), e.getMessage(), e.field())).build();
     }
 
     @ServerExceptionMapper

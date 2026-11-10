@@ -3,6 +3,7 @@ package pe.logyx.marketplace.infrastructure.persistence;
 import jakarta.enterprise.context.ApplicationScoped;
 import pe.logyx.marketplace.application.port.out.BidRepository;
 import pe.logyx.marketplace.domain.model.Bid;
+import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
 import java.util.Collection;
 import java.util.List;
@@ -60,6 +61,18 @@ public class PanacheBidRepository implements BidRepository {
                 .setParameter("ids", auctionIds)
                 .getResultList().stream()
                 .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
+    }
+
+    @Override
+    public long countPendingToReview(UUID requesterOrgId) {
+        return BidEntity.count("requesterOrgId = ?1 and status = ?2 and requestId in "
+                        + "(select r.id from ShipmentRequestEntity r where r.status = ?3)",
+                requesterOrgId, Bid.Status.PENDING, ShipmentRequest.Status.PUBLISHED);
+    }
+
+    @Override
+    public long countByCarrierAndStatus(UUID carrierOrgId, Bid.Status status) {
+        return BidEntity.count("carrierOrgId = ?1 and status = ?2", carrierOrgId, status);
     }
 
     @Override

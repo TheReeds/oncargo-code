@@ -4,7 +4,9 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import pe.logyx.shared.api.ApiResponse;
+import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.tenancy.Roles;
 import pe.logyx.shipment.application.AssignDriverUseCase;
 import pe.logyx.shipment.application.ShipmentQueries;
@@ -25,8 +27,13 @@ public class ShipmentResource {
     @GET
     @Path("/shipments")
     @RolesAllowed({Roles.PYME, Roles.CARRIER})
-    public ApiResponse<List<ShipmentView>> mine() {
-        return ApiResponse.of(ShipmentView.of(queries.mine()));
+    public ApiResponse<List<ShipmentView>> mine(
+            @Parameter(description = "Página 0-based. Si se omite page y size, se devuelven todos.")
+            @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20 cuando se pagina).")
+            @QueryParam("size") Integer size) {
+        if (page == null && size == null) return ApiResponse.of(ShipmentView.of(queries.mine()));
+        return ApiResponse.of(queries.mine(PageRequest.of(page, size)).map(ShipmentView::of));
     }
 
     @GET
@@ -49,6 +56,13 @@ public class ShipmentResource {
     @RolesAllowed(Roles.DRIVER)
     public ApiResponse<List<ShipmentView>> driverShipments() {
         return ApiResponse.of(ShipmentView.of(queries.driverShipments()));
+    }
+
+    @GET
+    @Path("/driver/shipments/active")
+    @RolesAllowed(Roles.DRIVER)
+    public ApiResponse<ShipmentView> driverActive() {
+        return ApiResponse.of(ShipmentView.of(queries.activeForDriver()));
     }
 
     @POST

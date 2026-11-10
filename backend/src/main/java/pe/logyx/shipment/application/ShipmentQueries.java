@@ -8,6 +8,8 @@ import pe.logyx.fleet.domain.model.Driver;
 import pe.logyx.identity.application.OrganizationDirectory;
 import pe.logyx.identity.domain.model.Organization;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shared.domain.Paged;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.TenantContext;
 import pe.logyx.shipment.application.port.out.RequestInfoProvider;
@@ -16,6 +18,9 @@ import pe.logyx.shipment.application.port.out.ShipmentStopRepository;
 import pe.logyx.shipment.domain.model.Shipment;
 import pe.logyx.shipment.domain.model.ShipmentStop;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +28,8 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 @Transactional
 public class ShipmentQueries {
+
+    private static final ZoneId LIMA = ZoneId.of("America/Lima");
 
     @Inject ShipmentRepository shipments;
     @Inject ShipmentStopRepository stops;
@@ -38,12 +45,41 @@ public class ShipmentQueries {
                 : shipments.listByRequester(org));
     }
 
+    /** Igual que {@link #mine()} pero paginado (los recientes primero). */
+    public Paged<ShipmentSummary> mine(PageRequest page) {
+        UUID org = tenant.orgId();
+        Paged<Shipment> p = Paged.slice(tenant.orgType() == OrgType.CARRIER
+                ? shipments.listByCarrier(org)
+                : shipments.listByRequester(org), page);
+        return new Paged<>(summaries(p.items()), page, p.total());
+    }
+
+    /** KPIs de envíos; "del mes" cuenta desde el día 1 a las 00:00 en hora de Lima. */
+    public ShipmentCounts counts() {
+        UUID org = tenant.orgId();
+        boolean carrier = tenant.orgType() == OrgType.CARRIER;
+        OffsetDateTime monthStart = LocalDate.now(LIMA).withDayOfMonth(1).atStartOfDay(LIMA).toOffsetDateTime();
+        return new ShipmentCounts(
+                shipments.countByStatus(org, carrier, List.of(Shipment.Status.IN_TRANSIT)),
+                shipments.countByStatus(org, carrier, List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT)),
+                shipments.countDeliveredSince(org, carrier, monthStart));
+    }
+
     public ShipmentSummary detail(UUID id) {
         return summaries(List.of(visible(id))).getFirst();
     }
 
     public List<ShipmentSummary> driverShipments() {
         return summaries(shipments.listActiveByDriver(currentDriver().id()));
+    }
+
+    /** Envío activo del conductor: el IN_TRANSIT; si no hay, el PENDING más antiguo; si no, 404 LOGYX-SHP-002. */
+    public ShipmentSummary activeForDriver() {
+        List<Shipment> active = shipments.listActiveByDriver(currentDriver().id());   // más antiguos primero
+        Shipment s = active.stream().filter(x -> x.status() == Shipment.Status.IN_TRANSIT).findFirst()
+                .or(() -> active.stream().findFirst())
+                .orElseThrow(() -> new BusinessException(404, "LOGYX-SHP-002", "No tienes un envío activo"));
+        return summaries(List.of(s)).getFirst();
     }
 
     /** Conductor del usuario actual o 403. */

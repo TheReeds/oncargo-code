@@ -36,6 +36,13 @@ components:
           $ref: "#/components/schemas/BidView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseDashboardSummaryView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/DashboardSummaryView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseDriverView:
       type: object
       properties:
@@ -205,6 +212,10 @@ components:
           $ref: "#/components/schemas/Status3"
         createdAt:
           $ref: "#/components/schemas/OffsetDateTime"
+        vehicleType:
+          $ref: "#/components/schemas/Type"
+        vehiclePlate:
+          type: string
     CargoItem:
       type: object
       properties:
@@ -296,6 +307,32 @@ components:
           minimum: 0.01
         pickupDate:
           $ref: "#/components/schemas/LocalDate"
+    DashboardSummaryView:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/OrgType"
+        activeRequests:
+          type: integer
+          format: int64
+        bidsToReview:
+          type: integer
+          format: int64
+        shipmentsInTransit:
+          type: integer
+          format: int64
+        compatibleLoads:
+          type: integer
+          format: int64
+        pendingBids:
+          type: integer
+          format: int64
+        activeShipments:
+          type: integer
+          format: int64
+        deliveredThisMonth:
+          type: integer
+          format: int64
     DriverRequest:
       type: object
       required:
@@ -360,6 +397,15 @@ components:
       properties:
         timestamp:
           $ref: "#/components/schemas/Instant"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
     OffsetDateTime:
       type: string
       format: date-time
@@ -516,6 +562,10 @@ components:
           $ref: "#/components/schemas/AuctionView"
         myBid:
           $ref: "#/components/schemas/BidView"
+        requesterRucVerified:
+          type: boolean
+        minVehicleType:
+          $ref: "#/components/schemas/Type"
     Role:
       type: string
       enum:
@@ -668,6 +718,8 @@ components:
           $ref: "#/components/schemas/OrgType"
         rucVerified:
           type: boolean
+        organizationCity:
+          type: string
     VehicleRequest:
       type: object
       required:
@@ -815,6 +867,26 @@ paths:
       summary: Cities
       tags:
       - Catalog Resource
+  /api/v1/dashboard/summary:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDashboardSummaryView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Summary
+      tags:
+      - Dashboard Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
   /api/v1/driver/shipments:
     get:
       responses:
@@ -829,6 +901,25 @@ paths:
         "403":
           description: Not Allowed
       summary: Driver Shipments
+      tags:
+      - Shipment Resource
+      security:
+      - SecurityScheme:
+        - DRIVER
+  /api/v1/driver/shipments/active:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseShipmentView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Driver Active
       tags:
       - Shipment Resource
       security:
@@ -957,6 +1048,57 @@ paths:
       - SecurityScheme:
         - PYME
     get:
+      parameters:
+      - description: "Tipo de carga (GENERAL, FRAGILE, PERISHABLE, HAZARDOUS, BULK,\
+          \ OVERSIZED)."
+        name: cargoType
+        in: query
+        schema:
+          type: string
+      - description: Código de ciudad de destino (p. ej. JULIACA).
+        name: destinationCity
+        in: query
+        schema:
+          type: string
+      - description: Peso máximo de la carga en kg (inclusive).
+        name: maxWeightKg
+        in: query
+        schema:
+          type: number
+      - description: Código de ciudad de origen (p. ej. LIMA).
+        name: originCity
+        in: query
+        schema:
+          type: string
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Fecha de recojo mínima, ISO (yyyy-MM-dd), inclusive."
+        name: pickupFrom
+        in: query
+        schema:
+          format: date
+          type: string
+      - description: "Fecha de recojo máxima, ISO (yyyy-MM-dd), inclusive."
+        name: pickupTo
+        in: query
+        schema:
+          format: date
+          type: string
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Orden: pickup (por omisión), price_desc o recent."
+        name: sort
+        in: query
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -976,6 +1118,19 @@ paths:
         - CARRIER
   /api/v1/shipment-requests/mine:
     get:
+      parameters:
+      - description: "Página 0-based. Si se omite page y size, se devuelven todas."
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20 cuando se pagina)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: OK
@@ -1123,6 +1278,19 @@ paths:
         - PYME
   /api/v1/shipments:
     get:
+      parameters:
+      - description: "Página 0-based. Si se omite page y size, se devuelven todos."
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20 cuando se pagina)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: OK

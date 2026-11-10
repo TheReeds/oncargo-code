@@ -103,8 +103,12 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | AUC | `001` subasta no abierta, `002` subasta cerrada |
 | BID | `001` bajo el piso (RN03), `003` ya ofertó, `004` no admite aceptar |
 | CAP | `001` sin capacidad (RN02), `002` vehículo no disponible |
-| SHP | `001` reasignar conductor solo antes del recojo |
+| SHP | `001` reasignar conductor solo antes del recojo, `002` (404) el conductor no tiene envío activo |
 | TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada, `004` envío cerrado |
+`BusinessException` admite `field` (`badRequest/conflict(code, msg, field)`) para que los clientes marquen el campo:
+RUC inválido/duplicado → `ruc`, email repetido → `email`, placa repetida → `plate`, BID-001 → `amount`,
+CAP-001/002 → `vehicleId`. Montos en mensajes: `shared.domain.Money.soles(...)` → `S/ 1,850.00`.
+Listados paginados: `shared.domain.PageRequest/Paged` + `ApiResponse.of(Paged)` (agrega `meta.page|size|total`).
 Los códigos son contrato: no reutilices ni cambies uno existente; agrega el siguiente número.
 
 ## Cuentas demo (solo perfil dev)

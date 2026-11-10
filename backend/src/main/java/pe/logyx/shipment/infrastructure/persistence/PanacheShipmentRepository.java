@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.domain.model.Shipment;
 
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +44,18 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     public List<Shipment> listActiveByDriver(UUID driverId) {
         return map(ShipmentEntity.list("driverId = ?1 and status in ?2 order by createdAt",
                 driverId, List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT)));
+    }
+
+    @Override
+    public long countByStatus(UUID orgId, boolean asCarrier, Collection<Shipment.Status> statuses) {
+        return ShipmentEntity.count((asCarrier ? "carrierOrgId" : "requesterOrgId") + " = ?1 and status in ?2",
+                orgId, statuses);
+    }
+
+    @Override
+    public long countDeliveredSince(UUID orgId, boolean asCarrier, OffsetDateTime since) {
+        return ShipmentEntity.count((asCarrier ? "carrierOrgId" : "requesterOrgId")
+                + " = ?1 and status = ?2 and deliveredAt >= ?3", orgId, Shipment.Status.DELIVERED, since);
     }
 
     @Override

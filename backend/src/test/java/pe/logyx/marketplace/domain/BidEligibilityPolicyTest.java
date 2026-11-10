@@ -33,4 +33,16 @@ class BidEligibilityPolicyTest {
         assertEquals("LOGYX-CAP-001", e.code());
         assertDoesNotThrow(() -> BidEligibilityPolicy.ensureVehicleEligible(true, new BigDecimal("1000"), new BigDecimal("1000")));
     }
+
+    @Test
+    void erroresIndicanElCampoYFormateanElMonto() {
+        var floor = assertThrows(BusinessException.class,
+                () -> BidEligibilityPolicy.ensureAboveFloor(new BigDecimal("1000"), new BigDecimal("1850")));
+        assertEquals("amount", floor.field());
+        assertTrue(floor.getMessage().contains("S/ 1,850.00"), floor.getMessage());
+        assertEquals("vehicleId", assertThrows(BusinessException.class,
+                () -> BidEligibilityPolicy.ensureVehicleEligible(false, BigDecimal.TEN, BigDecimal.ONE)).field());
+        assertEquals("vehicleId", assertThrows(BusinessException.class,
+                () -> BidEligibilityPolicy.ensureVehicleEligible(true, BigDecimal.ONE, BigDecimal.TEN)).field());
+    }
 }

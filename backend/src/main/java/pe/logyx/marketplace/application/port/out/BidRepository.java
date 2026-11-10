@@ -19,6 +19,9 @@ public interface BidRepository {
     boolean existsForCarrier(UUID auctionId, UUID carrierOrgId);
     long countByAuctionExcludingCarrier(UUID auctionId, UUID carrierOrgId);
     Map<UUID, Long> countByAuctions(Collection<UUID> auctionIds);
+    /** Ofertas pendientes sobre solicitudes publicadas de la PYME (por revisar). */
+    long countPendingToReview(UUID requesterOrgId);
+    long countByCarrierAndStatus(UUID carrierOrgId, Bid.Status status);
     /** Inserta o actualiza. */
     void save(Bid bid);
 }

@@ -2,9 +2,14 @@ package pe.logyx.marketplace.infrastructure.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
+import pe.logyx.marketplace.application.MarketplaceFilter;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shared.domain.Paged;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -30,11 +35,36 @@ public class PanacheShipmentRequestRepository implements ShipmentRequestReposito
     }
 
     @Override
-    public List<ShipmentRequest> listOpenMarketplace() {
-        return map(ShipmentRequestEntity.list(
-                "status = ?1 and id in (select a.requestId from AuctionEntity a where a.status = ?2) "
-                        + "order by pickupDate asc, createdAt desc",
-                ShipmentRequest.Status.PUBLISHED, Auction.Status.OPEN));
+    public Paged<ShipmentRequest> searchOpenMarketplace(MarketplaceFilter f, PageRequest page) {
+        StringBuilder where = new StringBuilder(
+                "status = ?1 and id in (select a.requestId from AuctionEntity a where a.status = ?2)");
+        List<Object> params = new ArrayList<>(List.of(ShipmentRequest.Status.PUBLISHED, Auction.Status.OPEN));
+        if (f.originCity() != null) where.append(" and originCity = ?").append(add(params, f.originCity()));
+        if (f.destinationCity() != null) where.append(" and destinationCity = ?").append(add(params, f.destinationCity()));
+        if (f.pickupFrom() != null) where.append(" and pickupDate >= ?").append(add(params, f.pickupFrom()));
+        if (f.pickupTo() != null) where.append(" and pickupDate <= ?").append(add(params, f.pickupTo()));
+        if (f.maxWeightKg() != null) where.append(" and weightKg <= ?").append(add(params, f.maxWeightKg()));
+        if (f.cargoType() != null) where.append(" and cargoType = ?").append(add(params, f.cargoType()));
+        String order = switch (f.sort()) {
+            case PICKUP -> " order by pickupDate asc, createdAt desc, id";
+            case PRICE_DESC -> " order by suggestedPrice desc, createdAt desc, id";
+            case RECENT -> " order by createdAt desc, id";
+        };
+        var query = ShipmentRequestEntity.<ShipmentRequestEntity>find(where + order, params.toArray())
+                .page(page.page(), page.size());
+        long total = ShipmentRequestEntity.count(where.toString(), params.toArray());
+        return new Paged<>(map(query.list()), page, total);
+    }
+
+    @Override
+    public long countPublishedByRequester(UUID requesterOrgId) {
+        return ShipmentRequestEntity.count("requesterOrgId = ?1 and status = ?2", requesterOrgId,
+                ShipmentRequest.Status.PUBLISHED);
+    }
+
+    private static int add(List<Object> params, Object value) {
+        params.add(value);
+        return params.size();
     }
 
     @Override

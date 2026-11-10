@@ -45,7 +45,7 @@ public class FleetService {
         Vehicle v = Vehicle.register(tenant.orgId(), cmd.plate(), cmd.type(), cmd.maxWeightKg(), cmd.maxVolumeM3());
         // Unicidad global: con RLS solo veríamos las placas propias.
         if (system.call(() -> vehicles.plateExists(v.plate()))) {
-            throw BusinessException.conflict("LOGYX-FLT-001", "La placa ya está registrada");
+            throw BusinessException.conflict("LOGYX-FLT-001", "La placa ya está registrada", "plate");
         }
         vehicles.save(v);
         return v;

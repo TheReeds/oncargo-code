@@ -51,7 +51,8 @@ public class RequestSummaries {
             Auction a = byRequest.get(r.id());
             Organization o = requesters.get(r.requesterOrgId());
             return new RequestSummary(r, a, a == null ? 0 : counts.getOrDefault(a.id(), 0L),
-                    o == null ? null : o.legalName(), myBids.get(r.id()));
+                    o == null ? null : o.legalName(), myBids.get(r.id()),
+                    o != null && o.rucVerified());
         }).toList();
     }
 

@@ -16,4 +16,6 @@ Rutas relativas a `backend/src/main/java/pe/logyx/`.
 | RN10 | Operador asigna manualmente tras 24 h sin ofertas | ⬜ | `operator` (pendiente) |
 | RN11 | Incidencia activa congela el estado del envío | ⬜ | `incident` (pendiente) |
 | RN12 | Viaje publicado ≤ capacidad de la flota | ⬜ | `trip`/`returnload` (pendiente) |
+| (apoyo RN02) | Vehículo mínimo sugerido por carga: PERISHABLE → `REFRIGERATED`; ≤1 500 kg `VAN`; ≤3 000 `TRUCK_SMALL`; ≤8 000 `TRUCK_MEDIUM`; mayor `TRUCK_LARGE`. Es orientativo (`RequestView.minVehicleType`); lo que bloquea una oferta sigue siendo la capacidad en kg | ✅ | `marketplace/domain/VehicleRequirementPolicy` |
+| (apoyo RN03/RN02) | Los errores de oferta indican el campo (`amount`, `vehicleId`) y los montos en mensajes usan `S/ 1,850.00` | ✅ | `BidEligibilityPolicy`, `shared/domain/Money` |
 | RNF18 | Consentimiento Ley 29733 al registrarse | ✅ | `identity/infrastructure/web/AuthDtos.RegisterRequest` (`@AssertTrue`) + `identity/application/AuthService.register` (`consent_accepted_at`, auditoría) |

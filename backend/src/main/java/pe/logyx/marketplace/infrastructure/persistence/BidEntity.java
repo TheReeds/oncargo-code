@@ -2,6 +2,7 @@ package pe.logyx.marketplace.infrastructure.persistence;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
+import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.domain.model.Bid;
 
 import java.math.BigDecimal;
@@ -30,6 +31,13 @@ public class BidEntity extends PanacheEntityBase {
     @Column(name = "vehicle_id")
     public UUID vehicleId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vehicle_type")
+    public Vehicle.Type vehicleType;
+
+    @Column(name = "vehicle_plate")
+    public String vehiclePlate;
+
     public BigDecimal amount;
     public String notes;
 
@@ -40,8 +48,8 @@ public class BidEntity extends PanacheEntityBase {
     public OffsetDateTime createdAt;
 
     Bid toDomain() {
-        return new Bid(id, auctionId, requestId, requesterOrgId, carrierOrgId, vehicleId, amount, notes,
-                status, createdAt);
+        return new Bid(id, auctionId, requestId, requesterOrgId, carrierOrgId, vehicleId, vehicleType,
+                vehiclePlate, amount, notes, status, createdAt);
     }
 
     void apply(Bid b) {
@@ -51,6 +59,8 @@ public class BidEntity extends PanacheEntityBase {
         requesterOrgId = b.requesterOrgId();
         carrierOrgId = b.carrierOrgId();
         vehicleId = b.vehicleId();
+        vehicleType = b.vehicleType();
+        vehiclePlate = b.vehiclePlate();
         amount = b.amount();
         notes = b.notes();
         status = b.status();

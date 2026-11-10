@@ -32,12 +32,12 @@ public final class AuthDtos {
 
     public record UserInfo(UUID id, String email, String fullName, Profile.Role role,
                            UUID organizationId, String organizationName, OrgType organizationType,
-                           boolean rucVerified) {
+                           boolean rucVerified, String organizationCity) {
         static UserInfo of(UserAccount a) {
             var p = a.profile();
             var o = a.organization();
             return new UserInfo(p.id(), p.email(), p.fullName(), p.role(), o.id(), o.legalName(), o.type(),
-                    o.rucVerified());
+                    o.rucVerified(), o.city());
         }
     }
 

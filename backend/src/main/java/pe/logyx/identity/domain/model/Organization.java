@@ -42,7 +42,7 @@ public final class Organization {
             throw BusinessException.forbidden("Las cuentas de operador las crea LOGYX");
         }
         if (!RucValidator.isValid(ruc)) {
-            throw BusinessException.badRequest("LOGYX-ORG-001", "El RUC no es válido (dígito verificador)");
+            throw BusinessException.badRequest("LOGYX-ORG-001", "El RUC no es válido (dígito verificador)", "ruc");
         }
         return new Organization(UUID.randomUUID(), type, legalName.trim(), ruc, RucVerification.CHECKSUM,
                 city, phone, OffsetDateTime.now());

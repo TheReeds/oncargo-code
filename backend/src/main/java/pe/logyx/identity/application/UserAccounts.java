@@ -34,7 +34,7 @@ public class UserAccounts {
     public Profile createDriverAccount(UUID organizationId, String fullName, String email, String password) {
         // Unicidad global del email: con RLS solo veríamos los usuarios de la propia organización.
         if (system.call(() -> profiles.emailTaken(email))) {
-            throw BusinessException.conflict("LOGYX-AUTH-002", "El email ya está registrado");
+            throw BusinessException.conflict("LOGYX-AUTH-002", "El email ya está registrado", "email");
         }
         Profile p = Profile.create(organizationId, email, passwords.hash(password), fullName,
                 Profile.Role.DRIVER, OffsetDateTime.now());

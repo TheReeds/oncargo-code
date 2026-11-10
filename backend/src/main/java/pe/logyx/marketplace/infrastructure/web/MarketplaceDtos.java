@@ -3,11 +3,13 @@ package pe.logyx.marketplace.infrastructure.web;
 import jakarta.validation.constraints.*;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
+import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.application.AcceptOutcome;
 import pe.logyx.marketplace.application.BidSummary;
 import pe.logyx.marketplace.application.PlaceBidCommand;
 import pe.logyx.marketplace.application.PublishRequestCommand;
 import pe.logyx.marketplace.application.RequestSummary;
+import pe.logyx.marketplace.domain.VehicleRequirementPolicy;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
@@ -50,7 +52,11 @@ public final class MarketplaceDtos {
                               ShipmentRequest.Status status, OffsetDateTime createdAt,
                               AuctionView auction,
                               /** Solo para el transportista: su propia oferta, si existe. */
-                              BidView myBid) {
+                              BidView myBid,
+                              /** true si la organización solicitante tiene el RUC verificado. */
+                              boolean requesterRucVerified,
+                              /** Vehículo mínimo sugerido según peso y tipo de carga (VehicleRequirementPolicy). */
+                              Vehicle.Type minVehicleType) {
 
         static RequestView of(RequestSummary s) {
             ShipmentRequest r = s.request();
@@ -63,7 +69,8 @@ public final class MarketplaceDtos {
                     c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress(),
                     c.cargoType(), c.cargoDescription(), c.weightKg(), c.volumeM3(), c.pickupDate(),
                     p.distanceKm(), p.suggestedPrice(), p.priceFloor(), r.status(), r.createdAt(), av,
-                    s.myBid() == null ? null : BidView.of(s.myBid()));
+                    s.myBid() == null ? null : BidView.of(s.myBid()), s.requesterRucVerified(),
+                    VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()));
         }
 
         static List<RequestView> of(List<RequestSummary> list) {
@@ -82,12 +89,17 @@ public final class MarketplaceDtos {
 
     public record BidView(UUID id, UUID requestId, UUID carrierOrgId, String carrierName,
                           boolean carrierRucVerified, UUID vehicleId, BigDecimal amount, String notes,
-                          Bid.Status status, OffsetDateTime createdAt) {
+                          Bid.Status status, OffsetDateTime createdAt,
+                          /** Tipo del vehículo ofertado (copiado al ofertar). */
+                          Vehicle.Type vehicleType,
+                          /** Placa del vehículo ofertado (copiada al ofertar). */
+                          String vehiclePlate) {
 
         static BidView of(BidSummary s) {
             Bid b = s.bid();
             return new BidView(b.id(), b.requestId(), b.carrierOrgId(), s.carrierName(), s.carrierRucVerified(),
-                    b.vehicleId(), b.amount(), b.notes(), b.status(), b.createdAt());
+                    b.vehicleId(), b.amount(), b.notes(), b.status(), b.createdAt(),
+                    b.vehicleType(), b.vehiclePlate());
         }
     }
 

@@ -32,10 +32,10 @@ public class AuthService {
         Organization org = Organization.register(cmd.organizationType(), cmd.legalName(), cmd.ruc(),
                 cmd.city(), cmd.phone());
         if (organizations.existsByRuc(org.ruc())) {
-            throw BusinessException.conflict("LOGYX-ORG-002", "Ya existe una organización con ese RUC");
+            throw BusinessException.conflict("LOGYX-ORG-002", "Ya existe una organización con ese RUC", "ruc");
         }
         if (profiles.emailTaken(cmd.email())) {
-            throw BusinessException.conflict("LOGYX-AUTH-002", "El email ya está registrado");
+            throw BusinessException.conflict("LOGYX-AUTH-002", "El email ya está registrado", "email");
         }
         organizations.insert(org);
 

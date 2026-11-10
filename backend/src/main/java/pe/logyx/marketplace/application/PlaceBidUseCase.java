@@ -49,7 +49,7 @@ public class PlaceBidUseCase {
         Vehicle v = fleet.ownVehicle(cmd.vehicleId());                                           // RN02: propio
         BidEligibilityPolicy.ensureVehicleEligible(v.isAvailable(), v.maxWeightKg(), r.cargo().weightKg());
 
-        Bid b = Bid.place(a, r, me, v.id(), cmd.amount(), cmd.notes());
+        Bid b = Bid.place(a, r, me, v, cmd.amount(), cmd.notes());
         bids.save(b);
 
         // RN04: cierre por número máximo de ofertas. Bajo RLS el transportista solo

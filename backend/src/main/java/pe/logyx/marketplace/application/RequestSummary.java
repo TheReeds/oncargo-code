@@ -8,4 +8,4 @@ import pe.logyx.marketplace.domain.model.ShipmentRequest;
  * de la PYME y (solo para transportistas) su propia oferta.
  */
 public record RequestSummary(ShipmentRequest request, Auction auction, long bidCount, String requesterName,
-                             BidSummary myBid) {}
+                             BidSummary myBid, boolean requesterRucVerified) {}
