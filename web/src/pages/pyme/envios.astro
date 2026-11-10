@@ -1,0 +1,13 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import TrackingSplit from '@/features/shipments/components/TrackingSplit';
+import { listShipments } from '@/features/shipments/server';
+import { getCatalog } from '@/features/catalog/server';
+const [shipments, { cities }] = await Promise.all([listShipments(Astro.locals.session!.token), getCatalog()]);
+const id = Astro.url.searchParams.get('id');
+---
+<AppShell title="Envíos" active="envios" wide>
+  <PageHeader title="Envíos" subtitle="Seguimiento de tus cargas, parada por parada" />
+  <TrackingSplit client:load shipments={shipments} cities={cities} initialId={id} perspective="PYME" />
+</AppShell>

@@ -1,0 +1,83 @@
+---
+import Base from '@/layouts/Base.astro';
+import Logo from './Logo.astro';
+import { me } from '@/features/auth/server';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, LogOut, Menu, ShieldCheck } from '@lucide/astro';
+
+interface Props { title: string; active: string; wide?: boolean }
+const { title, active, wide = false } = Astro.props;
+const session = Astro.locals.session!;
+const user = await me(session.token);
+
+const NAV = {
+  PYME: [
+    { id: 'panel', href: '/pyme', label: 'Panel', icon: LayoutDashboard },
+    { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
+    { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
+    { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
+  ],
+  CARRIER: [
+    { id: 'marketplace', href: '/transportista/marketplace', label: 'Marketplace', icon: Store },
+    { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
+    { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
+    { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
+  ],
+} as const;
+const items = NAV[(session.orgType as 'PYME' | 'CARRIER') ?? 'PYME'] ?? [];
+const initials = (user?.fullName ?? session.email).split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+---
+<Base title={title}>
+  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-white focus:px-3 focus:py-2">Saltar al contenido</a>
+  <div class="flex min-h-screen">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex w-60 -translate-x-full flex-col bg-ink-900 text-white transition-transform lg:static lg:translate-x-0" aria-label="Navegación principal">
+      <div class="flex h-14 items-center px-5"><a href="/" aria-label="LOGYX inicio"><Logo dark /></a></div>
+      <nav class="flex-1 space-y-1 px-3 py-3">
+        {items.map((it) => (
+          <a href={it.href} aria-current={active === it.id ? 'page' : undefined}
+            class:list={['flex items-center gap-3 rounded-input px-3 py-2 text-sm font-medium transition-colors', active === it.id ? 'bg-petrol-700 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white']}>
+            <it.icon size={18} /> {it.label}
+          </a>
+        ))}
+      </nav>
+      <div class="border-t border-white/10 p-4 text-xs text-white/60">
+        <a href="/privacidad" class="hover:text-white">Política de privacidad</a>
+      </div>
+    </aside>
+    <div id="scrim" class="fixed inset-0 z-20 hidden bg-ink-900/40 lg:hidden"></div>
+
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-steel-200 bg-surface px-4 lg:px-8">
+        <button id="menu-btn" class="rounded-input p-2 text-ink-700 hover:bg-steel-100 lg:hidden" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><Menu size={20} /></button>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 truncate text-sm font-semibold">
+            {user?.organizationName ?? '—'}
+            {user?.rucVerified && <span class="hidden items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} /> Empresa verificada</span>}
+          </div>
+        </div>
+        <div class="hidden text-right text-xs leading-tight sm:block">
+          <div class="font-medium text-ink-900">{user?.fullName}</div>
+          <div class="text-ink-500">{session.orgType === 'PYME' ? 'Cuenta PYME' : 'Transportista'}</div>
+        </div>
+        <span class="grid size-8 place-items-center rounded-full bg-petrol-50 text-xs font-semibold text-petrol-700" aria-hidden="true">{initials}</span>
+        <form method="post" action="/logout">
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-input px-2.5 py-2 text-sm text-ink-700 hover:bg-steel-100"><LogOut size={16} /><span class="hidden sm:inline">Salir</span></button>
+        </form>
+      </header>
+      <main id="contenido" class:list={['mx-auto w-full flex-1 px-4 py-6 lg:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl']}>
+        <slot />
+      </main>
+    </div>
+  </div>
+  <script>
+    const sb = document.getElementById('sidebar')!;
+    const scrim = document.getElementById('scrim')!;
+    const btn = document.getElementById('menu-btn')!;
+    const set = (open: boolean) => {
+      sb.classList.toggle('-translate-x-full', !open);
+      scrim.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    btn.addEventListener('click', () => set(sb.classList.contains('-translate-x-full')));
+    scrim.addEventListener('click', () => set(false));
+  </script>
+</Base>

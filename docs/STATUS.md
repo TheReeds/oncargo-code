@@ -19,10 +19,13 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 ## Web (Astro)
 | Pantalla | Estado |
 |---|---|
-| Base: shell, sesión, cliente API tipado, design tokens | 🔄 |
-| Login / registro | 🔄 |
-| PYME: panel, solicitudes, nueva solicitud con cotización, detalle + comparación de ofertas, tracking | 🔄 |
-| Transportista: marketplace, mis ofertas, flota, envíos | 🔄 |
+| Base: shell, sesión (cookie httpOnly), cliente API tipado, design tokens | ✅ 2026-11-10 (agente web) |
+| Login / registro / privacidad (Ley 29733) / página conductor | ✅ |
+| PYME: panel, solicitudes, nueva solicitud con cotización en vivo, detalle + comparación de ofertas + aceptar/cancelar, tracking (mapa) | ✅ |
+| Transportista: marketplace (filtros + drawer de oferta), mis ofertas, flota (vehículos/conductores), envíos (asignar conductor) | ✅ |
+| Pendientes web: modo oscuro, polling/tiempo real, ruta por carretera en mapa, tests e2e; ver `web/AGENTS.md` | ⬜ |
+
+Notas de contrato (web): `BidView` no trae tipo/placa del vehículo (la PYME no ve el vehículo ofertado); `RequestView` no trae "vehículo mínimo" (se muestra el peso); el mensaje de RN03 formatea montos sin separador de miles (`S/ 2925.89`); los errores de validación llegan con `field: null`.
 
 ## Android (Kotlin) — 2026-11-10 (agente android)
 Compila (`assembleDebug`) y pasa `testDebugUnitTest` (28 tests: DTOs del contrato, ViewModels). **Sin probar en emulador/dispositivo** (no hay system image en el SDK ni backend corriendo): validar contra la API real.

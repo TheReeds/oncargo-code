@@ -1,0 +1,70 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { KpiTile } from '@/components/domain/KpiTile';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import TrackingMap from '@/features/shipments/components/TrackingMap';
+import { pymeDashboard } from '@/features/dashboard/server';
+import { getCatalog } from '@/features/catalog/server';
+import { formatDate, formatMoney } from '@/lib/format';
+import { TriangleAlert, Plus } from '@lucide/astro';
+import { FileText, Gavel, Truck, PackageCheck } from 'lucide-react';
+
+const { session } = Astro.locals;
+const [d, { cities }] = await Promise.all([pymeDashboard(session!.token), getCatalog()]);
+const k = d.kpis;
+---
+<AppShell title="Panel" active="panel">
+  <PageHeader title="Panel" subtitle="Resumen de tus solicitudes y envíos">
+    <a slot="actions" href="/pyme/solicitudes/nueva" class="inline-flex h-10 items-center gap-2 rounded-input bg-petrol-700 px-4 text-sm font-medium text-white hover:bg-petrol-800"><Plus size={16} /> Nueva solicitud</a>
+  </PageHeader>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <KpiTile label="Solicitudes activas" value={k.active} context={k.active ? `${k.closingSoon} con subasta abierta` : 'Publica tu primera carga'} icon={FileText} href="/pyme/solicitudes" />
+    <KpiTile label="Ofertas por revisar" value={k.offersToReview} context={`en ${k.requestsWithBids} solicitud${k.requestsWithBids === 1 ? '' : 'es'}`} icon={Gavel} href="/pyme/solicitudes" />
+    <KpiTile label="Envíos en tránsito" value={k.inTransit} context={`${k.toPickup} por recoger`} icon={Truck} href="/pyme/envios" />
+    <KpiTile label="Entregados del mes" value={k.deliveredMonth} context="este mes" icon={PackageCheck} href="/pyme/envios" />
+  </div>
+
+  <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert size={16} class="text-amber-500" /> Requiere tu atención</CardTitle></CardHeader>
+      {d.attention.length === 0 ? (
+        <EmptyState title="Todo al día" description="Aquí verás las subastas cerradas con ofertas que aún no has elegido." />
+      ) : (
+        <ul class="divide-y divide-steel-200">
+          {d.attention.map((r) => (
+            <li>
+              <a href={`/pyme/solicitudes/${r.id}`} class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-steel-100/60">
+                <div class="min-w-0 flex-1"><RouteLine size="sm" origin={r.originCity!} destination={r.destinationCity!} originSub={formatDate(r.pickupDate)} /></div>
+                <div class="text-right"><div class="text-sm font-medium text-amber-700">{r.auction?.bidCount} oferta{r.auction?.bidCount === 1 ? '' : 's'} sin elegir</div><div class="text-xs text-ink-500">Sugerido <span class="font-mono">{formatMoney(r.suggestedPrice)}</span></div></div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+
+    <Card>
+      <CardHeader><CardTitle>Envíos en curso</CardTitle><a href="/pyme/envios" class="text-sm font-medium text-petrol-700 hover:underline">Ver tracking</a></CardHeader>
+      {d.ongoing.length === 0 ? (
+        <EmptyState title="Sin envíos en curso" description="Cuando aceptes una oferta, podrás seguir tu carga aquí." />
+      ) : (
+        <div>
+          <div class="p-3 pb-0"><TrackingMap client:only="react" shipments={d.ongoing} cities={cities} height={220} /></div>
+          <ul class="divide-y divide-steel-200">
+            {d.ongoing.slice(0, 4).map((s) => (
+              <li><a href={`/pyme/envios?id=${s.id}`} class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-steel-100/60">
+                <div class="min-w-0"><RouteLine size="sm" origin={s.originCity!} destination={s.destinationCity!} /><div class="mt-0.5 truncate text-xs text-ink-500">{s.carrierName}</div></div>
+                <StatusPill status={s.status!} />
+              </a></li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  </div>
+</AppShell>

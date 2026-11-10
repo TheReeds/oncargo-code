@@ -1,0 +1,86 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert } from '@/components/ui/alert';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { Countdown } from '@/components/domain/Countdown';
+import BidComparison from '@/features/requests/components/BidComparison';
+import CancelRequestButton from '@/features/requests/components/CancelRequestButton';
+import { getRequest, listBids } from '@/features/requests/server';
+import { ApiError } from '@/lib/api/client';
+import { CARGO_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
+
+const { id } = Astro.params;
+const token = Astro.locals.session!.token;
+let r;
+try {
+  r = await getRequest(token, id!);
+} catch (e) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 403 || e.status === 400)) return Astro.redirect('/pyme/solicitudes');
+  throw e;
+}
+const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError && e.status !== 401) return []; throw e; });
+const a = r.auction;
+const published = r.status === 'PUBLISHED';
+const created = Astro.url.searchParams.has('creada');
+const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_BIDS: 'Se alcanzó el máximo de ofertas', ACCEPTED: 'Oferta aceptada', CANCELLED: 'Solicitud cancelada' };
+---
+<AppShell title="Detalle de solicitud" active="solicitudes">
+  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="hover:underline" href="/pyme/solicitudes">Solicitudes</a> / <span class="text-ink-900">Detalle</span></nav>
+  <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)}`}>
+    <div slot="actions" class="flex items-center gap-3"><StatusPill status={r.status!} />{published && <CancelRequestButton client:load id={r.id!} />}</div>
+  </PageHeader>
+
+  {created && <Alert tone="success" className="mb-4">Solicitud publicada. La subasta ya está abierta para los transportistas.</Alert>}
+
+  <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div class="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Envío</CardTitle></CardHeader>
+        <CardBody className="space-y-5">
+          <RouteLine origin={r.originCity!} destination={r.destinationCity!} km={r.distanceKm} originSub={r.originAddress} destinationSub={r.destinationAddress} />
+          <dl class="grid grid-cols-2 gap-4 border-t border-steel-200 pt-4 text-sm sm:grid-cols-4">
+            <div><dt class="text-xs text-ink-500">Carga</dt><dd class="font-medium">{CARGO_LABELS[r.cargoType!]}</dd></div>
+            <div><dt class="text-xs text-ink-500">Peso</dt><dd class="font-mono font-medium">{formatTons(r.weightKg)}</dd></div>
+            <div><dt class="text-xs text-ink-500">Volumen</dt><dd class="font-mono font-medium">{r.volumeM3 ? `${r.volumeM3} m³` : '—'}</dd></div>
+            <div><dt class="text-xs text-ink-500">Recojo</dt><dd class="font-medium">{formatDate(r.pickupDate)}</dd></div>
+            <div class="col-span-2 sm:col-span-4"><dt class="text-xs text-ink-500">Descripción</dt><dd>{r.cargoDescription}</dd></div>
+          </dl>
+        </CardBody>
+      </Card>
+
+      <BidComparison client:load bids={bids} suggested={r.suggestedPrice} canAccept={published} />
+    </div>
+
+    <aside class="space-y-4">
+      <Card>
+        <CardHeader><CardTitle>Subasta</CardTitle></CardHeader>
+        <CardBody className="space-y-4">
+          {a ? (
+            <>
+              <div>
+                <div class="text-xs text-ink-500">{a.status === 'OPEN' ? 'Cierra en' : 'Estado'}</div>
+                {a.status === 'OPEN' ? <Countdown client:load closesAt={a.closesAt} className="text-2xl font-semibold" /> : <div class="font-medium">Cerrada{a.closeReason ? ` · ${closeReason[a.closeReason] ?? a.closeReason}` : ''}</div>}
+                <div class="text-xs text-ink-500">{formatDateTime(a.closesAt)}</div>
+              </div>
+              <div>
+                <div class="mb-1 flex justify-between text-xs"><span class="text-ink-500">Ofertas</span><span class="font-mono font-semibold">{a.bidCount ?? 0}/{a.maxBids ?? 5}</span></div>
+                <div class="h-2 overflow-hidden rounded-full bg-steel-200"><div class="h-full rounded-full bg-petrol-700" style={`width:${Math.min(100, ((a.bidCount ?? 0) / (a.maxBids ?? 5)) * 100)}%`}></div></div>
+              </div>
+            </>
+          ) : <p class="text-sm text-ink-500">Sin subasta asociada.</p>}
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Precios de referencia</CardTitle></CardHeader>
+        <CardBody className="space-y-3 text-sm">
+          <div class="flex justify-between"><span class="text-ink-700">Sugerido</span><span class="money text-base">{formatMoney(r.suggestedPrice)}</span></div>
+          <div class="flex justify-between"><span class="text-ink-700">Piso de subasta</span><span class="font-mono font-semibold tabular-nums">{formatMoney(r.priceFloor)}</span></div>
+        </CardBody>
+      </Card>
+      {r.status === 'MATCHED' && <a href="/pyme/envios" class="flex h-10 items-center justify-center rounded-input bg-petrol-700 text-sm font-medium text-white hover:bg-petrol-800">Ver envío</a>}
+    </aside>
+  </div>
+</AppShell>

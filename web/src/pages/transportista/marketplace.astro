@@ -1,0 +1,14 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import MarketplaceTable from '@/features/marketplace/components/MarketplaceTable';
+import { listOpen } from '@/features/marketplace/server';
+import { listVehicles } from '@/features/fleet/server';
+import { getCatalog } from '@/features/catalog/server';
+const t = Astro.locals.session!.token;
+const [requests, vehicles, { cities }] = await Promise.all([listOpen(t), listVehicles(t), getCatalog()]);
+---
+<AppShell title="Marketplace" active="marketplace" wide>
+  <PageHeader title="Marketplace de cargas" subtitle="Subastas abiertas: ofrece tu mejor precio" />
+  <MarketplaceTable client:load requests={requests} vehicles={vehicles} cities={cities} />
+</AppShell>

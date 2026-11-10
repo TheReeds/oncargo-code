@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+/* Tokens de docs/design/DESIGN.md */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --color-ink-900: #0e1726;
+  --color-ink-700: #334155;
+  --color-ink-500: #64748b; /* texto terciario con contraste AA sobre blanco */
+  --color-ink-400: #94a3b8;
+  --color-steel-100: #eef2f6;
+  --color-steel-200: #e2e8f0;
+  --color-surface: #ffffff;
+  --color-petrol-700: #0b4f6c;
+  --color-petrol-800: #093f56;
+  --color-petrol-50: #e6f1f5;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-500: #10b981;
+  --color-emerald-700: #047857; /* texto de dinero/éxito (AA) */
+  --color-amber-50: #fffbeb;
+  --color-amber-500: #f59e0b;
+  --color-amber-700: #b45309;
+  --color-red-50: #fef2f2;
+  --color-red-600: #dc2626;
+
+  --radius-card: 10px;
+  --radius-input: 8px;
+}
+
+@layer base {
+  html { font-family: var(--font-sans); color: var(--color-ink-900); background: var(--color-steel-100); }
+  body { min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--color-petrol-700); outline-offset: 2px; }
+  button, [role='button'], a { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
+
+@utility tnum { font-variant-numeric: tabular-nums; }
+@utility money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--color-emerald-700); font-weight: 600; }
+
+.select-chevron {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-size: 16px;
+}

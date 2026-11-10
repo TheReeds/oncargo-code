@@ -1,0 +1,12 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import RequestForm from '@/features/requests/components/RequestForm';
+import { getCatalog } from '@/features/catalog/server';
+const { cities, cargo } = await getCatalog();
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+---
+<AppShell title="Nueva solicitud" active="nueva">
+  <PageHeader title="Nueva solicitud" subtitle="Describe tu carga; los transportistas competirán por ella" />
+  <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} />
+</AppShell>

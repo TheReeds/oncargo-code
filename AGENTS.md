@@ -45,7 +45,7 @@ Especificación funcional completa: repo hermano `../ProyectoEPE-LOGYX/docs/soft
 | Operador LOGYX | `OPERATOR` | (fase posterior) |
 
 ## Cuentas demo (perfil dev del backend)
-`pyme@logyx.pe`, `carrier@logyx.pe`, `driver@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
+`pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
 
 ## Cómo levantar todo
 ```bash

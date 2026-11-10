@@ -1,0 +1,14 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import RequestsTable from '@/features/requests/components/RequestsTable';
+import { listMine } from '@/features/requests/server';
+import { Plus } from '@lucide/astro';
+const requests = await listMine(Astro.locals.session!.token);
+---
+<AppShell title="Solicitudes" active="solicitudes">
+  <PageHeader title="Solicitudes" subtitle="Tus cargas publicadas y su subasta">
+    <a slot="actions" href="/pyme/solicitudes/nueva" class="inline-flex h-10 items-center gap-2 rounded-input bg-petrol-700 px-4 text-sm font-medium text-white hover:bg-petrol-800"><Plus size={16} /> Nueva solicitud</a>
+  </PageHeader>
+  <RequestsTable client:load requests={requests} />
+</AppShell>

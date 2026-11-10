@@ -1,0 +1,12 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import FleetManager from '@/features/fleet/components/FleetManager';
+import { listDrivers, listVehicles } from '@/features/fleet/server';
+const t = Astro.locals.session!.token;
+const [vehicles, drivers] = await Promise.all([listVehicles(t), listDrivers(t)]);
+---
+<AppShell title="Flota" active="flota">
+  <PageHeader title="Flota" subtitle="Tus vehículos y conductores" />
+  <FleetManager client:load vehicles={vehicles} drivers={drivers} />
+</AppShell>

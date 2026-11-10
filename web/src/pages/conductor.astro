@@ -1,0 +1,12 @@
+---
+import Public from '@/layouts/Public.astro';
+import { Smartphone } from '@lucide/astro';
+---
+<Public title="Conductores">
+  <div class="mx-auto max-w-md px-4 py-16 text-center">
+    <div class="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Smartphone size={26} /></div>
+    <h1 class="text-xl font-semibold">Usa la app móvil de LOGYX</h1>
+    <p class="mt-2 text-ink-700">Los conductores gestionan sus viajes, paradas y entregas desde la aplicación móvil. La versión web es para empresas y transportistas.</p>
+    <form method="post" action="/logout" class="mt-6"><button class="h-10 rounded-input border border-steel-200 bg-surface px-5 text-sm font-medium hover:bg-steel-100">Cerrar sesión</button></form>
+  </div>
+</Public>
