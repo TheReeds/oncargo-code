@@ -130,7 +130,7 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             repo.acceptBid(bid.id).fold(
                 onSuccess = { res ->
-                    _state.update { it.copy(busy = false, confirmBid = null, createdShipmentId = res.shipmentId, message = UiMessage.success("Oferta aceptada. Creamos tu envío.")) }
+                    _state.update { it.copy(busy = false, confirmBid = null, createdShipmentId = res.shipmentId, message = UiMessage.success(R.string.requests_bid_accepted)) }
                     load(initial = false)
                 },
                 onFailure = { e -> _state.update { it.copy(busy = false, confirmBid = null, message = UiMessage.error(e.userMessage())) } },
@@ -143,7 +143,7 @@ class RequestDetailViewModel(
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             repo.cancel(requestId).fold(
-                onSuccess = { _state.update { it.copy(busy = false, confirmCancel = false, message = UiMessage.success("Solicitud cancelada")) }; load(initial = false) },
+                onSuccess = { _state.update { it.copy(busy = false, confirmCancel = false, message = UiMessage.success(R.string.requests_cancelled)) }; load(initial = false) },
                 onFailure = { e -> _state.update { it.copy(busy = false, confirmCancel = false, message = UiMessage.error(e.userMessage())) } },
             )
         }

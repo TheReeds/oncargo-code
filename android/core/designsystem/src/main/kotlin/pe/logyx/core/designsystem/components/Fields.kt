@@ -360,6 +360,8 @@ fun <T> LogyxDropdown(
     enabled: Boolean = true,
     optional: Boolean = false,
     optionSupporting: (T) -> String? = { null },
+    /** Si no es null y hay una opción elegida, el menú muestra "Quitar selección" al inicio. */
+    onClear: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     FieldFrame(label, modifier, hint, error, optional) {
@@ -389,6 +391,20 @@ fun <T> LogyxDropdown(
                 tonalElevation = 0.dp,
                 shadowElevation = 6.dp,
             ) {
+                if (onClear != null && selected != null) {
+                    DropdownMenuItem(
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        text = {
+                            Text(
+                                stringResource(R.string.ds_clear_selection),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        leadingIcon = { Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        onClick = { onClear(); expanded = false },
+                    )
+                }
                 options.forEach { option ->
                     val isSelected = option == selected
                     DropdownMenuItem(

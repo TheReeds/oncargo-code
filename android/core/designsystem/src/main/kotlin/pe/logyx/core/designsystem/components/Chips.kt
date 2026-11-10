@@ -4,11 +4,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -84,11 +85,14 @@ fun LogyxFilterChip(
     )
 }
 
-/** Fila de chips que salta de línea. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Fila de chips en una sola línea con desplazamiento horizontal (los filtros no deben ocupar varias filas). */
 @Composable
 fun ChipRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+    Row(
+        modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) { content() }
 }
 
 /**
@@ -116,7 +120,7 @@ fun <T> SegmentedControl(
             val bg by animateColorAsState(if (isSelected) scheme.surface else scheme.surfaceVariant, label = "seg")
             Box(
                 Modifier
-                    .weight(1f)
+                    .weight((optionLabel(option).length + 4).toFloat())
                     .heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(11.dp))
                     .background(bg)
@@ -126,8 +130,11 @@ fun <T> SegmentedControl(
             ) {
                 Text(
                     optionLabel(option),
-                    Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                    Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     color = if (isSelected) scheme.primary else scheme.onSurfaceVariant,
                 )
             }

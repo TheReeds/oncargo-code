@@ -34,7 +34,7 @@ LogyxButton("Llegué al recojo", onAdvance, size = ButtonSize.Xl, loading = stat
 ### Formularios
 - **`LogyxTextField(value, onValueChange, label, hint, error, placeholder, prefix, suffix, leadingIcon, trailing, optional, singleLine, keyboardOptions, visualTransformation …)`** — etiqueta siempre arriba, `hint` ayuda, `error` = qué pasó + qué hacer (rojo con icono).
 - **`MoneyField(value: String, onValueChange, label, hint, error)`** — prefijo `S/`, separador de miles es-PE mientras se escribe; el estado guarda texto crudo `"1850.5"`; usa `parseMoney(text): Double?` y `moneyToInput(Double?)`.
-- **`LogyxDropdown(label, options, selected, onSelected, optionLabel, optionSupporting)`** — ≤ 8 opciones (tipo de carga, vehículo, conductor).
+- **`LogyxDropdown(label, options, selected, onSelected, optionLabel, optionSupporting, onClear)`** — ≤ 8 opciones (tipo de carga, vehículo, conductor).
 - **`LogyxCombobox(label, options, selected, onSelected(T?), optionLabel, clearable, searchPlaceholder)`** — hoja con búsqueda sin tildes; ciudades y listas largas.
 - **`LogyxDateField(label, value: LocalDate?, onValueChange)`** / **`LogyxDateRangeField(label, start, end, onValueChange)`** — campos que abren `LogyxDatePicker` (atajos Hoy / Mañana) y `LogyxDateRangePicker` (Hoy / Próximos 7 días), localizados a es-PE. Usa `LocalDate` en el estado; convierte a ISO al enviar.
 - **`LogyxPickerField(label, valueText, onClick, …)`** — base para cualquier selector propio.
@@ -70,7 +70,8 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 Éxito: sustantivo + participio ("Oferta enviada", "Solicitud cancelada"). Error: **qué pasó + qué hacer** ("No pudimos enviar tu oferta. Revisa tu conexión e inténtalo de nuevo."). Errores de carga de pantalla van en `ErrorState`, no en snackbar; errores de campo, en `error` del campo.
 
 ### Selección y estado
-- **`LogyxFilterChip(label, selected, onClick, leadingIcon)`** + `ChipRow { }` — filtros (múltiple). **`SegmentedControl(options, selected, onSelect, optionLabel)`** — 2–4 opciones excluyentes.
+- **`RadioCardRow(selected, onClick) { … }`** (fila radio en tarjeta con check), **`InitialsAvatar(name, size, description)`**, **`LoadingMoreFooter()`** (pie de scroll infinito), **`UiText`** (texto literal o `@StringRes` para estado de ViewModel; `asString()` en la UI).
+- **`LogyxFilterChip(label, selected, onClick, leadingIcon)`** + `ChipRow { }` — filtros (múltiple; una sola fila con scroll horizontal). **`SegmentedControl(options, selected, onSelect, optionLabel)`** — 2–4 opciones excluyentes.
 - **`LogyxBadge(text, tone, icon)`**, **`VerifiedBadge()`**, **`CountBadge(n)`**, `StatusPill(text, tone)` / `StatusPill(status.pill())`, `InfoChip` (dato no interactivo).
 
 ### Estructura
@@ -84,7 +85,8 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - Conductor: frases cortas, imperativo/primera persona ("Llegué al recojo", "Carga recogida").
 - Errores: qué pasó + qué hacer. Vacíos: qué falta + siguiente acción. Éxito: breve, sin signos de exclamación.
 - Formatos: `S/ 1,850.00`, `28 nov · 08:00`, `2.5 t`, `1,010 km`. Fechas ISO solo en red.
-- Textos visibles en `res/values/strings.xml` de cada módulo (`stringResource`/`pluralStringResource`). En ViewModels no hay `Context`: expón datos o un `UiMessage` con texto ya resuelto desde cadenas constantes del módulo (prefijo del módulo en el nombre: `loads_…`, `requests_…`).
+- Textos visibles en `res/values/strings.xml` de cada módulo (`stringResource`/`pluralStringResource`); etiquetas de enums (`CargoType.label`, `status.pill()`…) también (`ds_…`), son `@Composable`. En ViewModels no hay `Context`: usa `UiMessage.success(R.string.x, args…)` o `UiText.of(R.string.x, args…)`; `MessageEffect`/`asString()` los resuelven. Literal solo para mensajes de la API.
+- `RouteMap(…, contentDescription)` describe el mapa a TalkBack; usa estilo oscuro con tema oscuro.
 
 ## Do / Don't
 - DO `LogyxButton` con `loading` en vez de deshabilitar sin explicación. DON'T `Button`/`TextButton` de M3.

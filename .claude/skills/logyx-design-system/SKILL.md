@@ -26,7 +26,7 @@ Fuente de verdad visual y de contenido del monorepo. Si vas a escribir UI, léel
 ## Tokens
 | Token | Hex | Uso |
 |---|---|---|
-| ink-900 / 700 / 500 / 400 | #0E1726 / #334155 / #5B6B7F (web; Android #64748B) / #94A3B8 | Texto principal / secundario / terciario (AA ≥4.5 sobre blanco, steel-100 y petrol-50) / bordes fuertes |
+| ink-900 / 700 / 500 / 400 | #0E1726 / #334155 / #5B6B7F (web y Android) / #94A3B8 | Texto principal / secundario / terciario (AA ≥4.5 sobre blanco, steel-100 y petrol-50) / bordes fuertes |
 | steel-100 / 200 | #EEF2F6 / #E2E8F0 | Fondo de app / bordes y divisores |
 | surface | #FFFFFF | Tarjetas, tablas, controles |
 | petrol-700 / 800 / 50 | #0B4F6C / #093F56 / #E6F1F5 | Primario (botón, links, selección, ruta) / hover / fondo selección |

@@ -178,7 +178,7 @@ private fun TripContent(
             if (LocalInspectionMode.current) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             } else {
-                RouteMap(state.origin, state.destination, Modifier.fillMaxSize().semantics { contentDescription = mapDescription }, fillParent = true)
+                RouteMap(state.origin, state.destination, Modifier.fillMaxSize(), fillParent = true, contentDescription = mapDescription)
             }
             if (total > 0 && !state.delivered) {
                 LogyxBadge(

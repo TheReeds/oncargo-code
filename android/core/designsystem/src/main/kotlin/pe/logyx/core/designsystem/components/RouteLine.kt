@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.LogyxTheme
@@ -38,7 +39,7 @@ fun RouteLine(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f)) {
             Text(origin, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            if (originSub != null) Text(originSub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            if (originSub != null) Text(originSub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Column(Modifier.weight(1.1f).padding(horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Canvas(Modifier.fillMaxWidth().height(20.dp)) {
@@ -59,7 +60,7 @@ fun RouteLine(
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             Text(destination, style = MaterialTheme.typography.titleMedium, maxLines = 1, textAlign = TextAlign.End)
-            if (destinationSub != null) Text(destinationSub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, textAlign = TextAlign.End)
+            if (destinationSub != null) Text(destinationSub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
         }
     }
 }

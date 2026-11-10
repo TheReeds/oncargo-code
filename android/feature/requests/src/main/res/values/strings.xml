@@ -36,8 +36,8 @@
     <string name="requests_cancel_request">Cancelar solicitud</string>
     <string name="requests_min_vehicle">Vehículo mínimo: %1$s</string>
     <string name="requests_requester_verified">Tu empresa tiene RUC verificado</string>
-    <string name="requests_accept_vehicle"> en un %1$s (placa %2$s)</string>
-    <string name="requests_accept_vehicle_no_plate"> en un %1$s</string>
+    <string name="requests_accept_vehicle">" en un %1$s (placa %2$s)"</string>
+    <string name="requests_accept_vehicle_no_plate">" en un %1$s"</string>
     <string name="requests_notes_quote">“%1$s”</string>
 
     <string name="requests_accept_title">¿Aceptar esta oferta?</string>
@@ -48,4 +48,6 @@
     <string name="requests_cancel_message">Cerraremos la subasta y los transportistas dejarán de ver tu carga. No podrás deshacerlo.</string>
     <string name="requests_cancel_confirm">Sí, cancelar solicitud</string>
     <string name="requests_cancel_dismiss">No, mantenerla</string>
+    <string name="requests_bid_accepted">Oferta aceptada. Creamos tu envío.</string>
+    <string name="requests_cancelled">Solicitud cancelada</string>
 </resources>

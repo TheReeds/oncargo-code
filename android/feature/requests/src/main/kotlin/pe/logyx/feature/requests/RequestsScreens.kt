@@ -219,7 +219,7 @@ fun RequestDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         val mapDescription = stringResource(R.string.requests_map_description)
-                        RouteMap(state.origin, state.destination, Modifier.semantics { contentDescription = mapDescription }, height = 180.dp)
+                        RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 180.dp)
                         RequestSummaryCard(r)
                         Text(
                             r.auction?.let { stringResource(R.string.requests_bids_title_count, state.bids.size, it.maxBids) }

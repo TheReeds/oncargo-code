@@ -1,5 +1,7 @@
 package pe.logyx.core.designsystem.components
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,15 +56,43 @@ enum class MessageKind { Success, Error, Info, Warning }
  */
 @Immutable
 data class UiMessage(
-    val text: String,
+    val text: String = "",
     val kind: MessageKind = MessageKind.Info,
     val actionLabel: String? = null,
+    @StringRes val textRes: Int? = null,
+    val args: List<Any> = emptyList(),
 ) {
+    /** Texto final: el recurso (con argumentos) si lo hay; si no, el texto literal (p. ej. mensajes de la API). */
+    fun resolve(context: Context): String = textRes?.let { context.getString(it, *args.toTypedArray()) } ?: text
+
     companion object {
         fun success(text: String) = UiMessage(text, MessageKind.Success)
+        fun success(@StringRes res: Int, vararg args: Any) = UiMessage(kind = MessageKind.Success, textRes = res, args = args.toList())
         fun error(text: String, actionLabel: String? = null) = UiMessage(text, MessageKind.Error, actionLabel)
+        fun error(@StringRes res: Int, vararg args: Any) = UiMessage(kind = MessageKind.Error, textRes = res, args = args.toList())
         fun info(text: String) = UiMessage(text, MessageKind.Info)
+        fun info(@StringRes res: Int, vararg args: Any) = UiMessage(kind = MessageKind.Info, textRes = res, args = args.toList())
     }
+}
+
+/**
+ * Texto de UI que un ViewModel puede exponer sin tener `Context`: literal (mensajes de la API) o recurso con argumentos.
+ * Se resuelve en la pantalla con `asString()`.
+ */
+@Immutable
+sealed interface UiText {
+    data class Raw(val value: String) : UiText
+    data class Res(@StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
+
+    companion object {
+        fun of(@StringRes id: Int, vararg args: Any): UiText = Res(id, args.toList())
+    }
+}
+
+@Composable
+fun UiText.asString(): String = when (this) {
+    is UiText.Raw -> value
+    is UiText.Res -> stringResource(id, *args.toTypedArray())
 }
 
 private class LogyxVisuals(
@@ -96,9 +126,10 @@ fun rememberLogyxSnackbarState(): LogyxSnackbarState = remember { LogyxSnackbarS
  */
 @Composable
 fun MessageEffect(message: UiMessage?, snackbar: LogyxSnackbarState, onShown: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(message) {
         if (message != null) {
-            snackbar.show(message)
+            snackbar.show(message.copy(text = message.resolve(context), textRes = null))
             onShown()
         }
     }

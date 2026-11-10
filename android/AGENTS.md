@@ -16,6 +16,34 @@ cd android
 - `compileSdk = 37` (las versiones androidx 2026 lo exigen; requiere `platforms;android-37.0` en el SDK), `targetSdk = 36`, `minSdk = 29`.
 - Cuentas demo (solo builds debug muestran chips en el login): `pyme@logyx.pe`, `carrier@logyx.pe`, `driver@logyx.pe` / `Logyx2026!`.
 
+## Probar en emulador (headless, Linux)
+Requiere KVM (`/dev/kvm`). Una sola vez:
+```bash
+export ANDROID_HOME=~/Android/Sdk JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-36;google_apis;x86_64"
+echo no | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n logyx -k "system-images;android-36;google_apis;x86_64" --force
+printf 'hw.ramSize=3072\nhw.lcd.width=1080\nhw.lcd.height=2400\nhw.lcd.density=420\n' >> ~/.android/avd/logyx.avd/config.ini
+```
+Cada sesión:
+```bash
+# 1) Backend (dev, datos demo). El host 10.0.2.2 solo es aceptado con host-validation desactivado:
+cd backend && ./mvnw quarkus:dev -Dquarkus.http.port=8280 -Dquarkus.http.host-validation.require-localhost=false
+# 2) Emulador sin ventana
+~/Android/Sdk/emulator/emulator -avd logyx -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot &
+until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do sleep 5; done
+# 3) Instalar apuntando al backend y lanzar
+./gradlew installDebug -PapiBaseUrl=http://10.0.2.2:8280
+adb shell am start -n pe.logyx.app.debug/pe.logyx.app.MainActivity
+```
+Inspección: `adb exec-out screencap -p > x.png` · `adb shell uiautomator dump /sdcard/u.xml && adb pull /sdcard/u.xml` (textos y bounds para `input tap`) ·
+`adb logcat -b crash -d` · modo oscuro `adb shell cmd uimode night yes|no` · fuente grande `adb shell settings put system font_scale 1.3` ·
+reset de sesión `adb shell pm clear pe.logyx.app.debug`. Apagar: `adb emu kill`.
+Tests instrumentados (Compose, repositorios fake vía Koin, sin backend; el emulador debe estar encendido; con poca RAM añade `-Dorg.gradle.jvmargs=-Xmx4g`):
+```bash
+./gradlew connectedDebugAndroidTest      # app/src/androidTest: RoleHomeTest, BidFlowTest, DriverAdvanceTest
+```
+Capturas de referencia (claro/oscuro): `docs/screenshots/`.
+
 ## Apuntar a otra API
 `app/build.gradle.kts` define `BuildConfig.API_BASE_URL` / `WEB_BASE_URL` (se inyectan por Koin como `AppConfig`):
 ```bash
@@ -78,13 +106,14 @@ Un 401 en cualquier llamada cierra sesión automáticamente (`dataModule`).
   `LogyxDropdown`, `LogyxCombobox`, `LogyxDateField`/`LogyxDateRangeField` (es-PE), mensajes `UiMessage` + `MessageEffect` + `LogyxSnackbarHost`,
   `AlertBanner`, `LogyxConfirmDialog`, `LogyxBottomSheet`, `LogyxFilterChip`, `SegmentedControl`, badges, skeletons (`SkeletonList`),
   `LogyxScreen`/`LogyxTopBar`/`LogyxBottomBar`, y los de dominio: `LoadCard`, `RouteLine`, `StatusPill`/`InfoChip`, `StopTimeline`, `KpiTile`, `PriceTag`,
-  `EmptyState`/`ErrorState`/`LoadingState`, `TruckIllustration`, `AuctionCountdown`, `RouteMap`, `Refreshable`. Etiquetas de enums en `Labels.kt`.
+  `EmptyState`/`ErrorState`/`LoadingState`, `TruckIllustration`, `AuctionCountdown`, `RouteMap`, `Refreshable`. Etiquetas de enums en `Labels.kt` (`@Composable`, desde `strings.xml`; en lambdas no composables precalcula un mapa). Selección/avatar/pie: `RadioCardRow`, `InitialsAvatar`, `LoadingMoreFooter`.
 - **Regla:** los features NO usan controles Material crudos (`OutlinedTextField`, `Button`, `AlertDialog`, `ModalBottomSheet`, `SnackbarHostState`, `FilterChip`…);
   si falta un componente se crea en `:core:designsystem` con `@Preview` y entrada en el catálogo. Acciones irreversibles/con dinero -> `LogyxConfirmDialog`.
-- **Mensajes desde ViewModels:** el estado lleva `message: UiMessage?` (`UiMessage.success("Oferta enviada")`, `.error("qué pasó + qué hacer")`) y `onMessageShown()`;
+- **Mensajes desde ViewModels:** el estado lleva `message: UiMessage?` (`UiMessage.success(R.string.loads_bid_sent)`; literal solo para textos de la API: `UiMessage.error(e.userMessage())`; errores de campo = `UiText`) y `onMessageShown()`;
   la pantalla usa `MessageEffect(state.message, snackbar, onMessageShown)` con `rememberLogyxSnackbarState()` y `LogyxScreen(snackbar = …)`.
 - **Catálogo UI** (`UiCatalogScreen`, paquete `designsystem.catalog`): solo accesible en debug desde el login (botón "Catálogo UI"). Agrega ahí todo componente nuevo.
 - Textos visibles en `res/values/strings.xml` de cada módulo (prefijo del módulo). Copy: español peruano, "tú", botones verbo+objeto.
+- Bottom sheets: `LogyxBottomSheet` ya hace scroll; **no** pongas `verticalScroll` dentro (crash por altura infinita).
 - Contraste: no pongas texto blanco sobre `money` (#10B981); usa `moneyStrong`.
 
 ## Dependencias con requisitos ocultos

@@ -108,4 +108,8 @@
     <string name="loads_kpi_active_context">envíos activos</string>
     <string name="loads_kpi_delivered">Entregados</string>
     <string name="loads_kpi_delivered_context">este mes</string>
+    <string name="loads_bid_sent">Oferta enviada</string>
+    <string name="loads_error_vehicle_required">Elige el vehículo con el que harás el viaje.</string>
+    <string name="loads_error_amount_invalid">Ingresa un monto válido, por ejemplo 1,850.00.</string>
+    <string name="loads_error_amount_below_floor">Tu oferta es menor al piso de %1$s. Sube el monto para poder enviarla.</string>
 </resources>

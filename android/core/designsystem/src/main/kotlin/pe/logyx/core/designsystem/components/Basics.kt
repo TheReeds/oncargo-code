@@ -86,7 +86,7 @@ fun PriceTag(
     modifier: Modifier = Modifier,
     label: String? = null,
     large: Boolean = true,
-    color: Color = LogyxTheme.colors.moneyStrong,
+    color: Color = LogyxTheme.colors.moneyText,
 ) {
     Column(modifier) {
         Text(

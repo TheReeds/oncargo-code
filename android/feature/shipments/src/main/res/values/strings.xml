@@ -37,7 +37,7 @@
     <string name="shipments_sheet_license_missing">Sin licencia registrada</string>
     <string name="shipments_sheet_empty_title">No tienes conductores disponibles</string>
     <string name="shipments_sheet_empty_message">Registra un conductor en la web de LOGYX y vuelve a intentarlo.</string>
-    <string name="shipments_sheet_continue">Continuar con %1$s</string>
+    <string name="shipments_sheet_continue">Asignar a %1$s</string>
     <string name="shipments_sheet_continue_none">Elige un conductor para continuar</string>
     <string name="shipments_driver_selected">Seleccionado</string>
     <string name="shipments_driver_available">Disponible</string>
@@ -49,4 +49,5 @@
     <string name="shipments_confirm_dismiss">Volver</string>
 
     <string name="shipments_msg_assigned">Conductor asignado</string>
+    <string name="shipments_driver_assigned">Conductor asignado</string>
 </resources>

@@ -17,6 +17,7 @@ import pe.logyx.core.data.ShipmentsRepository
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.components.UiMessage
+import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.network.ApiException
 import java.time.LocalDate
 import pe.logyx.core.model.BidStatus
@@ -271,8 +272,8 @@ data class BidFormState(
     val submitting: Boolean = false,
     /** Error general del envío: mensaje de la API tal cual (monto bajo el piso, subasta cerrada, ya ofertaste). */
     val error: String? = null,
-    val vehicleError: String? = null,
-    val amountError: String? = null,
+    val vehicleError: UiText? = null,
+    val amountError: UiText? = null,
     /** Muestra el diálogo "¿Enviar oferta de S/ X?" antes de mandar la oferta. */
     val confirming: Boolean = false,
 ) {
@@ -355,17 +356,22 @@ class LoadDetailViewModel(
         if (form.submitting) return
         val amount = parseAmount(form.amountText)
         val floor = request.priceFloor
-        val vehicleError = if (form.vehicleId == null) "Elige el vehículo con el que harás el viaje." else null
-        val amountError = when {
-            amount == null || amount <= 0 -> "Ingresa un monto válido, por ejemplo 1,850.00."
-            floor != null && amount < floor -> "Tu oferta es menor al piso de ${Fmt.money(floor)}. Sube el monto para poder enviarla."
-            else -> null
-        }
+        val (vehicleError, amountError) = validateBid(form, amount, floor)
         if (vehicleError != null || amountError != null) {
             updateForm { it.copy(vehicleError = vehicleError, amountError = amountError, error = null) }
             return
         }
         updateForm { it.copy(confirming = true, error = null) }
+    }
+
+    private fun validateBid(form: BidFormState, amount: Double?, floor: Double?): Pair<UiText?, UiText?> {
+        val vehicleError = if (form.vehicleId == null) UiText.of(R.string.loads_error_vehicle_required) else null
+        val amountError = when {
+            amount == null || amount <= 0 -> UiText.of(R.string.loads_error_amount_invalid)
+            floor != null && amount < floor -> UiText.of(R.string.loads_error_amount_below_floor, Fmt.money(floor))
+            else -> null
+        }
+        return vehicleError to amountError
     }
 
     fun dismissConfirm() = updateForm { if (it.submitting) it else it.copy(confirming = false) }
@@ -377,12 +383,7 @@ class LoadDetailViewModel(
         if (form.submitting) return
         val amount = parseAmount(form.amountText)
         val floor = request.priceFloor
-        val vehicleError = if (form.vehicleId == null) "Elige el vehículo con el que harás el viaje." else null
-        val amountError = when {
-            amount == null || amount <= 0 -> "Ingresa un monto válido, por ejemplo 1,850.00."
-            floor != null && amount < floor -> "Tu oferta es menor al piso de ${Fmt.money(floor)}. Sube el monto para poder enviarla."
-            else -> null
-        }
+        val (vehicleError, amountError) = validateBid(form, amount, floor)
         if (vehicleError != null || amountError != null) {
             updateForm { it.copy(vehicleError = vehicleError, amountError = amountError, confirming = false) }
             return
@@ -391,7 +392,7 @@ class LoadDetailViewModel(
         viewModelScope.launch {
             loads.placeBid(request.id, form.vehicleId!!, amount!!, form.notes).fold(
                 onSuccess = {
-                    _state.update { st -> st.copy(form = null, message = UiMessage.success("Oferta enviada")) }
+                    _state.update { st -> st.copy(form = null, message = UiMessage.success(R.string.loads_bid_sent)) }
                     load(initial = false)
                 },
                 // Se muestra el mensaje de la API (p. ej. monto bajo el piso, subasta cerrada, ya ofertaste).
@@ -399,8 +400,8 @@ class LoadDetailViewModel(
                     val field = (e as? ApiException)?.field
                     updateForm {
                         when (field) {
-                            "amount" -> it.copy(submitting = false, confirming = false, amountError = e.userMessage())
-                            "vehicleId" -> it.copy(submitting = false, confirming = false, vehicleError = e.userMessage())
+                            "amount" -> it.copy(submitting = false, confirming = false, amountError = UiText.Raw(e.userMessage()))
+                            "vehicleId" -> it.copy(submitting = false, confirming = false, vehicleError = UiText.Raw(e.userMessage()))
                             else -> it.copy(submitting = false, confirming = false, error = e.userMessage())
                         }
                     }

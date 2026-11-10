@@ -1,6 +1,11 @@
 package pe.logyx.feature.auth
 
+import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +63,7 @@ import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxButton
+import pe.logyx.core.designsystem.components.InitialsAvatar
 import pe.logyx.core.designsystem.components.LogyxCard
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
 import pe.logyx.core.designsystem.components.LogyxFilterChip
@@ -108,6 +114,16 @@ fun LoginScreen(
     onOpenCatalog: (() -> Unit)? = null,
 ) {
     var showPassword by rememberSaveable { mutableStateOf(false) }
+    // La cabecera es siempre oscura: iconos de la barra de estado claros mientras se vea el login.
+    val view = LocalView.current
+    val darkTheme = isSystemInDarkTheme()
+    DisposableEffect(view, darkTheme) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { if (previous != null) controller.isAppearanceLightStatusBars = previous }
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         // Cabecera oscura de marca con camión
         Box(
@@ -231,9 +247,6 @@ private fun roleLabel(user: UserInfo) = stringResource(
     },
 )
 
-private fun initials(name: String): String =
-    name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.first().uppercase() }.ifEmpty { "?" }
-
 @Composable
 fun AccountRoute(apiUrl: String, versionName: String, viewModel: AccountViewModel = koinViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
@@ -252,13 +265,7 @@ fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout
                 LogyxCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         val avatarDescription = stringResource(R.string.auth_avatar_description, user.fullName)
-                        Box(
-                            Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
-                                .semantics { contentDescription = avatarDescription },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(initials(user.fullName), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary)
-                        }
+                        InitialsAvatar(user.fullName, description = avatarDescription)
                         Spacer(Modifier.height(4.dp))
                         Text(user.fullName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                         Text(

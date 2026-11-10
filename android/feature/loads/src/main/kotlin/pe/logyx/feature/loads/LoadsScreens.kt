@@ -64,6 +64,7 @@ import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
 import pe.logyx.core.designsystem.components.KpiTile
 import pe.logyx.core.designsystem.components.LoadCard
+import pe.logyx.core.designsystem.components.LoadingMoreFooter
 import pe.logyx.core.designsystem.components.LogyxBottomSheet
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
@@ -86,12 +87,14 @@ import pe.logyx.core.designsystem.components.SkeletonLoadCard
 import pe.logyx.core.designsystem.components.VerifiedBadge
 import pe.logyx.core.designsystem.components.StatusPill
 import pe.logyx.core.designsystem.components.moneyToInput
+import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.label
 import pe.logyx.core.designsystem.pill
 import pe.logyx.core.model.AuctionStatus
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.CargoType
+import pe.logyx.core.model.VehicleType
 import pe.logyx.core.model.CityItem
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ShipmentView
@@ -328,7 +331,7 @@ fun LoadsFeedScreen(
                             }
                         }
                         items(visible, key = { it.id }) { r -> LoadCard(r, state.isCompatible(r), { onOpenLoad(r.id) }) }
-                        if (state.loadingMore) item { SkeletonLoadCard() }
+                        if (state.loadingMore) item { LoadingMoreFooter() }
                     }
                 }
             }
@@ -352,7 +355,7 @@ private fun FiltersSheet(
     val anyCargo = stringResource(R.string.loads_filter_cargo_any)
     LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.loads_filters_title)) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             LogyxCombobox(
@@ -369,10 +372,11 @@ private fun FiltersSheet(
                 label = stringResource(R.string.loads_filter_dates), start = state.dateFrom, end = state.dateTo,
                 onValueChange = { from, to -> onDates(from, to) }, optional = true,
             )
+            val cargoLabels = CargoType.entries.associateWith { it.label }
             LogyxDropdown(
                 label = stringResource(R.string.loads_filter_cargo_type),
                 options = listOf<CargoType?>(null) + CargoType.entries, selected = state.cargoType,
-                onSelected = onCargoType, optionLabel = { it?.label ?: anyCargo },
+                onSelected = onCargoType, optionLabel = { it?.let(cargoLabels::getValue) ?: anyCargo },
                 placeholder = anyCargo, optional = true,
             )
             LogyxButton(
@@ -429,7 +433,7 @@ fun LoadDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             val mapDescription = stringResource(R.string.loads_map_description, cityLabel(r.originCity), cityLabel(r.destinationCity))
-                            RouteMap(state.origin, state.destination, Modifier.semantics { contentDescription = mapDescription }, height = 220.dp)
+                            RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 220.dp)
                             LogyxCard(Modifier.fillMaxWidth()) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                     PriceTag(r.suggestedPrice, label = stringResource(R.string.loads_reference_price))
@@ -535,7 +539,7 @@ private fun BidSheet(
     val resources = LocalContext.current.resources
     LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.loads_sheet_title)) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -548,17 +552,18 @@ private fun BidSheet(
                     title = stringResource(R.string.loads_sheet_no_vehicle_title),
                 )
             } else {
+                val vehicleLabels = VehicleType.entries.associateWith { it.label }
                 LogyxDropdown(
                     label = stringResource(R.string.loads_sheet_vehicle), options = vehicles, selected = selected,
                     onSelected = { onSelectVehicle(it.id) }, optionLabel = { it.plate },
                     placeholder = stringResource(R.string.loads_sheet_vehicle_placeholder),
-                    error = form.vehicleError,
-                    optionSupporting = { v -> resources.getString(R.string.loads_sheet_vehicle_option, v.type.label, Fmt.tons(v.maxWeightKg)) },
+                    error = form.vehicleError?.asString(),
+                    optionSupporting = { v -> resources.getString(R.string.loads_sheet_vehicle_option, vehicleLabels.getValue(v.type), Fmt.tons(v.maxWeightKg)) },
                 )
             }
             MoneyField(
                 value = form.amountText, onValueChange = onAmountChange, label = stringResource(R.string.loads_sheet_amount),
-                hint = bidHint(request), error = form.amountError,
+                hint = bidHint(request), error = form.amountError?.asString(),
             )
             ChipRow {
                 request.priceFloor?.let { QuickAmount(stringResource(R.string.loads_quick_floor, Fmt.moneyShort(it)), it, form.amountText, onAmountChange) }

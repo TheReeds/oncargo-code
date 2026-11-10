@@ -113,16 +113,16 @@ class LogyxApi(
 
     private suspend inline fun <reified T> post(path: String): T = call { client.post(path) }
 
-    private suspend inline fun <reified T> post(path: String, body: Any): T = call {
+    private suspend inline fun <reified T, reified B : Any> post(path: String, body: B): T = call {
         client.post(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 
-    private suspend inline fun <reified T> put(path: String, body: Any): T = call {
+    private suspend inline fun <reified T, reified B : Any> put(path: String, body: B): T = call {
         client.put(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 
     @Suppress("unused")
-    private suspend inline fun <reified T> patch(path: String, body: Any): T = call {
+    private suspend inline fun <reified T, reified B : Any> patch(path: String, body: B): T = call {
         client.patch(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 

@@ -122,7 +122,7 @@ class ShipmentDetailViewModel(
         _state.update { it.copy(assigning = true) }
         viewModelScope.launch {
             repo.assignDriver(shipmentId, driver.id).fold(
-                onSuccess = { sh -> _state.update { it.copy(assigning = false, drivers = null, shipment = sh, message = UiMessage.success("Conductor asignado")) } },
+                onSuccess = { sh -> _state.update { it.copy(assigning = false, drivers = null, shipment = sh, message = UiMessage.success(R.string.shipments_driver_assigned)) } },
                 onFailure = { e -> _state.update { it.copy(assigning = false, message = UiMessage.error(e.userMessage())) } },
             )
         }

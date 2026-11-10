@@ -12,6 +12,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import pe.logyx.core.designsystem.R
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -25,6 +29,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
@@ -36,6 +41,7 @@ import org.maplibre.geojson.Point
 import pe.logyx.core.model.GeoPoint
 
 const val POSITRON_STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
+const val DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark"
 
 /**
  * Mapa MapLibre (OpenFreeMap positron) con la ruta origen → destino en petrol.
@@ -48,8 +54,9 @@ fun RouteMap(
     destination: GeoPoint?,
     modifier: Modifier = Modifier,
     height: Dp = 200.dp,
-    styleUrl: String = POSITRON_STYLE_URL,
+    styleUrl: String = if (androidx.compose.foundation.isSystemInDarkTheme()) DARK_STYLE_URL else POSITRON_STYLE_URL,
     fillParent: Boolean = false,
+    contentDescription: String = stringResource(R.string.ds_route_map_desc),
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -80,7 +87,7 @@ fun RouteMap(
 
     val base = if (fillParent) modifier else modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(10.dp))
     AndroidView(
-        modifier = base,
+        modifier = base.semantics { this.contentDescription = contentDescription },
         factory = {
             mapView.getMapAsync { map -> map.setStyle(Style.Builder().fromUri(styleUrl)) { style -> drawRoute(map, style, origin, destination) } }
             mapView
@@ -116,7 +123,10 @@ private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destina
         )
         style.addLayer(
             CircleLayer("$POINTS_ID-circles", POINTS_ID).withProperties(
-                PropertyFactory.circleRadius(7f), PropertyFactory.circleColor(AColor.WHITE),
+                PropertyFactory.circleRadius(7f),
+                PropertyFactory.circleColor(
+                    Expression.match(Expression.get("kind"), Expression.color(AColor.WHITE), Expression.stop("destination", Expression.color(petrol))),
+                ),
                 PropertyFactory.circleStrokeColor(petrol), PropertyFactory.circleStrokeWidth(3f),
             ),
         )

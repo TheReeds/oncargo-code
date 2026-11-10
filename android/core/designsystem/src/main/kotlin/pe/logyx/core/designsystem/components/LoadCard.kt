@@ -78,6 +78,7 @@ fun LoadCard(
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             InfoChip(request.cargoType.label)
             InfoChip(Fmt.tons(request.weightKg))
+            request.minVehicleType?.let { InfoChip(stringResource(R.string.ds_min_vehicle, it.label)) }
             if (request.requesterRucVerified) VerifiedBadge()
             if (compatible) InfoChip(stringResource(R.string.ds_compatible), emphasized = true, icon = Icons.Rounded.CheckCircle)
             request.auction?.let { InfoChip(stringResource(R.string.ds_bids_count, it.bidCount, it.maxBids), icon = Icons.Rounded.Timer) }

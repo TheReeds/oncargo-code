@@ -1,5 +1,6 @@
 package pe.logyx.feature.loads
 
+import pe.logyx.core.designsystem.components.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -177,19 +178,19 @@ class LoadsViewModelsTest {
 
         vm.onAmountChange("500")
         vm.submitBid()
-        assertTrue(vm.state.value.form?.amountError!!.contains("piso"), "monto bajo el piso local")
+        assertTrue((vm.state.value.form?.amountError as UiText.Res).id == R.string.loads_error_amount_below_floor, "monto bajo el piso local")
         assertNull(repo.lastBid)
 
         repo.placeResult = Result.failure(ApiException(400, "LOGYX-MKT-004", "La subasta ya cerró", "amount"))
         vm.onAmountChange("1,250.50")
         vm.submitBid()
-        assertEquals("La subasta ya cerró", vm.state.value.form?.amountError)
+        assertEquals(UiText.Raw("La subasta ya cerró"), vm.state.value.form?.amountError)
         assertEquals(1250.5, repo.lastBid?.second)
 
         repo.placeResult = null
         vm.submitBid()
         assertNull(vm.state.value.form)
-        assertEquals("Oferta enviada", vm.state.value.message?.text)
+        assertEquals(R.string.loads_bid_sent, vm.state.value.message?.textRes)
     }
 
     @Test fun `error de campo de la API se muestra en el campo`() = runTest {
@@ -201,7 +202,7 @@ class LoadsViewModelsTest {
         vm.requestConfirm()
         assertTrue(vm.state.value.form?.confirming == true)
         vm.submitBid()
-        assertEquals("Monto bajo el piso", vm.state.value.form?.amountError)
+        assertEquals(UiText.Raw("Monto bajo el piso"), vm.state.value.form?.amountError)
         assertNull(vm.state.value.form?.error)
     }
 

@@ -20,7 +20,7 @@ object LogyxPalette {
     val Ink700 = Color(0xFF334155)
     val Ink400 = Color(0xFF94A3B8)
     /** Borde de campos y texto de ayuda: 4.7:1 sobre blanco (AA para controles). */
-    val Ink500 = Color(0xFF64748B)
+    val Ink500 = Color(0xFF5B6B7F)
     val Steel100 = Color(0xFFEEF2F6)
     val Steel200 = Color(0xFFE2E8F0)
     val Surface = Color(0xFFFFFFFF)

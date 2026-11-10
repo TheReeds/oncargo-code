@@ -71,6 +71,7 @@ import pe.logyx.core.designsystem.components.Refreshable
 import pe.logyx.core.designsystem.components.RouteLine
 import pe.logyx.core.designsystem.components.RouteMap
 import pe.logyx.core.designsystem.components.SkeletonList
+import pe.logyx.core.designsystem.components.RadioCardRow
 import pe.logyx.core.designsystem.components.StatusPill
 import pe.logyx.core.designsystem.components.StopTimeline
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
@@ -249,7 +250,7 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        RouteMap(state.origin, state.destination, Modifier.semantics { contentDescription = mapDescription }, height = 220.dp)
+        RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 220.dp)
         LogyxCard(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 StatusPill(s.status.pill())
@@ -334,30 +335,19 @@ private fun DriversSheet(drivers: List<DriverView>, loading: Boolean, onDismiss:
 
 @Composable
 private fun DriverRow(d: DriverView, selected: Boolean, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val selectedLabel = stringResource(R.string.shipments_driver_selected)
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (selected) scheme.primaryContainer else scheme.surface,
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .semantics { if (selected) stateDescription = selectedLabel },
-    ) {
-        Row(Modifier.padding(16.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(d.fullName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    d.licenseNumber?.let { stringResource(R.string.shipments_sheet_license_format, it) }
-                        ?: stringResource(R.string.shipments_sheet_license_missing),
-                    style = LogyxText.mono, color = scheme.onSurfaceVariant,
-                )
-            }
-            StatusPill(
-                stringResource(if (d.status == DriverStatus.AVAILABLE) R.string.shipments_driver_available else R.string.shipments_driver_on_duty),
-                if (d.status == DriverStatus.AVAILABLE) PillTone.Emerald else PillTone.Petrol,
+    RadioCardRow(selected = selected, onClick = onClick) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(d.fullName, style = MaterialTheme.typography.titleMedium)
+            Text(
+                d.licenseNumber?.let { stringResource(R.string.shipments_sheet_license_format, it) }
+                    ?: stringResource(R.string.shipments_sheet_license_missing),
+                style = LogyxText.mono, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = scheme.primary)
         }
+        StatusPill(
+            stringResource(if (d.status == DriverStatus.AVAILABLE) R.string.shipments_driver_available else R.string.shipments_driver_on_duty),
+            if (d.status == DriverStatus.AVAILABLE) PillTone.Emerald else PillTone.Petrol,
+        )
     }
 }
 
