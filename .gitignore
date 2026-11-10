@@ -1,0 +1,22 @@
+# Backend
+backend/target/
+backend/.keys/
+*.pem
+# Web
+web/node_modules/
+web/dist/
+web/.astro/
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+# Env / IDE
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
