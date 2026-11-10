@@ -3,6 +3,8 @@
 Astro 7 (SSR, `@astrojs/node` standalone) · Tailwind 4 · islas React + primitivas estilo shadcn/ui · lucide · MapLibre GL (OpenFreeMap positron) · Geist Sans/Mono (fontsource).
 Contexto general: `../AGENTS.md`. Sistema de diseño: `../docs/design/DESIGN.md`. Contrato: `../docs/api/openapi.yaml`.
 
+> **ANTES de crear o modificar UI lee la skill `../.claude/skills/logyx-design-system/SKILL.md`** (+ `references/web.md`: catálogo de componentes, ejemplos, do/don't, trampas). Copy: `../docs/design/CONTENT.md`. Catálogo visual vivo: http://localhost:4321/dev/ui (solo dev, 404 en prod).
+
 ## Cómo correr
 ```bash
 cd web && cp .env.example .env     # API_URL=http://localhost:8080
@@ -24,10 +26,11 @@ src/
 │   ├── server.ts           #   llamadas a la API (solo servidor)
 │   ├── actions.ts          #   Astro Actions (mutaciones), registradas en src/actions/index.ts
 │   └── components/         #   islas React de la feature
-├── components/ui/          # primitivas (button, input/select/field, card, badge, table, sheet, alert, skeleton)
+├── components/ui/          # biblioteca compartida (ver sección Componentes): button, field, input, select, combobox, date-picker, number-input, confirm-dialog, toaster, dialog, sheet, tabs, tooltip, dropdown-menu, pagination, table, card, badge, alert, skeleton, avatar, kbd, form-controls
 ├── components/domain/      # StatusPill, RouteLine, KpiTile, EmptyState, Countdown (React; sirven en SSR y en islas)
 ├── components/layout/      # AppShell (sidebar + topbar por rol), PageHeader, Logo
-├── layouts/                # Base.astro, Public.astro
+├── components/dev/         # UiCatalog (página /dev/ui)
+├── layouts/                # Base.astro (monta <Overlays/>: Toaster + ConfirmHost), Public.astro
 ├── lib/api/                # schema.d.ts (GENERADO), client.ts (openapi-fetch + unwrap + ApiError), server.ts (tipos)
 ├── lib/session.ts          # cookie httpOnly, claims del JWT, homeFor(rol)
 ├── lib/actions.ts          # requireToken(ctx) y run(fn) → ApiError→ActionError con el mensaje en español de la API
@@ -58,6 +61,14 @@ Trampas conocidas:
 - MapLibre 6 necesita su worker servido por nosotros (`scripts/copy-maplibre-worker.mjs` → `public/maplibre/`, ignorado por git; `setWorkerUrl` en `TrackingMap.tsx`).
 - Los formularios React llevan `method="post"` para que, si se envían antes de hidratar, las credenciales no acaben en la URL.
 
+## Componentes compartidos (`components/ui`)
+Estilo shadcn/ui con código propio sobre primitivas MIT: Radix UI (select, popover, dialog, alert-dialog, dropdown-menu, tabs, tooltip, checkbox, radio-group, switch, label), **cmdk** (Combobox/MultiSelect), **react-day-picker 10** + date-fns (DatePicker/DateRangePicker, locale es), **sonner** (toasts). Sin SweetAlert.
+- **Regla:** no uses `<select>`, `<input type=date>`, `window.confirm/alert`. Usa `Select`/`Combobox`, `DatePicker`/`DateRangePicker`, `confirm({...})` (Promise<boolean>), `toast.success/error/info` y `flash()` (toast tras redirigir/recargar).
+- Formularios: `Field` (label + hint + error `role="alert"`) con `id={htmlFor}` en el control; `MoneyInput` (`S/`), `NumberInput` (`suffix="kg"`).
+- Listados: `Table` + `Pagination` (`meta.page/size/total`), `SkeletonRows`, `EmptyState`.
+- Si falta un componente, créalo en `components/ui`, agrégalo a `components/dev/UiCatalog.tsx` y a `.claude/skills/logyx-design-system/references/web.md`; nunca una copia local en una feature.
+- Tras instalar dependencias nuevas reinicia `npm run dev` (Vite: 504 "Outdated Optimize Dep").
+
 ## Convenciones de UI (ver DESIGN.md)
 - Tokens (Tailwind): `ink-900/700/500/400`, `steel-100/200`, `surface`, `petrol-700/800/50`, `emerald-500/700/50`, `amber-500/700/50`, `red-600/50`. `ink-500` y `emerald-700`/`amber-700` son variantes con contraste AA para texto (los hex de DESIGN.md sobre blanco no llegan a AA en texto pequeño).
 - Dinero y oportunidad = emerald (`.money`: mono, tabulares, emerald-700). Cifras técnicas (placas, km, toneladas, montos en tabla) en `font-mono`.
@@ -67,4 +78,4 @@ Trampas conocidas:
 - Accesibilidad: todo input con `<Label>`/`Field`, errores con `role="alert"`, foco visible global, enlace "Saltar al contenido", navegación lateral colapsable en tablet/móvil.
 
 ## Pendientes conocidos
-Modo oscuro, evidencia (foto/firma) de entrega, auto-refresco/polling de ofertas y tracking, mapa con ruta por carretera (hoy línea recta entre ciudades), paginación de listados (la API no la ofrece), tests e2e automatizados (el flujo se recorrió con Playwright ad hoc; capturas en `docs/screenshots/`).
+Modo oscuro, evidencia (foto/firma) de entrega, auto-refresco/polling de ofertas y tracking, mapa con ruta por carretera (hoy línea recta entre ciudades), tests e2e automatizados (el flujo se recorrió con Playwright ad hoc; capturas en `docs/screenshots/`).

@@ -10,6 +10,6 @@ const [shipments, drivers, { cities }] = await Promise.all([listShipments(t), li
 const id = Astro.url.searchParams.get('id');
 ---
 <AppShell title="Envíos" active="envios" wide>
-  <PageHeader title="Envíos" subtitle="Asigna conductor y revisa las paradas" />
+  <PageHeader title="Envíos" subtitle="Asigna un conductor a cada envío y revisa sus paradas" />
   <TrackingSplit client:load shipments={shipments} cities={cities} drivers={drivers} initialId={id} perspective="CARRIER" />
 </AppShell>

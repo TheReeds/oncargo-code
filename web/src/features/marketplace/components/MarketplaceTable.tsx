@@ -1,58 +1,103 @@
-import { useMemo, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, SearchX, ShieldCheck, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/input';
+import { Avatar } from '@/components/ui/avatar';
+import { Tooltip } from '@/components/ui/tooltip';
+import { Field } from '@/components/ui/field';
+import { Select } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
+import { DateRangePicker, type DateRangeValue } from '@/components/ui/date-picker';
+import { NumberInput } from '@/components/ui/number-input';
+import { Checkbox } from '@/components/ui/form-controls';
+import { Pagination } from '@/components/ui/pagination';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
-import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons } from '@/lib/format';
+import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { CityItem, RequestView, VehicleView } from '@/lib/api/server';
 import BidSheet from './BidSheet';
 
-export default function MarketplaceTable({ requests, vehicles, cities }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[] }) {
-  const [origin, setOrigin] = useState('');
-  const [dest, setDest] = useState('');
-  const [date, setDate] = useState('');
-  const [compat, setCompat] = useState(false);
+export type MarketFilters = { origin: string; dest: string; from: string; to: string; cargo: string; maxKg: string; compat: boolean; sort: string };
+
+const SORT_OPTIONS = [{ value: 'pickup', label: 'Recojo más próximo' }, { value: 'price_desc', label: 'Mayor precio' }, { value: 'recent', label: 'Más recientes' }];
+
+export default function MarketplaceTable({ requests, vehicles, cities, filters, page, size, total }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[]; filters: MarketFilters; page: number; size: number; total: number }) {
+  const [f, setF] = useState(filters);
   const [active, setActive] = useState<RequestView | null>(null);
 
   const usable = vehicles.filter((v) => v.status === 'AVAILABLE');
   const maxCap = Math.max(0, ...usable.map((v) => v.maxWeightKg ?? 0));
   const isCompatible = (r: RequestView) => usable.some((v) => (v.maxWeightKg ?? 0) >= (r.weightKg ?? 0));
 
-  const rows = useMemo(
-    () =>
-      requests
-        .filter((r) => (!origin || r.originCity === origin) && (!dest || r.destinationCity === dest) && (!date || r.pickupDate === date) && (!compat || isCompatible(r)))
-        .sort((a, b) => (a.auction?.closesAt ?? '').localeCompare(b.auction?.closesAt ?? '')),
-    [requests, origin, dest, date, compat, vehicles],
-  );
+  const cityOptions = useMemo(() => cities.map((c) => ({ value: c.code!, label: c.name! })), [cities]);
+  const cargoOptions = useMemo(() => [{ value: 'ALL', label: 'Todos los tipos' }, ...Object.entries(CARGO_LABELS).map(([value, label]) => ({ value, label }))], []);
+
+  const hasFilters = !!(f.origin || f.dest || f.from || f.cargo || f.maxKg || f.compat);
+  const range: DateRangeValue = { from: f.from, to: f.to };
+
+  /** Navega a la URL con los filtros (SSR); cambiar un filtro vuelve a la página 1. */
+  function go(next: MarketFilters, p = 1) {
+    setF(next);
+    const q = new URLSearchParams();
+    if (next.origin) q.set('origen', next.origin);
+    if (next.dest) q.set('destino', next.dest);
+    if (next.from) { q.set('desde', next.from); if (next.to) q.set('hasta', next.to); }
+    if (next.cargo) q.set('carga', next.cargo);
+    if (next.maxKg) q.set('peso', next.maxKg);
+    if (next.compat) q.set('compatibles', '1');
+    if (next.sort && next.sort !== 'pickup') q.set('orden', next.sort);
+    if (p > 1) q.set('pagina', String(p));
+    const qs = q.toString();
+    window.location.href = window.location.pathname + (qs ? `?${qs}` : '');
+  }
+  const set = (patch: Partial<MarketFilters>) => go({ ...f, ...patch });
+  const clear = () => go({ origin: '', dest: '', from: '', to: '', cargo: '', maxKg: '', compat: false, sort: f.sort });
+  const rows = requests;
+
+  // El peso máximo se aplica al dejar de escribir.
+  useEffect(() => {
+    if (f.maxKg === filters.maxKg) return;
+    const t = setTimeout(() => go(f), 700);
+    return () => clearTimeout(t);
+  }, [f.maxKg]);
 
   return (
     <>
       <Card>
-        <div className="flex flex-wrap items-end gap-3 border-b border-steel-200 p-4">
-          <div className="w-40"><label htmlFor="m-o" className="mb-1 block text-xs text-ink-500">Origen</label>
-            <Select id="m-o" value={origin} onChange={(e) => setOrigin(e.target.value)}><option value="">Todos</option>{cities.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</Select></div>
-          <div className="w-40"><label htmlFor="m-d" className="mb-1 block text-xs text-ink-500">Destino</label>
-            <Select id="m-d" value={dest} onChange={(e) => setDest(e.target.value)}><option value="">Todos</option>{cities.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</Select></div>
-          <div className="w-44"><label htmlFor="m-f" className="mb-1 block text-xs text-ink-500">Fecha de recojo</label>
-            <input id="m-f" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 w-full rounded-input border border-ink-400/60 bg-surface px-3 text-sm" /></div>
-          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 text-sm has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
-            <input type="checkbox" checked={compat} onChange={(e) => setCompat(e.target.checked)} className="size-4 accent-[#047857]" />
-            Compatible con mi flota
-            <span className="font-mono text-xs text-ink-500">{maxCap > 0 ? `≤ ${formatTons(maxCap)}` : 'sin vehículos'}</span>
-          </label>
-          {(origin || dest || date || compat) && <Button variant="ghost" size="sm" onClick={() => { setOrigin(''); setDest(''); setDate(''); setCompat(false); }}>Limpiar</Button>}
-          <span className="ml-auto text-sm text-ink-500"><span className="font-mono">{rows.length}</span> cargas</span>
+        <div className="space-y-4 border-b border-steel-200 p-4 sm:p-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Origen" htmlFor="m-o"><Combobox id="m-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+            <Field label="Destino" htmlFor="m-d"><Combobox id="m-d" value={f.dest} onValueChange={(v) => set({ dest: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+            <Field label="Fecha de recojo" htmlFor="m-f"><DateRangePicker id="m-f" value={range} onValueChange={(r) => set({ from: r.from, to: r.to })} placeholder="Cualquier fecha" /></Field>
+            <Field label="Tipo de carga" htmlFor="m-c"><Select id="m-c" value={f.cargo} onValueChange={(v) => set({ cargo: v === 'ALL' ? '' : v })} options={cargoOptions} placeholder="Todos los tipos" /></Field>
+          </div>
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+            <Field label="Peso máximo" htmlFor="m-w" className="w-full sm:w-44"><NumberInput id="m-w" value={f.maxKg} onValueChange={(v) => setF({ ...f, maxKg: v })} suffix="kg" placeholder="Sin límite" /></Field>
+            <Tooltip content={maxCap > 0 ? `Tu vehículo disponible con más capacidad lleva ${formatTons(maxCap)}.` : 'Agrega un vehículo disponible para filtrar por compatibilidad.'}>
+              <label htmlFor="m-compat" className="flex h-10 cursor-pointer items-center gap-2 text-sm text-ink-700">
+                <Checkbox id="m-compat" checked={f.compat} onCheckedChange={(c) => set({ compat: c === true })} />
+                Solo cargas compatibles con mi flota
+                {maxCap > 0 && <span className="font-mono text-xs text-ink-500">≤ {formatTons(maxCap)}</span>}
+              </label>
+            </Tooltip>
+            <div className="ml-auto flex h-10 items-center gap-3">
+              <span className="text-sm text-ink-500" aria-live="polite"><span className="font-mono font-semibold text-ink-900">{total}</span> {total === 1 ? 'carga' : 'cargas'}</span>
+              <Select id="m-s" value={f.sort} onValueChange={(v) => set({ sort: v })} options={SORT_OPTIONS} className="h-9 w-44" />
+              {hasFilters && <Button variant="ghost" size="sm" onClick={clear}><X /> Limpiar filtros</Button>}
+            </div>
+          </div>
         </div>
         {rows.length === 0 ? (
-          <EmptyState title={requests.length === 0 ? 'No hay cargas abiertas por ahora' : 'Ninguna carga coincide con los filtros'} description={requests.length === 0 ? 'Cuando una PYME publique una carga la verás aquí.' : 'Prueba quitando algún filtro.'} />
+          !hasFilters ? (
+            <EmptyState title="No hay cargas abiertas por ahora" description="Cuando una PYME publique una solicitud, la verás aquí con su subasta en curso." />
+          ) : (
+            <EmptyState title="No hay cargas con estos filtros" description="Prueba con otra ciudad o amplía el rango de fechas." action={<Button variant="outline" onClick={clear}><SearchX /> Limpiar filtros</Button>} />
+          )
         ) : (
-          <Table className="[&_td]:px-3 [&_th]:px-3">
-            <thead><tr><Th>Recojo</Th><Th className="hidden text-right xl:table-cell">Distancia</Th><Th>Entrega</Th><Th>Carga</Th><Th>Ofertas</Th><Th className="text-right">Sugerido</Th><Th className="sticky right-0 bg-steel-100"><span className="sr-only">Acción</span></Th></tr></thead>
+          <Table className="[&_td]:px-3 [&_th]:px-3 sm:[&_td:first-child]:pl-5 sm:[&_th:first-child]:pl-5">
+            <thead><tr><Th>Recojo</Th><Th className="hidden text-right xl:table-cell">Distancia</Th><Th>Entrega</Th><Th>Carga</Th><Th className="hidden lg:table-cell">Vehículo mínimo</Th><Th>Ofertas</Th><Th className="text-right">Sugerido</Th><Th className="sticky right-0 bg-steel-100"><span className="sr-only">Acción</span></Th></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const ok = isCompatible(r);
@@ -64,10 +109,12 @@ export default function MarketplaceTable({ requests, vehicles, cities }: { reque
                     <Td>
                       <div className="whitespace-nowrap">{CARGO_LABELS[r.cargoType!]} · <span className="font-mono">{formatTons(r.weightKg)}</span></div>
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-500">
-                        <span className="hidden max-w-40 truncate xl:inline">{r.requesterName}</span>
+                        {r.requesterName && <span className="hidden items-center gap-1.5 xl:flex"><Avatar name={r.requesterName} size="sm" className="size-5 text-[9px]" /><span className="max-w-32 truncate">{r.requesterName}</span></span>}
+                        {r.requesterRucVerified && <Badge tone="petrol"><ShieldCheck className="size-3" aria-hidden="true" />Empresa verificada</Badge>}
                         {ok && <Badge tone="emerald">Compatible</Badge>}
                       </div>
                     </Td>
+                    <Td className="hidden whitespace-nowrap lg:table-cell">{r.minVehicleType ? VEHICLE_LABELS[r.minVehicleType] : '—'}</Td>
                     <Td className="whitespace-nowrap">
                       <div className="font-mono text-sm tabular-nums">{r.auction?.bidCount ?? 0}/{r.auction?.maxBids ?? 5}</div>
                       <Countdown closesAt={r.auction?.closesAt} className="text-xs" />
@@ -86,6 +133,7 @@ export default function MarketplaceTable({ requests, vehicles, cities }: { reque
             </tbody>
           </Table>
         )}
+      {total > size && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={size} total={total} onPageChange={(p) => go(f, p)} /></div>}
       </Card>
       <BidSheet request={active} vehicles={vehicles} onClose={() => setActive(null)} />
     </>

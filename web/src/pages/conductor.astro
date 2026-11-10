@@ -1,12 +1,55 @@
 ---
 import Public from '@/layouts/Public.astro';
-import { Smartphone } from '@lucide/astro';
+import { me } from '@/features/auth/server';
+import { Avatar } from '@/components/ui/avatar';
+import { Alert } from '@/components/ui/alert';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut } from '@lucide/astro';
+
+const session = Astro.locals.session!;
+const user = await me(session.token);
+const name = user?.fullName ?? session.email;
+const first = name.split(/\s+/)[0];
+const tasks = [
+  { icon: Route, t: 'Ver tu viaje activo', d: 'Ruta, paradas y horarios del envío que te asignaron.' },
+  { icon: MapPinCheck, t: 'Registrar llegada a cada parada', d: 'Avisa cuando llegas al recojo y a la entrega.' },
+  { icon: PackageCheck, t: 'Confirmar la entrega', d: 'Cierra el envío al dejar la carga en destino.' },
+];
 ---
 <Public title="Conductores">
-  <div class="mx-auto max-w-md px-4 py-16 text-center">
-    <div class="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Smartphone size={26} /></div>
-    <h1 class="text-xl font-semibold">Usa la app móvil de LOGYX</h1>
-    <p class="mt-2 text-ink-700">Los conductores gestionan sus viajes, paradas y entregas desde la aplicación móvil. La versión web es para empresas y transportistas.</p>
-    <form method="post" action="/logout" class="mt-6"><button class="h-10 rounded-input border border-steel-200 bg-surface px-5 text-sm font-medium hover:bg-steel-100">Cerrar sesión</button></form>
+  <div class="mx-auto w-full max-w-md px-4 py-8 sm:py-14">
+    <div class="flex items-center gap-4">
+      <Avatar name={name} size="lg" />
+      <div class="min-w-0">
+        <p class="text-sm text-ink-500">Conductor{user?.organizationName ? ` · ${user.organizationName}` : ''}</p>
+        <h1 class="truncate text-2xl font-semibold tracking-tight text-ink-900">Hola, {first}</h1>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre LOGYX en tu celular para trabajar.</Alert>
+    </div>
+
+    <section aria-labelledby="en-app" class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
+      <h2 id="en-app" class="flex items-center gap-2 text-base font-semibold text-ink-900"><Smartphone size={18} class="text-petrol-700" aria-hidden="true" /> Qué haces en la app</h2>
+      <ul class="mt-4 space-y-4">
+        {tasks.map((t) => (
+          <li class="flex gap-3">
+            <span class="grid size-11 shrink-0 place-items-center rounded-input bg-petrol-50 text-petrol-700"><t.icon size={22} aria-hidden="true" /></span>
+            <div>
+              <p class="font-medium text-ink-900">{t.t}</p>
+              <p class="text-sm text-ink-700">{t.d}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <form method="post" action="/logout" class="mt-6">
+      <button type="submit" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'h-14 w-full text-base')}>
+        <LogOut size={18} aria-hidden="true" /> Cerrar sesión
+      </button>
+    </form>
   </div>
 </Public>

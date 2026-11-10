@@ -1,140 +1,205 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
-import { Plus, Truck, UserRound } from 'lucide-react';
+import { splitActionError } from '@/lib/action-error';
+import { CheckCircle2, MoreHorizontal, Plus, Route, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Select } from '@/components/ui/input';
-import { Sheet } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Field } from '@/components/ui/field';
+import { Select } from '@/components/ui/select';
+import { NumberInput } from '@/components/ui/number-input';
+import { Dialog } from '@/components/ui/dialog';
 import { Alert } from '@/components/ui/alert';
+import { Avatar } from '@/components/ui/avatar';
+import { Tooltip } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { flash, toast } from '@/components/ui/toaster';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { StatusPill } from '@/components/domain/StatusPill';
+import { KpiTile } from '@/components/domain/KpiTile';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { formatNumber, VEHICLE_LABELS } from '@/lib/format';
 import type { DriverView, VehicleView } from '@/lib/api/server';
+/** campo de la API → clave de error local */
+const FIELD_MAP: Record<string, string> = { plate: 'plate', email: 'email' };
 
-function VehicleForm() {
+
+const TYPE_OPTIONS = Object.entries(VEHICLE_LABELS).map(([value, label]) => ({ value, label }));
+type VType = 'VAN' | 'TRUCK_SMALL' | 'TRUCK_MEDIUM' | 'TRUCK_LARGE' | 'PLATFORM' | 'REFRIGERATED' | 'TANKER';
+
+function VehicleDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [plate, setPlate] = useState('');
+  const [type, setType] = useState('TRUCK_MEDIUM');
+  const [weight, setWeight] = useState('');
+  const [volume, setVolume] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
     setError(null);
+    const errs: Record<string, string> = {};
+    if (plate.trim().length < 5) errs.plate = 'Ingresa la placa del vehículo.';
+    if (!(Number(weight) > 0)) errs.weight = 'Ingresa la capacidad en kg.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
     setBusy(true);
-    const vol = Number(f.get('maxVolumeM3'));
-    const { error } = await actions.fleet.createVehicle({
-      plate: String(f.get('plate')).trim().toUpperCase(), type: String(f.get('type')) as any,
-      maxWeightKg: Number(f.get('maxWeightKg')), maxVolumeM3: vol > 0 ? vol : undefined,
-    });
-    if (error) { setError(error.message); setBusy(false); return; }
+    const vol = Number(volume);
+    const { error } = await actions.fleet.createVehicle({ plate: plate.trim().toUpperCase(), type: type as VType, maxWeightKg: Number(weight), maxVolumeM3: vol > 0 ? vol : undefined });
+    if (error) { const { message, field } = splitActionError(error); if (field && field in FIELD_MAP) setErrors({ [FIELD_MAP[field]]: message }); else setError(message); setBusy(false); return; }
+    flash('Vehículo agregado');
     window.location.reload();
   }
+
   return (
-    <form onSubmit={submit} className="space-y-4 p-5">
-      {error && <Alert tone="error">{error}</Alert>}
-      <Field label="Placa" htmlFor="v-plate"><Input id="v-plate" name="plate" required placeholder="ABC-123" className="font-mono uppercase" /></Field>
-      <Field label="Tipo de vehículo" htmlFor="v-type"><Select id="v-type" name="type" defaultValue="TRUCK_MEDIUM">{Object.entries(VEHICLE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
-      <Field label="Capacidad (kg)" htmlFor="v-w"><Input id="v-w" name="maxWeightKg" type="number" min="1" step="any" required className="font-mono" /></Field>
-      <Field label="Volumen (m³)" htmlFor="v-vol" hint="Opcional"><Input id="v-vol" name="maxVolumeM3" type="number" min="0" step="any" className="font-mono" /></Field>
-      <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Guardando…' : 'Agregar vehículo'}</Button>
-    </form>
+    <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()} title="Agregar vehículo" description="Los vehículos disponibles te permiten enviar ofertas según su capacidad."
+      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="vehicle-form" loading={busy}>{busy ? 'Agregando vehículo…' : 'Agregar vehículo'}</Button></>}>
+      <form id="vehicle-form" onSubmit={submit} noValidate className="space-y-4">
+        {error && <Alert tone="error" title="No pudimos agregar el vehículo">{error}</Alert>}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Placa" htmlFor="v-plate" error={errors.plate}><Input id="v-plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-123" maxLength={10} aria-invalid={!!errors.plate} className="font-mono uppercase" /></Field>
+          <Field label="Tipo de vehículo" htmlFor="v-type"><Select id="v-type" value={type} onValueChange={setType} options={TYPE_OPTIONS} /></Field>
+          <Field label="Capacidad de carga" htmlFor="v-w" error={errors.weight}><NumberInput id="v-w" value={weight} onValueChange={setWeight} suffix="kg" placeholder="8,000" invalid={!!errors.weight} /></Field>
+          <Field label="Volumen" htmlFor="v-vol" hint="Opcional"><NumberInput id="v-vol" value={volume} onValueChange={setVolume} decimals={1} suffix="m³" placeholder="30" /></Field>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
-function DriverForm() {
+function DriverDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [v, setV] = useState({ fullName: '', licenseNumber: '', email: '', password: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
+  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => setV((s) => ({ ...s, [k]: e.target.value }));
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
     setError(null);
+    const errs: Record<string, string> = {};
+    if (v.fullName.trim().length < 2) errs.fullName = 'Ingresa el nombre completo.';
+    if (v.licenseNumber.trim().length < 3) errs.licenseNumber = 'Ingresa el número de licencia.';
+    if (!/^\S+@\S+\.\S+$/.test(v.email.trim())) errs.email = 'Ingresa un correo válido, por ejemplo luis@empresa.pe.';
+    if (v.password.length < 8) errs.password = 'La contraseña debe tener al menos 8 caracteres.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
     setBusy(true);
-    const { error } = await actions.fleet.createDriver({
-      fullName: String(f.get('fullName')).trim(), email: String(f.get('email')).trim(), password: String(f.get('password')), licenseNumber: String(f.get('licenseNumber')).trim(),
-    });
-    if (error) { setError(error.message); setBusy(false); return; }
+    const { error } = await actions.fleet.createDriver({ fullName: v.fullName.trim(), email: v.email.trim(), password: v.password, licenseNumber: v.licenseNumber.trim() });
+    if (error) { const { message, field } = splitActionError(error); if (field && field in FIELD_MAP) setErrors({ [FIELD_MAP[field]]: message }); else setError(message); setBusy(false); return; }
+    flash('Conductor registrado');
     window.location.reload();
   }
+
   return (
-    <form onSubmit={submit} className="space-y-4 p-5">
-      {error && <Alert tone="error">{error}</Alert>}
-      <Field label="Nombre completo" htmlFor="d-name"><Input id="d-name" name="fullName" required /></Field>
-      <Field label="N.° de licencia" htmlFor="d-lic"><Input id="d-lic" name="licenseNumber" required className="font-mono" /></Field>
-      <Field label="Correo (acceso a la app)" htmlFor="d-email"><Input id="d-email" name="email" type="email" required /></Field>
-      <Field label="Contraseña inicial" htmlFor="d-pass" hint="Mínimo 8 caracteres"><Input id="d-pass" name="password" type="password" minLength={8} required autoComplete="new-password" /></Field>
-      <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Guardando…' : 'Registrar conductor'}</Button>
-    </form>
+    <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()} title="Registrar conductor" description="Usará su correo y contraseña para ingresar a la app móvil."
+      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="driver-form" loading={busy}>{busy ? 'Registrando conductor…' : 'Registrar conductor'}</Button></>}>
+      <form id="driver-form" onSubmit={submit} noValidate className="space-y-4">
+        {error && <Alert tone="error" title="No pudimos registrar al conductor">{error}</Alert>}
+        <Field label="Nombre completo" htmlFor="d-name" error={errors.fullName}><Input id="d-name" value={v.fullName} onChange={set('fullName')} placeholder="Luis Quispe Mamani" autoComplete="off" aria-invalid={!!errors.fullName} /></Field>
+        <Field label="N.° de licencia" htmlFor="d-lic" error={errors.licenseNumber}><Input id="d-lic" value={v.licenseNumber} onChange={set('licenseNumber')} placeholder="Q12345678" className="font-mono" autoComplete="off" aria-invalid={!!errors.licenseNumber} /></Field>
+        <Field label="Correo de acceso" htmlFor="d-email" error={errors.email}><Input id="d-email" type="email" value={v.email} onChange={set('email')} placeholder="luis@empresa.pe" autoComplete="off" aria-invalid={!!errors.email} /></Field>
+        <Field label="Contraseña inicial" htmlFor="d-pass" error={errors.password} hint="Mínimo 8 caracteres. El conductor podrá cambiarla luego."><Input id="d-pass" type="password" value={v.password} onChange={set('password')} autoComplete="new-password" aria-invalid={!!errors.password} /></Field>
+      </form>
+    </Dialog>
   );
 }
 
-function VehicleStatus({ v }: { v: VehicleView }) {
+const STATUS_ACTIONS = [
+  { status: 'AVAILABLE', label: 'Marcar como disponible', icon: CheckCircle2 },
+  { status: 'IN_ROUTE', label: 'Marcar en ruta', icon: Route },
+  { status: 'MAINTENANCE', label: 'Enviar a mantenimiento', icon: Wrench },
+] as const;
+
+function VehicleActions({ v }: { v: VehicleView }) {
   const [busy, setBusy] = useState(false);
-  async function change(status: string) {
+  async function change(status: (typeof STATUS_ACTIONS)[number]['status']) {
     setBusy(true);
-    const { error } = await actions.fleet.setVehicleStatus({ id: v.id!, status: status as any });
-    if (error) { alert(error.message); setBusy(false); return; }
+    const { error } = await actions.fleet.setVehicleStatus({ id: v.id!, status });
+    if (error) { toast.error(error.message); setBusy(false); return; }
+    flash('Estado actualizado');
     window.location.reload();
   }
   return (
-    <div className="flex items-center justify-end gap-2">
-      <StatusPill status={v.status!} />
-      <label className="sr-only" htmlFor={`vs-${v.id}`}>Cambiar estado de {v.plate}</label>
-      <select id={`vs-${v.id}`} disabled={busy} value={v.status} onChange={(e) => change(e.target.value)} className="h-8 rounded-input border border-steel-200 bg-surface px-2 text-xs">
-        <option value="AVAILABLE">Disponible</option>
-        <option value="IN_ROUTE">En ruta</option>
-        <option value="MAINTENANCE">Mantenimiento</option>
-      </select>
-    </div>
+    <DropdownMenu>
+      <Tooltip content="Acciones"><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" loading={busy} aria-label={`Acciones de ${v.plate}`}><MoreHorizontal /></Button></DropdownMenuTrigger></Tooltip>
+      <DropdownMenuContent>
+        <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {STATUS_ACTIONS.filter((a) => a.status !== v.status).map((a) => (
+          <DropdownMenuItem key={a.status} onSelect={() => change(a.status)}><a.icon aria-hidden="true" /> {a.label}</DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleView[]; drivers: DriverView[] }) {
-  const [sheet, setSheet] = useState<'vehicle' | 'driver' | null>(null);
+  const [dialog, setDialog] = useState<'vehicle' | 'driver' | null>(null);
+  const count = (s: string) => vehicles.filter((v) => v.status === s).length;
+  const close = () => setDialog(null);
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile label="Vehículos" value={vehicles.length} context="en tu flota" icon={Truck} />
+        <KpiTile label="Disponibles" value={count('AVAILABLE')} context="listos para ofertar" icon={CheckCircle2} />
+        <KpiTile label="En ruta" value={count('IN_ROUTE')} context="con un envío activo" icon={Route} />
+        <KpiTile label="Conductores" value={drivers.length} context="con acceso a la app" icon={UserRound} />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Truck className="size-4 text-petrol-700" aria-hidden="true" /> Vehículos <span className="font-mono text-ink-500">({vehicles.length})</span></CardTitle>
-          <Button size="sm" onClick={() => setSheet('vehicle')}><Plus /> Agregar vehículo</Button>
+          <Button size="sm" onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>
         </CardHeader>
         {vehicles.length === 0 ? (
-          <EmptyState title="Registra tu primer vehículo" description="Necesitas al menos un vehículo disponible para enviar ofertas." action={<Button onClick={() => setSheet('vehicle')}>Agregar vehículo</Button>} />
+          <EmptyState title="Registra tu primer vehículo" description="Necesitas al menos un vehículo disponible para enviar ofertas." action={<Button onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>} />
         ) : (
           <Table>
-            <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="text-right">Volumen</Th><Th className="text-right">Estado</Th></tr></thead>
+            <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="hidden text-right sm:table-cell">Volumen</Th><Th>Estado</Th><Th className="w-12"><span className="sr-only">Acciones</span></Th></tr></thead>
             <tbody>
               {vehicles.map((v) => (
                 <Tr key={v.id}>
                   <Td className="font-mono font-semibold">{v.plate}</Td>
                   <Td>{VEHICLE_LABELS[v.type!]}</Td>
-                  <Td className="text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
-                  <Td className="text-right font-mono tabular-nums">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
-                  <Td><VehicleStatus v={v} /></Td>
+                  <Td className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
+                  <Td className="hidden whitespace-nowrap text-right font-mono tabular-nums sm:table-cell">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
+                  <Td><StatusPill status={v.status!} /></Td>
+                  <Td className="text-right"><VehicleActions v={v} /></Td>
                 </Tr>
               ))}
             </tbody>
           </Table>
         )}
       </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><UserRound className="size-4 text-petrol-700" aria-hidden="true" /> Conductores <span className="font-mono text-ink-500">({drivers.length})</span></CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setSheet('driver')}><Plus /> Registrar conductor</Button>
+          <Button size="sm" variant="outline" onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>
         </CardHeader>
         {drivers.length === 0 ? (
-          <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={<Button onClick={() => setSheet('driver')}>Registrar conductor</Button>} />
+          <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={<Button onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>} />
         ) : (
           <Table>
-            <thead><tr><Th>Nombre</Th><Th>Licencia</Th><Th>Correo</Th><Th className="text-right">Estado</Th></tr></thead>
+            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th className="hidden md:table-cell">Correo</Th><Th>Estado</Th></tr></thead>
             <tbody>
               {drivers.map((d) => (
-                <Tr key={d.id}><Td className="font-medium">{d.fullName}</Td><Td className="font-mono">{d.licenseNumber}</Td><Td className="text-ink-700">{d.email}</Td><Td className="text-right"><StatusPill status={d.status!} /></Td></Tr>
+                <Tr key={d.id}>
+                  <Td><div className="flex items-center gap-3"><Avatar name={d.fullName ?? '?'} /><div className="min-w-0"><div className="font-medium">{d.fullName}</div><div className="truncate text-xs text-ink-500 md:hidden">{d.email}</div></div></div></Td>
+                  <Td className="font-mono">{d.licenseNumber}</Td>
+                  <Td className="hidden text-ink-700 md:table-cell">{d.email}</Td>
+                  <Td><StatusPill status={d.status!} /></Td>
+                </Tr>
               ))}
             </tbody>
           </Table>
         )}
       </Card>
-      <Sheet open={sheet === 'vehicle'} onOpenChange={(o) => !o && setSheet(null)} title="Agregar vehículo"><VehicleForm /></Sheet>
-      <Sheet open={sheet === 'driver'} onOpenChange={(o) => !o && setSheet(null)} title="Registrar conductor"><DriverForm /></Sheet>
+
+      <VehicleDialog open={dialog === 'vehicle'} onClose={close} />
+      <DriverDialog open={dialog === 'driver'} onClose={close} />
     </div>
   );
 }

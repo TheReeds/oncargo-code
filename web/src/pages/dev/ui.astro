@@ -1,0 +1,8 @@
+---
+import Base from '@/layouts/Base.astro';
+import UiCatalog from '@/components/dev/UiCatalog';
+if (!import.meta.env.DEV) return new Response(null, { status: 404, statusText: 'Not Found' });
+---
+<Base title="Catálogo de UI">
+  <UiCatalog client:load />
+</Base>

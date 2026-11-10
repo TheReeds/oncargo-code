@@ -8,6 +8,8 @@ SaaS logístico (sennder) y la *rapidez operativa* mobile-first (Flock Freight).
 - **Móvil = transportista y conductor.** Visual y rápida: tarjetas de carga ricas, precio destacado,
   mapa, acciones grandes. Aquí podemos ser más originales.
 
+> **Skill de diseño (agentes y humanos):** `.claude/skills/logyx-design-system/SKILL.md` resume estos tokens y reglas y trae el catálogo de componentes (web: `/dev/ui`). Voz y microcopy: `docs/design/CONTENT.md`.
+
 Principio rector: **cada módulo ayuda a encontrar, contratar o completar un transporte.** Nada de gráficos
 financieros decorativos; cada dato en una tarjeta tiene propósito (cuánto gano, qué llevo, de dónde a dónde,
 cuándo, qué vehículo necesito, con quién trato).

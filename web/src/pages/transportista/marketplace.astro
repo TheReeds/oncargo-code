@@ -1,14 +1,34 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
 import MarketplaceTable from '@/features/marketplace/components/MarketplaceTable';
 import { listOpen } from '@/features/marketplace/server';
 import { listVehicles } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
 const t = Astro.locals.session!.token;
-const [requests, vehicles, { cities }] = await Promise.all([listOpen(t), listVehicles(t), getCatalog()]);
+const q = Astro.url.searchParams;
+const get = (k: string) => q.get(k) ?? '';
+const filters = { origin: get('origen'), dest: get('destino'), from: get('desde'), to: get('hasta'), cargo: get('carga'), maxKg: get('peso'), compat: q.get('compatibles') === '1', sort: get('orden') || 'pickup' };
+const pageNo = Math.max(1, Number(get('pagina')) || 1);
+const [vehicles, { cities }] = await Promise.all([listVehicles(t), getCatalog()]);
+const maxCap = Math.max(0, ...vehicles.filter((v) => v.status === 'AVAILABLE').map((v) => v.maxWeightKg ?? 0));
+const userMax = Number(filters.maxKg) > 0 ? Number(filters.maxKg) : undefined;
+const maxWeightKg = filters.compat && maxCap > 0 ? Math.min(maxCap, userMax ?? maxCap) : userMax;
+let result = { items: [] as Awaited<ReturnType<typeof listOpen>>['items'], page: 0, size: 20, total: 0 };
+let loadError: string | null = null;
+try {
+  result = await listOpen(t, {
+    originCity: filters.origin || undefined, destinationCity: filters.dest || undefined,
+    pickupFrom: filters.from || undefined, pickupTo: (filters.to || filters.from) || undefined,
+    cargoType: filters.cargo || undefined, maxWeightKg, sort: filters.sort, page: pageNo - 1, size: 20,
+  });
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar las cargas.';
+}
 ---
-<AppShell title="Marketplace" active="marketplace" wide>
-  <PageHeader title="Marketplace de cargas" subtitle="Subastas abiertas: ofrece tu mejor precio" />
-  <MarketplaceTable client:load requests={requests} vehicles={vehicles} cities={cities} />
+<AppShell title="Cargas disponibles" active="marketplace" wide>
+  <PageHeader title="Cargas disponibles" subtitle="Subastas abiertas: elige una carga compatible con tu flota y envía tu mejor oferta." />
+  {loadError && <Alert tone="error" title="No pudimos cargar las cargas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <MarketplaceTable client:load requests={result.items} page={result.page + 1} size={result.size} total={result.total} filters={filters} vehicles={vehicles} cities={cities} />
 </AppShell>

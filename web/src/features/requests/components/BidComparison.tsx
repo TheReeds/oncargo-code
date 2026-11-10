@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { BadgeCheck, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Avatar } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip } from '@/components/ui/tooltip';
+import { confirm } from '@/components/ui/confirm-dialog';
+import { flash, toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
-import { formatDateTime, formatMoney } from '@/lib/format';
+import { VEHICLE_LABELS, formatDateTime, formatMoney } from '@/lib/format';
 import type { BidView } from '@/lib/api/server';
 
 export function diffPct(amount: number, suggested?: number | null) {
@@ -18,22 +20,26 @@ export function diffPct(amount: number, suggested?: number | null) {
 
 export default function BidComparison({ bids, suggested, canAccept }: { bids: BidView[]; suggested?: number | null; canAccept: boolean }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const sorted = [...bids].sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0));
   const best = sorted.find((b) => b.status !== 'REJECTED');
 
-  async function accept(id: string) {
-    setError(null);
-    setBusyId(id);
-    const { data, error } = await actions.requests.accept({ bidId: id });
+  async function accept(b: BidView) {
+    const ok = await confirm({
+      title: `¿Aceptar la oferta de ${formatMoney(b.amount)}?`,
+      description: `${b.carrierName} realizará el envío por ${formatMoney(b.amount)}. Se cerrará la subasta y se descartarán las demás ofertas.`,
+      confirmLabel: 'Aceptar oferta',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
+    setBusyId(b.id!);
+    const { data, error } = await actions.requests.accept({ bidId: b.id! });
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
       setBusyId(null);
-      setConfirmId(null);
       return;
     }
+    flash('Oferta aceptada', 'success');
     window.location.href = `/pyme/envios?id=${data.shipmentId}`;
   }
 
@@ -41,51 +47,48 @@ export default function BidComparison({ bids, suggested, canAccept }: { bids: Bi
     <Card>
       <CardHeader>
         <CardTitle>Ofertas recibidas <span className="ml-1 font-mono text-ink-500">({bids.length})</span></CardTitle>
-        <span className="text-xs text-ink-500">Ordenadas por menor monto</span>
+        {bids.length > 1 && <span className="text-xs text-ink-500">Ordenadas de menor a mayor monto</span>}
       </CardHeader>
-      {error && <div className="p-4 pb-0"><Alert tone="error">{error}</Alert></div>}
       {bids.length === 0 ? (
-        <EmptyState title="Aún no hay ofertas" description="Los transportistas compatibles verán tu carga en el marketplace. Te mostraremos las ofertas aquí." />
+        <EmptyState title="Aún no hay ofertas" description="Los transportistas compatibles ya pueden ver tu carga. Las ofertas aparecerán aquí apenas lleguen." />
       ) : (
-        <Table>
-          <thead><tr><Th>Transportista</Th><Th className="text-right">Oferta</Th><Th className="text-right">vs. sugerido</Th><Th>Nota</Th><Th>Estado</Th>{canAccept && <Th><span className="sr-only">Acción</span></Th>}</tr></thead>
-          <tbody>
-            {sorted.map((b) => {
-              const d = diffPct(b.amount ?? 0, suggested);
-              const isBest = best?.id === b.id;
-              return (
-                <Tr key={b.id} className={isBest ? 'bg-emerald-50/60' : ''}>
-                  <Td>
-                    <div className="flex items-center gap-1.5 font-medium">{b.carrierName}{b.carrierRucVerified && <BadgeCheck className="size-4 text-emerald-700" aria-label="Empresa verificada" />}</div>
-                    <div className="text-xs text-ink-500">{formatDateTime(b.createdAt)}</div>
-                  </Td>
-                  <Td className="whitespace-nowrap text-right">
-                    <span className="money text-base">{formatMoney(b.amount)}</span>
-                    {isBest && <div className="mt-0.5 flex justify-end"><Badge tone="emerald"><Trophy className="size-3" aria-hidden="true" />Mejor precio</Badge></div>}
-                  </Td>
-                  <Td className={`whitespace-nowrap text-right font-mono tabular-nums ${d != null && d <= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(1)}%`}
-                  </Td>
-                  <Td className="max-w-56 text-ink-700">{b.notes || <span className="text-ink-500">—</span>}</Td>
-                  <Td><StatusPill status={b.status!} kind="bid" /></Td>
-                  {canAccept && (
-                    <Td className="text-right">
-                      {b.status === 'PENDING' &&
-                        (confirmId === b.id ? (
-                          <div className="flex justify-end gap-1.5">
-                            <Button size="sm" variant="money" disabled={busyId === b.id} onClick={() => accept(b.id!)}>{busyId === b.id ? 'Aceptando…' : 'Confirmar'}</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>No</Button>
-                          </div>
-                        ) : (
-                          <Button size="sm" variant={isBest ? 'money' : 'outline'} disabled={busyId !== null} onClick={() => setConfirmId(b.id!)}>Aceptar</Button>
-                        ))}
-                    </Td>
+        <>
+        <ul className="divide-y divide-steel-200">
+          {sorted.map((b) => {
+            const d = diffPct(b.amount ?? 0, suggested);
+            const isBest = best?.id === b.id;
+            return (
+              <li key={b.id} className={`flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 ${isBest ? 'bg-emerald-50/60' : ''}`}>
+                <div className="flex min-w-56 flex-1 items-start gap-3">
+                  <Avatar name={b.carrierName ?? '?'} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span className="truncate">{b.carrierName}</span>
+                      {b.carrierRucVerified && <Tooltip content="RUC verificado"><span className="inline-flex"><BadgeCheck className="size-4 text-emerald-700" aria-label="Empresa verificada" /></span></Tooltip>}
+                    </div>
+                    <div className="text-xs text-ink-500">
+                      {b.vehicleType ? <>{VEHICLE_LABELS[b.vehicleType] ?? b.vehicleType}{b.vehiclePlate && <> · <span className="font-mono">{b.vehiclePlate}</span></>} · </> : null}{formatDateTime(b.createdAt)}
+                    </div>
+                    {b.notes && <p className="mt-1 text-sm text-ink-700">{b.notes}</p>}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="money text-lg">{formatMoney(b.amount)}</div>
+                  {d != null && <div className={`font-mono text-xs tabular-nums ${d <= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{d > 0 ? '+' : ''}{d.toFixed(1)}% vs. sugerido</div>}
+                  {isBest && <div className="mt-1 flex justify-end"><Badge tone="emerald"><Trophy className="size-3" aria-hidden="true" />Mejor precio</Badge></div>}
+                </div>
+                <div className="flex min-w-28 justify-end">
+                  {canAccept && b.status === 'PENDING' ? (
+                    <Button size="sm" variant={isBest ? 'money' : 'outline'} loading={busyId === b.id} disabled={busyId !== null && busyId !== b.id} onClick={() => accept(b)}>Aceptar oferta</Button>
+                  ) : (
+                    <StatusPill status={b.status!} kind="bid" />
                   )}
-                </Tr>
-              );
-            })}
-          </tbody>
-        </Table>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        </>
       )}
     </Card>
   );

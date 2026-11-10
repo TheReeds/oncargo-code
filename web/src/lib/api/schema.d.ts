@@ -272,6 +272,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDashboardSummaryView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/shipments": {
         parameters: {
             query?: never;
@@ -296,6 +346,56 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseListShipmentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/shipments/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Driver Active */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
                     };
                 };
                 /** @description Not Authorized */
@@ -540,7 +640,26 @@ export interface paths {
         /** Marketplace */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Tipo de carga (GENERAL, FRAGILE, PERISHABLE, HAZARDOUS, BULK, OVERSIZED). */
+                    cargoType?: string;
+                    /** @description Código de ciudad de destino (p. ej. JULIACA). */
+                    destinationCity?: string;
+                    /** @description Peso máximo de la carga en kg (inclusive). */
+                    maxWeightKg?: number;
+                    /** @description Código de ciudad de origen (p. ej. LIMA). */
+                    originCity?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Fecha de recojo mínima, ISO (yyyy-MM-dd), inclusive. */
+                    pickupFrom?: string;
+                    /** @description Fecha de recojo máxima, ISO (yyyy-MM-dd), inclusive. */
+                    pickupTo?: string;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Orden: pickup (por omisión), price_desc o recent. */
+                    sort?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -635,7 +754,12 @@ export interface paths {
         /** Mine */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Página 0-based. Si se omite page y size, se devuelven todas. */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
+                    size?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -938,7 +1062,12 @@ export interface paths {
         /** Mine */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Página 0-based. Si se omite page y size, se devuelven todos. */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
+                    size?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1371,6 +1500,10 @@ export interface components {
             data?: components["schemas"]["BidView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseDashboardSummaryView: {
+            data?: components["schemas"]["DashboardSummaryView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseDriverView: {
             data?: components["schemas"]["DriverView"];
             meta?: components["schemas"]["Meta"];
@@ -1457,6 +1590,8 @@ export interface components {
             notes?: string;
             status?: components["schemas"]["Status3"];
             createdAt?: components["schemas"]["OffsetDateTime"];
+            vehicleType?: components["schemas"]["Type"];
+            vehiclePlate?: string;
         };
         CargoItem: {
             code?: string;
@@ -1487,6 +1622,23 @@ export interface components {
             volumeM3?: number;
             pickupDate: components["schemas"]["LocalDate"];
         };
+        DashboardSummaryView: {
+            role?: components["schemas"]["OrgType"];
+            /** Format: int64 */
+            activeRequests?: number;
+            /** Format: int64 */
+            bidsToReview?: number;
+            /** Format: int64 */
+            shipmentsInTransit?: number;
+            /** Format: int64 */
+            compatibleLoads?: number;
+            /** Format: int64 */
+            pendingBids?: number;
+            /** Format: int64 */
+            activeShipments?: number;
+            /** Format: int64 */
+            deliveredThisMonth?: number;
+        };
         DriverRequest: {
             fullName: string;
             email: string;
@@ -1516,6 +1668,12 @@ export interface components {
         };
         Meta: {
             timestamp?: components["schemas"]["Instant"];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            total?: number;
         };
         /**
          * Format: date-time
@@ -1583,6 +1741,8 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
             auction?: components["schemas"]["AuctionView"];
             myBid?: components["schemas"]["BidView"];
+            requesterRucVerified?: boolean;
+            minVehicleType?: components["schemas"]["Type"];
         };
         /** @enum {string} */
         Role: "ADMIN" | "OPS" | "VIEWER" | "DRIVER";
@@ -1647,6 +1807,7 @@ export interface components {
             organizationName?: string;
             organizationType?: components["schemas"]["OrgType"];
             rucVerified?: boolean;
+            organizationCity?: string;
         };
         VehicleRequest: {
             plate: string;

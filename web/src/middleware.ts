@@ -8,6 +8,8 @@ const isAsset = (p: string) => !p.startsWith('/_actions') && (p.startsWith('/_')
 export const onRequest = defineMiddleware(async (ctx, next) => {
   const { pathname } = ctx.url;
   if (isAsset(pathname)) return next();
+  // Catálogo de componentes: solo en desarrollo, sin sesión (la página devuelve 404 en producción).
+  if (pathname === '/dev/ui') return next();
 
   const session = readSession(ctx.cookies);
   ctx.locals.session = session;

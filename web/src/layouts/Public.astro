@@ -1,20 +1,40 @@
 ---
 import Base from './Base.astro';
 import Logo from '@/components/layout/Logo.astro';
-interface Props { title: string }
+import { buttonVariants } from '@/components/ui/button';
+import { homeFor } from '@/lib/session';
+interface Props { title: string; description?: string }
+const { title, description } = Astro.props;
+const path = Astro.url.pathname;
+const session = Astro.locals.session;
 ---
-<Base title={Astro.props.title}>
+<Base title={title} description={description}>
+  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-white focus:px-3 focus:py-2">Saltar al contenido</a>
   <div class="flex min-h-screen flex-col">
-    <header class="flex h-16 items-center justify-between px-4 lg:px-10">
-      <a href="/" aria-label="LOGYX inicio"><Logo /></a>
-      <nav class="flex items-center gap-2 text-sm">
-        <a href="/login" class="rounded-input px-3 py-2 font-medium text-ink-700 hover:bg-white">Ingresar</a>
-        <a href="/registro" class="rounded-input bg-petrol-700 px-4 py-2 font-medium text-white hover:bg-petrol-800">Crear cuenta</a>
-      </nav>
+    <header class="sticky top-0 z-20 border-b border-steel-200/70 bg-steel-100/90 backdrop-blur">
+      <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 lg:px-10">
+        <a href="/" aria-label="LOGYX inicio" class="rounded-input"><Logo /></a>
+        <nav class="flex items-center gap-1.5 sm:gap-2" aria-label="Acceso">
+          {session ? (
+            <a href={homeFor(session)} class={buttonVariants({ variant: 'outline' })}>Ir a mi panel</a>
+          ) : (
+            <>
+              <a href="/login" aria-current={path === '/login' ? 'page' : undefined} class={buttonVariants({ variant: 'ghost' })}>Ingresar</a>
+              <a href="/registro" aria-current={path === '/registro' ? 'page' : undefined} class={buttonVariants({ variant: 'default' })}>Crear cuenta</a>
+            </>
+          )}
+        </nav>
+      </div>
     </header>
-    <main class="flex-1"><slot /></main>
-    <footer class="px-4 py-6 text-center text-xs text-ink-500 lg:px-10">
-      © 2026 LOGYX · <a class="underline" href="/privacidad">Política de privacidad</a>
+    <main id="contenido" class="flex-1"><slot /></main>
+    <footer class="border-t border-steel-200 bg-surface">
+      <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-ink-500 sm:flex-row lg:px-10">
+        <span>© 2026 LOGYX · Fletes entre Lima y la sierra sur</span>
+        <nav class="flex gap-4" aria-label="Información legal">
+          <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/privacidad">Política de privacidad</a>
+          <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/registro?tipo=transportista">Quiero ofertar como transportista</a>
+        </nav>
+      </div>
     </footer>
   </div>
 </Base>

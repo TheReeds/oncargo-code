@@ -14,6 +14,7 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 | shipment (envíos, paradas, app conductor) | ✅ | Falta evidencia foto/firma |
 | Refactor a hexagonal por módulo (ADR-0002) | ✅ | 2026-11-10 agente backend · contrato HTTP/OpenAPI sin cambios (diff idéntico) · `ModuleBoundariesTest` vigila capas · 38 tests |
 | Seed de datos demo (perfil dev) | ✅ | 2026-11-10 · `devdata.DemoDataSeeder`; cuentas en `backend/AGENTS.md` |
+| Contrato aditivo 2026-11-10 (BidView.vehicleType/vehiclePlate, RequestView.requesterRucVerified/minVehicleType, UserInfo.organizationCity, `field` en errores de negocio, montos `S/ 1,850.00`, filtros+paginación, `GET /driver/shipments/active`, `GET /dashboard/summary`) | ✅ | 2026-11-10 agente contrato API · migración V3 · módulo nuevo `dashboard` · 54 tests · OpenAPI solo adiciones · detalle y ejemplos en `docs/api/CHANGELOG.md` · **web/android deben regenerar clientes** |
 | negotiation, reputation, documents, notification, incident, operator, smartload, returnload | ⬜ | |
 
 ## Web (Astro)
@@ -23,6 +24,7 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 | Login / registro / privacidad (Ley 29733) / página conductor | ✅ |
 | PYME: panel, solicitudes, nueva solicitud con cotización en vivo, detalle + comparación de ofertas + aceptar/cancelar, tracking (mapa) | ✅ |
 | Transportista: marketplace (filtros + drawer de oferta), mis ofertas, flota (vehículos/conductores), envíos (asignar conductor) | ✅ |
+| Sistema de diseño web (2026-11-10): biblioteca `components/ui` (Radix + cmdk + react-day-picker + sonner: Select, Combobox, MultiSelect, DatePicker/DateRangePicker, Money/NumberInput, ConfirmDialog `confirm()`, toasts, Dialog, Tabs, Tooltip, DropdownMenu, Pagination, Avatar, Skeletons), catálogo `/dev/ui` (solo dev), skill `.claude/skills/logyx-design-system/` (+ `references/web.md`), guía `docs/design/CONTENT.md`; todas las pantallas migradas (sin selects/fechas nativos, confirmaciones y toasts consistentes) | ✅ |
 | Pendientes web: modo oscuro, polling/tiempo real, ruta por carretera en mapa, tests e2e; ver `web/AGENTS.md` | ⬜ |
 
 Notas de contrato (web): `BidView` no trae tipo/placa del vehículo (la PYME no ve el vehículo ofertado); `RequestView` no trae "vehículo mínimo" (se muestra el peso); el mensaje de RN03 formatea montos sin separador de miles (`S/ 2925.89`); los errores de validación llegan con `field: null`.
@@ -40,7 +42,9 @@ Compila (`assembleDebug`) y pasa `testDebugUnitTest` (28 tests: DTOs del contrat
 | Conductor: viaje activo, mapa, siguiente parada, botón único, StopTimeline | ✅ | arrive/complete |
 | PYME: mis solicitudes (cuenta regresiva), comparar ofertas y aceptar, cancelar | ✅ | |
 | PYME: seguimiento del envío (mapa + paradas) | ✅ | |
+| Sistema de diseño Compose (2026-11-10): `Logyx*` botones/campos/MoneyField/dropdown/combobox/date pickers es-PE/diálogos/hojas/mensajes (`UiMessage`)/banners/skeletons/segmentado/badges/top+bottom bar, a11y y variantes AA | ✅ | `:core:designsystem`; catálogo debug (login → "Catálogo UI"); doc en `.claude/skills/logyx-design-system/references/android.md`; pantallas migradas a estos componentes con confirmaciones y mensajes de éxito; textos en `strings.xml` por módulo |
 | Pendiente | ⬜ | Publicar solicitud desde móvil, push/notificaciones, GPS real del conductor, evidencia foto/firma, tests de UI/capturas, KMP para iOS |
+| Contrato aditivo 2026-11-10 adoptado en Android | ✅ | DTOs (`BidView.vehicle*`, `RequestView.requesterRucVerified/minVehicleType`, `UserInfo.organizationCity`, `DashboardSummary`), marketplace con filtros + scroll infinito en servidor, `GET /dashboard/summary` en el Home, `GET /driver/shipments/active` en conductor, errores con `field` en los campos de la oferta; tests de parseo actualizados |
 
 Notas de contrato (Android): ver informe del agente — falta filtros/paginación en `GET /shipment-requests`, `ciudad` de la organización
 solo en `/organizations/{id}`, `BidView` sin datos del vehículo, requester sin RUC verificado, sin endpoint de "viaje activo" del conductor.

@@ -1,33 +1,31 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { confirm } from '@/components/ui/confirm-dialog';
+import { flash, toast } from '@/components/ui/toaster';
 
 export default function CancelRequestButton({ id }: { id: string }) {
-  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function cancel() {
+    const ok = await confirm({
+      title: '¿Cancelar esta solicitud?',
+      description: 'Se cerrará la subasta y los transportistas dejarán de ver tu carga. Las ofertas recibidas se descartarán. No se puede deshacer.',
+      confirmLabel: 'Cancelar solicitud',
+      cancelLabel: 'Volver',
+      tone: 'destructive',
+    });
+    if (!ok) return;
     setBusy(true);
     const { error } = await actions.requests.cancel({ id });
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
       setBusy(false);
       return;
     }
+    flash('Solicitud cancelada');
     window.location.reload();
   }
 
-  if (!confirm) return <Button variant="destructive" onClick={() => setConfirm(true)}>Cancelar solicitud</Button>;
-  return (
-    <div className="space-y-2">
-      {error && <Alert tone="error">{error}</Alert>}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-ink-700">¿Cancelar esta solicitud? Se cerrará la subasta.</span>
-        <Button variant="destructive" size="sm" disabled={busy} onClick={cancel}>{busy ? 'Cancelando…' : 'Sí, cancelar'}</Button>
-        <Button variant="ghost" size="sm" onClick={() => setConfirm(false)}>Volver</Button>
-      </div>
-    </div>
-  );
+  return <Button variant="destructive" loading={busy} onClick={cancel}>Cancelar solicitud</Button>;
 }

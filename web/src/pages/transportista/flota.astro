@@ -7,6 +7,6 @@ const t = Astro.locals.session!.token;
 const [vehicles, drivers] = await Promise.all([listVehicles(t), listDrivers(t)]);
 ---
 <AppShell title="Flota" active="flota">
-  <PageHeader title="Flota" subtitle="Tus vehículos y conductores" />
+  <PageHeader title="Flota" subtitle="Administra tus vehículos y conductores. Solo los vehículos disponibles pueden ofertar." />
   <FleetManager client:load vehicles={vehicles} drivers={drivers} />
 </AppShell>
