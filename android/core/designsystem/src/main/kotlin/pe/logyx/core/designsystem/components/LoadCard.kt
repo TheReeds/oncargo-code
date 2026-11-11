@@ -80,6 +80,7 @@ fun LoadCard(
             InfoChip(Fmt.tons(request.weightKg))
             request.minVehicleType?.let { InfoChip(stringResource(R.string.ds_min_vehicle, it.label)) }
             if (request.requesterRucVerified) VerifiedBadge()
+            TrustScoreBadge(request.requesterTrustScore)
             if (compatible) InfoChip(stringResource(R.string.ds_compatible), emphasized = true, icon = Icons.Rounded.CheckCircle)
             request.auction?.let { InfoChip(stringResource(R.string.ds_bids_count, it.bidCount, it.maxBids), icon = Icons.Rounded.Timer) }
         }

@@ -22,6 +22,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.ReportProblem
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,6 +56,7 @@ import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.cityLabel
 import pe.logyx.core.designsystem.components.AlertBanner
+import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
 import pe.logyx.core.designsystem.components.EmptyState
@@ -182,12 +186,36 @@ private fun ShipmentCard(s: ShipmentView, isCarrier: Boolean, onClick: () -> Uni
 }
 
 @Composable
-fun ShipmentDetailRoute(shipmentId: String, onBack: () -> Unit, viewModel: ShipmentDetailViewModel = koinViewModel { parametersOf(shipmentId) }) {
+fun ShipmentDetailRoute(
+    shipmentId: String,
+    onBack: () -> Unit,
+    onOpenDocuments: () -> Unit = {},
+    onOpenIncidents: () -> Unit = {},
+    onReportIncident: () -> Unit = {},
+    onReview: () -> Unit = {},
+    viewModel: ShipmentDetailViewModel = koinViewModel { parametersOf(shipmentId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Al volver de documentos / incidencias / calificación el estado puede haber cambiado.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refresh() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     ShipmentDetailScreen(
         state, onBack, viewModel::refresh, viewModel::openDriverSheet, viewModel::dismissDriverSheet, viewModel::assign, viewModel::onMessageShown,
+        ShipmentLinks(onOpenDocuments, onOpenIncidents, onReportIncident, onReview),
     )
 }
+
+/** Salidas del detalle hacia otros módulos (las cablea :app). */
+data class ShipmentLinks(
+    val onOpenDocuments: () -> Unit = {},
+    val onOpenIncidents: () -> Unit = {},
+    val onReportIncident: () -> Unit = {},
+    val onReview: () -> Unit = {},
+)
 
 @Composable
 fun ShipmentDetailScreen(
@@ -198,6 +226,7 @@ fun ShipmentDetailScreen(
     onDismissDrivers: () -> Unit,
     onAssign: (DriverView) -> Unit,
     onMessageShown: () -> Unit,
+    links: ShipmentLinks = ShipmentLinks(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -211,7 +240,7 @@ fun ShipmentDetailScreen(
                 state.loading -> SkeletonList(Modifier.padding(16.dp), count = 2)
                 s == null -> ErrorState(state.error ?: stringResource(R.string.shipments_detail_not_found), onRefresh)
                 else -> Refreshable(state.refreshing, onRefresh) {
-                    TrackingContent(state, s, onOpenDrivers)
+                    TrackingContent(state, s, onOpenDrivers, links)
                 }
             }
         }
@@ -242,7 +271,7 @@ fun ShipmentDetailScreen(
 }
 
 @Composable
-private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpenDrivers: () -> Unit) {
+private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpenDrivers: () -> Unit, links: ShipmentLinks) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val dash = stringResource(R.string.shipments_no_value)
     val mapDescription = stringResource(R.string.shipments_detail_map_description, cityLabel(s.originCity), cityLabel(s.destinationCity))
@@ -250,6 +279,15 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (s.hasActiveIncident) {
+            AlertBanner(
+                stringResource(R.string.shipments_incident_banner),
+                kind = MessageKind.Warning,
+                title = stringResource(R.string.shipments_incident_banner_title),
+                actionLabel = stringResource(R.string.shipments_incident_view),
+                onAction = links.onOpenIncidents,
+            )
+        }
         RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 220.dp)
         LogyxCard(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -293,6 +331,22 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
                 stringResource(R.string.shipments_detail_delivered_format, Fmt.dateTime(it)),
                 kind = MessageKind.Success,
             )
+        }
+        if (s.status == ShipmentStatus.DELIVERED && state.canReview == true) {
+            LogyxButton(stringResource(R.string.shipments_review_action), links.onReview, variant = ButtonVariant.Money, icon = Icons.Rounded.Star)
+        } else if (s.status == ShipmentStatus.DELIVERED && state.hasReviews) {
+            LogyxButton(stringResource(R.string.shipments_review_view), links.onReview, variant = ButtonVariant.Secondary, icon = Icons.Rounded.Star)
+        }
+        LogyxCard(Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.shipments_support_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LogyxButton(stringResource(R.string.shipments_documents_action), links.onOpenDocuments, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.Description)
+                LogyxButton(stringResource(R.string.shipments_incidents_action), links.onOpenIncidents, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.ReportProblem)
+                if (s.status != ShipmentStatus.CANCELLED && !s.hasActiveIncident) {
+                    LogyxButton(stringResource(R.string.shipments_report_action), links.onReportIncident, variant = ButtonVariant.Ghost, size = ButtonSize.Medium)
+                }
+            }
         }
     }
 }

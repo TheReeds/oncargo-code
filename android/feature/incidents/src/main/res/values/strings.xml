@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reportar -->
+    <string name="incidents_report_title">Reportar incidencia</string>
+    <string name="incidents_report_intro">Cuéntanos qué pasó con este envío. El equipo de LOGYX lo revisará y te responderá aquí.</string>
+    <string name="incidents_category_label">Categoría</string>
+    <string name="incidents_category_select">Elige una categoría</string>
+    <string name="incidents_category_required">Elige la categoría que mejor describe lo que pasó.</string>
+    <string name="incidents_description_label">Descripción</string>
+    <string name="incidents_description_placeholder">Qué pasó, dónde y cuándo</string>
+    <string name="incidents_description_counter">%1$d / %2$d</string>
+    <string name="incidents_description_required">Describe qué pasó para que podamos ayudarte.</string>
+    <string name="incidents_description_too_long">La descripción es muy larga. Resúmela en %1$d caracteres o menos.</string>
+    <string name="incidents_photo_label">Foto (opcional)</string>
+    <string name="incidents_photo_hint">Una foto ayuda a resolver más rápido.</string>
+    <string name="incidents_photo_take">Tomar foto</string>
+    <string name="incidents_photo_retake">Tomar otra foto</string>
+    <string name="incidents_photo_remove">Quitar foto</string>
+    <string name="incidents_photo_caption">Foto de la incidencia</string>
+    <string name="incidents_photo_error">No pudimos abrir la cámara. Inténtalo de nuevo.</string>
+    <string name="incidents_submit">Reportar incidencia</string>
+    <string name="incidents_confirm_title">¿Reportar esta incidencia?</string>
+    <string name="incidents_confirm_message">El envío quedará detenido hasta que LOGYX resuelva la incidencia. Solo puede haber una incidencia activa por envío.</string>
+    <string name="incidents_confirm_action">Reportar incidencia</string>
+    <string name="incidents_photo_failed_title">Incidencia reportada</string>
+    <string name="incidents_photo_failed_message">Tu incidencia ya fue registrada, pero no pudimos subir la foto. Puedes comentarlo en el detalle o adjuntarla después desde los documentos del envío.</string>
+    <string name="incidents_photo_failed_action">Ver incidencia</string>
+
+    <!-- Lista -->
+    <string name="incidents_list_title">Incidencias</string>
+    <string name="incidents_blocked_title">Envío detenido</string>
+    <string name="incidents_blocked_text">El envío está detenido hasta que LOGYX resuelva la incidencia.</string>
+    <string name="incidents_empty_title">Sin incidencias</string>
+    <string name="incidents_empty_message">Este envío no tiene incidencias reportadas.</string>
+    <string name="incidents_empty_action">Reportar incidencia</string>
+    <string name="incidents_report_button">Reportar incidencia</string>
+
+    <!-- Detalle -->
+    <string name="incidents_detail_title">Incidencia</string>
+    <string name="incidents_detail_reported">Reportada %1$s</string>
+    <string name="incidents_detail_reported_by">Reportó: %1$s</string>
+    <string name="incidents_detail_you">tú</string>
+    <string name="incidents_detail_description">Descripción</string>
+    <string name="incidents_detail_resolution">Resolución de LOGYX</string>
+    <string name="incidents_detail_thread">Conversación</string>
+    <string name="incidents_detail_thread_empty">Aún no hay comentarios. Escribe si tienes más información.</string>
+    <string name="incidents_detail_closed_notice">Esta incidencia ya fue resuelta y no admite más comentarios.</string>
+    <string name="incidents_comment_placeholder">Escribe un comentario</string>
+    <string name="incidents_operator">LOGYX</string>
+    <string name="incidents_comment_empty">Escribe un comentario antes de enviarlo.</string>
+</resources>

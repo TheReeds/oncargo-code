@@ -50,4 +50,13 @@
 
     <string name="shipments_msg_assigned">Conductor asignado</string>
     <string name="shipments_driver_assigned">Conductor asignado</string>
+    <string name="shipments_incident_banner_title">Envío detenido</string>
+    <string name="shipments_incident_banner">Hay una incidencia activa. El conductor no puede avanzar hasta que LOGYX la resuelva.</string>
+    <string name="shipments_incident_view">Ver incidencia</string>
+    <string name="shipments_review_action">Calificar entrega</string>
+    <string name="shipments_review_view">Ver calificaciones</string>
+    <string name="shipments_support_title">Documentos y soporte</string>
+    <string name="shipments_documents_action">Ver documentos</string>
+    <string name="shipments_incidents_action">Ver incidencias</string>
+    <string name="shipments_report_action">Reportar incidencia</string>
 </resources>

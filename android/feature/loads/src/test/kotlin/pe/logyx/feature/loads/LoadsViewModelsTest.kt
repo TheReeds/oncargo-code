@@ -239,3 +239,54 @@ class ParseAmountTest {
         assertNull(parseAmount(""))
     }
 }
+
+private class FakeNegotiation(var counters: Map<String, List<CounterOfferView>> = emptyMap()) : pe.logyx.core.data.NegotiationRepository {
+    val queried = mutableListOf<String>()
+    var accepted: String? = null
+    var rejected: String? = null
+    override suspend fun threads(requestId: String) = Result.success(emptyList<ChatThreadView>())
+    override suspend fun messages(requestId: String, carrierOrgId: String, before: String?) = Result.success(CursorPage<MessageView>(emptyList(), null))
+    override suspend fun send(requestId: String, carrierOrgId: String, body: String) = Result.failure<MessageView>(IllegalStateException())
+    override suspend fun counterOffers(bidId: String): Result<List<CounterOfferView>> { queried += bidId; return Result.success(counters[bidId].orEmpty()) }
+    override suspend fun propose(bidId: String, amount: Double, message: String?) = Result.failure<CounterOfferView>(IllegalStateException())
+    override suspend fun accept(counterOfferId: String): Result<CounterOfferView> { accepted = counterOfferId; return Result.success(CounterOfferView(counterOfferId, "b1", amount = 1700.0, status = CounterOfferStatus.ACCEPTED)) }
+    override suspend fun reject(counterOfferId: String): Result<CounterOfferView> { rejected = counterOfferId; return Result.success(CounterOfferView(counterOfferId, "b1", amount = 1700.0, status = CounterOfferStatus.REJECTED)) }
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class MyBidsCounterOfferTest {
+    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @After fun tearDown() = Dispatchers.resetMain()
+
+    private fun bid(id: String, status: BidStatus) = BidView(id, "r$id", amount = 1900.0, status = status, createdAt = "2026-11-10T10:00:00-05:00")
+
+    @Test fun `solo consulta contraofertas de ofertas PENDING y muestra la pendiente`() = runTest {
+        val nego = FakeNegotiation(mapOf("b1" to listOf(CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING))))
+        val loads = FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)), req("r2", "LIMA", 1000.0, 2000.0, myBid = bid("b2", BidStatus.ACCEPTED))))
+        val vm = MyBidsViewModel(loads, nego)
+        assertEquals(listOf("b1"), nego.queried)
+        assertEquals("co1", vm.state.value.counters["b1"]?.id)
+        assertNull(vm.state.value.counters["b2"])
+    }
+
+    @Test fun `aceptar contraoferta pide confirmacion, acepta y refresca`() = runTest {
+        val co = CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING)
+        val nego = FakeNegotiation(mapOf("b1" to listOf(co)))
+        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego)
+        vm.askAccept(co)
+        assertTrue(vm.state.value.confirm?.accept == true)
+        assertNull(nego.accepted)
+        vm.confirm()
+        assertEquals("co1", nego.accepted)
+        assertNull(vm.state.value.confirm)
+        assertEquals(R.string.loads_counter_accepted, vm.state.value.message?.textRes)
+    }
+
+    @Test fun `rechazar contraoferta llama a reject`() = runTest {
+        val co = CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING)
+        val nego = FakeNegotiation(mapOf("b1" to listOf(co)))
+        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego)
+        vm.askReject(co); vm.confirm()
+        assertEquals("co1", nego.rejected)
+    }
+}

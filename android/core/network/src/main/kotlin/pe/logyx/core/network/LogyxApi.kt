@@ -3,6 +3,7 @@ package pe.logyx.core.network
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -15,7 +16,32 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
+import io.ktor.client.plugins.onUpload
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+import io.ktor.client.statement.readRawBytes
 import pe.logyx.core.model.AcceptResult
+import pe.logyx.core.model.AddCommentRequest
+import pe.logyx.core.model.ChatThreadView
+import pe.logyx.core.model.CounterOfferView
+import pe.logyx.core.model.CursorPage
+import pe.logyx.core.model.DocumentType
+import pe.logyx.core.model.DocumentView
+import pe.logyx.core.model.IncidentView
+import pe.logyx.core.model.MarkedRead
+import pe.logyx.core.model.MessageView
+import pe.logyx.core.model.NotificationView
+import pe.logyx.core.model.PostMessageRequest
+import pe.logyx.core.model.ProposeCounterOfferRequest
+import pe.logyx.core.model.ReportIncidentRequest
+import pe.logyx.core.model.ReputationView
+import pe.logyx.core.model.ReviewView
+import pe.logyx.core.model.ShipmentReviewsView
+import pe.logyx.core.model.SubmitReviewRequest
+import pe.logyx.core.model.UnreadCount
 import pe.logyx.core.model.AssignDriverRequest
 import pe.logyx.core.model.AuthResponse
 import pe.logyx.core.model.BidView
@@ -107,6 +133,131 @@ class LogyxApi(
 
     suspend fun completeStop(shipmentId: String, stopId: String): ShipmentView =
         post("api/v1/shipments/$shipmentId/stops/$stopId/complete")
+
+    // --- Documentos y evidencia ---
+    /**
+     * Sube un archivo del envío (`multipart/form-data`: `file`, `type`, `stopId?`).
+     * @param onProgress bytes enviados / totales (total puede ser null si se desconoce).
+     */
+    suspend fun uploadDocument(
+        shipmentId: String,
+        bytes: ByteArray,
+        fileName: String,
+        contentType: String,
+        type: DocumentType,
+        stopId: String? = null,
+        onProgress: (sent: Long, total: Long?) -> Unit = { _, _ -> },
+    ): DocumentView = call {
+        client.post("api/v1/shipments/$shipmentId/documents") {
+            timeout { requestTimeoutMillis = 120_000 }
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            "file", bytes,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, contentType)
+                                append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
+                            },
+                        )
+                        append("type", type.name)
+                        stopId?.let { append("stopId", it) }
+                    },
+                ),
+            )
+            onUpload { sent, total -> onProgress(sent, total) }
+        }
+    }
+
+    suspend fun shipmentDocuments(shipmentId: String): List<DocumentView> = get("api/v1/shipments/$shipmentId/documents")
+
+    /** Descarga el binario de un documento (mismo Bearer). */
+    suspend fun documentFile(documentId: String): ByteArray {
+        val response = try {
+            client.get("api/v1/documents/$documentId/file") { header(HttpHeaders.Accept, "*/*") } // el binario responde 406 si solo se acepta JSON
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            throw ApiException(0, "NETWORK", "No pudimos conectar con LOGYX. Revisa tu conexión e inténtalo de nuevo.")
+        }
+        if (!response.status.isSuccess()) throw response.toApiException()
+        return response.readRawBytes()
+    }
+
+    // --- Incidencias ---
+    suspend fun reportIncident(shipmentId: String, body: ReportIncidentRequest): IncidentView =
+        post("api/v1/shipments/$shipmentId/incidents", body)
+
+    suspend fun shipmentIncidents(shipmentId: String): List<IncidentView> = get("api/v1/shipments/$shipmentId/incidents")
+
+    suspend fun incident(id: String): IncidentView = get("api/v1/incidents/$id")
+
+    /** Mis incidencias (paginado); [active] true = solo OPEN/IN_REVIEW. */
+    suspend fun incidents(active: Boolean? = null, page: Int = 0, size: Int = 20): pe.logyx.core.model.Page<IncidentView> {
+        val env = callEnvelope<List<IncidentView>> {
+            client.get("api/v1/incidents") {
+                active?.let { parameter("active", it) }
+                parameter("page", page); parameter("size", size)
+            }
+        }
+        return pe.logyx.core.model.Page(env.data, env.meta?.page ?: page, env.meta?.size ?: size, env.meta?.total ?: env.data.size)
+    }
+
+    suspend fun commentIncident(id: String, body: String): IncidentView =
+        post("api/v1/incidents/$id/comments", AddCommentRequest(body))
+
+    // --- Negociación ---
+    suspend fun threads(requestId: String): List<ChatThreadView> = get("api/v1/shipment-requests/$requestId/threads")
+
+    suspend fun messages(requestId: String, carrierOrgId: String, before: String? = null, size: Int = 30): CursorPage<MessageView> {
+        val env = callEnvelope<List<MessageView>> {
+            client.get("api/v1/shipment-requests/$requestId/threads/$carrierOrgId/messages") {
+                before?.let { parameter("before", it) }
+                parameter("size", size)
+            }
+        }
+        return CursorPage(env.data, env.meta?.nextCursor)
+    }
+
+    suspend fun postMessage(requestId: String, carrierOrgId: String, body: String): MessageView =
+        post("api/v1/shipment-requests/$requestId/threads/$carrierOrgId/messages", PostMessageRequest(body))
+
+    suspend fun counterOffers(bidId: String): List<CounterOfferView> = get("api/v1/bids/$bidId/counter-offers")
+
+    suspend fun proposeCounterOffer(bidId: String, amount: Double, message: String?): CounterOfferView =
+        post("api/v1/bids/$bidId/counter-offers", ProposeCounterOfferRequest(amount, message?.takeIf { it.isNotBlank() }))
+
+    suspend fun acceptCounterOffer(id: String): CounterOfferView = post("api/v1/counter-offers/$id/accept")
+    suspend fun rejectCounterOffer(id: String): CounterOfferView = post("api/v1/counter-offers/$id/reject")
+
+    // --- Reputación ---
+    suspend fun shipmentReviews(shipmentId: String): ShipmentReviewsView = get("api/v1/shipments/$shipmentId/reviews")
+    suspend fun submitReview(shipmentId: String, body: SubmitReviewRequest): ReviewView =
+        post("api/v1/shipments/$shipmentId/reviews", body)
+
+    suspend fun reputation(organizationId: String): ReputationView = get("api/v1/organizations/$organizationId/reputation")
+
+    suspend fun organizationReviews(organizationId: String, page: Int = 0, size: Int = 20): pe.logyx.core.model.Page<ReviewView> {
+        val env = callEnvelope<List<ReviewView>> {
+            client.get("api/v1/organizations/$organizationId/reviews") { parameter("page", page); parameter("size", size) }
+        }
+        return pe.logyx.core.model.Page(env.data, env.meta?.page ?: page, env.meta?.size ?: size, env.meta?.total ?: env.data.size)
+    }
+
+    // --- Notificaciones ---
+    suspend fun notifications(unreadOnly: Boolean = false, page: Int = 0, size: Int = 20): pe.logyx.core.model.Page<NotificationView> {
+        val env = callEnvelope<List<NotificationView>> {
+            client.get("api/v1/notifications") {
+                if (unreadOnly) parameter("unread", true)
+                parameter("page", page); parameter("size", size)
+            }
+        }
+        return pe.logyx.core.model.Page(env.data, env.meta?.page ?: page, env.meta?.size ?: size, env.meta?.total ?: env.data.size)
+    }
+
+    suspend fun unreadCount(): UnreadCount = get("api/v1/notifications/unread-count")
+    suspend fun markNotificationRead(id: String): NotificationView = post("api/v1/notifications/$id/read")
+    suspend fun markAllNotificationsRead(): MarkedRead = post("api/v1/notifications/read-all")
 
     // --- Infraestructura ---
     private suspend inline fun <reified T> get(path: String): T = call { client.get(path) }

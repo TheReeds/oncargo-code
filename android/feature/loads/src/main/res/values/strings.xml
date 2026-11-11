@@ -112,4 +112,14 @@
     <string name="loads_error_vehicle_required">Elige el vehículo con el que harás el viaje.</string>
     <string name="loads_error_amount_invalid">Ingresa un monto válido, por ejemplo 1,850.00.</string>
     <string name="loads_error_amount_below_floor">Tu oferta es menor al piso de %1$s. Sube el monto para poder enviarla.</string>
+    <string name="loads_ask_company">Preguntar a la empresa</string>
+    <string name="loads_counter_proposes">La PYME propone %1$s</string>
+    <string name="loads_counter_accept">Aceptar contraoferta</string>
+    <string name="loads_counter_reject">Rechazar</string>
+    <string name="loads_counter_accept_title">¿Aceptar la contraoferta?</string>
+    <string name="loads_counter_accept_message">Tu oferta cambiará a %1$s. Esta acción no se puede deshacer.</string>
+    <string name="loads_counter_reject_title">¿Rechazar la contraoferta?</string>
+    <string name="loads_counter_reject_message">Tu oferta seguirá con el monto actual.</string>
+    <string name="loads_counter_accepted">Contraoferta aceptada. Tu oferta ahora es de %1$s.</string>
+    <string name="loads_counter_rejected">Contraoferta rechazada</string>
 </resources>

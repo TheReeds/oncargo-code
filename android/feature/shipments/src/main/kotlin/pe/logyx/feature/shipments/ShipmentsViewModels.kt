@@ -70,6 +70,9 @@ data class ShipmentDetailUiState(
     val driversLoading: Boolean = false,
     val assigning: Boolean = false,
     val message: UiMessage? = null,
+    /** Calificación (RN06): null = aún no se sabe / no aplica. */
+    val canReview: Boolean? = null,
+    val hasReviews: Boolean = false,
 ) {
     val canAssign: Boolean get() = isCarrier && shipment?.status == ShipmentStatus.PENDING
 }
@@ -79,6 +82,7 @@ class ShipmentDetailViewModel(
     auth: AuthRepository,
     private val repo: ShipmentsRepository,
     private val catalog: CatalogRepository,
+    private val reputation: pe.logyx.core.data.ReputationRepository,
 ) : ViewModel() {
     private val user = (auth.state.value as? SessionState.LoggedIn)?.user
     private val _state = MutableStateFlow(ShipmentDetailUiState(isCarrier = user?.organizationType == OrgType.CARRIER && user.role != Role.DRIVER))
@@ -98,6 +102,11 @@ class ShipmentDetailViewModel(
                     val cities = c.await().getOrDefault(emptyList())
                     fun geo(code: String) = cities.firstOrNull { normalizeCity(it.code) == normalizeCity(code) }?.toGeoPoint()
                     _state.update { it.copy(loading = false, refreshing = false, shipment = sh, origin = geo(sh.originCity), destination = geo(sh.destinationCity)) }
+                    if (sh.status == ShipmentStatus.DELIVERED) {
+                        reputation.shipmentReviews(sh.id).onSuccess { r ->
+                            _state.update { it.copy(canReview = r.canReview, hasReviews = r.reviews.isNotEmpty()) }
+                        }
+                    }
                 },
                 onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )

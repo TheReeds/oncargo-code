@@ -24,3 +24,4 @@ rootProject.name = "logyx-android"
 include(":app")
 include(":core:model", ":core:network", ":core:data", ":core:designsystem")
 include(":feature:auth", ":feature:loads", ":feature:requests", ":feature:shipments", ":feature:driver")
+include(":feature:negotiation", ":feature:incidents", ":feature:notifications", ":feature:reputation", ":feature:documents")

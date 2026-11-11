@@ -39,4 +39,10 @@ fun dataModule(baseUrl: String) = module {
     single<LoadsRepository> { DefaultLoadsRepository(get()) }
     single<RequestsRepository> { DefaultRequestsRepository(get()) }
     single<ShipmentsRepository> { DefaultShipmentsRepository(get()) }
+    single<DocumentsRepository> { DefaultDocumentsRepository(get()) }
+    single<IncidentsRepository> { DefaultIncidentsRepository(get()) }
+    single<NegotiationRepository> { DefaultNegotiationRepository(get()) }
+    single<ReputationRepository> { DefaultReputationRepository(get()) }
+    single<NotificationsRepository> { DefaultNotificationsRepository(get()) }
+    single<EvidenceRepository> { DefaultEvidenceRepository(get(), java.io.File(androidContext().filesDir, "evidence")) }
 }

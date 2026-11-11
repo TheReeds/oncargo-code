@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="negotiation_chat_title">Chat</string>
+    <string name="negotiation_chat_older">Ver mensajes anteriores</string>
+    <string name="negotiation_chat_empty_title">Aún no hay mensajes</string>
+    <string name="negotiation_chat_empty_message">Escribe el primero. Coordina todo por el chat de LOGYX.</string>
+    <string name="negotiation_chat_closed">Esta conversación ya está cerrada. Puedes leer los mensajes, pero no enviar nuevos.</string>
+    <string name="negotiation_chat_discard">Descartar</string>
+
+    <string name="negotiation_threads_title">Mensajes</string>
+    <string name="negotiation_threads_empty_title">Aún no hay conversaciones</string>
+    <string name="negotiation_threads_empty_message">Cuando un transportista te escriba o tú le preguntes por su oferta, la conversación aparecerá aquí.</string>
+    <string name="negotiation_threads_carrier_fallback">Transportista</string>
+    <string name="negotiation_threads_no_messages">Sin mensajes todavía</string>
+    <string name="negotiation_threads_offer">Oferta %1$s</string>
+    <string name="negotiation_threads_count_description">%1$d mensajes</string>
+</resources>

@@ -10,11 +10,13 @@ import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.CatalogRepository
+import pe.logyx.core.data.EvidenceRepository
 import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.RequestsRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
 import pe.logyx.core.model.*
+import pe.logyx.core.network.ApiException
 
 /** Repositorios en memoria: los tests de UI no necesitan backend. */
 object Data {
@@ -89,7 +91,7 @@ class FakeRequests : RequestsRepository {
 }
 
 /** Simula la máquina de estados de paradas del backend. */
-class FakeShipments(var current: ShipmentView) : ShipmentsRepository {
+class FakeShipments(var current: ShipmentView, private val evidence: FakeEvidence? = null) : ShipmentsRepository {
     private fun update(stopId: String, to: StopStatus): Result<ShipmentView> {
         val stops = current.stops.map { if (it.id == stopId) it.copy(status = to) else it }
         current = current.copy(stops = stops, status = if (stops.all { it.status == StopStatus.COMPLETED }) ShipmentStatus.DELIVERED else ShipmentStatus.IN_TRANSIT)
@@ -102,7 +104,14 @@ class FakeShipments(var current: ShipmentView) : ShipmentsRepository {
     override suspend fun driverShipments() = Result.success(listOf(current))
     override suspend fun driverActive() = Result.success<ShipmentView?>(current)
     override suspend fun arrive(shipmentId: String, stopId: String) = update(stopId, StopStatus.ARRIVED)
-    override suspend fun complete(shipmentId: String, stopId: String) = update(stopId, StopStatus.COMPLETED)
+    override suspend fun complete(shipmentId: String, stopId: String): Result<ShipmentView> {
+        // RN06: la parada de entrega exige al menos una foto de entrega subida.
+        val stop = current.stops.firstOrNull { it.id == stopId }
+        if (evidence != null && stop?.type == StopType.DELIVERY && !evidence.hasUploadedPhoto(shipmentId)) {
+            return Result.failure(ApiException(409, "LOGYX-TRK-006", "Falta la evidencia fotográfica de la entrega"))
+        }
+        return update(stopId, StopStatus.COMPLETED)
+    }
 }
 
 /** Sustituye los repositorios reales de Koin por fakes durante el test y los restaura al terminar. */
@@ -110,6 +119,7 @@ class FakeKoinRule(
     private val auth: FakeAuth,
     private val loads: FakeLoads = FakeLoads(),
     private val shipments: FakeShipments = FakeShipments(Data.trip(Data.stop("p", 1, StopType.PICKUP), Data.stop("d", 2, StopType.DELIVERY))),
+    private val evidence: FakeEvidence = FakeEvidence(),
 ) : TestWatcher() {
     private var overrides: Module? = null
     override fun starting(description: Description) {
@@ -119,6 +129,7 @@ class FakeKoinRule(
             single<LoadsRepository> { loads }
             single<RequestsRepository> { FakeRequests() }
             single<ShipmentsRepository> { shipments }
+            single<EvidenceRepository> { evidence }
         }.also { loadKoinModules(it) }
     }
     override fun finished(description: Description) { overrides?.let { unloadKoinModules(it) } }

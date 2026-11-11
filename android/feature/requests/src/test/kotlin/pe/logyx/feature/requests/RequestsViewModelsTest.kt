@@ -10,6 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import pe.logyx.core.data.CatalogRepository
+import pe.logyx.core.data.NegotiationRepository
 import pe.logyx.core.data.RequestsRepository
 import pe.logyx.core.model.*
 import pe.logyx.core.network.ApiException
@@ -39,6 +40,17 @@ private class FakeCatalog : CatalogRepository {
     override suspend fun organization(id: String) = Result.failure<PublicOrganization>(IllegalStateException())
 }
 
+private class FakeNegotiation(var proposeResult: Result<CounterOfferView> = Result.success(CounterOfferView("co1", "a", amount = 1700.0, status = CounterOfferStatus.PENDING))) : NegotiationRepository {
+    var proposed: Triple<String, Double, String?>? = null
+    override suspend fun threads(requestId: String) = Result.success(emptyList<ChatThreadView>())
+    override suspend fun messages(requestId: String, carrierOrgId: String, before: String?) = Result.success(CursorPage<MessageView>(emptyList(), null))
+    override suspend fun send(requestId: String, carrierOrgId: String, body: String) = Result.failure<MessageView>(IllegalStateException())
+    override suspend fun counterOffers(bidId: String) = Result.success(listOf(CounterOfferView("old", bidId, amount = 1800.0, status = CounterOfferStatus.REJECTED)))
+    override suspend fun propose(bidId: String, amount: Double, message: String?): Result<CounterOfferView> { proposed = Triple(bidId, amount, message); return proposeResult }
+    override suspend fun accept(counterOfferId: String) = Result.failure<CounterOfferView>(IllegalStateException())
+    override suspend fun reject(counterOfferId: String) = Result.failure<CounterOfferView>(IllegalStateException())
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class RequestsViewModelsTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -54,7 +66,7 @@ class RequestsViewModelsTest {
 
     @Test fun `aceptar pide confirmacion y entrega el id del envio`() = runTest {
         val repo = FakeRequests(listOf(bid("a", 1900.0), bid("b", 1600.0)), Result.success(AcceptResult("ship-9")))
-        val vm = RequestDetailViewModel("r1", repo, FakeCatalog())
+        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation())
         assertEquals(2, vm.state.value.bids.size)
         assertTrue(vm.state.value.canDecide)
 
@@ -69,9 +81,46 @@ class RequestsViewModelsTest {
 
     @Test fun `error al aceptar muestra el mensaje de la API`() = runTest {
         val repo = FakeRequests(listOf(bid("a", 1900.0)), Result.failure(ApiException(409, "LOGYX-MKT-009", "La solicitud ya fue adjudicada")))
-        val vm = RequestDetailViewModel("r1", repo, FakeCatalog())
+        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation())
         vm.askAccept(bid("a", 1900.0)); vm.confirmAccept()
         assertEquals("La solicitud ya fue adjudicada", vm.state.value.message?.text)
         assertNull(vm.state.value.createdShipmentId)
+    }
+
+    @Test fun `contraoferta valida piso y monto menor antes de confirmar`() = runTest {
+        val nego = FakeNegotiation()
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        vm.openCounter(bid("a", 1900.0))
+        assertEquals(1, vm.state.value.counter?.previous?.size)
+
+        vm.onCounterAmount("1400"); vm.askConfirmCounter()
+        assertTrue(vm.state.value.counter?.amountError != null)
+        assertTrue(vm.state.value.counter?.confirming == false)
+        vm.onCounterAmount("1900"); vm.askConfirmCounter()
+        assertTrue(vm.state.value.counter?.amountError != null)
+        vm.onCounterAmount("1700"); vm.askConfirmCounter()
+        assertTrue(vm.state.value.counter?.confirming == true)
+        assertNull(nego.proposed)
+    }
+
+    @Test fun `contraoferta enviada cierra la hoja y avisa`() = runTest {
+        val nego = FakeNegotiation()
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        vm.openCounter(bid("a", 1900.0))
+        vm.onCounterAmount("1700"); vm.onCounterMessage(" ¿Podemos? "); vm.askConfirmCounter(); vm.confirmCounter()
+        assertEquals(Triple("a", 1700.0, "¿Podemos?"), nego.proposed)
+        assertNull(vm.state.value.counter)
+        assertEquals(R.string.requests_counter_sent, vm.state.value.message?.textRes)
+    }
+
+    @Test fun `error de campo de la API se muestra en el campo monto`() = runTest {
+        val nego = FakeNegotiation(Result.failure(ApiException(422, "LOGYX-NEG-005", "El monto no puede ser menor al piso de S/ 1,500.00.", field = "amount")))
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        vm.openCounter(bid("a", 1900.0))
+        vm.onCounterAmount("1600"); vm.askConfirmCounter(); vm.confirmCounter()
+        val c = vm.state.value.counter!!
+        assertEquals(pe.logyx.core.designsystem.components.UiText.Raw("El monto no puede ser menor al piso de S/ 1,500.00."), c.amountError)
+        assertTrue(!c.sending && !c.confirming)
+        assertNull(vm.state.value.message)
     }
 }

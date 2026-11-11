@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notifications_title">Notificaciones</string>
+    <string name="notifications_filter_all">Todas</string>
+    <string name="notifications_filter_unread">Sin leer</string>
+    <string name="notifications_mark_all">Marcar todas como leídas</string>
+    <string name="notifications_all_read_done">Listo, marcaste todo como leído</string>
+    <string name="notifications_empty_title">Estás al día</string>
+    <string name="notifications_empty_message">No tienes notificaciones por ahora. Te avisaremos cuando haya novedades.</string>
+    <string name="notifications_empty_unread_message">No tienes notificaciones sin leer.</string>
+    <string name="notifications_unread_state">Sin leer</string>
+</resources>

@@ -38,4 +38,23 @@
     <string name="driver_notice_delivered">Entrega registrada</string>
     <string name="driver_action_error_title">No pudimos actualizar la parada</string>
     <string name="driver_action_error_retry">Reintentar</string>
+
+    <string name="driver_evidence_title">Evidencia de entrega</string>
+    <string name="driver_evidence_take_photo">Tomar foto de entrega</string>
+    <string name="driver_evidence_add_signature">Agregar firma del receptor</string>
+    <string name="driver_evidence_photo_caption">Foto %1$d</string>
+    <string name="driver_evidence_signature_caption">Firma</string>
+    <string name="driver_evidence_failed">No se subió: %1$s</string>
+    <string name="driver_evidence_failed_generic">No se subió. Se reintentará sola cuando haya señal.</string>
+    <string name="driver_evidence_retry">Reintentar</string>
+    <string name="driver_evidence_discard">Descartar</string>
+    <string name="driver_evidence_required_hint">Para marcar la entrega necesitas subir al menos una foto de la carga entregada.</string>
+    <string name="driver_evidence_missing">Falta la foto de entrega. Tómala y espera a que se suba para marcar la entrega.</string>
+    <string name="driver_signature_title">Firma del receptor</string>
+    <string name="driver_signature_clear">Borrar</string>
+    <string name="driver_signature_save">Guardar</string>
+
+    <string name="driver_incident_banner">Tienes una incidencia abierta. No puedes avanzar hasta que se resuelva.</string>
+    <string name="driver_incident_report">Reportar incidencia</string>
+    <string name="driver_incident_view">Ver incidencias</string>
 </resources>

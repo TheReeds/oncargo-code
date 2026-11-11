@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rep_profile_title">Perfil de la empresa</string>
+    <string name="rep_type_carrier">Transportista</string>
+    <string name="rep_type_pyme">PYME</string>
+    <string name="rep_trust_title">Trust Score</string>
+    <string name="rep_trust_explain">Se calcula con las calificaciones recibidas; sin calificaciones parte de 75.</string>
+    <string name="rep_total_reviews">%1$d calificaciones</string>
+    <string name="rep_total_reviews_one">1 calificación</string>
+    <string name="rep_average">Promedio %1$s</string>
+    <string name="rep_dim_punctuality">Puntualidad</string>
+    <string name="rep_dim_cargo_condition">Estado de la carga</string>
+    <string name="rep_dim_cargo_declared">Exactitud de la carga declarada</string>
+    <string name="rep_dim_communication">Comunicación</string>
+    <string name="rep_recent_reviews">Reseñas recientes</string>
+    <string name="rep_empty_title">Aún no tiene calificaciones</string>
+    <string name="rep_empty_message">Cuando termine sus primeros envíos, aquí verás lo que opinan quienes trabajaron con esta empresa.</string>
+    <string name="rep_see_more">Ver más</string>
+    <string name="rep_no_comment">Sin comentario</string>
+    <string name="rep_anonymous">Una empresa</string>
+
+    <string name="rep_review_title">Calificar envío</string>
+    <string name="rep_review_intro_carrier">Cuéntanos cómo te fue con el transportista. Tu calificación ayuda a otras empresas.</string>
+    <string name="rep_review_intro_pyme">Cuéntanos cómo te fue con la empresa que envió la carga. Tu calificación ayuda a otros transportistas.</string>
+    <string name="rep_blocked_title">Por ahora no puedes calificar</string>
+    <string name="rep_existing_title">Tus calificaciones de este envío</string>
+    <string name="rep_comment_label">Comentario</string>
+    <string name="rep_comment_hint">Cuéntanos qué pasó en el envío (máximo 1000 caracteres).</string>
+    <string name="rep_comment_error">El comentario es muy largo. Acórtalo a 1000 caracteres o menos.</string>
+    <string name="rep_submit">Enviar calificación</string>
+    <string name="rep_submit_help">Califica las tres dimensiones para poder enviar.</string>
+    <string name="rep_confirm_title">¿Enviar tu calificación?</string>
+    <string name="rep_confirm_message">No se puede editar después de enviarla.</string>
+    <string name="rep_thanks">Gracias por calificar</string>
+</resources>

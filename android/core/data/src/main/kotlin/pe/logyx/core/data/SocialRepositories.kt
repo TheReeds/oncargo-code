@@ -1,0 +1,107 @@
+package pe.logyx.core.data
+
+import pe.logyx.core.model.ChatThreadView
+import pe.logyx.core.model.CounterOfferView
+import pe.logyx.core.model.CursorPage
+import pe.logyx.core.model.DocumentView
+import pe.logyx.core.model.IncidentCategory
+import pe.logyx.core.model.IncidentView
+import pe.logyx.core.model.MessageView
+import pe.logyx.core.model.NotificationView
+import pe.logyx.core.model.Page
+import pe.logyx.core.model.ReportIncidentRequest
+import pe.logyx.core.model.ReputationView
+import pe.logyx.core.model.ReviewView
+import pe.logyx.core.model.ShipmentReviewsView
+import pe.logyx.core.model.SubmitReviewRequest
+import pe.logyx.core.network.LogyxApi
+
+/** Documentos del envío (ver / descargar). La subida de evidencia del conductor va por [EvidenceRepository]. */
+interface DocumentsRepository {
+    suspend fun list(shipmentId: String): Result<List<DocumentView>>
+    suspend fun file(documentId: String): Result<ByteArray>
+    /** Sube un archivo suelto (p. ej. foto de una incidencia como `OTHER`); las JPEG se comprimen a <= 2 MB. */
+    suspend fun upload(shipmentId: String, bytes: ByteArray, fileName: String, mime: String, type: pe.logyx.core.model.DocumentType, stopId: String? = null): Result<DocumentView>
+}
+
+/** Incidencias (RF52-55, RN11). */
+interface IncidentsRepository {
+    suspend fun report(shipmentId: String, category: IncidentCategory, description: String): Result<IncidentView>
+    suspend fun forShipment(shipmentId: String): Result<List<IncidentView>>
+    suspend fun detail(id: String): Result<IncidentView>
+    suspend fun comment(id: String, body: String): Result<IncidentView>
+    suspend fun mine(active: Boolean? = null, page: Int = 0): Result<Page<IncidentView>>
+}
+
+/** Chat por solicitud y contra-ofertas (RF25-28, RN07). */
+interface NegotiationRepository {
+    suspend fun threads(requestId: String): Result<List<ChatThreadView>>
+    suspend fun messages(requestId: String, carrierOrgId: String, before: String? = null): Result<CursorPage<MessageView>>
+    suspend fun send(requestId: String, carrierOrgId: String, body: String): Result<MessageView>
+    suspend fun counterOffers(bidId: String): Result<List<CounterOfferView>>
+    suspend fun propose(bidId: String, amount: Double, message: String?): Result<CounterOfferView>
+    suspend fun accept(counterOfferId: String): Result<CounterOfferView>
+    suspend fun reject(counterOfferId: String): Result<CounterOfferView>
+}
+
+/** Reputación y calificaciones (RN06, RN09). */
+interface ReputationRepository {
+    suspend fun reputation(organizationId: String): Result<ReputationView>
+    suspend fun reviews(organizationId: String, page: Int = 0): Result<Page<ReviewView>>
+    suspend fun shipmentReviews(shipmentId: String): Result<ShipmentReviewsView>
+    suspend fun submit(shipmentId: String, punctuality: Int, cargoCondition: Int, communication: Int, comment: String?): Result<ReviewView>
+}
+
+/** Centro de notificaciones in-app (RF49, RF51). */
+interface NotificationsRepository {
+    suspend fun list(unreadOnly: Boolean = false, page: Int = 0): Result<Page<NotificationView>>
+    suspend fun unreadCount(): Result<Int>
+    suspend fun markRead(id: String): Result<NotificationView>
+    suspend fun markAllRead(): Result<Int>
+}
+
+class DefaultDocumentsRepository(private val api: LogyxApi) : DocumentsRepository {
+    override suspend fun list(shipmentId: String) = apiCall { api.shipmentDocuments(shipmentId) }
+    override suspend fun file(documentId: String) = apiCall { api.documentFile(documentId) }
+    override suspend fun upload(shipmentId: String, bytes: ByteArray, fileName: String, mime: String, type: pe.logyx.core.model.DocumentType, stopId: String?) =
+        apiCall {
+            val data = if (mime == "image/jpeg") kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { ImageCompressor.compressJpeg(bytes) } else bytes
+            api.uploadDocument(shipmentId, data, fileName, mime, type, stopId)
+        }
+}
+
+class DefaultIncidentsRepository(private val api: LogyxApi) : IncidentsRepository {
+    override suspend fun report(shipmentId: String, category: IncidentCategory, description: String) =
+        apiCall { api.reportIncident(shipmentId, ReportIncidentRequest(category, description.trim())) }
+    override suspend fun forShipment(shipmentId: String) = apiCall { api.shipmentIncidents(shipmentId) }
+    override suspend fun detail(id: String) = apiCall { api.incident(id) }
+    override suspend fun comment(id: String, body: String) = apiCall { api.commentIncident(id, body.trim()) }
+    override suspend fun mine(active: Boolean?, page: Int) = apiCall { api.incidents(active, page) }
+}
+
+class DefaultNegotiationRepository(private val api: LogyxApi) : NegotiationRepository {
+    override suspend fun threads(requestId: String) = apiCall { api.threads(requestId) }
+    override suspend fun messages(requestId: String, carrierOrgId: String, before: String?) =
+        apiCall { api.messages(requestId, carrierOrgId, before) }
+    override suspend fun send(requestId: String, carrierOrgId: String, body: String) =
+        apiCall { api.postMessage(requestId, carrierOrgId, body.trim()) }
+    override suspend fun counterOffers(bidId: String) = apiCall { api.counterOffers(bidId) }
+    override suspend fun propose(bidId: String, amount: Double, message: String?) = apiCall { api.proposeCounterOffer(bidId, amount, message) }
+    override suspend fun accept(counterOfferId: String) = apiCall { api.acceptCounterOffer(counterOfferId) }
+    override suspend fun reject(counterOfferId: String) = apiCall { api.rejectCounterOffer(counterOfferId) }
+}
+
+class DefaultReputationRepository(private val api: LogyxApi) : ReputationRepository {
+    override suspend fun reputation(organizationId: String) = apiCall { api.reputation(organizationId) }
+    override suspend fun reviews(organizationId: String, page: Int) = apiCall { api.organizationReviews(organizationId, page) }
+    override suspend fun shipmentReviews(shipmentId: String) = apiCall { api.shipmentReviews(shipmentId) }
+    override suspend fun submit(shipmentId: String, punctuality: Int, cargoCondition: Int, communication: Int, comment: String?) =
+        apiCall { api.submitReview(shipmentId, SubmitReviewRequest(punctuality, cargoCondition, communication, comment?.trim()?.takeIf { it.isNotEmpty() })) }
+}
+
+class DefaultNotificationsRepository(private val api: LogyxApi) : NotificationsRepository {
+    override suspend fun list(unreadOnly: Boolean, page: Int) = apiCall { api.notifications(unreadOnly, page) }
+    override suspend fun unreadCount() = apiCall { api.unreadCount().unread }
+    override suspend fun markRead(id: String) = apiCall { api.markNotificationRead(id) }
+    override suspend fun markAllRead() = apiCall { api.markAllNotificationsRead().updated }
+}

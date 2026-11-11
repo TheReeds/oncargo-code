@@ -1,6 +1,35 @@
 package pe.logyx.feature.driver
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import pe.logyx.core.data.EvidenceItem
+import pe.logyx.core.data.EvidenceState
+import pe.logyx.core.designsystem.components.ButtonVariant
+import pe.logyx.core.designsystem.components.EvidenceTile
+import pe.logyx.core.designsystem.components.LogyxBottomSheet
+import pe.logyx.core.designsystem.components.SignaturePad
+import pe.logyx.core.designsystem.components.TileStatus
+import pe.logyx.core.designsystem.components.rememberSignaturePadState
+import pe.logyx.core.model.DocumentType
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,10 +98,58 @@ import pe.logyx.core.model.StopType
 import pe.logyx.core.model.StopView
 import pe.logyx.core.model.nextStop
 
+/**
+ * Punto de inyección de la captura de foto para tests instrumentados: si hay un valor, "Tomar foto de entrega"
+ * usa sus bytes en vez de abrir la cámara. En producción es null.
+ */
+fun interface PhotoCapture { fun capture(): ByteArray? }
+
+val LocalPhotoCapture = compositionLocalOf<PhotoCapture?> { null }
+
 @Composable
-fun DriverTripRoute(viewModel: DriverTripViewModel = koinViewModel()) {
+fun DriverTripRoute(
+    onReportIncident: (String) -> Unit = {},
+    onOpenIncidents: (String) -> Unit = {},
+    viewModel: DriverTripViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    DriverTripScreen(state, viewModel::refresh, viewModel::advance, viewModel::onNoticeShown, viewModel::dismissActionError)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val injected = LocalPhotoCapture.current
+    var tempPath by rememberSaveable { mutableStateOf<String?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val file = tempPath?.let(::File)
+        tempPath = null
+        if (file != null) scope.launch {
+            val bytes = withContext(Dispatchers.IO) {
+                val data = if (ok) runCatching { file.readBytes() }.getOrNull() else null
+                file.delete()
+                data
+            }
+            if (bytes != null && bytes.isNotEmpty()) viewModel.onPhotoCaptured(bytes)
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
+    val shipmentId = state.trip?.id
+    DriverTripScreen(
+        state, viewModel::refresh, viewModel::advance, viewModel::onNoticeShown, viewModel::dismissActionError,
+        onTakePhoto = {
+            if (injected != null) injected.capture()?.let(viewModel::onPhotoCaptured)
+            else scope.launch {
+                val file = withContext(Dispatchers.IO) {
+                    File.createTempFile("entrega_", ".jpg", File(context.cacheDir, "evidence").apply { mkdirs() })
+                }
+                tempPath = file.absolutePath
+                val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                launcher.launch(uri)
+            }
+        },
+        onSignature = viewModel::onSignatureCaptured,
+        onRetryEvidence = viewModel::retryEvidence,
+        onDiscardEvidence = viewModel::discardEvidence,
+        onReportIncident = { shipmentId?.let(onReportIncident) },
+        onOpenIncidents = { shipmentId?.let(onOpenIncidents) },
+    )
 }
 
 @Composable
@@ -93,6 +170,12 @@ fun DriverTripScreen(
     onAdvance: () -> Unit,
     onNoticeShown: () -> Unit = {},
     onDismissError: () -> Unit = {},
+    onTakePhoto: () -> Unit = {},
+    onSignature: (ByteArray) -> Unit = {},
+    onRetryEvidence: (String) -> Unit = {},
+    onDiscardEvidence: (String) -> Unit = {},
+    onReportIncident: () -> Unit = {},
+    onOpenIncidents: () -> Unit = {},
 ) {
     val trip = state.trip
     val snackbar = rememberLogyxSnackbarState()
@@ -119,13 +202,16 @@ fun DriverTripScreen(
                         EmptyState(stringResource(R.string.driver_empty_title), stringResource(R.string.driver_empty_message))
                     }
                 }
-                else -> TripContent(state, trip, onRefresh, onDismissError, onConfirm = { confirming = true })
+                else -> TripContent(
+                    state, trip, onRefresh, onDismissError, onConfirm = { confirming = true },
+                    onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence, onReportIncident, onOpenIncidents,
+                )
             }
         }
     }
 
     val action = state.action
-    if (confirming && action != null) {
+    if (confirming && action != null && state.canAdvance) {
         val haptic = LocalHapticFeedback.current
         val (t, m, b) = when (action.step) {
             DriverStep.ARRIVE_PICKUP -> Triple(R.string.driver_confirm_arrive_pickup_title, R.string.driver_confirm_arrive_pickup_message, R.string.driver_confirm_arrive_pickup_button)
@@ -168,12 +254,27 @@ private fun TripContent(
     onRefresh: () -> Unit,
     onDismissError: () -> Unit,
     onConfirm: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onSignature: (ByteArray) -> Unit,
+    onRetryEvidence: (String) -> Unit,
+    onDiscardEvidence: (String) -> Unit,
+    onReportIncident: () -> Unit,
+    onOpenIncidents: () -> Unit,
 ) {
     val total = trip.stops.size
     val done = trip.stops.count { it.status == StopStatus.COMPLETED }
     val current = (done + 1).coerceAtMost(total.coerceAtLeast(1))
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().weight(0.8f)) {
+        if (state.incidentBlocked) {
+            AlertBanner(
+                stringResource(R.string.driver_incident_banner),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                kind = MessageKind.Warning,
+            )
+        }
+        val evidenceStep = state.action?.step == DriverStep.DELIVERED
+        // En la entrega el panel de evidencia necesita espacio: el mapa se achica.
+        Box(Modifier.fillMaxWidth().weight(if (evidenceStep) 0.3f else 0.8f)) {
             val mapDescription = stringResource(R.string.driver_map_a11y, cityLabel(trip.originCity), cityLabel(trip.destinationCity))
             if (LocalInspectionMode.current) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
@@ -188,12 +289,15 @@ private fun TripContent(
                 )
             }
         }
-        Refreshable(state.refreshing, onRefresh, Modifier.weight(1.2f).fillMaxWidth()) {
+        Refreshable(state.refreshing, onRefresh, Modifier.weight(if (evidenceStep) 1.7f else 1.2f).fillMaxWidth()) {
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 if (state.delivered) DeliveredCard(trip) else trip.nextStop()?.let { NextStopCard(it, current, total) }
+                if (state.needsEvidence) {
+                    EvidencePanel(state.evidence, onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence)
+                }
                 Text(
                     "${Fmt.tons(trip.weightKg)} · ${trip.vehiclePlate ?: "—"} · ${trip.cargoDescription ?: stringResource(R.string.driver_cargo_default)}",
                     style = LogyxText.mono, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -217,7 +321,117 @@ private fun TripContent(
                     )
                 }
                 if (action != null) {
-                    LogyxButton(action.step.actionText(), onConfirm, size = ButtonSize.Xl, loading = state.acting)
+                    LogyxButton(action.step.actionText(), onConfirm, size = ButtonSize.Xl, loading = state.acting, enabled = state.canAdvance)
+                    val hint = when {
+                        state.incidentBlocked -> null // ya lo explica el banner de arriba
+                        state.photoBlocked && state.photoMissingRejected -> R.string.driver_evidence_missing
+                        state.photoBlocked -> R.string.driver_evidence_required_hint
+                        else -> null
+                    }
+                    hint?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LogyxButton(
+                            stringResource(R.string.driver_incident_report), onReportIncident, Modifier.weight(1f),
+                            variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                        )
+                        if (state.incidentBlocked) {
+                            LogyxButton(
+                                stringResource(R.string.driver_incident_view), onOpenIncidents, Modifier.weight(1f),
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Miniatura decodificada fuera del hilo principal y recordada por id de evidencia. */
+@Composable
+private fun rememberThumbnail(item: EvidenceItem): State<ImageBitmap?> = produceState<ImageBitmap?>(null, item.id, item.bytes?.size) {
+    val bytes = item.bytes ?: return@produceState
+    value = withContext(Dispatchers.Default) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 360) sample *= 2
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+    }
+}
+
+@Composable
+private fun EvidenceThumb(item: EvidenceItem, caption: String, modifier: Modifier = Modifier) {
+    val image by rememberThumbnail(item)
+    EvidenceTile(
+        caption, modifier, image = image,
+        status = when (item.state) {
+            EvidenceState.UPLOADING -> TileStatus.Uploading
+            EvidenceState.UPLOADED -> TileStatus.Uploaded
+            EvidenceState.FAILED -> TileStatus.Failed
+            EvidenceState.QUEUED -> TileStatus.Uploading
+        },
+        progress = item.progress,
+    )
+}
+
+/** Evidencia de entrega (RN06): foto obligatoria y firma opcional, con estado de subida por miniatura. */
+@Composable
+private fun EvidencePanel(
+    items: List<EvidenceItem>,
+    onTakePhoto: () -> Unit,
+    onSignature: (ByteArray) -> Unit,
+    onRetry: (String) -> Unit,
+    onDiscard: (String) -> Unit,
+) {
+    var signing by remember { mutableStateOf(false) }
+    val shown = items.filter { it.type == DocumentType.DELIVERY_PHOTO || it.type == DocumentType.SIGNATURE }
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.driver_evidence_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(12.dp))
+        LogyxButton(stringResource(R.string.driver_evidence_take_photo), onTakePhoto, size = ButtonSize.Large)
+        Spacer(Modifier.height(8.dp))
+        LogyxButton(stringResource(R.string.driver_evidence_add_signature), { signing = true }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
+        if (shown.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            var photoNo = 0
+            val captions = shown.map {
+                if (it.type == DocumentType.SIGNATURE) stringResource(R.string.driver_evidence_signature_caption)
+                else stringResource(R.string.driver_evidence_photo_caption, ++photoNo)
+            }
+            shown.indices.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { i -> EvidenceThumb(shown[i], captions[i], Modifier.weight(1f)) }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            shown.forEachIndexed { i, item ->
+                if (item.state == EvidenceState.FAILED) {
+                    Text(
+                        "${captions[i]}: " + (item.error?.let { stringResource(R.string.driver_evidence_failed, it) } ?: stringResource(R.string.driver_evidence_failed_generic)),
+                        style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.dangerText,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LogyxButton(stringResource(R.string.driver_evidence_retry), { onRetry(item.id) }, Modifier.weight(1f), ButtonVariant.Secondary, ButtonSize.Medium)
+                        LogyxButton(stringResource(R.string.driver_evidence_discard), { onDiscard(item.id) }, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Medium)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+    if (signing) {
+        LogyxBottomSheet(onDismiss = { signing = false }, title = stringResource(R.string.driver_signature_title)) {
+            val pad = rememberSignaturePadState()
+            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SignaturePad(pad)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LogyxButton(stringResource(R.string.driver_signature_clear), { pad.clear() }, Modifier.weight(1f), ButtonVariant.Secondary, enabled = !pad.isEmpty)
+                    LogyxButton(
+                        stringResource(R.string.driver_signature_save),
+                        { pad.toPng()?.let { onSignature(it); signing = false } },
+                        Modifier.weight(1f), enabled = !pad.isEmpty,
+                    )
                 }
             }
         }
@@ -285,6 +499,18 @@ private fun previewTrip(vararg status: StopStatus, shipment: ShipmentStatus = Sh
 @Composable
 private fun DriverTripPreview() {
     LogyxTheme { DriverTripScreen(DriverUiState(loading = false, trip = previewTrip(StopStatus.ARRIVED, StopStatus.PENDING)), {}, {}) }
+}
+
+@Preview(showBackground = true, heightDp = 900)
+@Composable
+private fun DriverEvidencePreview() {
+    val items = listOf(
+        EvidenceItem("a", "s1", "st1", DocumentType.DELIVERY_PHOTO, EvidenceState.UPLOADED, 1f),
+        EvidenceItem("b", "s1", "st1", DocumentType.DELIVERY_PHOTO, EvidenceState.FAILED, 0f, error = "Sin conexión"),
+    )
+    LogyxTheme {
+        DriverTripScreen(DriverUiState(loading = false, trip = previewTrip(StopStatus.COMPLETED, StopStatus.ARRIVED).copy(hasActiveIncident = true), allEvidence = items), {}, {})
+    }
 }
 
 @Preview(showBackground = true, heightDp = 800)

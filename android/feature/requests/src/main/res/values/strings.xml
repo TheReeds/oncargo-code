@@ -50,4 +50,19 @@
     <string name="requests_cancel_dismiss">No, mantenerla</string>
     <string name="requests_bid_accepted">Oferta aceptada. Creamos tu envío.</string>
     <string name="requests_cancelled">Solicitud cancelada</string>
+    <string name="requests_messages">Mensajes</string>
+    <string name="requests_chat">Chatear</string>
+    <string name="requests_counter">Contraofertar</string>
+    <string name="requests_counter_title">Contraofertar</string>
+    <string name="requests_counter_current">Oferta de %1$s: %2$s. Propón un monto menor.</string>
+    <string name="requests_counter_amount_label">Tu contraoferta</string>
+    <string name="requests_counter_message_label">Mensaje</string>
+    <string name="requests_counter_send">Enviar contraoferta</string>
+    <string name="requests_counter_previous">Contraofertas anteriores</string>
+    <string name="requests_counter_amount_required">Ingresa el monto de tu contraoferta.</string>
+    <string name="requests_counter_below_floor">El monto no puede ser menor al piso de %1$s.</string>
+    <string name="requests_counter_not_lower">La contraoferta debe ser menor a la oferta actual (%1$s).</string>
+    <string name="requests_counter_confirm_title">¿Enviar contraoferta?</string>
+    <string name="requests_counter_confirm_message">Propondrás %2$s a %1$s. Si la acepta, su oferta cambiará a ese monto.</string>
+    <string name="requests_counter_sent">Contraoferta enviada</string>
 </resources>

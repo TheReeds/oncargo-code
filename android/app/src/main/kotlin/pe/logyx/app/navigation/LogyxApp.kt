@@ -67,6 +67,20 @@ import pe.logyx.feature.requests.RequestDetailRoute
 import pe.logyx.feature.requests.RequestsRoute
 import pe.logyx.feature.shipments.ShipmentDetailRoute
 import pe.logyx.feature.shipments.ShipmentsRoute
+import pe.logyx.feature.documents.DocumentsRoute
+import pe.logyx.feature.incidents.IncidentDetailRoute
+import pe.logyx.feature.incidents.IncidentsListRoute
+import pe.logyx.feature.incidents.ReportIncidentRoute
+import pe.logyx.feature.negotiation.ChatRoute
+import pe.logyx.feature.negotiation.ThreadsRoute
+import pe.logyx.feature.notifications.NotificationsRoute
+import pe.logyx.feature.notifications.rememberUnreadCount
+import pe.logyx.feature.reputation.OrganizationProfileRoute
+import pe.logyx.feature.reputation.ReviewRoute
+import pe.logyx.core.model.NotificationTarget
+import pe.logyx.core.model.NotificationType
+import pe.logyx.core.model.NotificationView
+import androidx.compose.material.icons.rounded.Notifications
 
 /** Raíz: decide entre carga, login y la app por rol según el estado de la sesión. */
 @Composable
@@ -116,11 +130,13 @@ private val CARRIER_TABS = listOf(
     Tab(R.string.tab_loads, Icons.Rounded.Search, CarrierFeed),
     Tab(R.string.tab_bids, Icons.Rounded.Gavel, CarrierBids),
     Tab(R.string.tab_shipments, Icons.Rounded.LocalShipping, ShipmentsTab),
+    Tab(R.string.tab_notifications, Icons.Rounded.Notifications, NotificationsTab),
     Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
 )
 private val PYME_TABS = listOf(
     Tab(R.string.tab_requests, Icons.Rounded.Inventory2, RequestsTab),
     Tab(R.string.tab_shipments, Icons.Rounded.LocalShipping, ShipmentsTab),
+    Tab(R.string.tab_notifications, Icons.Rounded.Notifications, NotificationsTab),
     Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
 )
 private val DRIVER_TABS = listOf(
@@ -148,6 +164,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val destination = entry?.destination
+    val unread by rememberUnreadCount(enabled = role != AppRole.Driver)
     val showBar = tabs.any { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
 
     Scaffold(
@@ -156,7 +173,9 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
             if (showBar) {
                 val selectedIndex = tabs.indexOfFirst { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
                 LogyxBottomBar(
-                    items = tabs.map { LogyxNavItem(stringResource(it.label), it.icon) },
+                    items = tabs.map {
+                        LogyxNavItem(stringResource(it.label), it.icon, badgeCount = if (it.route == NotificationsTab) unread else null)
+                    },
                     selectedIndex = selectedIndex,
                     onSelect = { nav.navigateTab(tabs[it].route) },
                 )
@@ -174,8 +193,20 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 )
             }
             composable<CarrierFeed> { LoadsFeedRoute(onOpenLoad = { nav.navigate(LoadDetail(it)) }) }
-            composable<CarrierBids> { MyBidsRoute(onOpenLoad = { nav.navigate(LoadDetail(it)) }) }
-            composable<LoadDetail> { e -> LoadDetailRoute(e.toRoute<LoadDetail>().id, onBack = { nav.popBackStack() }) }
+            composable<CarrierBids> {
+                MyBidsRoute(
+                    onOpenLoad = { nav.navigate(LoadDetail(it)) },
+                    onOpenChat = { requestId, title -> nav.navigate(Chat(requestId, user.organizationId, title)) },
+                )
+            }
+            composable<LoadDetail> { e ->
+                LoadDetailRoute(
+                    e.toRoute<LoadDetail>().id,
+                    onBack = { nav.popBackStack() },
+                    onOpenChat = { requestId, title -> nav.navigate(Chat(requestId, user.organizationId, title)) },
+                    onOpenOrganization = { nav.navigate(OrgProfile(it)) },
+                )
+            }
 
             composable<RequestsTab> { RequestsRoute(onOpenRequest = { nav.navigate(RequestDetail(it)) }) }
             composable<RequestDetail> { e ->
@@ -183,13 +214,60 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     e.toRoute<RequestDetail>().id,
                     onBack = { nav.popBackStack() },
                     onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
+                    onOpenChat = { carrierOrgId, name -> nav.navigate(Chat(e.toRoute<RequestDetail>().id, carrierOrgId, name)) },
+                    onOpenThreads = { nav.navigate(Threads(e.toRoute<RequestDetail>().id)) },
+                    onOpenOrganization = { nav.navigate(OrgProfile(it)) },
                 )
             }
 
             composable<ShipmentsTab> { ShipmentsRoute(onOpen = { nav.navigate(ShipmentDetail(it)) }) }
-            composable<ShipmentDetail> { e -> ShipmentDetailRoute(e.toRoute<ShipmentDetail>().id, onBack = { nav.popBackStack() }) }
+            composable<ShipmentDetail> { e ->
+                val id = e.toRoute<ShipmentDetail>().id
+                ShipmentDetailRoute(
+                    id, onBack = { nav.popBackStack() },
+                    onOpenDocuments = { nav.navigate(Documents(id)) },
+                    onOpenIncidents = { nav.navigate(IncidentsList(id)) },
+                    onReportIncident = { nav.navigate(ReportIncident(id)) },
+                    onReview = { nav.navigate(Review(id)) },
+                )
+            }
 
-            composable<DriverTrip> { DriverTripRoute() }
+            composable<NotificationsTab> { NotificationsRoute(onOpen = { n -> nav.openNotification(n, role, user.organizationId) }) }
+            composable<Chat> { e ->
+                val c = e.toRoute<Chat>()
+                ChatRoute(c.requestId, c.carrierOrgId, c.title, onBack = { nav.popBackStack() })
+            }
+            composable<Threads> { e ->
+                val requestId = e.toRoute<Threads>().requestId
+                ThreadsRoute(requestId, onBack = { nav.popBackStack() }, onOpenChat = { orgId, name -> nav.navigate(Chat(requestId, orgId, name)) })
+            }
+            composable<OrgProfile> { e -> OrganizationProfileRoute(e.toRoute<OrgProfile>().orgId, onBack = { nav.popBackStack() }) }
+            composable<Review> { e ->
+                ReviewRoute(e.toRoute<Review>().shipmentId, onBack = { nav.popBackStack() }, onDone = { nav.popBackStack() })
+            }
+            composable<Documents> { e -> DocumentsRoute(e.toRoute<Documents>().shipmentId, onBack = { nav.popBackStack() }) }
+            composable<IncidentsList> { e ->
+                val id = e.toRoute<IncidentsList>().shipmentId
+                IncidentsListRoute(
+                    id, onBack = { nav.popBackStack() },
+                    onOpenIncident = { nav.navigate(IncidentDetail(it)) },
+                    onReport = { nav.navigate(ReportIncident(id)) },
+                )
+            }
+            composable<ReportIncident> { e ->
+                ReportIncidentRoute(
+                    e.toRoute<ReportIncident>().shipmentId, onBack = { nav.popBackStack() },
+                    onReported = { incidentId -> nav.popBackStack(); nav.navigate(IncidentDetail(incidentId)) },
+                )
+            }
+            composable<IncidentDetail> { e -> IncidentDetailRoute(e.toRoute<IncidentDetail>().incidentId, onBack = { nav.popBackStack() }) }
+
+            composable<DriverTrip> {
+                DriverTripRoute(
+                    onReportIncident = { nav.navigate(ReportIncident(it)) },
+                    onOpenIncidents = { nav.navigate(IncidentsList(it)) },
+                )
+            }
             composable<Account> { AccountRoute(config.apiBaseUrl, config.versionName) }
         }
     }
@@ -197,6 +275,22 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
 
 private fun Modifier.consumeInsets(padding: androidx.compose.foundation.layout.PaddingValues) =
     this.then(Modifier.consumeWindowInsets(padding))
+
+/** Navega al recurso de una notificación (`relatedType`/`relatedId`). */
+private fun NavHostController.openNotification(n: NotificationView, role: AppRole, orgId: String) {
+    val id = n.relatedId
+    when {
+        id == null -> Unit
+        n.type == NotificationType.NEW_MESSAGE && n.relatedType == NotificationTarget.REQUEST ->
+            navigate(if (role == AppRole.Pyme) Threads(id) else Chat(id, orgId, null))
+        n.relatedType == NotificationTarget.REQUEST -> navigate(if (role == AppRole.Pyme) RequestDetail(id) else LoadDetail(id))
+        n.relatedType == NotificationTarget.SHIPMENT -> navigate(ShipmentDetail(id))
+        n.relatedType == NotificationTarget.INCIDENT -> navigate(IncidentDetail(id))
+        n.relatedType == NotificationTarget.COUNTER_OFFER -> navigateTab(CarrierBids)
+        n.relatedType == NotificationTarget.BID -> navigateTab(if (role == AppRole.Pyme) RequestsTab else CarrierBids)
+        n.relatedType == NotificationTarget.REVIEW -> navigate(OrgProfile(orgId))
+    }
+}
 
 private fun NavHostController.navigateTab(route: Any) {
     navigate(route) {

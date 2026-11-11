@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="docs_title">Documentos del envío</string>
+    <string name="docs_empty_title">Aún no hay documentos en este envío</string>
+    <string name="docs_empty_message">Las guías, fotos de entrega y firmas aparecerán aquí cuando se suban.</string>
+    <string name="docs_pdf">PDF</string>
+    <string name="docs_viewer_close">Cerrar visor</string>
+    <string name="docs_viewer_loading">Cargando imagen</string>
+    <string name="docs_viewer_error">No pudimos cargar la imagen. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="docs_pdf_opening">Abriendo documento…</string>
+    <string name="docs_pdf_no_viewer">No tienes una app para abrir PDF. Instala un lector de PDF e inténtalo de nuevo.</string>
+    <string name="docs_pdf_error">No pudimos abrir el documento. Inténtalo de nuevo.</string>
+    <string name="docs_file_fallback">Documento</string>
+</resources>

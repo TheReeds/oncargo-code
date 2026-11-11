@@ -31,6 +31,14 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.LogyxTheme
+import pe.logyx.core.designsystem.components.ChatBubble
+import pe.logyx.core.designsystem.components.ChatComposer
+import pe.logyx.core.designsystem.components.EvidenceTile
+import pe.logyx.core.designsystem.components.RatingRow
+import pe.logyx.core.designsystem.components.SignaturePad
+import pe.logyx.core.designsystem.components.StarRating
+import pe.logyx.core.designsystem.components.TileStatus
+import pe.logyx.core.designsystem.components.TrustScoreBadge
 import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
@@ -105,6 +113,7 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 SkeletonList(Modifier.padding(0.dp), count = 1)
             }
             Section("Datos de negocio") { Domain() }
+            Section("Reputación, chat y evidencia") { Phase3() }
             Section("Navegación") {
                 var sel by remember { mutableStateOf(1) }
                 LogyxBottomBar(
@@ -259,6 +268,29 @@ private fun Domain() {
             StopView("2", 2, StopType.DELIVERY, "JULIACA", "Jr. Lima 456", StopStatus.PENDING),
         ),
     )
+}
+
+@Composable
+private fun Phase3() {
+    var stars by remember { mutableStateOf(4) }
+    var draft by remember { mutableStateOf("") }
+    val pad = pe.logyx.core.designsystem.components.rememberSignaturePadState()
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TrustScoreBadge(92.0); TrustScoreBadge(77.8); TrustScoreBadge(61.0)
+    }
+    StarRating(stars, onValueChange = { stars = it })
+    RatingRow("Puntualidad", 4.5)
+    ChatBubble("¿La carga requiere refrigeración?", mine = false, time = "10:02", sender = "Sur Andino")
+    ChatBubble("Sí, entre 2 y 4 °C.", mine = true, time = "10:03")
+    ChatBubble("Contraoferta enviada", mine = false, time = "10:10", system = true, price = 1700.0)
+    ChatComposer(draft, { draft = it }, {}, error = if (draft.length > 3) "El mensaje contiene datos de contacto. Coordina todo por el chat de LOGYX." else null)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        EvidenceTile("Foto 1", Modifier.weight(1f), status = TileStatus.Uploaded)
+        EvidenceTile("Foto 2", Modifier.weight(1f), status = TileStatus.Uploading, progress = 0.4f)
+        EvidenceTile("Foto 3", Modifier.weight(1f), status = TileStatus.Failed)
+        EvidenceTile("Guía", Modifier.weight(1f), pdf = true)
+    }
+    SignaturePad(pad)
 }
 
 @Preview(showBackground = true, heightDp = 2400)

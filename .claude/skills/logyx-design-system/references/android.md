@@ -80,6 +80,12 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - **`LogyxCard(onClick?)`**, `KpiTile`, `PriceTag`, `RouteLine`, `LoadCard`, `StopTimeline`, `TruckIllustration`, `AuctionCountdown`, `RouteMap`, `Refreshable`.
 - Estados: `LoadingState`, **`SkeletonList` / `SkeletonLoadCard` / `SkeletonBox` / `Modifier.shimmer()`** (primer render de listas; reservan `LoadingState` para acciones bloqueantes), `EmptyState(title, message, actionLabel, onAction)` (camión + siguiente acción), `ErrorState(message, onRetry)` (camión averiado + Reintentar).
 
+### Reputación, chat y evidencia (fase 3)
+- **`TrustScoreBadge(score: Double?, onClick?)`** — Trust Score 0–100 (≥85 esmeralda, ≥70 petróleo, <70 ámbar); en `LoadCard`, comparación de ofertas y perfil. **`StarRating(value, onValueChange?, size)`** (interactivo 44–48 dp o solo lectura) y **`RatingRow(label, average)`**.
+- **`ChatBubble(text, mine, time, sender, system, price, state: BubbleState, onRetry)`** (Sent/Sending/Failed; `system` = aviso centrado de contraoferta) y **`ChatComposer(value, onValueChange, onSend, error, sending)`** (error de RN07 bajo el campo; incluye `imePadding`).
+- **`SignaturePad(state)`** + `rememberSignaturePadState()` (`toPng()`, `clear()`, `isEmpty`) y **`EvidenceTile(caption, image, pdf, status: TileStatus, progress, onClick)`** (miniatura con estado de subida).
+- Etiquetas: `IncidentCategory.label`, `IncidentStatus.pill()`, `DocumentType.label`, `CounterOfferStatus.pill()`.
+
 ## Textos (español peruano, "tú")
 - Botones: verbo + objeto ("Enviar oferta", "Asignar conductor", "Reintentar"). Nada de "OK", "Aceptar" suelto, "Submit".
 - Conductor: frases cortas, imperativo/primera persona ("Llegué al recojo", "Carga recogida").

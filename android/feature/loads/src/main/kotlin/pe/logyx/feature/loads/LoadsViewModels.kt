@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +16,7 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.LoadsRepository
+import pe.logyx.core.data.NegotiationRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
 import pe.logyx.core.data.userMessage
@@ -23,6 +28,8 @@ import java.time.LocalDate
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.CargoType
 import pe.logyx.core.model.CityItem
+import pe.logyx.core.model.CounterOfferStatus
+import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.DashboardSummary
 import pe.logyx.core.model.MarketplaceFilter
 import pe.logyx.core.model.MarketplaceSort
@@ -420,14 +427,25 @@ internal fun parseAmount(text: String): Double? {
 
 // ───────────────────────── Mis ofertas ─────────────────────────
 
+/** Acción sobre una contraoferta pendiente de confirmar. */
+data class CounterAction(val counter: CounterOfferView, val accept: Boolean)
+
 data class MyBidsUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val error: String? = null,
     val items: List<RequestView> = emptyList(),
+    /** Contraoferta PENDING de la PYME por id de oferta (RF27). */
+    val counters: Map<String, CounterOfferView> = emptyMap(),
+    val confirm: CounterAction? = null,
+    val busy: Boolean = false,
+    val message: UiMessage? = null,
 )
 
-class MyBidsViewModel(private val loads: LoadsRepository) : ViewModel() {
+class MyBidsViewModel(
+    private val loads: LoadsRepository,
+    private val negotiation: NegotiationRepository,
+) : ViewModel() {
     private val _state = MutableStateFlow(MyBidsUiState())
     val state: StateFlow<MyBidsUiState> = _state.asStateFlow()
 
@@ -440,9 +458,56 @@ class MyBidsViewModel(private val loads: LoadsRepository) : ViewModel() {
         viewModelScope.launch {
             loads.myBids().fold(
                 onSuccess = { list ->
-                    _state.update { it.copy(loading = false, refreshing = false, items = list.sortedByDescending { r -> r.myBid?.createdAt.orEmpty() }) }
+                    val sorted = list.sortedByDescending { r -> r.myBid?.createdAt.orEmpty() }
+                    _state.update { it.copy(loading = false, refreshing = false, items = sorted) }
+                    loadCounters(sorted)
                 },
                 onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+            )
+        }
+    }
+
+    /** Solo consulta las ofertas PENDING (las demás ya no admiten contraoferta), con concurrencia limitada. */
+    private suspend fun loadCounters(items: List<RequestView>) {
+        val gate = Semaphore(4)
+        val pending = items.mapNotNull { it.myBid }.filter { it.status == BidStatus.PENDING }
+        val found = coroutineScope {
+            pending.map { bid ->
+                async {
+                    gate.withPermit {
+                        negotiation.counterOffers(bid.id).getOrNull()
+                            ?.filter { it.status == CounterOfferStatus.PENDING }
+                            ?.maxByOrNull { it.createdAt.orEmpty() }
+                            ?.let { bid.id to it }
+                    }
+                }
+            }.awaitAll().filterNotNull().toMap()
+        }
+        _state.update { it.copy(counters = found) }
+    }
+
+    fun askAccept(c: CounterOfferView) = _state.update { it.copy(confirm = CounterAction(c, accept = true)) }
+    fun askReject(c: CounterOfferView) = _state.update { it.copy(confirm = CounterAction(c, accept = false)) }
+    fun dismissConfirm() = _state.update { if (it.busy) it else it.copy(confirm = null) }
+    fun onMessageShown() = _state.update { it.copy(message = null) }
+
+    fun confirm() {
+        val action = _state.value.confirm ?: return
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            val result = if (action.accept) negotiation.accept(action.counter.id) else negotiation.reject(action.counter.id)
+            result.fold(
+                onSuccess = {
+                    val msg = if (action.accept) UiMessage.success(R.string.loads_counter_accepted, Fmt.money(action.counter.amount))
+                    else UiMessage.success(R.string.loads_counter_rejected)
+                    _state.update { it.copy(busy = false, confirm = null, message = msg) }
+                    load(initial = false)
+                },
+                onFailure = { e ->
+                    _state.update { it.copy(busy = false, confirm = null, message = UiMessage.error(e.userMessage())) }
+                    load(initial = false)
+                },
             )
         }
     }

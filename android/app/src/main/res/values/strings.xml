@@ -5,6 +5,7 @@
     <string name="tab_bids">Ofertas</string>
     <string name="tab_shipments">Envíos</string>
     <string name="tab_account">Cuenta</string>
+    <string name="tab_notifications">Avisos</string>
     <string name="tab_requests">Solicitudes</string>
     <string name="tab_trip">Mi viaje</string>
     <string name="unsupported_title">Esta cuenta se gestiona desde la web</string>

@@ -61,6 +61,11 @@ dependencies {
     implementation(project(":feature:requests"))
     implementation(project(":feature:shipments"))
     implementation(project(":feature:driver"))
+    implementation(project(":feature:negotiation"))
+    implementation(project(":feature:incidents"))
+    implementation(project(":feature:notifications"))
+    implementation(project(":feature:reputation"))
+    implementation(project(":feature:documents"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

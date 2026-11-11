@@ -46,7 +46,12 @@ import pe.logyx.core.designsystem.components.InfoChip
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
+import pe.logyx.core.designsystem.components.LogyxBottomSheet
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
+import pe.logyx.core.designsystem.components.LogyxTextField
+import pe.logyx.core.designsystem.components.MoneyField
+import pe.logyx.core.designsystem.components.TrustScoreBadge
+import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.designsystem.components.LogyxScreen
 import pe.logyx.core.designsystem.components.MessageEffect
 import pe.logyx.core.designsystem.components.PillTone
@@ -56,6 +61,7 @@ import pe.logyx.core.designsystem.components.RouteMap
 import pe.logyx.core.designsystem.components.SegmentedControl
 import pe.logyx.core.designsystem.components.SkeletonList
 import pe.logyx.core.designsystem.components.StatusPill
+import pe.logyx.core.designsystem.components.parseMoney
 import pe.logyx.core.designsystem.components.VerifiedBadge
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.label
@@ -65,6 +71,7 @@ import pe.logyx.core.model.AuctionView
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.BidView
 import pe.logyx.core.model.CargoType
+import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.RequestStatus
 import pe.logyx.core.model.RequestView
 import kotlin.math.abs
@@ -181,6 +188,9 @@ fun RequestDetailRoute(
     requestId: String,
     onBack: () -> Unit,
     onOpenShipment: (String) -> Unit,
+    onOpenChat: (carrierOrgId: String, carrierName: String?) -> Unit = { _, _ -> },
+    onOpenThreads: () -> Unit = {},
+    onOpenOrganization: (String) -> Unit = {},
     viewModel: RequestDetailViewModel = koinViewModel { parametersOf(requestId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -190,6 +200,11 @@ fun RequestDetailRoute(
     RequestDetailScreen(
         state, onBack, viewModel::refresh, viewModel::askAccept, viewModel::confirmAccept,
         viewModel::askCancel, viewModel::confirmCancel, viewModel::dismissDialogs, viewModel::onMessageShown,
+        onOpenChat = onOpenChat, onOpenThreads = onOpenThreads, onOpenOrganization = onOpenOrganization,
+        counter = CounterActions(
+            viewModel::openCounter, viewModel::onCounterAmount, viewModel::onCounterMessage,
+            viewModel::askConfirmCounter, viewModel::confirmCounter, viewModel::cancelCounterConfirm, viewModel::closeCounter,
+        ),
     )
 }
 
@@ -204,6 +219,10 @@ fun RequestDetailScreen(
     onConfirmCancel: () -> Unit,
     onDismiss: () -> Unit,
     onMessageShown: () -> Unit,
+    onOpenChat: (String, String?) -> Unit = { _, _ -> },
+    onOpenThreads: () -> Unit = {},
+    onOpenOrganization: (String) -> Unit = {},
+    counter: CounterActions = CounterActions(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -221,11 +240,17 @@ fun RequestDetailScreen(
                         val mapDescription = stringResource(R.string.requests_map_description)
                         RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 180.dp)
                         RequestSummaryCard(r)
-                        Text(
-                            r.auction?.let { stringResource(R.string.requests_bids_title_count, state.bids.size, it.maxBids) }
-                                ?: stringResource(R.string.requests_bids_title),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                r.auction?.let { stringResource(R.string.requests_bids_title_count, state.bids.size, it.maxBids) }
+                                    ?: stringResource(R.string.requests_bids_title),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            LogyxButton(
+                                stringResource(R.string.requests_messages), onOpenThreads,
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium, fullWidth = false,
+                            )
+                        }
                         if (state.bids.isEmpty()) {
                             EmptyState(
                                 stringResource(R.string.requests_bids_empty_title),
@@ -237,6 +262,10 @@ fun RequestDetailScreen(
                                 row,
                                 canAccept = state.canDecide && row.bid.status == BidStatus.PENDING && !state.busy,
                                 onAccept = { onAskAccept(row.bid) },
+                                canCounter = state.canDecide && row.bid.status == BidStatus.PENDING && !state.busy,
+                                onCounter = { counter.onOpen(row.bid) },
+                                onChat = { row.bid.carrierOrgId?.let { id -> onOpenChat(id, row.bid.carrierName) } },
+                                onOpenOrganization = { row.bid.carrierOrgId?.let(onOpenOrganization) },
                             )
                         }
                         if (state.canDecide) {
@@ -269,6 +298,7 @@ fun RequestDetailScreen(
                 loading = state.busy,
             )
         }
+        state.counter?.let { CounterSheet(it, counter) }
         if (state.confirmCancel) {
             LogyxConfirmDialog(
                 title = stringResource(R.string.requests_cancel_title),
@@ -332,7 +362,15 @@ private fun PriceInfo(label: String, value: String) {
 }
 
 @Composable
-private fun BidComparisonCard(row: BidRow, canAccept: Boolean, onAccept: () -> Unit) {
+private fun BidComparisonCard(
+    row: BidRow,
+    canAccept: Boolean,
+    onAccept: () -> Unit,
+    canCounter: Boolean = false,
+    onCounter: () -> Unit = {},
+    onChat: () -> Unit = {},
+    onOpenOrganization: () -> Unit = {},
+) {
     val bid = row.bid
     LogyxCard(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -342,6 +380,7 @@ private fun BidComparisonCard(row: BidRow, canAccept: Boolean, onAccept: () -> U
                     style = MaterialTheme.typography.titleSmall, maxLines = 1,
                 )
                 if (bid.carrierRucVerified) VerifiedBadge()
+                TrustScoreBadge(bid.carrierTrustScore, onClick = onOpenOrganization)
                 Text(Fmt.dateTime(bid.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -384,13 +423,94 @@ private fun BidComparisonCard(row: BidRow, canAccept: Boolean, onAccept: () -> U
                 if (bid.status != BidStatus.PENDING) StatusPill(bid.status.pill())
             }
         }
-        if (canAccept) {
+        if (bid.carrierOrgId != null || canCounter) {
             Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (bid.carrierOrgId != null) {
+                    LogyxButton(
+                        stringResource(R.string.requests_chat), onChat,
+                        modifier = Modifier.weight(1f), variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                    )
+                }
+                if (canCounter) {
+                    LogyxButton(
+                        stringResource(R.string.requests_counter), onCounter,
+                        modifier = Modifier.weight(1f), variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                    )
+                }
+            }
+        }
+        if (canAccept) {
+            Spacer(Modifier.height(12.dp))
             LogyxButton(
                 stringResource(R.string.requests_accept_offer), onAccept,
                 variant = ButtonVariant.Money, size = ButtonSize.Medium,
             )
         }
+    }
+}
+
+// ───────────────────────── Contraoferta ─────────────────────────
+
+/** Callbacks de la hoja "Contraofertar". */
+class CounterActions(
+    val onOpen: (BidView) -> Unit = {},
+    val onAmount: (String) -> Unit = {},
+    val onMessage: (String) -> Unit = {},
+    val onSubmit: () -> Unit = {},
+    val onConfirm: () -> Unit = {},
+    val onCancelConfirm: () -> Unit = {},
+    val onClose: () -> Unit = {},
+)
+
+@Composable
+private fun CounterSheet(c: CounterDraft, actions: CounterActions) {
+    LogyxBottomSheet(onDismiss = actions.onClose, title = stringResource(R.string.requests_counter_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                stringResource(R.string.requests_counter_current, c.bid.carrierName ?: stringResource(R.string.requests_carrier_fallback), Fmt.money(c.bid.amount)),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MoneyField(
+                c.amount, actions.onAmount, stringResource(R.string.requests_counter_amount_label),
+                error = c.amountError?.asString(), enabled = !c.sending,
+            )
+            LogyxTextField(
+                c.message, actions.onMessage, stringResource(R.string.requests_counter_message_label),
+                error = c.messageError?.asString(), optional = true, singleLine = false, minLines = 2, enabled = !c.sending,
+            )
+            LogyxButton(stringResource(R.string.requests_counter_send), actions.onSubmit, enabled = !c.sending)
+            if (c.loadingPrevious || c.previous.isNotEmpty()) {
+                Text(stringResource(R.string.requests_counter_previous), style = MaterialTheme.typography.titleSmall)
+                c.previous.forEach { PreviousCounterRow(it) }
+            }
+        }
+    }
+    if (c.confirming) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.requests_counter_confirm_title),
+            message = stringResource(
+                R.string.requests_counter_confirm_message,
+                c.bid.carrierName ?: stringResource(R.string.requests_carrier_fallback),
+                Fmt.money(parseMoney(c.amount)),
+            ),
+            confirmLabel = stringResource(R.string.requests_counter_send),
+            onConfirm = actions.onConfirm,
+            onDismiss = actions.onCancelConfirm,
+            dismissLabel = stringResource(R.string.requests_dismiss_back),
+            loading = c.sending,
+        )
+    }
+}
+
+@Composable
+private fun PreviousCounterRow(o: CounterOfferView) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Text(Fmt.money(o.amount), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
+            Text(Fmt.dateTime(o.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        StatusPill(o.status.pill())
     }
 }
 

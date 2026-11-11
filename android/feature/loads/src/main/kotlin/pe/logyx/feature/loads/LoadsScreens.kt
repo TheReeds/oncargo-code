@@ -48,6 +48,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import pe.logyx.core.designsystem.Fmt
@@ -57,6 +59,7 @@ import pe.logyx.core.designsystem.cityLabel
 import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.AuctionCountdown
 import pe.logyx.core.designsystem.components.ButtonSize
+import pe.logyx.core.designsystem.components.TrustScoreBadge
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
 import pe.logyx.core.designsystem.components.EmptyState
@@ -96,6 +99,7 @@ import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.CargoType
 import pe.logyx.core.model.VehicleType
 import pe.logyx.core.model.CityItem
+import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.isCompatibleWith
@@ -393,12 +397,19 @@ private fun FiltersSheet(
 // ───────────────────────── Detalle ─────────────────────────
 
 @Composable
-fun LoadDetailRoute(requestId: String, onBack: () -> Unit, viewModel: LoadDetailViewModel = koinViewModel { parametersOf(requestId) }) {
+fun LoadDetailRoute(
+    requestId: String,
+    onBack: () -> Unit,
+    onOpenChat: (requestId: String, title: String?) -> Unit = { _, _ -> },
+    onOpenOrganization: (String) -> Unit = {},
+    viewModel: LoadDetailViewModel = koinViewModel { parametersOf(requestId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LoadDetailScreen(
         state, onBack, viewModel::refresh, viewModel::openBidSheet, viewModel::dismissBidSheet,
         viewModel::selectVehicle, viewModel::onAmountChange, viewModel::onNotesChange,
         viewModel::requestConfirm, viewModel::dismissConfirm, viewModel::submitBid, viewModel::messageShown,
+        onOpenChat = onOpenChat, onOpenOrganization = onOpenOrganization,
     )
 }
 
@@ -417,6 +428,8 @@ fun LoadDetailScreen(
     onDismissConfirm: () -> Unit,
     onConfirmBid: () -> Unit,
     onMessageShown: () -> Unit,
+    onOpenChat: (String, String?) -> Unit = { _, _ -> },
+    onOpenOrganization: (String) -> Unit = {},
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -471,6 +484,10 @@ fun LoadDetailScreen(
                                     )
                                     if (r.requesterRucVerified) VerifiedBadge()
                                 }
+                                if (r.requesterOrgId != null && r.requesterTrustScore != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                    TrustScoreBadge(r.requesterTrustScore, onClick = { onOpenOrganization(r.requesterOrgId!!) })
+                                }
                                 r.minVehicleType?.let {
                                     Text(
                                         stringResource(R.string.loads_min_vehicle, it.label),
@@ -484,6 +501,10 @@ fun LoadDetailScreen(
                                     )
                                 }
                             }
+                            LogyxButton(
+                                stringResource(R.string.loads_ask_company), { onOpenChat(r.id, r.requesterName ?: r.cargoDescription) },
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                            )
                             r.myBid?.let { bid ->
                                 LogyxCard(Modifier.fillMaxWidth()) {
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -614,14 +635,34 @@ private fun QuickAmount(label: String, amount: Double, current: String, onAmount
 // ───────────────────────── Mis ofertas ─────────────────────────
 
 @Composable
-fun MyBidsRoute(onOpenLoad: (String) -> Unit, viewModel: MyBidsViewModel = koinViewModel()) {
+fun MyBidsRoute(
+    onOpenLoad: (String) -> Unit,
+    onOpenChat: (requestId: String, title: String?) -> Unit = { _, _ -> },
+    viewModel: MyBidsViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    MyBidsScreen(state, viewModel::refresh, onOpenLoad)
+    MyBidsScreen(
+        state, viewModel::refresh, onOpenLoad,
+        onAskAccept = viewModel::askAccept, onAskReject = viewModel::askReject, onConfirm = viewModel::confirm,
+        onDismissConfirm = viewModel::dismissConfirm, onMessageShown = viewModel::onMessageShown, onOpenChat = onOpenChat,
+    )
 }
 
 @Composable
-fun MyBidsScreen(state: MyBidsUiState, onRefresh: () -> Unit, onOpenLoad: (String) -> Unit) {
-    LogyxScreen(stringResource(R.string.loads_bids_title)) { padding ->
+fun MyBidsScreen(
+    state: MyBidsUiState,
+    onRefresh: () -> Unit,
+    onOpenLoad: (String) -> Unit,
+    onAskAccept: (CounterOfferView) -> Unit = {},
+    onAskReject: (CounterOfferView) -> Unit = {},
+    onConfirm: () -> Unit = {},
+    onDismissConfirm: () -> Unit = {},
+    onMessageShown: () -> Unit = {},
+    onOpenChat: (String, String?) -> Unit = { _, _ -> },
+) {
+    val snackbar = rememberLogyxSnackbarState()
+    MessageEffect(state.message, snackbar, onMessageShown)
+    LogyxScreen(stringResource(R.string.loads_bids_title), snackbar = snackbar) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
                 state.loading -> SkeletonList()
@@ -633,16 +674,42 @@ fun MyBidsScreen(state: MyBidsUiState, onRefresh: () -> Unit, onOpenLoad: (Strin
                                 EmptyState(stringResource(R.string.loads_bids_empty_title), stringResource(R.string.loads_bids_empty_message))
                             }
                         }
-                        items(state.items, key = { it.id }) { r -> BidRow(r) { onOpenLoad(r.id) } }
+                        items(state.items, key = { it.id }) { r ->
+                            BidRow(
+                                r, counter = r.myBid?.let { state.counters[it.id] }, busy = state.busy,
+                                onAskAccept = onAskAccept, onAskReject = onAskReject,
+                                onChat = { onOpenChat(r.id, r.requesterName ?: r.cargoDescription) },
+                            ) { onOpenLoad(r.id) }
+                        }
                     }
                 }
             }
+        }
+        state.confirm?.let { action ->
+            LogyxConfirmDialog(
+                title = stringResource(if (action.accept) R.string.loads_counter_accept_title else R.string.loads_counter_reject_title),
+                message = if (action.accept) stringResource(R.string.loads_counter_accept_message, Fmt.money(action.counter.amount))
+                else stringResource(R.string.loads_counter_reject_message),
+                confirmLabel = stringResource(if (action.accept) R.string.loads_counter_accept else R.string.loads_counter_reject),
+                onConfirm = onConfirm,
+                onDismiss = onDismissConfirm,
+                destructive = !action.accept,
+                loading = state.busy,
+            )
         }
     }
 }
 
 @Composable
-private fun BidRow(r: RequestView, onClick: () -> Unit) {
+private fun BidRow(
+    r: RequestView,
+    counter: CounterOfferView?,
+    busy: Boolean,
+    onAskAccept: (CounterOfferView) -> Unit,
+    onAskReject: (CounterOfferView) -> Unit,
+    onChat: () -> Unit,
+    onClick: () -> Unit,
+) {
     val bid = r.myBid ?: return
     LogyxCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -668,6 +735,28 @@ private fun BidRow(r: RequestView, onClick: () -> Unit) {
             InfoChip(Fmt.tons(r.weightKg))
             if (bid.status == BidStatus.PENDING) AuctionCountdown(r.auction)
         }
+        if (counter != null) {
+            Spacer(Modifier.height(12.dp))
+            Column(
+                Modifier.fillMaxWidth().background(LogyxTheme.colors.infoContainer, RoundedCornerShape(12.dp)).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.loads_counter_proposes, Fmt.money(counter.amount)), style = MaterialTheme.typography.titleSmall)
+                counter.message?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                LogyxButton(
+                    stringResource(R.string.loads_counter_accept), { onAskAccept(counter) },
+                    variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !busy,
+                )
+                LogyxButton(
+                    stringResource(R.string.loads_counter_reject), { onAskReject(counter) },
+                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, enabled = !busy,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        LogyxButton(stringResource(R.string.loads_ask_company), onChat, variant = ButtonVariant.Ghost, size = ButtonSize.Medium)
     }
 }
 

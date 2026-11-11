@@ -40,6 +40,18 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 
 Notas de contrato (web): adoptado el contrato aditivo 2026-11-10 (vehículo en ofertas, RUC verificado, vehículo mínimo, `field` en errores, filtros y paginación). Observación: el mensaje de login incorrecto de la API es "Credenciales inválidas" (CONTENT.md propone "Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.").
 
+## Android — Fase 3 (2026-11-10, agente android)
+Compila (`assembleDebug`), `testDebugUnitTest` y 6 tests instrumentados (`connectedDebugAndroidTest`: RoleHome x3, BidFlow, DriverAdvance con evidencia, Chat RN07) en verde. QA real en emulador contra backend snapshot (:8280): conductor completa una entrega con foto (cámara virtual) -> `Entregado` solo se habilita con foto subida; incidencia reportada -> banner + botón bloqueado -> resuelta por operador -> entrega; chat con teléfono bloqueado (error bajo el campo) y mensaje válido; contraoferta bajo piso (error) y válida, aceptada por el transportista; calificación 3 dimensiones (Trust Score actualizado); notificaciones con badge y navegación al recurso; documentos con miniatura; perfil público. Capturas nuevas en `android/docs/screenshots/` (`light-driver-evidence`, `light-driver-blocked`, `light-incident-*`, `light-chat*`, `light-review`, `light-documents`, `light-notifications`, `light-org-profile`, `light-counteroffer-*`).
+| Módulo / pantalla | Estado | Notas |
+|---|---|---|
+| Evidencia de entrega del conductor (RN06) + bloqueo RN11 | ✅ | `:feature:driver`, cola persistente en `:core:data` (`EvidenceRepository`), foto (`TakePicture`, sin permiso CAMERA), firma opcional (`SignaturePad`), reintento automático 20 s |
+| Incidencias (`:feature:incidents`) | ✅ | reportar con foto opcional, lista, detalle con comentarios, banner bloqueante |
+| Negociación (`:feature:negotiation` + requests/loads) | ✅ | chat con envío optimista y RN07, hilos (PYME), contraoferta (PYME, >= piso) y aceptar/rechazar (transportista) |
+| Reputación (`:feature:reputation`) | ✅ | Trust Score en LoadCard/ofertas, perfil público, calificar respetando `canReview` |
+| Notificaciones (`:feature:notifications`) | ✅ | pestaña "Avisos" con badge (polling 30 s), marcar leída/todas, tap navega; push FCM fuera de alcance |
+| Documentos (`:feature:documents`) | ✅ | grilla, visor, PDF por intent externo (PDF no probado en emulador) |
+Pendientes Android: probar firma y PDF en dispositivo, tests instrumentados de incidencias/notificaciones, operador no va en móvil. Nota de API: `GET /documents/{id}/file` responde 406 si el cliente solo acepta `application/json` (el cliente móvil envía `Accept: */*`).
+
 ## Android (Kotlin) — 2026-11-10 (agente android)
 Compila (`assembleDebug`), pasa `testDebugUnitTest` y 5 tests instrumentados de Compose (`connectedDebugAndroidTest`: login→home por rol, ofertar con piso, conductor hasta Entregado). **Probada en emulador (Pixel 7, API 36) contra el backend real (2026-11-10, QA android)**: login de los 3 roles, feed con filtros, detalle con mapa, oferta bajo piso y válida, aceptar oferta (PYME), asignar conductor, conductor hasta "Viaje entregado", modo oscuro y fuente 1.3x. Capturas en `android/docs/screenshots/`. Bugs corregidos en esa pasada: ver lista abajo.
 | Pantalla / módulo | Estado | Notas |

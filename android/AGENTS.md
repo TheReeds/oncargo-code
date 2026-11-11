@@ -38,9 +38,10 @@ adb shell am start -n pe.logyx.app.debug/pe.logyx.app.MainActivity
 Inspección: `adb exec-out screencap -p > x.png` · `adb shell uiautomator dump /sdcard/u.xml && adb pull /sdcard/u.xml` (textos y bounds para `input tap`) ·
 `adb logcat -b crash -d` · modo oscuro `adb shell cmd uimode night yes|no` · fuente grande `adb shell settings put system font_scale 1.3` ·
 reset de sesión `adb shell pm clear pe.logyx.app.debug`. Apagar: `adb emu kill`.
+Memoria (máquina de 15 GB): un solo proceso pesado a la vez; `./gradlew --stop` antes de levantar emulador/backend, Gradle con `-Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.daemon.jvmargs=-Xmx1g`, emulador con `-memory 2048`; con poca RAM libre los tests de Compose dan timeout.
 Tests instrumentados (Compose, repositorios fake vía Koin, sin backend; el emulador debe estar encendido; con poca RAM añade `-Dorg.gradle.jvmargs=-Xmx4g`):
 ```bash
-./gradlew connectedDebugAndroidTest      # app/src/androidTest: RoleHomeTest, BidFlowTest, DriverAdvanceTest
+./gradlew connectedDebugAndroidTest      # app/src/androidTest: RoleHomeTest, BidFlowTest, DriverAdvanceTest (con evidencia), ChatTest (RN07)
 ```
 Capturas de referencia (claro/oscuro): `docs/screenshots/`.
 
@@ -63,8 +64,16 @@ El tráfico HTTP en claro solo se permite en **debug** (`app/src/debug/res/xml/n
 :feature:loads        Transportista: Home "Tu actividad", feed de LoadCard + chips, detalle con mapa + bottom sheet de oferta, mis ofertas
 :feature:requests     PYME: mis solicitudes, detalle con comparación de ofertas y aceptar/cancelar
 :feature:shipments    Envíos (PYME y transportista): lista, seguimiento con mapa + StopTimeline, asignar conductor
-:feature:driver       Modo conductor: viaje activo, siguiente parada, botón único que avanza el estado
+:feature:driver       Modo conductor: viaje activo, siguiente parada, botón único; evidencia de entrega (foto/firma, cola de subida) y bloqueo RN11
+:feature:negotiation  Chat por solicitud (envío optimista, RN07 bajo el campo, polling 5 s) y lista de hilos (PYME)
+:feature:incidents    Reportar incidencia (categoría + descripción + foto opcional), lista y detalle con comentarios
+:feature:reputation   Perfil público de organización (Trust Score) y calificar tras la entrega (`canReview`)
+:feature:documents    Documentos/evidencias del envío: miniaturas, visor a pantalla completa, PDF por intent externo
+:feature:notifications Centro de notificaciones + `UnreadCounter`/`rememberUnreadCount` (badge, polling 30 s en primer plano)
 ```
+Contra-ofertas: la PYME propone desde la comparación de ofertas (`:feature:requests`) y el transportista acepta/rechaza en "Mis ofertas" (`:feature:loads`).
+**Evidencia de entrega (RN06):** `EvidenceRepository` (`:core:data`) comprime a JPEG <= 2 MB, guarda en `filesDir/evidence` (cola persistente) y sube por `POST /shipments/{id}/documents`; "Entregado" se habilita con >= 1 `DELIVERY_PHOTO` subida. Captura con `TakePicture` (sin permiso CAMERA). Un único `FileProvider` vive en `:app` (`${applicationId}.fileprovider`, `res/xml/file_paths.xml` con los cache-path de driver/incidents/documents): no declares otro provider en un feature (choca al fusionar manifiestos).
+Los endpoints binarios (`/documents/{id}/file`) deben pedirse con `Accept: */*` (con solo JSON el backend responde 406).
 ### Reglas de dependencias (no las rompas)
 - `core:model` y `core:network` **no pueden** depender de Android ni de Compose (se convertirán a KMP para SwiftUI). Solo kotlinx/Ktor.
 - `core:network` → `core:model`. `core:data` → `core:network` (+ `core:model`). `core:designsystem` → `core:model`.

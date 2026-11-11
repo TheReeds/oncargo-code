@@ -75,4 +75,41 @@
     <string name="ds_loading_more">Cargando más…</string>
     <string name="ds_min_vehicle">Mín. %1$s</string>
     <string name="ds_clear_selection">Quitar selección</string>
+
+    <!-- Fase 3: reputación, chat, evidencia -->
+    <string name="ds_trust_label">Confianza %1$s</string>
+    <string name="ds_trust_description">Trust Score %1$s de 100</string>
+    <string name="ds_stars_description">%1$d de 5 estrellas</string>
+    <string name="ds_star_n">%1$d estrellas</string>
+    <string name="ds_signature_description">Espacio para la firma del receptor</string>
+    <string name="ds_signature_hint">Pide al receptor que firme aquí</string>
+    <string name="ds_chat_not_sent">No se envió</string>
+    <string name="ds_chat_retry">Reintentar</string>
+    <string name="ds_chat_sending">Enviando…</string>
+    <string name="ds_chat_placeholder">Escribe un mensaje</string>
+    <string name="ds_chat_label">Mensaje</string>
+    <string name="ds_chat_send">Enviar mensaje</string>
+    <string name="ds_tile_uploading">subiendo</string>
+    <string name="ds_tile_uploaded">subida</string>
+    <string name="ds_tile_failed">no se subió</string>
+    <string name="ds_incidentcategory_cargo_damage">Carga dañada</string>
+    <string name="ds_incidentcategory_delay">Retraso</string>
+    <string name="ds_incidentcategory_lost_cargo">Carga perdida</string>
+    <string name="ds_incidentcategory_wrong_delivery">Entrega equivocada</string>
+    <string name="ds_incidentcategory_driver_conduct">Conducta del conductor</string>
+    <string name="ds_incidentcategory_other">Otro</string>
+    <string name="ds_incidentstatus_open">Abierta</string>
+    <string name="ds_incidentstatus_in_review">En revisión</string>
+    <string name="ds_incidentstatus_resolved">Resuelta</string>
+    <string name="ds_incidentstatus_closed">Cerrada</string>
+    <string name="ds_documenttype_service_order">Orden de servicio</string>
+    <string name="ds_documenttype_remission_guide">Guía de remisión</string>
+    <string name="ds_documenttype_receipt">Comprobante</string>
+    <string name="ds_documenttype_delivery_photo">Foto de entrega</string>
+    <string name="ds_documenttype_signature">Firma del receptor</string>
+    <string name="ds_documenttype_other">Otro documento</string>
+    <string name="ds_counteroffer_pending">Pendiente</string>
+    <string name="ds_counteroffer_accepted">Aceptada</string>
+    <string name="ds_counteroffer_rejected">Rechazada</string>
+    <string name="ds_counteroffer_expired">Vencida</string>
 </resources>
