@@ -73,6 +73,9 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Paradas / hitos de un proceso | `Timeline` (`StopTimeline` para envíos) |
 | RUC verificado | `VerifiedBadge` (`variant="icon"` en listas densas) |
 | Pantalla de login/registro | `AuthCard` |
+| Puntaje de confianza de una organización | `TrustScore` |
+| Calificación 1–5 (entrada o lectura) | `StarRating` |
+| Subir archivos (PDF/JPG/PNG, 10 MB) | `FileDropzone` |
 
 ## Flujo de trabajo para agentes
 1. Lee esta skill + la referencia de la plataforma. 2. Revisa `/dev/ui` (web) para ver qué existe. 3. Construye con componentes compartidos y copy de CONTENT.md. 4. Verifica: web `cd web && npm run check && npm run build`; Android `./gradlew assembleDebug`. 5. Actualiza `docs/STATUS.md` si cambió el estado de una pantalla.

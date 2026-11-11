@@ -18,6 +18,9 @@ import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { CityItem, RequestView, VehicleView } from '@/lib/api/server';
+import { TrustScore } from '@/components/domain/TrustScore';
+import NegotiationSheet from '@/features/negotiation/components/NegotiationSheet';
+import { MessageSquare } from 'lucide-react';
 import BidSheet from './BidSheet';
 
 export type MarketFilters = { origin: string; dest: string; from: string; to: string; cargo: string; maxKg: string; compat: boolean; sort: string };
@@ -27,6 +30,7 @@ const SORT_OPTIONS = [{ value: 'pickup', label: 'Recojo más próximo' }, { valu
 export default function MarketplaceTable({ requests, vehicles, cities, filters, page, size, total }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[]; filters: MarketFilters; page: number; size: number; total: number }) {
   const [f, setF] = useState(filters);
   const [active, setActive] = useState<RequestView | null>(null);
+  const [chat, setChat] = useState<RequestView | null>(null);
 
   const usable = vehicles.filter((v) => v.status === 'AVAILABLE');
   const maxCap = Math.max(0, ...usable.map((v) => v.maxWeightKg ?? 0));
@@ -109,6 +113,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                       <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-500">
                         {r.requesterName && <span className="max-w-40 truncate">{r.requesterName}</span>}
                         <VerifiedBadge verified={r.requesterRucVerified} variant="icon" />
+                        <TrustScore score={r.requesterTrustScore} />
                       </div>
                     </Td>
                     <Td>
@@ -127,6 +132,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                       ) : (
                         <Button size="sm" variant="money" onClick={() => setActive(r)}>Ofertar</Button>
                       )}
+                      <div className="mt-1"><Button size="sm" variant="ghost" onClick={() => setChat(r)}><MessageSquare />{r.myBid ? 'Conversar' : 'Preguntar'}<span className="sr-only"> al solicitante de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button></div>
                     </Td>
                   </Tr>
                 );
@@ -136,7 +142,8 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
         )}
       {total > size && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={size} total={total} onPageChange={(p) => go(f, p)} /></div>}
       </Card>
-      <BidSheet request={active} vehicles={vehicles} onClose={() => setActive(null)} />
+      <BidSheet request={active} vehicles={vehicles} onClose={() => setActive(null)} onAsk={(r) => { setActive(null); setChat(r); }} />
+      {chat && <NegotiationSheet open onOpenChange={(o) => !o && setChat(null)} requestId={chat.id!} bid={chat.myBid?.id ? { id: chat.myBid.id, amount: chat.myBid.amount, status: chat.myBid.status } : null} title={chat.myBid ? 'Conversar con la PYME' : 'Preguntar al solicitante'} description={`${CITY_LABELS[chat.originCity!]} → ${CITY_LABELS[chat.destinationCity!]} · ${chat.requesterName ?? ''}`} />}
     </>
   );
 }

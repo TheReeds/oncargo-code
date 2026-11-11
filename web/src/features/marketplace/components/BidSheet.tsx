@@ -9,12 +9,14 @@ import { Combobox } from '@/components/ui/combobox';
 import { MoneyInput } from '@/components/ui/number-input';
 import { Alert } from '@/components/ui/alert';
 import { flash } from '@/components/ui/toaster';
+import { TrustScore } from '@/components/domain/TrustScore';
+import { MessageSquare } from 'lucide-react';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { Countdown } from '@/components/domain/Countdown';
 import { CARGO_LABELS, formatDate, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { RequestView, VehicleView } from '@/lib/api/server';
 
-export default function BidSheet({ request, vehicles, onClose }: { request: RequestView | null; vehicles: VehicleView[]; onClose: () => void }) {
+export default function BidSheet({ request, vehicles, onClose, onAsk }: { request: RequestView | null; vehicles: VehicleView[]; onClose: () => void; onAsk?: (r: RequestView) => void }) {
   const [vehicleId, setVehicleId] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
@@ -70,6 +72,10 @@ export default function BidSheet({ request, vehicles, onClose }: { request: Requ
               <span>{CARGO_LABELS[request.cargoType!]} · <span className="font-mono">{formatTons(request.weightKg)}</span> · recojo {formatDate(request.pickupDate)}</span>
               <Countdown closesAt={request.auction?.closesAt} />
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-steel-200 pt-3 text-sm">
+              <span className="text-ink-700">{request.requesterName ?? 'Solicitante'}</span>
+              <TrustScore score={request.requesterTrustScore} variant="meter" className="w-40" />
+            </div>
             <div className="grid grid-cols-2 gap-3 border-t border-steel-200 pt-3 text-sm">
               <div><div className="text-xs text-ink-500">Precio sugerido</div><div className="money text-base">{formatMoney(request.suggestedPrice)}</div></div>
               <div><div className="text-xs text-ink-500">Piso (monto mínimo)</div><div className="font-mono font-semibold tabular-nums">{formatMoney(request.priceFloor)}</div></div>
@@ -95,6 +101,7 @@ export default function BidSheet({ request, vehicles, onClose }: { request: Requ
               )}
               <Field label="Nota para la PYME" htmlFor="b-notes" hint="Opcional. Máximo 500 caracteres."><Textarea id="b-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Ej. Salimos el mismo día y contamos con GPS." /></Field>
               <Button type="submit" variant="money" className="w-full" size="lg" loading={busy}>{busy ? 'Enviando oferta…' : 'Enviar oferta'}</Button>
+              {onAsk && <Button type="button" variant="outline" className="w-full" onClick={() => onAsk(request)}><MessageSquare />Preguntar al solicitante</Button>}
             </>
           )}
         </form>

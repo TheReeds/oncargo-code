@@ -23,10 +23,18 @@ const MAP: Record<string, [string, Tone]> = {
   MAINTENANCE: ['Mantenimiento', 'amber'],
   ON_DUTY: ['En servicio', 'petrol'],
   OFF_DUTY: ['Fuera de servicio', 'neutral'],
+  // Incidencia
+  OPEN: ['Abierta', 'red'],
+  IN_REVIEW: ['En revisión', 'amber'],
+  RESOLVED: ['Resuelta', 'emerald'],
+  CLOSED: ['Cerrada', 'neutral'],
+  // Contra-oferta
+  PENDING_COUNTER: ['Por responder', 'amber'],
+  EXPIRED: ['Vencida', 'neutral'],
 };
 
-export function StatusPill({ status, kind }: { status: string; kind?: 'bid' }) {
-  const key = kind === 'bid' && status === 'PENDING' ? 'PENDING_BID' : status;
+export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' }) {
+  const key = kind === 'bid' && status === 'PENDING' ? 'PENDING_BID' : kind === 'counter' && status === 'PENDING' ? 'PENDING_COUNTER' : status;
   const [label, tone] = MAP[key] ?? [status, 'neutral' as Tone];
   return <Badge tone={tone}>{label}</Badge>;
 }

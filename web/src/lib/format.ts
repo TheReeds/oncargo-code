@@ -50,3 +50,26 @@ export const VEHICLE_LABELS: Record<string, string> = {
 export const CITY_LABELS: Record<string, string> = {
   LIMA: 'Lima', ICA: 'Ica', NAZCA: 'Nazca', AREQUIPA: 'Arequipa', MOQUEGUA: 'Moquegua', TACNA: 'Tacna', JULIACA: 'Juliaca', PUNO: 'Puno', CUSCO: 'Cusco', ABANCAY: 'Abancay', AYACUCHO: 'Ayacucho',
 };
+
+export const INCIDENT_CATEGORY_LABELS: Record<string, string> = {
+  CARGO_DAMAGE: 'Daño en la carga', DELAY: 'Retraso', LOST_CARGO: 'Carga perdida', WRONG_DELIVERY: 'Entrega equivocada', DRIVER_CONDUCT: 'Conducta del conductor', OTHER: 'Otro',
+};
+export const INCIDENT_STATUS_LABELS: Record<string, string> = { OPEN: 'Abierta', IN_REVIEW: 'En revisión', RESOLVED: 'Resuelta', CLOSED: 'Cerrada' };
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  SERVICE_ORDER: 'Orden de servicio', REMISSION_GUIDE: 'Guía de remisión', RECEIPT: 'Comprobante', DELIVERY_PHOTO: 'Foto de entrega', SIGNATURE: 'Firma de recepción', OTHER: 'Otro documento',
+};
+
+/** `hace 5 min`, `hace 3 h`, o la fecha corta si pasó más de un día. */
+export function formatRelative(iso: string | null | undefined, now = Date.now()) {
+  if (!iso) return '—';
+  const diff = Math.max(0, now - new Date(iso).getTime());
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return formatDateTime(iso);
+}
+
+export const formatFileSize = (bytes: number | null | undefined) =>
+  bytes == null ? '—' : bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;

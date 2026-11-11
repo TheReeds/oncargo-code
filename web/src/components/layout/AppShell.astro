@@ -2,8 +2,9 @@
 import Base from '@/layouts/Base.astro';
 import Logo from './Logo.astro';
 import UserMenu from './UserMenu';
+import NotificationBell from '@/features/notifications/components/NotificationBell';
 import { me } from '@/features/auth/server';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X } from '@lucide/astro';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
@@ -16,16 +17,22 @@ const NAV = {
     { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
     { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
     { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
+    { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
   ],
   CARRIER: [
     { id: 'marketplace', href: '/transportista/marketplace', label: 'Cargas disponibles', icon: Store },
     { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
     { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
     { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
+    { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
+  ],
+  OPERATOR: [
+    { id: 'operador', href: '/operador', label: 'Panel de operación', icon: Radar },
+    { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
   ],
 } as const;
-const items = NAV[(session.orgType as 'PYME' | 'CARRIER') ?? 'PYME'] ?? [];
-const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : 'Transportista';
+const items = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
+const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador LOGYX' : 'Transportista';
 ---
 <Base title={title}>
   <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-white focus:px-3 focus:py-2">Saltar al contenido</a>
@@ -57,6 +64,7 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : 'Transportista';
           <span class="truncate text-sm font-semibold text-ink-900">{user?.organizationName ?? 'Mi empresa'}</span>
           {user?.rucVerified && <span class="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} aria-hidden="true" /> Empresa verificada</span>}
         </div>
+        <NotificationBell client:load />
         <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} verified={!!user?.rucVerified} />
       </header>
       <main id="contenido" class:list={['mx-auto w-full flex-1 px-4 py-6 lg:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl']}>

@@ -10,6 +10,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { Countdown } from '@/components/domain/Countdown';
 import BidComparison from '@/features/requests/components/BidComparison';
 import CancelRequestButton from '@/features/requests/components/CancelRequestButton';
+import NegotiationPanel from '@/features/negotiation/components/NegotiationPanel';
+import { listThreads } from '@/features/negotiation/server';
 import { getRequest, listBids } from '@/features/requests/server';
 import { ApiError } from '@/lib/api/client';
 import { CARGO_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
@@ -24,6 +26,8 @@ try {
   throw e;
 }
 const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError && e.status !== 401) return []; throw e; });
+const threads = await listThreads(token, id!).catch(() => []);
+const hilo = Astro.url.searchParams.get('hilo');
 const a = r.auction;
 const published = r.status === 'PUBLISHED';
 const created = Astro.url.searchParams.has('creada');
@@ -54,7 +58,8 @@ const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_
         </CardBody>
       </Card>
 
-      <BidComparison client:load bids={bids} suggested={r.suggestedPrice} canAccept={published} />
+      <BidComparison client:load bids={bids} suggested={r.suggestedPrice} canAccept={published} canNegotiate={published} floor={r.priceFloor} />
+      <NegotiationPanel client:load requestId={r.id!} requestStatus={r.status!} initialThreads={threads} initialCarrierOrgId={hilo && threads.some((t) => t.carrierOrgId === hilo) ? hilo : null} />
     </div>
 
     <aside class="order-1 space-y-4 lg:order-2">

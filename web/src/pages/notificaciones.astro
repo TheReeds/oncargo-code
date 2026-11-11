@@ -1,0 +1,10 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import NotificationsList from '@/features/notifications/components/NotificationsList';
+const orgType = Astro.locals.session!.orgType;
+---
+<AppShell title="Notificaciones" active="">
+  <PageHeader title="Notificaciones" subtitle="Ofertas, mensajes, cambios en tus envíos e incidencias de tu organización." />
+  <NotificationsList client:load orgType={orgType} />
+</AppShell>

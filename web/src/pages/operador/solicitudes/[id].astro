@@ -1,0 +1,74 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { TrustScore } from '@/components/domain/TrustScore';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { Countdown } from '@/components/domain/Countdown';
+import { getRequest } from '@/features/operator/server';
+import { ApiError } from '@/lib/api/client';
+import { CARGO_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
+
+const { id } = Astro.params;
+let r;
+try {
+  r = await getRequest(Astro.locals.session!.token, id!);
+} catch (e) {
+  if (e instanceof ApiError && [400, 403, 404].includes(e.status)) return Astro.redirect('/operador');
+  throw e;
+}
+const a = r.auction;
+const rows: [string, string][] = [
+  ['Tipo de carga', CARGO_LABELS[r.cargoType!] ?? r.cargoType ?? '—'],
+  ['Peso', formatTons(r.weightKg)],
+  ['Recojo', formatDate(r.pickupDate)],
+  ['Vehículo mínimo', r.minVehicleType ? (VEHICLE_LABELS[r.minVehicleType] ?? r.minVehicleType) : '—'],
+];
+---
+<AppShell title="Detalle de solicitud" active="operador" wide>
+  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Solicitud</span></nav>
+  <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)} · solo lectura`}>
+    <div slot="actions" class="flex flex-wrap items-center gap-3"><VerifiedBadge verified={r.requesterRucVerified} /><StatusPill status={r.status!} /></div>
+  </PageHeader>
+  <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Ruta y carga</CardTitle></CardHeader>
+        <CardBody className="space-y-5">
+          <RouteLine origin={r.originCity!} destination={r.destinationCity!} km={r.distanceKm} originSub={r.originAddress} destinationSub={r.destinationAddress} />
+          <p class="text-sm text-ink-700">{r.cargoDescription}</p>
+          <ul class="grid gap-3 border-t border-steel-200 pt-4 sm:grid-cols-4">
+            {rows.map(([k, v]) => <li><div class="text-xs text-ink-500">{k}</div><div class="text-sm font-medium text-ink-900">{v}</div></li>)}
+          </ul>
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Solicitante</CardTitle></CardHeader>
+        <CardBody className="flex flex-wrap items-center gap-3 text-sm">
+          <span class="font-medium text-ink-900">{r.requesterName}</span>
+          <TrustScore score={r.requesterTrustScore} />
+        </CardBody>
+      </Card>
+    </div>
+    <div class="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Precio</CardTitle></CardHeader>
+        <CardBody className="grid grid-cols-2 gap-3 text-sm">
+          <div><div class="text-xs text-ink-500">Sugerido</div><div class="money text-base">{formatMoney(r.suggestedPrice)}</div></div>
+          <div><div class="text-xs text-ink-500">Piso (monto mínimo)</div><div class="font-mono font-semibold tabular-nums">{formatMoney(r.priceFloor)}</div></div>
+        </CardBody>
+      </Card>
+      {a && (
+        <Card>
+          <CardHeader><CardTitle>Subasta</CardTitle></CardHeader>
+          <CardBody className="space-y-2 text-sm">
+            <div class="flex items-center justify-between"><span class="text-ink-500">Ofertas</span><span class="font-mono tabular-nums">{a.bidCount ?? 0} / {a.maxBids}</span></div>
+            <div class="flex items-center justify-between"><span class="text-ink-500">{a.status === 'OPEN' ? 'Cierra en' : 'Estado'}</span>{a.status === 'OPEN' ? <Countdown client:load closesAt={a.closesAt} /> : <span>{a.status === 'CLOSED' ? 'Cerrada' : 'Cancelada'}</span>}</div>
+          </CardBody>
+        </Card>
+      )}
+    </div>
+  </div>
+</AppShell>

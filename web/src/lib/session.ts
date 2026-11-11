@@ -63,4 +63,6 @@ export const homeFor = (s: Pick<Session, 'orgType' | 'groups'>) =>
       ? '/transportista/marketplace'
       : s.orgType === 'PYME'
         ? '/pyme'
-        : '/login';
+        : s.orgType === 'OPERATOR'
+          ? '/operador'
+          : '/login';

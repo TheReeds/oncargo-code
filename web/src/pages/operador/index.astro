@@ -1,0 +1,27 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import OperatorPanel from '@/features/operator/components/OperatorPanel';
+import { getOverview } from '@/features/operator/server';
+import { ApiError } from '@/lib/api/client';
+
+const { session } = Astro.locals;
+let overview: Awaited<ReturnType<typeof getOverview>> | null = null;
+let loadError: string | null = null;
+try {
+  overview = await getOverview(session!.token);
+} catch (e) {
+  if (e instanceof ApiError && e.status !== 401) loadError = e.message;
+  else throw e;
+}
+const loadedAt = Date.now();
+---
+<AppShell title="Panel de operación" active="operador" wide>
+  <PageHeader title="Panel de operación" subtitle="Vigila el SLA de las solicitudes, las subastas por vencer y los envíos con incidencias." />
+  {overview ? (
+    <OperatorPanel client:load metrics={overview.metrics} alerts={overview.alerts} loadedAt={loadedAt} />
+  ) : (
+    <Alert tone="error" title="No pudimos cargar el panel">{loadError} Recarga la página para intentarlo de nuevo.</Alert>
+  )}
+</AppShell>

@@ -29,6 +29,9 @@ import { KpiTile } from '@/components/domain/KpiTile';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { StarRating } from '@/components/ui/star-rating';
+import { FileDropzone } from '@/components/ui/file-dropzone';
+import { TrustScore } from '@/components/domain/TrustScore';
 import { PasswordInput } from '@/components/ui/password-input';
 import { FilterBar } from '@/components/ui/filter-bar';
 import { Timeline } from '@/components/ui/timeline';
@@ -60,7 +63,7 @@ function Section({ id, title, note, children }: { id: string; title: string; not
   );
 }
 
-const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['formatos', 'Formatos']];
+const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['reputacion', 'Reputación y archivos'], ['formatos', 'Formatos']];
 
 export default function UiCatalog() {
   const [city, setCity] = useState('');
@@ -75,6 +78,8 @@ export default function UiCatalog() {
   const [sheet, setSheet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState('a');
+  const [stars, setStars] = useState(0);
+  const [dropFile, setDropFile] = useState<File | null>(null);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
@@ -269,6 +274,26 @@ export default function UiCatalog() {
               </AuthCard>
             </CardBody>
           </Card>
+        </Section>
+
+        <Section id="reputacion" title="Reputación y archivos" note="StarRating: entrada accesible (radiogroup, flechas) o solo lectura con decimales. TrustScore: chip en listas, meter en detalle. FileDropzone: arrastrar y soltar con validación de tipo y tamaño.">
+          <Card><CardBody className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-[13px] font-medium text-ink-700">StarRating (entrada)</p>
+              <StarRating label="Puntualidad" value={stars} onValueChange={setStars} size="lg" />
+              <StarRating label="Con error" value={0} onValueChange={() => {}} invalid />
+              <StarRating label="Deshabilitado" value={3} onValueChange={() => {}} disabled />
+              <p className="text-[13px] font-medium text-ink-700">StarRating (solo lectura)</p>
+              <div className="flex items-center gap-4"><StarRating readOnly value={4.67} label="Promedio" /><span className="font-mono text-sm tabular-nums">4.7</span><StarRating readOnly value={2.3} size="sm" /></div>
+            </div>
+            <div className="space-y-3">
+              <p className="text-[13px] font-medium text-ink-700">TrustScore</p>
+              <div className="flex flex-wrap items-center gap-2"><TrustScore score={92.4} /><TrustScore score={77.8} /><TrustScore score={61} /><TrustScore score={38.5} /></div>
+              <TrustScore variant="meter" score={77.8} reviews={3} className="max-w-xs" />
+              <p className="pt-2 text-[13px] font-medium text-ink-700">FileDropzone (máx. 10 MB)</p>
+              <FileDropzone file={dropFile} onFileChange={setDropFile} />
+            </div>
+          </CardBody></Card>
         </Section>
 
         <Section id="formatos" title="Formatos" note="Siempre vía lib/format.ts; nunca formatees a mano.">

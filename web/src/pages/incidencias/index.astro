@@ -1,0 +1,13 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import IncidentsList from '@/features/incidents/components/IncidentsList';
+import { routesFor } from '@/features/incidents/server';
+const s = Astro.locals.session!;
+if (s.orgType === 'OPERATOR') return Astro.redirect('/operador/incidencias');
+const routes = await routesFor(s.token, s.orgType);
+---
+<AppShell title="Incidencias" active="incidencias">
+  <PageHeader title="Incidencias" subtitle="Problemas reportados en tus envíos. Mientras una incidencia está activa, el conductor no puede avanzar las paradas." />
+  <IncidentsList client:load variant="party" routes={routes} />
+</AppShell>

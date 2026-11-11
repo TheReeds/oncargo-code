@@ -22,13 +22,15 @@ src/
 ├── pages/                  # Rutas finas: leen sesión, llaman a features/*/server.ts, renderizan
 │   ├── index, login, registro, privacidad, conductor, logout(POST)
 │   ├── pyme/               # index (panel), solicitudes/{index,nueva,[id]}, envios
-│   └── transportista/      # marketplace, ofertas, flota, envios
-├── features/<feature>/     # auth, catalog, requests, shipments, marketplace, fleet, dashboard
+│   ├── transportista/      # marketplace, ofertas, flota, envios
+│   ├── operador/           # index (panel), incidencias, solicitudes/[id], envios/[id] (solo rol OPERATOR)
+│   └── notificaciones, incidencias/{index,[id]}, organizaciones/[id], documentos/{[id],subir} (proxy autenticado de archivos)
+├── features/<feature>/     # auth, catalog, requests, shipments, marketplace, fleet, dashboard, negotiation, reputation, documents, incidents, notifications, operator
 │   ├── server.ts           #   llamadas a la API (solo servidor)
 │   ├── actions.ts          #   Astro Actions (mutaciones), registradas en src/actions/index.ts
 │   └── components/         #   islas React de la feature
-├── components/ui/          # biblioteca compartida (ver sección Componentes): button, field, input, password-input, select, combobox, date-picker, number-input, confirm-dialog, toaster, dialog, sheet, tabs, tooltip, dropdown-menu, pagination, table, filter-bar, timeline, auth-card, card, badge, alert, skeleton, avatar, kbd, form-controls
-├── components/domain/      # StatusPill, RouteLine, KpiTile, EmptyState, Countdown, VerifiedBadge (React; sirven en SSR y en islas)
+├── components/ui/          # biblioteca compartida (ver sección Componentes): button, field, input, password-input, select, combobox, date-picker, number-input, confirm-dialog, toaster, dialog, sheet, tabs, tooltip, dropdown-menu, pagination, table, filter-bar, timeline, auth-card, card, badge, alert, skeleton, avatar, kbd, form-controls, star-rating, file-dropzone
+├── components/domain/      # StatusPill, RouteLine, KpiTile, EmptyState, Countdown, VerifiedBadge, TrustScore (React; sirven en SSR y en islas)
 ├── components/layout/      # AppShell (sidebar + topbar por rol), PageHeader, Logo
 ├── components/dev/         # UiCatalog (página /dev/ui)
 ├── layouts/                # Base.astro (monta <Overlays/>: Toaster + ConfirmHost), Public.astro
@@ -89,5 +91,11 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - Formatos: `formatMoney` (`S/ 1,850.00`), `formatDateTime` (`28 nov · 08:00`, zona America/Lima), `formatDate`, `formatTons`, `formatKm`.
 - Accesibilidad: todo input con `<Label>`/`Field`, errores con `role="alert"`, foco visible global, enlace "Saltar al contenido", navegación lateral colapsable en tablet/móvil.
 
+## Módulos fase 3
+- Paneles del envío (`shipments/components/ShipmentExtras`): pestañas Documentos / Calificación / Incidencias + banner `hasActiveIncident`; cada panel carga sus datos por Astro Actions.
+- Polling: chat ~8 s, campana ~30 s, alertas del operador ~30 s; todos pausan con la pestaña oculta. Descarga de documentos solo por `/documentos/<id>` (el token no sale del servidor).
+- Enlaces de notificaciones: `lib/notification-links.ts`. Operador: `/operador/*` solo OPERATOR (middleware), `homeFor` → `/operador`.
+- e2e: specs por módulo (`negotiation`, `reputation`, `documents`, `incidents`, `notifications`, `operator`, `a11y-*`); helpers `openBidScenario`, `deliveredShipment` (envío entregado vía API), `operatorToken`. Backend de pruebas: `MAVEN_OPTS=-Xmx512m ./mvnw quarkus:dev -Dquarkus.http.port=8180 -Dlogyx.operator.sla=PT0S` (SLA 0 para poder asignar manualmente; con 24 h ese test se salta). Si `astro dev` ya tiene lock, levanta uno con `--ignore-lock` y usa `E2E_BASE_URL`. Usa `--workers=1`.
+
 ## Pendientes conocidos
-Modo oscuro, evidencia (foto/firma) de entrega, auto-refresco/polling de ofertas y tracking, mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.
+Modo oscuro, tiempo real (hoy polling), polling de tracking, vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

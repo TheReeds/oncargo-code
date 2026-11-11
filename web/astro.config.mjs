@@ -8,7 +8,7 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
   integrations: [react()],
-  vite: { plugins: [tailwindcss()], optimizeDeps: { exclude: ['maplibre-gl'] } },
+  vite: { cacheDir: process.env.VITE_CACHE_DIR || undefined, plugins: [tailwindcss()], optimizeDeps: { exclude: ['maplibre-gl'] } },
   server: { port: 4321 },
   security: { checkOrigin: true },
 });

@@ -17,6 +17,7 @@ import { formatDateTime, formatMoney, formatTons } from '@/lib/format';
 import type { CityItem, DriverView, ShipmentView } from '@/lib/api/server';
 import TrackingMap from './TrackingMap';
 import { StopTimeline } from './StopTimeline';
+import ShipmentExtras from './ShipmentExtras';
 
 interface Props {
   shipments: ShipmentView[];
@@ -137,6 +138,7 @@ export default function TrackingSplit({ shipments, cities, initialId, perspectiv
                 <h3 className="mb-3 text-sm font-semibold text-ink-900">Paradas</h3>
                 <StopTimeline stops={selected.stops ?? []} />
               </div>
+              <div className="border-t border-steel-200 pt-5"><ShipmentExtras key={selected.id} shipment={selected} perspective={perspective} /></div>
               {perspective === 'CARRIER' && <div className="border-t border-steel-200 pt-5"><AssignDriver key={selected.id} shipment={selected} drivers={drivers} /></div>}
             </CardBody>
           </Card>

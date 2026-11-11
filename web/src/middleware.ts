@@ -34,6 +34,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   if (driverOnly && pathname !== '/conductor' && pathname !== '/logout') return ctx.redirect('/conductor');
   if (pathname.startsWith('/pyme') && session.orgType !== 'PYME') return ctx.redirect(home);
   if (pathname.startsWith('/transportista') && session.orgType !== 'CARRIER') return ctx.redirect(home);
+  if (pathname.startsWith('/operador') && session.orgType !== 'OPERATOR') return ctx.redirect(home);
   if (pathname === '/conductor' && !driverOnly) return ctx.redirect(home);
 
   try {

@@ -26,6 +26,7 @@
   --color-amber-700: #b45309;
   --color-red-50: #fef2f2;
   --color-red-600: #dc2626;
+  --color-red-700: #b91c1c; /* texto de error (AA sobre red-50) */
 
   --radius-card: 10px;
   --radius-input: 8px;

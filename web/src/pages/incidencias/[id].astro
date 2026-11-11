@@ -1,0 +1,48 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import IncidentDetail from '@/features/incidents/components/IncidentDetail';
+import { getIncident } from '@/features/incidents/server';
+import { ApiError } from '@/lib/api/client';
+import { apiFor } from '@/lib/api/server';
+import { unwrap } from '@/lib/api/client';
+import { INCIDENT_CATEGORY_LABELS } from '@/lib/format';
+import { buttonVariants } from '@/components/ui/button';
+const s = Astro.locals.session!;
+const orgType = (s.orgType ?? 'PYME') as 'PYME' | 'CARRIER' | 'OPERATOR';
+let incident = null;
+let failure: string | null = null;
+try {
+  incident = await getIncident(s.token, Astro.params.id!);
+} catch (e) {
+  if (e instanceof ApiError && e.status !== 401) failure = e.status === 404 || e.status === 403 ? 'No encontramos esa incidencia o no tienes acceso a ella.' : e.message;
+  else throw e;
+}
+let route = null;
+if (incident?.shipmentId) {
+  try {
+    const sh = await unwrap(apiFor(s.token).GET('/api/v1/shipments/{id}', { params: { path: { id: incident.shipmentId } } }));
+    if (sh?.originCity && sh?.destinationCity) route = { origin: sh.originCity, destination: sh.destinationCity };
+  } catch { /* sin ruta */ }
+}
+const back = orgType === 'OPERATOR' ? '/operador/incidencias' : '/incidencias';
+const active = orgType === 'OPERATOR' ? 'operador-incidencias' : 'incidencias';
+---
+<AppShell title="Detalle de incidencia" active={active}>
+  {incident ? (
+    <>
+      <a href={back} class="mb-3 inline-block text-sm font-medium text-petrol-700 hover:underline">← Volver a incidencias</a>
+      <PageHeader title={INCIDENT_CATEGORY_LABELS[incident.category!] ?? 'Incidencia'} subtitle={`${incident.requesterName} · ${incident.carrierName}`} />
+      <IncidentDetail client:load initial={incident} orgType={orgType} route={route} />
+    </>
+  ) : (
+    <>
+      <PageHeader title="Incidencia" />
+      <div role="alert" class="rounded-card border border-red-600/30 bg-red-50 p-5 text-sm text-red-600">
+        <p class="font-semibold">No pudimos mostrar la incidencia</p>
+        <p class="mt-1">{failure}</p>
+        <a href={back} class={`${buttonVariants({ variant: 'outline' })} mt-3`}>Volver a incidencias</a>
+      </div>
+    </>
+  )}
+</AppShell>

@@ -1,0 +1,54 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert } from '@/components/ui/alert';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { StopTimeline } from '@/features/shipments/components/StopTimeline';
+import { getShipment } from '@/features/operator/server';
+import { ApiError } from '@/lib/api/client';
+import { formatDateTime, formatMoney, formatTons } from '@/lib/format';
+
+const { id } = Astro.params;
+let s;
+try {
+  s = await getShipment(Astro.locals.session!.token, id!);
+} catch (e) {
+  if (e instanceof ApiError && [400, 403, 404].includes(e.status)) return Astro.redirect('/operador');
+  throw e;
+}
+const facts: [string, string, boolean?][] = [
+  ['PYME', s.requesterName ?? '—'],
+  ['Transportista', s.carrierName ?? '—'],
+  ['Vehículo', s.vehiclePlate ?? '—', true],
+  ['Conductor', s.driverName ?? 'Sin asignar'],
+  ['Peso', formatTons(s.weightKg), true],
+];
+---
+<AppShell title="Detalle de envío" active="operador" wide>
+  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Envío</span></nav>
+  <PageHeader title={`Envío ${s.id!.slice(0, 8)}`} subtitle={`Creado ${formatDateTime(s.createdAt)} · solo lectura`}>
+    <div slot="actions" class="flex flex-wrap items-center gap-3"><StatusPill status={s.status!} /></div>
+  </PageHeader>
+  {s.hasActiveIncident && <Alert tone="warning" title="Este envío tiene una incidencia activa" className="mb-4">El conductor no puede avanzar las paradas hasta que se resuelva. Revísala en <a class="font-medium underline" href="/operador/incidencias">Incidencias</a>.</Alert>}
+  <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <Card>
+      <CardHeader><CardTitle>Ruta y paradas</CardTitle></CardHeader>
+      <CardBody className="space-y-5">
+        <RouteLine origin={s.originCity!} destination={s.destinationCity!} />
+        <p class="text-sm text-ink-700">{s.cargoDescription}</p>
+        <StopTimeline stops={s.stops ?? []} />
+      </CardBody>
+    </Card>
+    <Card>
+      <CardHeader><CardTitle>Resumen</CardTitle></CardHeader>
+      <CardBody>
+        <ul class="space-y-2.5 text-sm">
+          {facts.map(([k, v, mono]) => <li class="flex items-baseline justify-between gap-3"><span class="text-ink-500">{k}</span><span class:list={['text-right font-medium text-ink-900', mono && 'font-mono']}>{v}</span></li>)}
+          <li class="flex items-baseline justify-between gap-3 border-t border-steel-200 pt-2.5"><span class="text-ink-500">Precio acordado</span><span class="money text-base">{formatMoney(s.agreedPrice)}</span></li>
+        </ul>
+      </CardBody>
+    </Card>
+  </div>
+</AppShell>

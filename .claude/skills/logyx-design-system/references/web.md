@@ -27,8 +27,10 @@ Importa siempre con alias: `import { Button } from '@/components/ui/button'`.
 | `filter-bar` | `FilterBar` | barra de filtros de listados: hijos = `Field`s (rejilla), `extra` = 2.ª fila, `sort`, `count`+`noun`, `active`+`onClear` ("Limpiar filtros"); `role="search"` |
 | `timeline` | `Timeline`, tipo `TimelineItem` | pasos/paradas: `items=[{id,title,detail?,meta?,status:'done'\|'current'\|'pending'}]`, `orientation` horizontal (apila en móvil) o vertical, `label` obligatorio. Paradas de envío: `StopTimeline`/`stopsToItems` (features/shipments) |
 | `auth-card` | `AuthCard` | tarjeta de login/registro: `title`, `subtitle`, `footer` (en `.astro`: `<Fragment slot="footer">`), `className` para el ancho (`max-w-md` default) |
+| `star-rating` | `StarRating` | entrada 1–5 accesible (radiogroup, teclado) y `readOnly` con decimales |
+| `file-dropzone` | `FileDropzone` | arrastrar/soltar + botón; `accept`, `maxBytes` (10 MB), error por archivo |
 | `card`, `badge`, `skeleton`, `avatar`, `kbd` | `Card`/`CardHeader`/`CardTitle`/`CardBody`, `Badge`, `Skeleton`/`SkeletonRows`, `Avatar`, `Kbd` | |
-Dominio (`components/domain`): `StatusPill`, `RouteLine`, `KpiTile`, `EmptyState`, `Countdown`, `VerifiedBadge` (`variant="badge"` chip "Empresa verificada" | `"icon"` escudo con tooltip para listas densas; no renderiza si `verified` es falso). Formatos: `lib/format.ts`.
+Dominio (`components/domain`): `StatusPill`, `RouteLine`, `KpiTile`, `EmptyState`, `Countdown`, `TrustScore` (`variant="chip"` en listas | `"meter"` en detalle; 75 = sin calificaciones; `trustTone`), `StatusPill` (también incidencias OPEN/IN_REVIEW/RESOLVED/CLOSED y `kind="counter"`), `VerifiedBadge` (`variant="badge"` chip "Empresa verificada" | `"icon"` escudo con tooltip para listas densas; no renderiza si `verified` es falso). Formatos: `lib/format.ts`.
 
 ## Ejemplos
 ```tsx
@@ -92,3 +94,8 @@ Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los p
 - `react-day-picker` v10: importa locale con `import { es } from 'react-day-picker/locale'` (ya lo hace `Calendar`). No importes su CSS: está tematizado con clases.
 - En `.astro`, no pases `<Icon />` como prop a un componente React; pasa la referencia (`icon={Truck}`).
 - Servidor de dev: tras instalar dependencias nuevas reinicia `npm run dev` (Vite reoptimiza y puede dar 504 "Outdated Optimize Dep").
+
+## Fase 3 (negociación, reputación, documentos, incidencias, notificaciones, operador)
+- Chat reutilizable: `features/negotiation/components/ChatPanel` (`readOnly`, polling). Errores de contacto (RN07) inline bajo el campo.
+- Evita respuestas obsoletas en islas con polling/filtros: contador `useRef` y descarta la respuesta si cambió (ver `NotificationsList`).
+- `role="log"` va en un `div` que contiene el `ul` (axe `listitem`). El tono rojo de `Badge` usa un rojo más oscuro para AA.
