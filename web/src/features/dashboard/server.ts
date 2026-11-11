@@ -23,8 +23,25 @@ export async function pymeDashboard(token: string) {
       inTransit: summary.shipmentsInTransit ?? inTransit.length,
       toPickup: pending.length,
       deliveredMonth: summary.deliveredThisMonth ?? delivered.length,
+      activeTripBookings: summary.activeTripBookings ?? 0,
     },
     attention,
     ongoing: shipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'PENDING'),
+  };
+}
+
+/** Resumen del transportista (`GET /dashboard/summary`); los campos de fase 4 pueden faltar en servidores antiguos. */
+export async function carrierDashboard(token: string) {
+  const s = await unwrap(apiFor(token).GET('/api/v1/dashboard/summary'));
+  return {
+    openTrips: s.openTrips ?? 0,
+    pendingTripBookings: s.pendingTripBookings ?? 0,
+    pendingSmartLoads: s.pendingSmartLoads ?? 0,
+    returnLoads: s.returnLoads ?? 0,
+    topReturnLoads: s.topReturnLoads ?? [],
+    compatibleLoads: s.compatibleLoads ?? 0,
+    pendingBids: s.pendingBids ?? 0,
+    activeShipments: s.activeShipments ?? 0,
+    deliveredThisMonth: s.deliveredThisMonth ?? 0,
   };
 }

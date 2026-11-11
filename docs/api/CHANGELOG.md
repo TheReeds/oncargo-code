@@ -5,6 +5,152 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-10 — Fase 4: viajes publicados, reservas, cargas de retorno y Smart Load Planner
+
+Todo es **aditivo** (paths y schemas nuevos; campos nuevos opcionales en `DashboardSummaryView`; valores nuevos en los
+enums `NotificationType` y `NotificationTarget`). No cambia ningún código de error ni comportamiento existente.
+Los clientes deben **tolerar valores de enum desconocidos** en `NotificationType`/`NotificationTarget`. Enums nuevos con
+nombre propio: `TripStatus`, `BookingStatus`, `TripPricingMode`, `SmartLoadStatus`, `StopType`. Todos los endpoints
+usan `Authorization: Bearer <jwt>` y responden `{ data, meta }` / `{ error: { code, message, field }, meta }`.
+Fechas-hora en ISO-8601 (`departureAt` acepta `Z` u offset, p. ej. `2026-11-14T08:00:00-05:00`).
+
+### 1. Viajes publicados (supply-side, RN12)
+El transportista publica un viaje con vehículo propio, capacidad ofrecida y tarifa. RN12: `capacityKg` ≤ capacidad del
+vehículo (`LOGYX-TRP-001`, `field=capacityKg`). Las reservas **confirmadas** descuentan `remainingKg`.
+
+| Método | Path | Rol | Notas |
+|---|---|---|---|
+| POST | `/api/v1/trips` | CARRIER | `CreateTripRequest` → 201 `TripView` |
+| GET | `/api/v1/trips/mine?page=&size=` | CARRIER | sin `page`/`size` devuelve todos; ordenados por salida |
+| GET | `/api/v1/trips/{id}` | PYME, CARRIER (dueño), OPERATOR | la PYME ve el viaje si está abierto o si reservó en él; 404 si no |
+| POST | `/api/v1/trips/{id}/close` | CARRIER (dueño) | cierre manual; rechaza las reservas pendientes |
+| POST | `/api/v1/trips/{id}/cancel` | CARRIER (dueño) | cancela reservas y envíos que no salieron; `LOGYX-TRP-007` si alguno ya salió |
+| GET | `/api/v1/trips/{id}/bookings` | CARRIER (dueño) | `TripBookingView[]` |
+| GET | `/api/v1/trips?originCity=&destinationCity=&fromDate=&toDate=&minWeightKg=&page=&size=` | PYME | solo OPEN/FILLING, salida futura y capacidad restante ≥ `minWeightKg`; `fromDate`/`toDate` = día de salida (Lima), `yyyy-MM-dd`; paginado (`meta.page|size|total`) |
+
+```json
+// POST /trips
+{ "originCity": "LIMA", "destinationCity": "JULIACA", "departureAt": "2026-11-14T08:00:00-05:00",
+  "vehicleId": "…", "capacityKg": 12000, "pricingMode": "PER_KG", "rate": 0.48, "notes": "Salida 6 a. m." }
+// → 201 TripView
+{ "data": { "id": "…", "carrierOrgId": "…", "carrierName": "Transportes Sur Andino SRL", "carrierTrustScore": 77.8,
+            "vehicleId": "…", "vehicleType": "TRUCK_LARGE", "vehiclePlate": "ASA-202",
+            "originCity": "LIMA", "destinationCity": "JULIACA", "departureAt": "2026-11-14T13:00:00Z",
+            "capacityKg": 12000, "confirmedWeightKg": 0, "remainingKg": 12000,
+            "pricingMode": "PER_KG", "rate": 0.48, "notes": "Salida 6 a. m.", "status": "OPEN",
+            "createdAt": "…", "pendingBookings": 0, "confirmedBookings": 0 }, "meta": { … } }
+```
+- `TripView.vehicleId`, `pendingBookings` y `confirmedBookings` solo vienen para el transportista dueño (la PYME recibe `null`;
+  la flota es privada: ve `vehicleType` y `vehiclePlate`).
+- `TripStatus`: `OPEN` → `FILLING` (primera reserva **confirmada**) → `CLOSED` (se llena, cierre manual o ya salió) →
+  `COMPLETED` (24 h después de la salida); `CANCELLED` desde OPEN/FILLING/CLOSED. Si se cancela la única reserva confirmada,
+  `FILLING` vuelve a `OPEN`.
+- `TripPricingMode`: `PER_KG` (`rate` = S/ por kg) o `PER_TRIP` (`rate` = tarifa de todo el tramo con la capacidad completa).
+  Precio de una reserva: `PER_KG` → `rate × kg`; `PER_TRIP` → `rate × kg / capacityKg`; 2 decimales, mínimo S/ 1.00.
+- Un job interno cierra los viajes que ya salieron (las reservas pendientes se rechazan) y completa los de hace > 24 h.
+
+### 2. Reservas de espacio
+| Método | Path | Rol | Notas |
+|---|---|---|---|
+| POST | `/api/v1/trips/{id}/bookings` | PYME | `CreateTripBookingRequest` → 201 `TripBookingView` (PENDING) |
+| GET | `/api/v1/trip-bookings/mine?status=` | PYME | todas las suyas, recientes primero |
+| POST | `/api/v1/trip-bookings/{id}/cancel` | PYME (dueña) | PENDING o CONFIRMED (si el envío aún no salió, si no `LOGYX-SHP-003`) |
+| POST | `/api/v1/trip-bookings/{id}/confirm` | CARRIER (dueño del viaje) | genera el envío; `TripBookingView` con `requestId` y `shipmentId` |
+| POST | `/api/v1/trip-bookings/{id}/reject` | CARRIER | body opcional `{ "reason": "…" }` (≤ 300) |
+
+```json
+// POST /trips/{id}/bookings
+{ "weightKg": 2500, "cargoDescription": "Mercadería de bazar en cajas", "cargoType": "GENERAL",
+  "pickupAddress": "Av. Argentina 1234, Callao", "deliveryAddress": "Jr. San Román 456, Juliaca" }
+// → 201 TripBookingView
+{ "data": { "id": "…", "tripId": "…", "status": "PENDING", "requesterOrgId": "…", "requesterName": "Comercial Altiplano SAC",
+            "carrierOrgId": "…", "carrierName": "Transportes Sur Andino SRL",
+            "originCity": "LIMA", "destinationCity": "JULIACA", "departureAt": "…",
+            "weightKg": 2500, "cargoType": "GENERAL", "cargoDescription": "…", "pickupAddress": "…", "deliveryAddress": "…",
+            "price": 1200.00, "decisionNote": null, "requestId": null, "shipmentId": null,
+            "createdAt": "…", "decidedAt": null }, "meta": { … } }
+```
+- Al reservar: el peso debe caber en la capacidad restante (`LOGYX-TRP-004`, `field=weightKg`) y el tipo de carga en el
+  vehículo (`LOGYX-TRP-010`: perecederos solo en refrigerados y viceversa). Las reservas pendientes **no** descuentan
+  capacidad; sí lo hace confirmar (se vuelve a validar al confirmar).
+- **Al confirmar se genera un envío** reutilizando shipment: `shipments` exige `request_id` y `bid_id`, así que se crean una
+  solicitud ya adjudicada (`RequestView.status = MATCHED`, visible en `GET /shipment-requests/mine` de la PYME), su subasta
+  cerrada y una oferta aceptada por el precio de la reserva. El envío tiene paradas recojo (`pickupAddress`) y entrega
+  (`deliveryAddress`) y sigue el flujo normal (el transportista asigna conductor, evidencia, calificación, incidencias).
+- Si el viaje se llena al confirmar → `CLOSED` y las reservas pendientes pasan a `REJECTED` (con `decisionNote`).
+- Cancelar una reserva confirmada cancela su envío (`ShipmentView.status = CANCELLED`) y devuelve la capacidad.
+- `BookingStatus`: `PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`.
+
+### 3. Cargas de retorno (RF61–RF63)
+`GET /api/v1/return-loads` (CARRIER) → `ReturnLoadView[]` (máx. 20, mejor puntaje primero). Para cada envío del transportista
+`IN_TRANSIT` o `DELIVERED` hace ≤ 3 días, sugiere solicitudes `PUBLISHED` con subasta abierta que salen de la ciudad de destino
+del envío o de una cercana (≤ 50 km por carretera; en el corredor solo Juliaca–Puno = 44 km), recojo entre la disponibilidad del
+vehículo y 7 días después, peso ≤ capacidad del vehículo y carga compatible con el vehículo. `matchScore = 100 − 0.6·km − 4·díasEspera`.
+Para ofertar (RF63) se usa `POST /shipment-requests/{requestId}/bids` con el `vehicleId` sugerido.
+```json
+{ "data": [ { "requestId": "…", "requesterOrgId": "…", "requesterName": "Comercial Altiplano SAC",
+              "shipmentId": "…", "vehicleId": "…", "vehiclePlate": "ASA-202", "fromCity": "JULIACA", "shipmentDelivered": true,
+              "originCity": "JULIACA", "originAddress": "…", "destinationCity": "AREQUIPA", "destinationAddress": "…",
+              "cargoType": "GENERAL", "cargoDescription": "Lana de alpaca en fardos", "weightKg": 3500,
+              "pickupDate": "2026-11-11", "suggestedPrice": 913.11, "priceFloor": 684.83,
+              "distanceKm": 0.0, "waitDays": 1, "matchScore": 96, "alreadyBid": false } ], "meta": { … } }
+```
+
+### 4. Smart Load Planner básico (OE07, RF30–RF33)
+| Método | Path | Rol | Notas |
+|---|---|---|---|
+| POST | `/api/v1/smart-loads/generate` | CARRIER | genera ahora; 201 con **solo las sugerencias nuevas** (`[]` si no hay) |
+| GET | `/api/v1/smart-loads?status=` | CARRIER | `PENDING`, `ACCEPTED`, `REJECTED`, `EXPIRED`; recientes primero |
+| POST | `/api/v1/smart-loads/{id}/accept` | CARRIER | marca ACCEPTED y **avisa a las PYMEs** agrupadas; **no adjudica ni crea ofertas** |
+| POST | `/api/v1/smart-loads/{id}/reject` | CARRIER | |
+Combina 2–4 solicitudes `PUBLISHED` para un vehículo `AVAILABLE` del transportista: orígenes ≤ 50 km, destinos ≤ 80 km,
+recojos ±1 día, peso combinado ≤ capacidad y ocupación ≥ 60 %. Una por vehículo (la de mayor ingreso). Vigencia 4 h
+(`expiresAt`); vencida: `LOGYX-TRP-009`. Un job periódico (15 min) genera para todos los transportistas.
+```json
+{ "data": [ { "id": "…", "vehicleId": "…", "vehicleType": "TRUCK_LARGE", "vehiclePlate": "ASA-202", "capacityKg": 20000,
+              "totalWeightKg": 13500, "combinedIncome": 14772.90, "occupancyPct": 67.50, "status": "PENDING",
+              "createdAt": "…", "expiresAt": "…", "decidedAt": null,
+              "items": [ { "requestId": "…", "originCity": "LIMA", "destinationCity": "JULIACA", "weightKg": 7500,
+                           "income": 8211.40, "pickupDate": "2026-11-13", "pickupOrder": 0, "deliveryOrder": 0 } ],
+              "route": [ { "type": "PICKUP", "city": "LIMA", "requestId": "…" }, { "type": "DELIVERY", "city": "JULIACA", "requestId": "…" } ] } ],
+  "meta": { … } }
+```
+`income` por ítem y `combinedIncome` = suma de los **precios sugeridos** de las solicitudes. `route` = recojos por orden y luego entregas.
+
+### 5. Dashboard: campos nuevos en `GET /dashboard/summary` (`DashboardSummaryView`)
+Siguen omitiéndose los campos que no aplican al rol.
+| Rol | Campo | Descripción |
+|---|---|---|
+| CARRIER | `openTrips` | viajes publicados OPEN/FILLING |
+| CARRIER | `pendingTripBookings` | reservas por confirmar |
+| CARRIER | `pendingSmartLoads` | sugerencias Smart Load PENDING vigentes |
+| CARRIER | `returnLoads` | cantidad de cargas de retorno |
+| CARRIER | `topReturnLoads` | hasta 3 `ReturnLoadHintView { requestId, originCity, destinationCity, weightKg, pickupDate, suggestedPrice, distanceKm, matchScore }` |
+| PYME | `activeTripBookings` | reservas PENDING o CONFIRMED |
+
+### 6. Notificaciones: valores nuevos
+`NotificationType`: `TRIP_BOOKING_REQUESTED` (al transportista), `TRIP_BOOKING_CONFIRMED` (PYME; `relatedType=SHIPMENT`),
+`TRIP_BOOKING_REJECTED`, `TRIP_BOOKING_CANCELLED` (al transportista), `TRIP_CANCELLED` (PYME), `SMART_LOAD_SUGGESTED`
+(transportista; `relatedType=SMART_LOAD`), `SMART_LOAD_ACCEPTED` (PYME; `relatedType=REQUEST`).
+`NotificationTarget`: `TRIP` (el viaje; `relatedId` = id del viaje), `SMART_LOAD` (id de la sugerencia).
+
+### 7. Códigos de error nuevos
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `LOGYX-TRP-001` | 400 | Capacidad publicada mayor a la del vehículo (RN12), `field=capacityKg` |
+| `LOGYX-TRP-002` | 400 | Salida no futura, `field=departureAt` |
+| `LOGYX-TRP-003` | 409 | El viaje ya no admite reservas (no está OPEN/FILLING o ya salió) |
+| `LOGYX-TRP-004` | 409 | El peso excede la capacidad restante, `field=weightKg` |
+| `LOGYX-TRP-005` | 409 | Transición de estado de viaje inválida (p. ej. cerrar uno cancelado), `field=status` |
+| `LOGYX-TRP-006` | 409 | La reserva ya fue resuelta |
+| `LOGYX-TRP-007` | 409 | No se puede cancelar el viaje: tiene envíos que ya salieron |
+| `LOGYX-TRP-008` | 409 | La sugerencia Smart Load ya fue resuelta |
+| `LOGYX-TRP-009` | 409 | La sugerencia Smart Load venció |
+| `LOGYX-TRP-010` | 409 | Tipo de carga no compatible con el vehículo del viaje, `field=cargoType` |
+| `LOGYX-TRP-011` | 409 | Alguna carga de la sugerencia ya no está publicada |
+| `LOGYX-SHP-003` | 409 | Solo se cancela un envío que aún no salió del recojo (cancelar una reserva confirmada ya en ruta) |
+Reutilizados: `LOGYX-PRC-001/002` (ciudad fuera del corredor, origen = destino), `LOGYX-VAL-001`, `LOGYX-GEN-404`.
+
 ## 2026-11-10 — Fase 2: negociación, evidencia, reputación, incidencias, notificaciones y operador
 
 Todo es **aditivo** en el contrato (paths y schemas nuevos; campos nuevos en `BidView`, `RequestView`, `ShipmentView`

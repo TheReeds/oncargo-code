@@ -64,6 +64,7 @@ Cifras técnicas (placas, km, toneladas, IDs, montos en tabla) en tipografía mo
 | **Oferta** | Precio que propone un transportista por una solicitud | cotización (reservado a la estimación del sistema), propuesta, puja |
 | **Subasta** | Ventana de tiempo en que los transportistas ofertan (inversa: gana el menor precio razonable) | licitación, remate |
 | **Envío** | Lo que existe tras aceptar una oferta: se ejecuta y se rastrea | viaje (salvo en lenguaje del conductor: "viaje activo"), despacho |
+| **Viaje publicado** | Oferta de capacidad del transportista en una ruta y fecha (fase 4); la PYME reserva espacio | confundirlo con "envío": el envío nace al confirmarse una reserva |
 | **Parada** | Punto de recojo o entrega dentro de un envío | escala, punto |
 | **Transportista** | Empresa que oferta y presta el servicio | camionero, fletero, proveedor |
 | **Conductor** | Persona que maneja y ejecuta el envío | chofer, driver, piloto |

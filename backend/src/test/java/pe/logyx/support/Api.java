@@ -66,6 +66,51 @@ public final class Api {
                 .post("/api/v1/shipment-requests").then();
     }
 
+    /** Publica una solicitud con ruta y fecha de recojo propias (carga general). */
+    public static ValidatableResponse publishRoute(Session pyme, String from, String to, int weightKg, int pickupInDays) {
+        return as(pyme).body(Map.of(
+                        "originCity", from, "originAddress", "Av. Origen 100",
+                        "destinationCity", to, "destinationAddress", "Jr. Destino 200",
+                        "cargoType", "GENERAL", "cargoDescription", "Mercadería variada",
+                        "weightKg", weightKg, "pickupDate", LocalDate.now().plusDays(pickupInDays).toString()))
+                .post("/api/v1/shipment-requests").then();
+    }
+
+    /** Salida ISO-8601 dentro de {@code days} días. */
+    public static String departure(int days) {
+        return java.time.OffsetDateTime.now().plusDays(days).withNano(0).toString();
+    }
+
+    /** Publica un viaje LIMA → JULIACA. */
+    public static ValidatableResponse publishTrip(Session carrier, String vehicleId, int capacityKg, String mode,
+                                                  double rate, int departInDays) {
+        return as(carrier).body(Map.of("originCity", "LIMA", "destinationCity", "JULIACA",
+                        "departureAt", departure(departInDays), "vehicleId", vehicleId, "capacityKg", capacityKg,
+                        "pricingMode", mode, "rate", rate, "notes", "Salida puntual"))
+                .post("/api/v1/trips").then();
+    }
+
+    public static ValidatableResponse bookTrip(Session pyme, String tripId, int kg) {
+        return as(pyme).body(Map.of("weightKg", kg, "cargoDescription", "Cajas de abarrotes", "cargoType", "GENERAL",
+                        "pickupAddress", "Av. Argentina 1234, Callao", "deliveryAddress", "Jr. San Román 456, Juliaca"))
+                .post("/api/v1/trips/" + tripId + "/bookings").then();
+    }
+
+    /** Compara un número JSON sin importar si RestAssured lo entrega como Integer, Float o Double. */
+    public static org.hamcrest.Matcher<Object> num(double expected) {
+        return new org.hamcrest.TypeSafeMatcher<>() {
+            @Override
+            protected boolean matchesSafely(Object actual) {
+                return actual instanceof Number n && Math.abs(n.doubleValue() - expected) < 0.005;
+            }
+
+            @Override
+            public void describeTo(org.hamcrest.Description d) {
+                d.appendText("number ").appendValue(expected);
+            }
+        };
+    }
+
     /** Sin Content-Type JSON: para multipart y descargas. */
     public static RequestSpecification raw(Session s) {
         return given().auth().oauth2(s.token());

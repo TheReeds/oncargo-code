@@ -33,7 +33,17 @@ const MAP: Record<string, [string, Tone]> = {
   EXPIRED: ['Vencida', 'neutral'],
 };
 
-export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' }) {
+/** Estados de viajes publicados, reservas y sugerencias Smart Load (fase 4). Valores desconocidos caen en gris con el texto crudo. */
+const TRIP: Record<string, [string, Tone]> = { OPEN: ['Abierto', 'emerald'], FILLING: ['Con reservas', 'petrol'], CLOSED: ['Cerrado', 'neutral'], COMPLETED: ['Completado', 'neutral'], CANCELLED: ['Cancelado', 'red'] };
+const BOOKING: Record<string, [string, Tone]> = { PENDING: ['Por confirmar', 'amber'], CONFIRMED: ['Confirmada', 'emerald'], REJECTED: ['Rechazada', 'red'], CANCELLED: ['Cancelada', 'neutral'] };
+const SMART: Record<string, [string, Tone]> = { PENDING: ['Pendiente', 'amber'], ACCEPTED: ['Aceptada', 'emerald'], REJECTED: ['Rechazada', 'neutral'], EXPIRED: ['Vencida', 'neutral'] };
+const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART };
+
+export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' }) {
+  if (kind === 'trip' || kind === 'booking' || kind === 'smart') {
+    const [label, tone] = BY_KIND[kind][status] ?? [status, 'neutral' as Tone];
+    return <Badge tone={tone}>{label}</Badge>;
+  }
   const key = kind === 'bid' && status === 'PENDING' ? 'PENDING_BID' : kind === 'counter' && status === 'PENDING' ? 'PENDING_COUNTER' : status;
   const [label, tone] = MAP[key] ?? [status, 'neutral' as Tone];
   return <Badge tone={tone}>{label}</Badge>;

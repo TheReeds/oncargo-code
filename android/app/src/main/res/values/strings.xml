@@ -7,6 +7,7 @@
     <string name="tab_account">Cuenta</string>
     <string name="tab_notifications">Avisos</string>
     <string name="tab_requests">Solicitudes</string>
+    <string name="tab_trips">Viajes</string>
     <string name="tab_trip">Mi viaje</string>
     <string name="unsupported_title">Esta cuenta se gestiona desde la web</string>
     <string name="unsupported_message">Los operadores de LOGYX usan el panel web.</string>

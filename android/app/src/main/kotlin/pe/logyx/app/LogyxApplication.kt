@@ -15,6 +15,7 @@ import pe.logyx.feature.incidents.incidentsModule
 import pe.logyx.feature.notifications.notificationsModule
 import pe.logyx.feature.reputation.reputationModule
 import pe.logyx.feature.documents.documentsModule
+import pe.logyx.feature.trips.tripsModule
 
 /** Configuración de build expuesta por DI (evita que los features dependan de BuildConfig). */
 class AppConfig(val apiBaseUrl: String, val webBaseUrl: String, val versionName: String, val debug: Boolean)
@@ -28,7 +29,7 @@ class LogyxApplication : Application() {
                 module { single { AppConfig(BuildConfig.API_BASE_URL, BuildConfig.WEB_BASE_URL, BuildConfig.VERSION_NAME, BuildConfig.DEBUG) } },
                 dataModule(BuildConfig.API_BASE_URL),
                 authModule, loadsModule, requestsModule, shipmentsModule, driverModule,
-                negotiationModule, incidentsModule, notificationsModule, reputationModule, documentsModule,
+                negotiationModule, incidentsModule, notificationsModule, reputationModule, documentsModule, tripsModule,
             )
         }
     }

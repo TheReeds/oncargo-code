@@ -56,6 +56,7 @@ import pe.logyx.core.designsystem.components.LogyxCombobox
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
 import pe.logyx.core.designsystem.components.LogyxDateField
 import pe.logyx.core.designsystem.components.LogyxDateRangeField
+import pe.logyx.core.designsystem.components.LogyxTimeField
 import pe.logyx.core.designsystem.components.LogyxDropdown
 import pe.logyx.core.designsystem.components.LogyxFilterChip
 import pe.logyx.core.designsystem.components.LogyxNavItem
@@ -202,6 +203,8 @@ private fun Pickers() {
     )
     LogyxDateField("Fecha de recojo", date, { date = it })
     LogyxDateRangeField("Rango de entrega", s, e, { a, b -> s = a; e = b })
+    var time by remember { mutableStateOf<java.time.LocalTime?>(null) }
+    LogyxTimeField("Hora de salida", time, { time = it })
 }
 
 @Composable

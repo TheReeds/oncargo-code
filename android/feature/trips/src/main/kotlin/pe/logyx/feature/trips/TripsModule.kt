@@ -1,0 +1,15 @@
+package pe.logyx.feature.trips
+
+import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.module
+
+val tripsModule = module {
+    viewModelOf(::PublishTripViewModel)
+    viewModelOf(::CarrierTripsViewModel)
+    viewModel { (tripId: String, justPublished: Boolean) -> CarrierTripDetailViewModel(tripId, justPublished, get()) }
+    viewModelOf(::ReturnLoadsViewModel)
+    viewModelOf(::SmartLoadsViewModel)
+    viewModelOf(::TripSearchViewModel)
+    viewModelOf(::MyBookingsViewModel)
+}

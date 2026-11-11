@@ -138,3 +138,22 @@ export const operatorCandidates = (token: string, requestId: string) => call<any
 export const operatorAlerts = (token: string) => call<any>('GET', '/operator/sla-alerts', token);
 
 export const me = (token: string) => call<{ organizationId: string; organizationName: string }>('GET', '/auth/me', token);
+
+// ── Fase 4: viajes publicados, reservas, Smart Load ──────────────────────
+export const publishTrip = (token: string, vehicleId: string, o: Record<string, unknown> = {}) =>
+  call<any>('POST', '/trips', token, {
+    originCity: 'ABANCAY', destinationCity: 'AYACUCHO', departureAt: new Date(Date.now() + 3 * 86400000).toISOString(), vehicleId,
+    capacityKg: 8000, pricingMode: 'PER_KG', rate: 0.5, notes: 'Salida temprano desde el almacén.', ...o,
+  });
+export const bookTrip = (token: string, tripId: string, o: Record<string, unknown> = {}) =>
+  call<any>('POST', `/trips/${tripId}/bookings`, token, {
+    weightKg: 1000, cargoDescription: 'Cajas de abarrotes', cargoType: 'GENERAL', pickupAddress: 'Av. Argentina 1234, Callao', deliveryAddress: 'Jr. Lima 456, Ayacucho', ...o,
+  });
+
+/** PYME + transportista (con vehículo) + viaje publicado Abancay → Ayacucho. */
+export async function tripScenario(o: { capacity?: number; vehicleCapacity?: number } = {}) {
+  const [pyme, carrier] = await Promise.all([registerAccount('PYME'), registerAccount('CARRIER')]);
+  const vehicle = await addVehicle(carrier.token, o.vehicleCapacity ?? 12000);
+  const trip = await publishTrip(carrier.token, vehicle.id, o.capacity ? { capacityKg: o.capacity } : {});
+  return { pyme, carrier, vehicle, trip };
+}

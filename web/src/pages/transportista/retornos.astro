@@ -1,0 +1,23 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import ReturnLoadsList from '@/features/trips/components/ReturnLoadsList';
+import { listReturnLoads, type ReturnLoadView } from '@/features/trips/server';
+import { listVehicles } from '@/features/fleet/server';
+const t = Astro.locals.session!.token;
+let loads: ReturnLoadView[] = [];
+let loadError: string | null = null;
+const vehiclesP = listVehicles(t);
+try {
+  loads = await listReturnLoads(t);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar las cargas de retorno.';
+}
+const vehicles = await vehiclesP;
+---
+<AppShell title="Cargas de retorno" active="retornos">
+  <PageHeader title="Cargas de retorno" subtitle="Cargas que salen desde el destino de tus envíos recientes. Ofértalas y evita regresar vacío." />
+  {loadError && <Alert tone="error" title="No pudimos cargar las cargas de retorno" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {!loadError && <ReturnLoadsList client:load loads={loads} vehicles={vehicles} />}
+</AppShell>

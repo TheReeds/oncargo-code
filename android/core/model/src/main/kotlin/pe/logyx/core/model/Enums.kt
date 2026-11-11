@@ -42,8 +42,23 @@ import kotlinx.serialization.Serializable
 enum class NotificationType {
     NEW_BID, BID_ACCEPTED, BID_REJECTED, COUNTER_OFFER, NEW_MESSAGE,
     SHIPMENT_STATUS_CHANGE, INCIDENT_REPORTED, INCIDENT_RESOLVED, NEW_REVIEW,
+    // Fase 4
+    TRIP_BOOKING_REQUESTED, TRIP_BOOKING_CONFIRMED, TRIP_BOOKING_REJECTED, TRIP_BOOKING_CANCELLED, TRIP_CANCELLED,
+    SMART_LOAD_SUGGESTED, SMART_LOAD_ACCEPTED,
+    /** Valor que este cliente no conoce (se mapea con `coerceInputValues`). */
+    UNKNOWN,
 }
 
-@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW }
+@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD }
 
 @Serializable enum class ReviewDirection { PYME_TO_CARRIER, CARRIER_TO_PYME }
+
+// --- Fase 4: viajes publicados, reservas, retornos y Smart Load ---
+@Serializable enum class TripStatus { OPEN, FILLING, CLOSED, COMPLETED, CANCELLED }
+
+@Serializable enum class BookingStatus { PENDING, CONFIRMED, REJECTED, CANCELLED }
+
+/** `PER_KG`: `rate` = S/ por kg. `PER_TRIP`: `rate` = tarifa de todo el tramo con la capacidad completa. */
+@Serializable enum class TripPricingMode { PER_KG, PER_TRIP }
+
+@Serializable enum class SmartLoadStatus { PENDING, ACCEPTED, REJECTED, EXPIRED }

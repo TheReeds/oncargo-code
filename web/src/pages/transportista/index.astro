@@ -1,0 +1,56 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { KpiTile } from '@/components/domain/KpiTile';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { carrierDashboard } from '@/features/dashboard/server';
+import { formatDate, formatMoney, formatTons } from '@/lib/format';
+import { Route, CalendarClock, Sparkles, Undo2, Store, Gavel, Truck, PackageCheck } from 'lucide-react';
+let d: Awaited<ReturnType<typeof carrierDashboard>> | null = null;
+let loadError: string | null = null;
+try {
+  d = await carrierDashboard(Astro.locals.session!.token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tu resumen.';
+}
+---
+<AppShell title="Tu actividad" active="panel">
+  <PageHeader title="Tu actividad" subtitle="Viajes, reservas y oportunidades para llenar tus vehículos." />
+  {loadError && <Alert tone="error" title="No pudimos cargar tu resumen">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {d && (
+    <>
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label="Viajes abiertos" value={d.openTrips} context={d.openTrips ? 'con espacio para reservar' : 'Publica tu primer viaje'} icon={CalendarClock} href="/transportista/viajes" />
+        <KpiTile label="Reservas por confirmar" value={d.pendingTripBookings} context={d.pendingTripBookings ? 'esperan tu respuesta' : 'Todo al día'} icon={Route} href="/transportista/viajes" />
+        <KpiTile label="Sugerencias Smart Load" value={d.pendingSmartLoads} context="pendientes de revisar" icon={Sparkles} href="/transportista/smart-load" />
+        <KpiTile label="Cargas de retorno" value={d.returnLoads} context="desde tus destinos" icon={Undo2} href="/transportista/retornos" />
+      </div>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label="Cargas compatibles" value={d.compatibleLoads} context="con subasta abierta" icon={Store} href="/transportista/marketplace" />
+        <KpiTile label="Ofertas pendientes" value={d.pendingBids} context="esperando respuesta" icon={Gavel} href="/transportista/ofertas" />
+        <KpiTile label="Envíos activos" value={d.activeShipments} context="en curso" icon={Truck} href="/transportista/envios" />
+        <KpiTile label="Entregados del mes" value={d.deliveredThisMonth} context="este mes" icon={PackageCheck} href="/transportista/envios" />
+      </div>
+      <Card className="mt-6">
+        <CardHeader><CardTitle>Cargas de retorno destacadas</CardTitle><a href="/transportista/retornos" class="text-sm font-medium text-petrol-700 hover:underline">Ver todas</a></CardHeader>
+        {d.topReturnLoads.length === 0 ? (
+          <EmptyState title="Sin cargas de retorno por ahora" description="Cuando tengas un envío en tránsito o entregado, te sugeriremos cargas que salen desde su destino." />
+        ) : (
+          <ul class="divide-y divide-steel-200">
+            {d.topReturnLoads.map((r) => (
+              <li>
+                <a href="/transportista/retornos" class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-steel-100/60">
+                  <div class="min-w-0 flex-1"><RouteLine size="sm" origin={r.originCity!} destination={r.destinationCity!} originSub={`Recojo ${formatDate(r.pickupDate)}`} /></div>
+                  <div class="text-right"><div class="money">{formatMoney(r.suggestedPrice)}</div><div class="text-xs text-ink-500"><span class="font-mono">{formatTons(r.weightKg)}</span> · compat. <span class="font-mono">{Math.round(r.matchScore ?? 0)}</span></div></div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </>
+  )}
+</AppShell>

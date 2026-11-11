@@ -175,6 +175,14 @@ data class DashboardSummary(
     val activeShipments: Int? = null,
     // ambos
     val deliveredThisMonth: Int? = null,
+    // CARRIER (fase 4)
+    val openTrips: Int? = null,
+    val pendingTripBookings: Int? = null,
+    val pendingSmartLoads: Int? = null,
+    val returnLoads: Int? = null,
+    val topReturnLoads: List<ReturnLoadHintView> = emptyList(),
+    // PYME (fase 4)
+    val activeTripBookings: Int? = null,
 )
 
 /** Orden del marketplace (`sort`). */
@@ -354,7 +362,7 @@ data class ReputationView(
 @Serializable
 data class NotificationView(
     val id: String,
-    val type: NotificationType,
+    val type: NotificationType = NotificationType.UNKNOWN,
     val title: String,
     val body: String,
     val relatedType: NotificationTarget? = null,

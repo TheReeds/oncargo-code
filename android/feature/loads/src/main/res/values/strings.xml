@@ -23,6 +23,34 @@
     <string name="loads_active_trip">Viaje activo</string>
     <string name="loads_no_driver">Sin conductor</string>
 
+    <!-- Fase 4: viajes, Smart Load y retornos en el Home -->
+    <string name="loads_home_trips_title">Tus viajes publicados</string>
+    <plurals name="loads_home_trips_open">
+        <item quantity="one">%1$d viaje abierto para reservas.</item>
+        <item quantity="other">%1$d viajes abiertos para reservas.</item>
+    </plurals>
+    <string name="loads_home_trips_none">Publica un viaje con tu capacidad libre y recibe reservas de las PYMEs.</string>
+    <plurals name="loads_home_trips_pending">
+        <item quantity="one">%1$d por confirmar</item>
+        <item quantity="other">%1$d por confirmar</item>
+    </plurals>
+    <string name="loads_home_trips_action">Ver mis viajes</string>
+    <string name="loads_home_smart_title">Sugerencias de carga</string>
+    <plurals name="loads_home_smart_pending">
+        <item quantity="one">%1$d nueva</item>
+        <item quantity="other">%1$d nuevas</item>
+    </plurals>
+    <string name="loads_home_smart_message">Combinamos cargas para llenar tu vehículo. Revísalas antes de que venzan.</string>
+    <string name="loads_home_smart_action">Ver sugerencias</string>
+    <string name="loads_home_return_title">Cargas de retorno</string>
+    <plurals name="loads_home_return_count">
+        <item quantity="one">%1$d carga</item>
+        <item quantity="other">%1$d cargas</item>
+    </plurals>
+    <string name="loads_home_return_message">Evita volver vacío: estas cargas salen cerca de donde terminas.</string>
+    <string name="loads_home_return_pickup">recojo %1$s</string>
+    <string name="loads_home_return_action">Ver cargas de retorno</string>
+
     <!-- Feed -->
     <string name="loads_feed_title">Cargas disponibles</string>
     <string name="loads_filter_my_vehicle">Mi vehículo</string>

@@ -76,6 +76,12 @@ import pe.logyx.feature.negotiation.ThreadsRoute
 import pe.logyx.feature.notifications.NotificationsRoute
 import pe.logyx.feature.notifications.rememberUnreadCount
 import pe.logyx.feature.reputation.OrganizationProfileRoute
+import pe.logyx.feature.trips.CarrierTripDetailRoute
+import pe.logyx.feature.trips.CarrierTripsRoute
+import pe.logyx.feature.trips.PublishTripRoute
+import pe.logyx.feature.trips.PymeTripsRoute
+import pe.logyx.feature.trips.ReturnLoadsRoute
+import pe.logyx.feature.trips.SmartLoadsRoute
 import pe.logyx.feature.reputation.ReviewRoute
 import pe.logyx.core.model.NotificationTarget
 import pe.logyx.core.model.NotificationType
@@ -135,6 +141,7 @@ private val CARRIER_TABS = listOf(
 )
 private val PYME_TABS = listOf(
     Tab(R.string.tab_requests, Icons.Rounded.Inventory2, RequestsTab),
+    Tab(R.string.tab_trips, Icons.Rounded.Route, PymeTrips),
     Tab(R.string.tab_shipments, Icons.Rounded.LocalShipping, ShipmentsTab),
     Tab(R.string.tab_notifications, Icons.Rounded.Notifications, NotificationsTab),
     Tab(R.string.tab_account, Icons.Rounded.AccountCircle, Account),
@@ -190,8 +197,37 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     onOpenFeed = { nav.navigateTab(CarrierFeed) },
                     onOpenBids = { nav.navigateTab(CarrierBids) },
                     onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
+                    onOpenTrips = { nav.navigate(CarrierTrips) },
+                    onOpenReturnLoads = { nav.navigate(ReturnLoads) },
+                    onOpenSmartLoads = { nav.navigate(SmartLoads) },
                 )
             }
+            composable<CarrierTrips> {
+                CarrierTripsRoute(
+                    onBack = { nav.popBackStack() },
+                    onOpenTrip = { nav.navigate(CarrierTripDetail(it)) },
+                    onPublish = { nav.navigate(PublishTrip) },
+                )
+            }
+            composable<PublishTrip> {
+                PublishTripRoute(
+                    onBack = { nav.popBackStack() },
+                    onPublished = { id ->
+                        // Reemplaza el formulario por el detalle del viaje recién publicado.
+                        nav.navigate(CarrierTripDetail(id, published = true)) { popUpTo<PublishTrip> { inclusive = true } }
+                    },
+                )
+            }
+            composable<CarrierTripDetail> { e ->
+                val d = e.toRoute<CarrierTripDetail>()
+                CarrierTripDetailRoute(
+                    d.id, d.published, onBack = { nav.popBackStack() },
+                    onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
+                )
+            }
+            composable<ReturnLoads> { ReturnLoadsRoute(onBack = { nav.popBackStack() }) }
+            composable<SmartLoads> { SmartLoadsRoute(onBack = { nav.popBackStack() }) }
+            composable<PymeTrips> { PymeTripsRoute(onOpenShipment = { nav.navigate(ShipmentDetail(it)) }) }
             composable<CarrierFeed> { LoadsFeedRoute(onOpenLoad = { nav.navigate(LoadDetail(it)) }) }
             composable<CarrierBids> {
                 MyBidsRoute(
@@ -281,6 +317,8 @@ private fun NavHostController.openNotification(n: NotificationView, role: AppRol
     val id = n.relatedId
     when {
         id == null -> Unit
+        n.relatedType == NotificationTarget.TRIP -> if (role == AppRole.Pyme) navigateTab(PymeTrips) else navigate(CarrierTripDetail(id))
+        n.relatedType == NotificationTarget.SMART_LOAD -> navigate(SmartLoads)
         n.type == NotificationType.NEW_MESSAGE && n.relatedType == NotificationTarget.REQUEST ->
             navigate(if (role == AppRole.Pyme) Threads(id) else Chat(id, orgId, null))
         n.relatedType == NotificationTarget.REQUEST -> navigate(if (role == AppRole.Pyme) RequestDetail(id) else LoadDetail(id))

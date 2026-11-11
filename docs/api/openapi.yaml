@@ -188,6 +188,15 @@ components:
             $ref: "#/components/schemas/RequestView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseListReturnLoadView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnLoadView"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseListReviewView:
       type: object
       properties:
@@ -204,6 +213,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ShipmentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListSmartLoadView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmartLoadView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListTripBookingView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripBookingView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListTripView:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripView"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseListVehicleView:
@@ -304,6 +340,27 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ShipmentView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseSmartLoadView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/SmartLoadView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseTripBookingView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/TripBookingView"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseTripView:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/TripView"
         meta:
           $ref: "#/components/schemas/Meta"
     ApiResponseUnreadCount:
@@ -411,6 +468,13 @@ components:
           type: number
         assignedByOperator:
           type: boolean
+    BookingStatus:
+      type: string
+      enum:
+      - PENDING
+      - CONFIRMED
+      - REJECTED
+      - CANCELLED
     CargoItem:
       type: object
       properties:
@@ -566,6 +630,67 @@ components:
           minimum: 0.01
         pickupDate:
           $ref: "#/components/schemas/LocalDate"
+    CreateTripBookingRequest:
+      type: object
+      required:
+      - weightKg
+      - cargoDescription
+      - cargoType
+      - pickupAddress
+      - deliveryAddress
+      properties:
+        weightKg:
+          type: number
+          maximum: 40000
+          minimum: 1
+        cargoDescription:
+          type: string
+          pattern: \S
+          maxLength: 300
+        cargoType:
+          $ref: "#/components/schemas/CargoType"
+        pickupAddress:
+          type: string
+          pattern: \S
+          maxLength: 200
+        deliveryAddress:
+          type: string
+          pattern: \S
+          maxLength: 200
+    CreateTripRequest:
+      type: object
+      required:
+      - originCity
+      - destinationCity
+      - departureAt
+      - vehicleId
+      - capacityKg
+      - pricingMode
+      - rate
+      properties:
+        originCity:
+          type: string
+          pattern: \S
+        destinationCity:
+          type: string
+          pattern: \S
+        departureAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        capacityKg:
+          type: number
+          maximum: 40000
+          minimum: 1
+        pricingMode:
+          $ref: "#/components/schemas/TripPricingMode"
+        rate:
+          type: number
+          maximum: 1000000
+          minimum: 0.01
+        notes:
+          type: string
+          maxLength: 300
     DashboardSummaryView:
       type: object
       properties:
@@ -590,6 +715,25 @@ components:
           type: integer
           format: int64
         deliveredThisMonth:
+          type: integer
+          format: int64
+        openTrips:
+          type: integer
+          format: int64
+        pendingTripBookings:
+          type: integer
+          format: int64
+        pendingSmartLoads:
+          type: integer
+          format: int64
+        returnLoads:
+          type: integer
+          format: int64
+        topReturnLoads:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnLoadHintView"
+        activeTripBookings:
           type: integer
           format: int64
     DocumentType:
@@ -871,6 +1015,8 @@ components:
       - SHIPMENT
       - INCIDENT
       - REVIEW
+      - TRIP
+      - SMART_LOAD
     NotificationType:
       type: string
       enum:
@@ -883,6 +1029,13 @@ components:
       - INCIDENT_REPORTED
       - INCIDENT_RESOLVED
       - NEW_REVIEW
+      - TRIP_BOOKING_REQUESTED
+      - TRIP_BOOKING_CONFIRMED
+      - TRIP_BOOKING_REJECTED
+      - TRIP_BOOKING_CANCELLED
+      - TRIP_CANCELLED
+      - SMART_LOAD_SUGGESTED
+      - SMART_LOAD_ACCEPTED
     NotificationView:
       type: object
       properties:
@@ -1093,6 +1246,12 @@ components:
           maxLength: 72
         acceptPrivacyPolicy:
           type: boolean
+    RejectTripBookingRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
     ReportIncident:
       type: object
       required:
@@ -1187,6 +1346,77 @@ components:
           $ref: "#/components/schemas/Type"
         requesterTrustScore:
           type: number
+    ReturnLoadHintView:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        weightKg:
+          type: number
+        pickupDate:
+          $ref: "#/components/schemas/LocalDate"
+        suggestedPrice:
+          type: number
+        distanceKm:
+          type: number
+          format: double
+        matchScore:
+          type: integer
+          format: int32
+    ReturnLoadView:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        requesterOrgId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        vehiclePlate:
+          type: string
+        fromCity:
+          $ref: "#/components/schemas/City"
+        shipmentDelivered:
+          type: boolean
+        originCity:
+          $ref: "#/components/schemas/City"
+        originAddress:
+          type: string
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        destinationAddress:
+          type: string
+        cargoType:
+          $ref: "#/components/schemas/CargoType"
+        cargoDescription:
+          type: string
+        weightKg:
+          type: number
+        pickupDate:
+          $ref: "#/components/schemas/LocalDate"
+        suggestedPrice:
+          type: number
+        priceFloor:
+          type: number
+        distanceKm:
+          type: number
+          format: double
+        waitDays:
+          type: integer
+          format: int32
+        matchScore:
+          type: integer
+          format: int32
+        alreadyBid:
+          type: boolean
     ReviewDirection:
       type: string
       enum:
@@ -1316,6 +1546,78 @@ components:
           $ref: "#/components/schemas/Status4"
         auctionClosesAt:
           $ref: "#/components/schemas/OffsetDateTime"
+    SmartLoadItemView:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        weightKg:
+          type: number
+        income:
+          type: number
+        pickupDate:
+          $ref: "#/components/schemas/LocalDate"
+        pickupOrder:
+          type: integer
+          format: int32
+        deliveryOrder:
+          type: integer
+          format: int32
+    SmartLoadStatus:
+      type: string
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      - EXPIRED
+    SmartLoadStopView:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/StopType"
+        city:
+          $ref: "#/components/schemas/City"
+        requestId:
+          $ref: "#/components/schemas/UUID"
+    SmartLoadView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        vehicleType:
+          $ref: "#/components/schemas/Type"
+        vehiclePlate:
+          type: string
+        capacityKg:
+          type: number
+        totalWeightKg:
+          type: number
+        combinedIncome:
+          type: number
+        occupancyPct:
+          type: number
+        status:
+          $ref: "#/components/schemas/SmartLoadStatus"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        expiresAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        decidedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmartLoadItemView"
+        route:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmartLoadStopView"
     Status:
       type: string
       enum:
@@ -1366,6 +1668,11 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/Status"
+    StopType:
+      type: string
+      enum:
+      - PICKUP
+      - DELIVERY
     StopView:
       type: object
       properties:
@@ -1411,6 +1718,109 @@ components:
         comment:
           type: string
           maxLength: 1000
+    TripBookingView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        tripId:
+          $ref: "#/components/schemas/UUID"
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        requesterOrgId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        departureAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        weightKg:
+          type: number
+        cargoType:
+          $ref: "#/components/schemas/CargoType"
+        cargoDescription:
+          type: string
+        pickupAddress:
+          type: string
+        deliveryAddress:
+          type: string
+        price:
+          type: number
+        decisionNote:
+          type: string
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        shipmentId:
+          $ref: "#/components/schemas/UUID"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        decidedAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+    TripPricingMode:
+      type: string
+      enum:
+      - PER_KG
+      - PER_TRIP
+    TripStatus:
+      type: string
+      enum:
+      - OPEN
+      - FILLING
+      - CLOSED
+      - COMPLETED
+      - CANCELLED
+    TripView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        carrierOrgId:
+          $ref: "#/components/schemas/UUID"
+        carrierName:
+          type: string
+        carrierTrustScore:
+          type: number
+        vehicleId:
+          $ref: "#/components/schemas/UUID"
+        vehicleType:
+          $ref: "#/components/schemas/Type"
+        vehiclePlate:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        departureAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        capacityKg:
+          type: number
+        confirmedWeightKg:
+          type: number
+        remainingKg:
+          type: number
+        pricingMode:
+          $ref: "#/components/schemas/TripPricingMode"
+        rate:
+          type: number
+        notes:
+          type: string
+        status:
+          $ref: "#/components/schemas/TripStatus"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        pendingBookings:
+          type: integer
+          format: int64
+        confirmedBookings:
+          type: integer
+          format: int64
     Type:
       type: string
       enum:
@@ -2352,6 +2762,25 @@ paths:
       - Pricing Resource
       security:
       - SecurityScheme: []
+  /api/v1/return-loads:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListReturnLoadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Return Loads
+      tags:
+      - Load Planning Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
   /api/v1/shipment-requests:
     post:
       requestBody:
@@ -3078,6 +3507,461 @@ paths:
       security:
       - SecurityScheme:
         - DRIVER
+  /api/v1/smart-loads:
+    get:
+      parameters:
+      - description: "Filtra por estado (PENDING, ACCEPTED, REJECTED, EXPIRED)."
+        name: status
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListSmartLoadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: List
+      tags:
+      - Load Planning Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/smart-loads/generate:
+    post:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListSmartLoadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Generate
+      tags:
+      - Load Planning Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/smart-loads/{id}/accept:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSmartLoadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Accept
+      tags:
+      - Load Planning Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/smart-loads/{id}/reject:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSmartLoadView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Reject
+      tags:
+      - Load Planning Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trip-bookings/mine:
+    get:
+      parameters:
+      - description: "Filtra por estado (PENDING, CONFIRMED, REJECTED, CANCELLED)."
+        name: status
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: My Bookings
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - PYME
+  /api/v1/trip-bookings/{id}/cancel:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Cancel Booking
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - PYME
+  /api/v1/trip-bookings/{id}/confirm:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Confirm
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trip-bookings/{id}/reject:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectTripBookingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Reject
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trips:
+    get:
+      parameters:
+      - description: Código de ciudad de destino (p. ej. JULIACA).
+        name: destinationCity
+        in: query
+        schema:
+          type: string
+      - description: "Salida desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: fromDate
+        in: query
+        schema:
+          format: date
+          type: string
+      - description: Capacidad restante mínima en kg.
+        name: minWeightKg
+        in: query
+        schema:
+          type: number
+      - description: Código de ciudad de origen (p. ej. LIMA).
+        name: originCity
+        in: query
+        schema:
+          type: string
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Salida hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: toDate
+        in: query
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Search
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - PYME
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Publish
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trips/mine:
+    get:
+      parameters:
+      - description: "Página 0-based. Si se omite page y size, se devuelven todos."
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20 cuando se pagina)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Mine
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trips/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Detail
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - OPERATOR
+  /api/v1/trips/{id}/bookings:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Trip Bookings
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripBookingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripBookingView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Book
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - PYME
+  /api/v1/trips/{id}/cancel:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Cancel
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
+  /api/v1/trips/{id}/close:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTripView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Close
+      tags:
+      - Trip Resource
+      security:
+      - SecurityScheme:
+        - CARRIER
   /api/v1/vehicles:
     get:
       responses:

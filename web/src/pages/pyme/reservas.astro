@@ -1,0 +1,23 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import { buttonVariants } from '@/components/ui/button';
+import MyBookings from '@/features/trips/components/MyBookings';
+import { listMyBookings, type TripBookingView } from '@/features/trips/server';
+import { Search } from '@lucide/astro';
+let bookings: TripBookingView[] = [];
+let loadError: string | null = null;
+try {
+  bookings = await listMyBookings(Astro.locals.session!.token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus reservas.';
+}
+---
+<AppShell title="Mis reservas" active="reservas">
+  <PageHeader title="Mis reservas" subtitle="Sigue tus reservas de espacio. Al confirmarse, se genera tu envío.">
+    <a slot="actions" href="/pyme/viajes" class={buttonVariants({ variant: 'outline' })}><Search size={16} /> Buscar viajes</a>
+  </PageHeader>
+  {loadError && <Alert tone="error" title="No pudimos cargar tus reservas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {!loadError && <MyBookings client:load bookings={bookings} />}
+</AppShell>

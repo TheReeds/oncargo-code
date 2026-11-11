@@ -209,6 +209,72 @@ class RowLevelSecurityTest {
         assertTrue(rootMessage(ex3).contains("permission denied"), rootMessage(ex3));
     }
 
+    @Test
+    void viajesReservasYSugerenciasSmartLoadRespetanRls() {
+        Session carrierA = register("CARRIER", "RLS Trip A");
+        Session carrierB = register("CARRIER", "RLS Trip B");
+        Session pymeA = register("PYME", "RLS Trip PymeA");
+        Session pymeB = register("PYME", "RLS Trip PymeB");
+        Session op = operator();
+        String vehicleA = vehicle(carrierA, plate(), 8000);
+        String trip = publishTrip(carrierA, vehicleA, 8000, "PER_KG", 0.5, 3).statusCode(201).extract().path("data.id");
+        String booking = bookTrip(pymeA, trip, 1000).statusCode(201).extract().path("data.id");
+
+        String trips = "SELECT count(*) FROM carrier_trips WHERE id = '" + trip + "'";
+        String bookings = "SELECT count(*) FROM trip_bookings WHERE id = '" + booking + "'";
+        // Viaje abierto: lo ven su transportista, las PYMEs y el operador; otro transportista no
+        assertEquals(1, countAs(carrierA, "CARRIER", trips));
+        assertEquals(0, countAs(carrierB, "CARRIER", trips), "otro transportista no ve el viaje");
+        assertEquals(1, countAs(pymeB, "PYME", trips), "listado público para PYMEs");
+        assertEquals(1, countAs(op, "OPERATOR", trips));
+        // Reserva: solo las dos partes y el operador
+        assertEquals(1, countAs(pymeA, "PYME", bookings));
+        assertEquals(1, countAs(carrierA, "CARRIER", bookings));
+        assertEquals(0, countAs(pymeB, "PYME", bookings), "otra PYME no ve la reserva");
+        assertEquals(0, countAs(carrierB, "CARRIER", bookings));
+        assertEquals(1, countAs(op, "OPERATOR", bookings));
+
+        // Cerrado: deja de ser público, pero la PYME que reservó lo sigue viendo
+        Api.as(carrierA).post("/api/v1/trips/" + trip + "/close").then().statusCode(200);
+        assertEquals(0, countAs(pymeB, "PYME", trips));
+        assertEquals(1, countAs(pymeA, "PYME", trips), "quien reservó lo sigue viendo");
+
+        // Escrituras: la PYME no crea ni edita viajes; nadie reserva en nombre de otra PYME
+        var ex = assertThrows(Exception.class, () -> executeAs(pymeA, "PYME",
+                "INSERT INTO carrier_trips (carrier_org_id, vehicle_id, vehicle_type, vehicle_plate, origin_city, "
+                        + "destination_city, departure_at, capacity_kg, pricing_mode, rate) VALUES ('" + pymeA.orgId()
+                        + "','" + vehicleA + "','VAN','AAA-111','LIMA','CUSCO', now(), 100, 'PER_KG', 1)"));
+        assertTrue(rootMessage(ex).contains("row-level security"), rootMessage(ex));
+        assertEquals(0, executeAs(pymeA, "PYME", "UPDATE carrier_trips SET capacity_kg = 1 WHERE id = '" + trip + "'"));
+        assertEquals(0, executeAs(carrierB, "CARRIER", "UPDATE trip_bookings SET status = 'CONFIRMED' WHERE id = '"
+                + booking + "'"));
+        String requestedBy = QuarkusTransaction.requiringNew().call(() -> String.valueOf(em.createNativeQuery(
+                "SELECT requested_by FROM trip_bookings WHERE id = ?1").setParameter(1, java.util.UUID.fromString(booking))
+                .getSingleResult()));
+        var ex2 = assertThrows(Exception.class, () -> executeAs(pymeB, "PYME",
+                "INSERT INTO trip_bookings (trip_id, requester_org_id, carrier_org_id, requested_by, origin_city, "
+                        + "destination_city, departure_at, weight_kg, cargo_type, cargo_description, pickup_address, "
+                        + "delivery_address, price) VALUES ('" + trip + "','" + pymeA.orgId() + "','" + carrierA.orgId()
+                        + "','" + requestedBy + "','LIMA','JULIACA', now(), 10, 'GENERAL', 'x', 'a', 'b', 5)"));
+        assertTrue(rootMessage(ex2).contains("row-level security"), rootMessage(ex2));
+
+        // Smart Load: sugerencias e ítems privados del transportista (el operador las lee, RF59)
+        java.util.UUID suggestion = java.util.UUID.randomUUID();
+        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+                "INSERT INTO smart_load_suggestions (id, carrier_org_id, vehicle_id, vehicle_type, vehicle_plate, "
+                        + "capacity_kg, total_weight_kg, combined_income, occupancy_pct, expires_at) VALUES (?1, ?2, ?3, "
+                        + "'TRUCK_MEDIUM', 'AAA-111', 8000, 5000, 4000, 62.5, now() + interval '4 hours')")
+                .setParameter(1, suggestion).setParameter(2, java.util.UUID.fromString(carrierA.orgId()))
+                .setParameter(3, java.util.UUID.fromString(vehicleA)).executeUpdate());
+        String smart = "SELECT count(*) FROM smart_load_suggestions WHERE id = '" + suggestion + "'";
+        assertEquals(1, countAs(carrierA, "CARRIER", smart));
+        assertEquals(0, countAs(carrierB, "CARRIER", smart));
+        assertEquals(0, countAs(pymeA, "PYME", smart));
+        assertEquals(1, countAs(op, "OPERATOR", smart));
+        assertEquals(0, executeAs(carrierB, "CARRIER", "UPDATE smart_load_suggestions SET status = 'ACCEPTED' WHERE id = '"
+                + suggestion + "'"));
+    }
+
     private static String rootMessage(Throwable t) {
         while (t.getCause() != null) t = t.getCause();
         return String.valueOf(t.getMessage());

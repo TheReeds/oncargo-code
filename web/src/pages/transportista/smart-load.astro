@@ -1,0 +1,19 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import SmartLoadList from '@/features/trips/components/SmartLoadList';
+import { listSmartLoads, type SmartLoadView } from '@/features/trips/server';
+let items: SmartLoadView[] = [];
+let loadError: string | null = null;
+try {
+  items = await listSmartLoads(Astro.locals.session!.token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar las sugerencias.';
+}
+---
+<AppShell title="Sugerencias Smart Load" active="smart-load" wide>
+  <PageHeader title="Sugerencias Smart Load" subtitle="Combinamos cargas compatibles para que llenes un vehículo y ganes más por salida." />
+  {loadError && <Alert tone="error" title="No pudimos cargar las sugerencias" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {!loadError && <SmartLoadList client:load items={items} />}
+</AppShell>

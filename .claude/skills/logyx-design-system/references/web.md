@@ -99,3 +99,10 @@ Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los p
 - Chat reutilizable: `features/negotiation/components/ChatPanel` (`readOnly`, polling). Errores de contacto (RN07) inline bajo el campo.
 - Evita respuestas obsoletas en islas con polling/filtros: contador `useRef` y descarta la respuesta si cambió (ver `NotificationsList`).
 - `role="log"` va en un `div` que contiene el `ul` (axe `listitem`). El tono rojo de `Badge` usa un rojo más oscuro para AA.
+
+## Fase 4 (viajes, reservas, retornos, Smart Load)
+- `time-select` (`TimeSelect`, `timeOptions`): hora 24 h cada 30 min (`'HH:mm'`) junto a `DatePicker`; para armar `departureAt` usa `${fecha}T${hora}:00-05:00`.
+- `domain/CapacityBar`: ocupación `used/total` en kg, `role="meter"` con nombre (`label`); ámbar desde 90 %.
+- `StatusPill kind="trip" | "booking" | "smart"` (TripStatus, BookingStatus, SmartLoadStatus); sus claves chocan con las de incidencias/envíos, por eso requieren `kind`.
+- Precio de reserva: `estimateBookingPrice` y `formatTripRate` en `lib/format.ts` (misma regla que el backend).
+- Patrón: `features/trips/*`; la carga de retorno reutiliza `BidSheet` (prop `defaultVehicleId`; solo preselecciona si el vehículo está disponible).

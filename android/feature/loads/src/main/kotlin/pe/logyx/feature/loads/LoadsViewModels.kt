@@ -35,6 +35,7 @@ import pe.logyx.core.model.MarketplaceFilter
 import pe.logyx.core.model.MarketplaceSort
 import pe.logyx.core.model.GeoPoint
 import pe.logyx.core.model.RequestView
+import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.VehicleView
 import pe.logyx.core.model.canCarry
@@ -60,6 +61,12 @@ data class CarrierHomeUiState(
     val vehicles: List<VehicleView> = emptyList(),
     val activeShipments: Int? = null,
     val deliveredThisMonth: Int? = null,
+    // Fase 4: viajes publicados, Smart Load y cargas de retorno (null = el API no los envió)
+    val openTrips: Int? = null,
+    val pendingTripBookings: Int? = null,
+    val pendingSmartLoads: Int? = null,
+    val returnLoadCount: Int? = null,
+    val topReturnLoads: List<ReturnLoadHintView> = emptyList(),
 )
 
 class CarrierHomeViewModel(
@@ -98,6 +105,11 @@ class CarrierHomeViewModel(
                             pendingBids = summary?.pendingBids ?: myBids.count { r -> r.myBid?.status == BidStatus.PENDING },
                             activeShipments = summary?.activeShipments,
                             deliveredThisMonth = summary?.deliveredThisMonth,
+                            openTrips = summary?.openTrips,
+                            pendingTripBookings = summary?.pendingTripBookings,
+                            pendingSmartLoads = summary?.pendingSmartLoads,
+                            returnLoadCount = summary?.returnLoads,
+                            topReturnLoads = summary?.topReturnLoads.orEmpty(),
                             totalBids = myBids.size,
                             activeShipment = active,
                             vehicles = vehicles,

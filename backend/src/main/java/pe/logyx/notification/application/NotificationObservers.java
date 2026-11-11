@@ -23,6 +23,7 @@ import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shipment.application.event.ShipmentStatusChanged;
 import pe.logyx.shipment.domain.model.Shipment;
+import pe.logyx.trip.application.event.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,6 +131,63 @@ public class NotificationObservers {
         publisher.publish(List.of(Notification.to(e.reviewedOrgId(), NotificationType.NEW_REVIEW, "Nueva calificación",
                 e.reviewerName() + " te calificó con " + e.rating().stripTrailingZeros().toPlainString()
                         + " de 5.", NotificationTarget.SHIPMENT, e.shipmentId())));
+    }
+
+    // ----- Viajes publicados y reservas (módulo trip)
+
+    void onTripBookingRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingRequested e) {
+        publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.TRIP_BOOKING_REQUESTED,
+                "Nueva reserva en tu viaje", e.requesterName() + " pidió reservar " + kg(e.weightKg()) + " kg en tu viaje "
+                        + e.route() + " por " + Money.soles(e.price()) + ". Confírmala o recházala.",
+                NotificationTarget.TRIP, e.tripId())));
+    }
+
+    void onTripBookingConfirmed(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingConfirmed e) {
+        publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.TRIP_BOOKING_CONFIRMED,
+                "Reserva confirmada", e.carrierName() + " confirmó tu reserva en el viaje " + e.route() + " por "
+                        + Money.soles(e.price()) + ". Ya puedes seguir tu envío.",
+                NotificationTarget.SHIPMENT, e.shipmentId())));
+    }
+
+    void onTripBookingRejected(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingRejected e) {
+        publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.TRIP_BOOKING_REJECTED,
+                "Reserva rechazada", e.carrierName() + " no pudo aceptar tu reserva en el viaje " + e.route()
+                        + (e.reason() == null ? "." : ": " + e.reason() + "."),
+                NotificationTarget.TRIP, e.tripId())));
+    }
+
+    void onTripBookingCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingCancelled e) {
+        publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.TRIP_BOOKING_CANCELLED,
+                "Reserva cancelada", e.requesterName() + " canceló su reserva en tu viaje " + e.route()
+                        + (e.wasConfirmed() ? ". El espacio vuelve a estar disponible." : "."),
+                NotificationTarget.TRIP, e.tripId())));
+    }
+
+    void onTripCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripCancelled e) {
+        publisher.publish(e.affected().stream().map(a -> Notification.to(a.requesterOrgId(),
+                NotificationType.TRIP_CANCELLED, "Viaje cancelado", e.carrierName() + " canceló el viaje " + e.route()
+                        + ". Tu reserva " + (a.wasConfirmed() ? "confirmada " : "") + "quedó cancelada; busca otro viaje o publica tu carga.",
+                NotificationTarget.TRIP, e.tripId())).toList());
+    }
+
+    void onSmartLoadSuggested(@Observes(during = TransactionPhase.AFTER_SUCCESS) SmartLoadSuggested e) {
+        publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.SMART_LOAD_SUGGESTED,
+                "Nueva carga combinada sugerida", "Combina " + e.itemCount() + " cargas en el vehículo " + e.vehiclePlate()
+                        + ": ocupación " + e.occupancyPct().stripTrailingZeros().toPlainString() + " % e ingreso estimado "
+                        + Money.soles(e.combinedIncome()) + ".",
+                NotificationTarget.SMART_LOAD, e.suggestionId())));
+    }
+
+    void onSmartLoadAccepted(@Observes(during = TransactionPhase.AFTER_SUCCESS) SmartLoadAccepted e) {
+        publisher.publish(e.items().stream().map(i -> Notification.to(i.requesterOrgId(),
+                NotificationType.SMART_LOAD_ACCEPTED, "Tu carga fue agrupada",
+                e.carrierName() + " incluyó tu carga " + i.route() + " en un plan de carga combinada con otras cargas. "
+                        + "Es posible que reciba tu carga con una oferta.",
+                NotificationTarget.REQUEST, i.requestId())).toList());
+    }
+
+    private static String kg(java.math.BigDecimal v) {
+        return v.stripTrailingZeros().toPlainString();
     }
 
     /** Organizaciones operadoras (perfil público orgs_read; en SystemTx porque corre tras el commit). */

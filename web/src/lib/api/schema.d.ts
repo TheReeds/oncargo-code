@@ -1714,6 +1714,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/return-loads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return Loads */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListReturnLoadView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipment-requests": {
         parameters: {
             query?: never;
@@ -2870,6 +2920,853 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/smart-loads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filtra por estado (PENDING, ACCEPTED, REJECTED, EXPIRED). */
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListSmartLoadView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/smart-loads/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListSmartLoadView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/smart-loads/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSmartLoadView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/smart-loads/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSmartLoadView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trip-bookings/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Bookings */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filtra por estado (PENDING, CONFIRMED, REJECTED, CANCELLED). */
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTripBookingView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trip-bookings/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Booking */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripBookingView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trip-bookings/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripBookingView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trip-bookings/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RejectTripBookingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripBookingView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Código de ciudad de destino (p. ej. JULIACA). */
+                    destinationCity?: string;
+                    /** @description Salida desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    fromDate?: string;
+                    /** @description Capacidad restante mínima en kg. */
+                    minWeightKg?: number;
+                    /** @description Código de ciudad de origen (p. ej. LIMA). */
+                    originCity?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Salida hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTripView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Publish */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTripRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mine */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Página 0-based. Si se omite page y size, se devuelven todos. */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTripView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/{id}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trip Bookings */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTripBookingView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Book */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTripBookingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripBookingView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTripView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles": {
         parameters: {
             query?: never;
@@ -3113,12 +4010,28 @@ export interface components {
             data?: components["schemas"]["RequestView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListReturnLoadView: {
+            data?: components["schemas"]["ReturnLoadView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListReviewView: {
             data?: components["schemas"]["ReviewView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListShipmentView: {
             data?: components["schemas"]["ShipmentView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListSmartLoadView: {
+            data?: components["schemas"]["SmartLoadView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListTripBookingView: {
+            data?: components["schemas"]["TripBookingView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListTripView: {
+            data?: components["schemas"]["TripView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListVehicleView: {
@@ -3175,6 +4088,18 @@ export interface components {
         };
         ApiResponseShipmentView: {
             data?: components["schemas"]["ShipmentView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseSmartLoadView: {
+            data?: components["schemas"]["SmartLoadView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseTripBookingView: {
+            data?: components["schemas"]["TripBookingView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseTripView: {
+            data?: components["schemas"]["TripView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseUnreadCount: {
@@ -3234,6 +4159,8 @@ export interface components {
             carrierTrustScore?: number;
             assignedByOperator?: boolean;
         };
+        /** @enum {string} */
+        BookingStatus: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
         CargoItem: {
             code?: string;
             name?: string;
@@ -3294,6 +4221,23 @@ export interface components {
             volumeM3?: number;
             pickupDate: components["schemas"]["LocalDate"];
         };
+        CreateTripBookingRequest: {
+            weightKg: number;
+            cargoDescription: string;
+            cargoType: components["schemas"]["CargoType"];
+            pickupAddress: string;
+            deliveryAddress: string;
+        };
+        CreateTripRequest: {
+            originCity: string;
+            destinationCity: string;
+            departureAt: components["schemas"]["OffsetDateTime"];
+            vehicleId: components["schemas"]["UUID"];
+            capacityKg: number;
+            pricingMode: components["schemas"]["TripPricingMode"];
+            rate: number;
+            notes?: string;
+        };
         DashboardSummaryView: {
             role?: components["schemas"]["OrgType"];
             /** Format: int64 */
@@ -3310,6 +4254,17 @@ export interface components {
             activeShipments?: number;
             /** Format: int64 */
             deliveredThisMonth?: number;
+            /** Format: int64 */
+            openTrips?: number;
+            /** Format: int64 */
+            pendingTripBookings?: number;
+            /** Format: int64 */
+            pendingSmartLoads?: number;
+            /** Format: int64 */
+            returnLoads?: number;
+            topReturnLoads?: components["schemas"]["ReturnLoadHintView"][];
+            /** Format: int64 */
+            activeTripBookings?: number;
         };
         /** @enum {string} */
         DocumentType: "SERVICE_ORDER" | "REMISSION_GUIDE" | "RECEIPT" | "DELIVERY_PHOTO" | "SIGNATURE" | "OTHER";
@@ -3440,9 +4395,9 @@ export interface components {
             nextCursor?: string;
         };
         /** @enum {string} */
-        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW";
+        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD";
         /** @enum {string} */
-        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW";
+        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED";
         NotificationView: {
             id?: components["schemas"]["UUID"];
             type?: components["schemas"]["NotificationType"];
@@ -3538,6 +4493,9 @@ export interface components {
             password: string;
             acceptPrivacyPolicy?: boolean;
         };
+        RejectTripBookingRequest: {
+            reason?: string;
+        };
         ReportIncident: {
             category: components["schemas"]["IncidentCategory"];
             description: string;
@@ -3583,6 +4541,45 @@ export interface components {
             requesterRucVerified?: boolean;
             minVehicleType?: components["schemas"]["Type"];
             requesterTrustScore?: number;
+        };
+        ReturnLoadHintView: {
+            requestId?: components["schemas"]["UUID"];
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            weightKg?: number;
+            pickupDate?: components["schemas"]["LocalDate"];
+            suggestedPrice?: number;
+            /** Format: double */
+            distanceKm?: number;
+            /** Format: int32 */
+            matchScore?: number;
+        };
+        ReturnLoadView: {
+            requestId?: components["schemas"]["UUID"];
+            requesterOrgId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            shipmentId?: components["schemas"]["UUID"];
+            vehicleId?: components["schemas"]["UUID"];
+            vehiclePlate?: string;
+            fromCity?: components["schemas"]["City"];
+            shipmentDelivered?: boolean;
+            originCity?: components["schemas"]["City"];
+            originAddress?: string;
+            destinationCity?: components["schemas"]["City"];
+            destinationAddress?: string;
+            cargoType?: components["schemas"]["CargoType"];
+            cargoDescription?: string;
+            weightKg?: number;
+            pickupDate?: components["schemas"]["LocalDate"];
+            suggestedPrice?: number;
+            priceFloor?: number;
+            /** Format: double */
+            distanceKm?: number;
+            /** Format: int32 */
+            waitDays?: number;
+            /** Format: int32 */
+            matchScore?: number;
+            alreadyBid?: boolean;
         };
         /** @enum {string} */
         ReviewDirection: "PYME_TO_CARRIER" | "CARRIER_TO_PYME";
@@ -3649,6 +4646,41 @@ export interface components {
             auctionStatus?: components["schemas"]["Status4"];
             auctionClosesAt?: components["schemas"]["OffsetDateTime"];
         };
+        SmartLoadItemView: {
+            requestId?: components["schemas"]["UUID"];
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            weightKg?: number;
+            income?: number;
+            pickupDate?: components["schemas"]["LocalDate"];
+            /** Format: int32 */
+            pickupOrder?: number;
+            /** Format: int32 */
+            deliveryOrder?: number;
+        };
+        /** @enum {string} */
+        SmartLoadStatus: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+        SmartLoadStopView: {
+            type?: components["schemas"]["StopType"];
+            city?: components["schemas"]["City"];
+            requestId?: components["schemas"]["UUID"];
+        };
+        SmartLoadView: {
+            id?: components["schemas"]["UUID"];
+            vehicleId?: components["schemas"]["UUID"];
+            vehicleType?: components["schemas"]["Type"];
+            vehiclePlate?: string;
+            capacityKg?: number;
+            totalWeightKg?: number;
+            combinedIncome?: number;
+            occupancyPct?: number;
+            status?: components["schemas"]["SmartLoadStatus"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            expiresAt?: components["schemas"]["OffsetDateTime"];
+            decidedAt?: components["schemas"]["OffsetDateTime"];
+            items?: components["schemas"]["SmartLoadItemView"][];
+            route?: components["schemas"]["SmartLoadStopView"][];
+        };
         /** @enum {string} */
         Status: "AVAILABLE" | "IN_ROUTE" | "MAINTENANCE";
         /** @enum {string} */
@@ -3666,6 +4698,8 @@ export interface components {
         StatusChange: {
             status: components["schemas"]["Status"];
         };
+        /** @enum {string} */
+        StopType: "PICKUP" | "DELIVERY";
         StopView: {
             id?: components["schemas"]["UUID"];
             /** Format: int32 */
@@ -3685,6 +4719,57 @@ export interface components {
             /** Format: int32 */
             communication: number;
             comment?: string;
+        };
+        TripBookingView: {
+            id?: components["schemas"]["UUID"];
+            tripId?: components["schemas"]["UUID"];
+            status?: components["schemas"]["BookingStatus"];
+            requesterOrgId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            departureAt?: components["schemas"]["OffsetDateTime"];
+            weightKg?: number;
+            cargoType?: components["schemas"]["CargoType"];
+            cargoDescription?: string;
+            pickupAddress?: string;
+            deliveryAddress?: string;
+            price?: number;
+            decisionNote?: string;
+            requestId?: components["schemas"]["UUID"];
+            shipmentId?: components["schemas"]["UUID"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            decidedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        /** @enum {string} */
+        TripPricingMode: "PER_KG" | "PER_TRIP";
+        /** @enum {string} */
+        TripStatus: "OPEN" | "FILLING" | "CLOSED" | "COMPLETED" | "CANCELLED";
+        TripView: {
+            id?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            carrierTrustScore?: number;
+            vehicleId?: components["schemas"]["UUID"];
+            vehicleType?: components["schemas"]["Type"];
+            vehiclePlate?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            departureAt?: components["schemas"]["OffsetDateTime"];
+            capacityKg?: number;
+            confirmedWeightKg?: number;
+            remainingKg?: number;
+            pricingMode?: components["schemas"]["TripPricingMode"];
+            rate?: number;
+            notes?: string;
+            status?: components["schemas"]["TripStatus"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int64 */
+            pendingBookings?: number;
+            /** Format: int64 */
+            confirmedBookings?: number;
         };
         /** @enum {string} */
         Type: "VAN" | "TRUCK_SMALL" | "TRUCK_MEDIUM" | "TRUCK_LARGE" | "PLATFORM" | "REFRIGERATED" | "TANKER";

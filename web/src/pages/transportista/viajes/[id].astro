@@ -1,0 +1,26 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import TripDetail from '@/features/trips/components/TripDetail';
+import { getTrip, listTripBookings } from '@/features/trips/server';
+import { ApiError } from '@/lib/api/client';
+import { CITY_LABELS } from '@/lib/format';
+const token = Astro.locals.session!.token;
+const { id } = Astro.params;
+let trip, bookings;
+let loadError: string | null = null;
+try {
+  [trip, bookings] = await Promise.all([getTrip(token, id!), listTripBookings(token, id!)]);
+} catch (e) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return Astro.redirect('/transportista/viajes');
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar el viaje.';
+}
+---
+<AppShell title="Detalle del viaje" active="viajes">
+  <PageHeader title={trip ? `Viaje ${CITY_LABELS[trip.originCity!]} → ${CITY_LABELS[trip.destinationCity!]}` : 'Detalle del viaje'} subtitle="Confirma o rechaza las reservas y controla la ocupación.">
+    <a slot="actions" href="/transportista/viajes" class="inline-flex h-10 items-center rounded-input border border-steel-200 bg-surface px-4 text-sm font-medium text-ink-900 hover:bg-steel-100">Volver a viajes</a>
+  </PageHeader>
+  {loadError && <Alert tone="error" title="No pudimos cargar el viaje">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {trip && <TripDetail client:load trip={trip} bookings={bookings ?? []} />}
+</AppShell>

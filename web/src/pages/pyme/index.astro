@@ -11,7 +11,7 @@ import { pymeDashboard } from '@/features/dashboard/server';
 import { getCatalog } from '@/features/catalog/server';
 import { formatDate, formatMoney } from '@/lib/format';
 import { TriangleAlert, Plus } from '@lucide/astro';
-import { FileText, Gavel, Truck, PackageCheck } from 'lucide-react';
+import { FileText, Gavel, Truck, PackageCheck, BookmarkCheck } from 'lucide-react';
 
 const { session } = Astro.locals;
 const [d, { cities }] = await Promise.all([pymeDashboard(session!.token), getCatalog()]);
@@ -27,6 +27,14 @@ const k = d.kpis;
     <KpiTile label="Ofertas por revisar" value={k.offersToReview} context={`en ${k.requestsWithBids} solicitud${k.requestsWithBids === 1 ? '' : 'es'}`} icon={Gavel} href="/pyme/solicitudes" />
     <KpiTile label="Envíos en tránsito" value={k.inTransit} context={`${k.toPickup} por recoger`} icon={Truck} href="/pyme/envios" />
     <KpiTile label="Entregados del mes" value={k.deliveredMonth} context="este mes" icon={PackageCheck} href="/pyme/envios" />
+  </div>
+
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <KpiTile label="Reservas activas" value={k.activeTripBookings} context={k.activeTripBookings ? 'en viajes de transportistas' : 'Reserva espacio en un viaje'} icon={BookmarkCheck} href="/pyme/reservas" />
+    <a href="/pyme/viajes" class="flex items-center justify-between gap-3 rounded-card border border-steel-200 bg-surface p-4 text-sm transition-colors hover:border-petrol-700/40 sm:col-span-1 xl:col-span-3">
+      <span><span class="block font-semibold text-ink-900">¿Tu carga es pequeña?</span><span class="text-ink-500">Reserva solo el espacio que necesitas en un viaje que ya sale hacia tu destino.</span></span>
+      <span class="shrink-0 font-medium text-petrol-700">Buscar viajes</span>
+    </a>
   </div>
 
   <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">

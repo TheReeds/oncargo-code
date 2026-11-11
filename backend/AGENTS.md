@@ -64,10 +64,12 @@ sobre los objetos de dominio.
 | `incident` | incidencias, comentarios y estados (RN11) | `incidents`, `incident_comments` (V7) |
 | `notification` | centro de notificaciones alimentado por eventos | `notifications` (V8) |
 | `operator` | alertas SLA, métricas, candidatos y asignación manual (RN10); sin tablas propias | políticas de escritura (V9) |
+| `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
 `reputation → shipment, documents`; `incident → shipment`; `marketplace → reputation` (Trust Score en ofertas);
-`operator → marketplace, shipment, incident, fleet, reputation`. `shipment` no depende de ellos: usa los puertos
+`operator → marketplace, shipment, incident, fleet, reputation`; `trip → fleet, marketplace, shipment, identity, reputation, catalog`;
+`dashboard → trip`; `notification` observa eventos de `trip`. `marketplace` y `shipment` no dependen de `trip`. `shipment` no depende de ellos: usa los puertos
 `IncidentHoldProvider` (RN11) y `DeliveryEvidenceProvider` (foto de entrega), implementados en
 `shipment/infrastructure/integration` (igual que `RequestInfoProvider`).
 
@@ -81,6 +83,11 @@ Consumidores con `@Observes(during = TransactionPhase.AFTER_SUCCESS)` (solo lo c
 | `ShipmentStatusChanged` | `TrackStopsUseCase` (IN_TRANSIT, DELIVERED) | notification |
 | `IncidentReported`, `IncidentStatusChanged` | `IncidentService` | notification |
 | `ReviewSubmitted` | `ReviewService` | notification, `ReputationRecalculator` |
+| `TripBookingRequested`, `TripBookingCancelled` | `BookingService.book` / `cancelByRequester` | notification (al transportista) |
+| `TripBookingConfirmed`, `TripBookingRejected` | `BookingService.confirm/reject`, `BookingSweeper` (viaje cerrado/lleno/salió) | notification (a la PYME) |
+| `TripCancelled` | `TripService.cancel` | notification (a cada PYME con reserva activa) |
+| `SmartLoadSuggested` | `SmartLoadService.generate*` (a demanda y job) | notification (al transportista) |
+| `SmartLoadAccepted` | `SmartLoadService.accept` | notification (a cada PYME agrupada, RF33) |
 Para un aviso nuevo: agrega el record al módulo que publica, dispara el evento y un método observer en
 `NotificationObservers` (los textos van ahí, en español). El evento debe traer los datos que el aviso necesita.
 
@@ -96,7 +103,37 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 (RN01) · `StopSequencePolicy` (RN08, shipment) · `RucValidator` (identity) · `ContactInfoPolicy` (RN07, negotiation)
 · `ThreadAccessPolicy` (chat) · `ReviewEligibilityPolicy` (RN06) y `TrustScoreCalculator` (RN09, reputation)
 · `ManualAssignmentPolicy` (RN10, marketplace) · `IncidentStatusPolicy` (RN11, incident) · `DeliveryEvidencePolicy`
-(shipment) · `DocumentUploadPolicy` (documents). Ver `../docs/domain/business-rules.md`.
+(shipment) · `DocumentUploadPolicy` (documents) · `TripCapacityPolicy` (RN12), `TripPricingPolicy`, `TripStatusPolicy`,
+`ReturnLoadPolicy`, `SmartLoadPlanner`, `CityProximityPolicy`, `VehicleCargoRules` (trip). Ver `../docs/domain/business-rules.md`.
+
+### Módulo `trip` (fase 4)
+- **Viajes** (`CarrierTrip`, `TripService`): el transportista publica ciudad origen/destino del corredor, salida futura, vehículo
+  propio, `capacityKg` (RN12 ≤ capacidad del vehículo), `pricingMode` (`TripPricingMode`: `PER_KG` | `PER_TRIP`) y `rate`.
+  Estados `TripStatus` (`TripStatusPolicy`): OPEN → FILLING (1.ª reserva **confirmada**) → CLOSED (lleno, cierre manual o ya salió)
+  → COMPLETED (+24 h); CANCELLED. `confirmed_weight_kg` está denormalizado en `carrier_trips` para que la PYME vea la capacidad
+  restante sin leer reservas ajenas.
+- **Precio de reserva** (`TripPricingPolicy`): `PER_KG` → `tarifa × kg`; `PER_TRIP` → `tarifa × kg / capacidadPublicada`;
+  2 decimales HALF_UP, mínimo S/ 1.00.
+- **Reservas** (`TripBooking`, `BookingService`): PYME reserva (PENDING; no descuenta), transportista confirma (valida RN12 de nuevo,
+  descuenta, genera envío) o rechaza; la PYME cancela. Al cerrarse/llenarse/salir el viaje, `BookingSweeper` rechaza las pendientes.
+- **Qué pasa en shipment al confirmar:** `shipments.request_id`/`bid_id` son obligatorios, así que `marketplace/application/
+  DirectContractUseCase` crea una solicitud `MATCHED` (a nombre de la PYME), su subasta cerrada (`ACCEPTED`) y una oferta `ACCEPTED`
+  por el precio de la reserva, y llama a `CreateShipmentUseCase.createFromAcceptedBid` (paradas recojo/entrega con las direcciones de
+  la reserva). Todo en un `SystemTx` (ver abajo). `trip_bookings.request_id`/`shipment_id` quedan `NULL` hasta confirmar.
+  Cancelar una reserva confirmada cancela el envío con `shipment/application/CancelShipmentUseCase` (solo `PENDING`, si no
+  `LOGYX-SHP-003`); la solicitud MATCHED queda como histórico (no se reabre).
+- **Retornos** (`ReturnLoadService` + `ReturnLoadPolicy`): sin tablas; cruza los envíos IN_TRANSIT/DELIVERED (≤ 3 días) del transportista
+  con `MarketplaceQueries.openRequests`. Proximidad en `CityProximityPolicy` (tabla de pares cercanos del corredor; hoy solo
+  Juliaca–Puno = 44 km; el resto = línea recta × 1.35). Radios: retorno 50 km, Smart origen 50 km, destino 80 km.
+- **Smart Load** (`SmartLoadPlanner` puro + `SmartLoadService`): ver `docs/api/CHANGELOG.md`. A demanda corre bajo RLS del
+  transportista; el job `TripScheduler` (`logyx.smartload.every`, 15 m; `%test` = `off`) corre sin usuario y recorre todos los
+  transportistas (`FleetService.availableVehicles`, `MarketplaceQueries.openRequestsForPlanning`). **Aceptar solo marca la sugerencia
+  y notifica a las PYMEs; no adjudica ni oferta** (la subasta inversa sigue mandando). Se persiste en `smart_load_suggestions` +
+  `smart_load_items` (en vez de `uuid[]` + `jsonb` del modelo: la ruta se deriva de los ítems). `logyx.smartload.ttl` = PT4H.
+- Mantenimiento (`TripMaintenanceUseCase`, `logyx.trip.maintenance.every`, 5 m): cierra viajes que ya salieron, completa los de hace
+  > 24 h y vence sugerencias.
+- Pendientes: notificar cargas de retorno por evento al entregar (hoy solo endpoint + dashboard), `volume_m3`, paradas intermedias del viaje,
+  reabrir la solicitud MATCHED al cancelar la reserva, `Vehicle` sin estado "verificado".
 
 ## Agregar un módulo nuevo (checklist)
 1. **Dominio** `pe/logyx/<m>/domain/model/*` (clases con comportamiento, ids UUID) y `<Regla>Policy` por cada RN.
@@ -135,12 +172,20 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   - `ReputationRecalculator.recalculate`: quien califica actualiza la reputación de otra organización;
     `reputation_scores` es de solo lectura para `logyx_app`.
   - `NotificationObservers.operators`: ids de las organizaciones operadoras (corre tras el commit).
+  - `DirectContractUseCase.create` (marketplace): al confirmar una reserva de viaje, el transportista debe escribir la solicitud
+    (de la PYME, `requests_owner`) y la oferta (suya) a la vez; ninguna transacción de usuario puede con ambas bajo RLS.
+  - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
+    la fila y se resta el peso de esa reserva.
+  - El job de `trip` (`TripScheduler`) no usa `SystemTx`: sin JWT corre como dueño del esquema.
 - El operador **no** usa `SystemTx`: lee con las políticas `*_operator` (V2, V4–V7) y la asignación manual escribe
   con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.).
 - RLS por tabla nueva: `messages`/`counter_offers`/`documents`/`incidents`/`incident_comments` → las dos partes
   (`requester_org_id`, `carrier_org_id` denormalizados) + lectura del operador; `reviews`/`reputation_scores` →
   lectura pública (RF44); `notifications` → solo la propia organización. Historial, evidencia y calificaciones no
   admiten UPDATE/DELETE de usuarios. Casos en `RowLevelSecurityTest`.
+- `trip`: `carrier_trips` → dueño (solo `CARRIER`), PYMEs leen los OPEN/FILLING y los que reservaron, operador lee; `trip_bookings` →
+  las dos partes leen/actualizan, solo la PYME (`PYME`) inserta, operador lee, sin DELETE; `smart_load_*` → solo el transportista
+  dueño (+ lectura del operador, RF59).
 - La transacción de `SystemTx` no ve lo no confirmado de la transacción externa (ver comentario en `PlaceBidUseCase`).
 
 ## Códigos de error
@@ -164,6 +209,8 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
 | INC | `001` ya hay activa, `002` transición inválida (`status`), `003` faltan notas (`resolutionNotes`), `004` cerrada, `005` envío cancelado |
 | OPS | `001` SLA no vencido (RN10), `002` no es transportista (`carrierOrgId`) |
+| TRP | `001` capacidad > vehículo (RN12, `capacityKg`), `002` salida no futura (`departureAt`), `003` viaje sin reservas, `004` peso > restante (`weightKg`), `005` transición de viaje inválida, `006` reserva ya resuelta, `007` viaje con envíos ya salidos, `008` sugerencia ya resuelta, `009` sugerencia vencida, `010` carga no compatible con el vehículo (`cargoType`), `011` carga de la sugerencia ya no disponible |
+| SHP (nuevo) | `003` solo se cancela un envío que aún no salió |
 `BusinessException` admite `field` (`badRequest/conflict(code, msg, field)`) para que los clientes marquen el campo:
 RUC inválido/duplicado → `ruc`, email repetido → `email`, placa repetida → `plate`, BID-001 → `amount`,
 CAP-001/002 → `vehicleId`. Montos en mensajes: `shared.domain.Money.soles(...)` → `S/ 1,850.00`.
@@ -188,12 +235,18 @@ Contraseña de todas: `Logyx2026!`.
 | `carrier2@logyx.pe` | CARRIER (ADMIN) | Logística Titicaca EIRL — RUC 20603456786 · LTT-401 (TRUCK_SMALL), LTT-502 (PLATFORM) |
 | `operator@logyx.pe` | OPERATOR (ADMIN) | LOGYX Operaciones SAC — RUC 20604567891 (creada con `AuthService.provisionOperator`; no hay registro público de operadores) |
 
-Datos: 8 solicitudes en el corredor (Lima, Arequipa, Juliaca, Puno, Cusco, Tacna), 6 ofertas; la de Lima → Juliaca
+Datos: 11 solicitudes en el corredor (Lima, Arequipa, Juliaca, Puno, Cusco, Tacna), 6 ofertas; la de Lima → Juliaca
 está adjudicada a Sur Andino, con `driver@logyx.pe` asignado y el recojo completado (envío `IN_TRANSIT`, ASA-101
 `IN_ROUTE`). Fase 2: envío Arequipa → Juliaca **entregado** con foto, firma y guía de remisión, calificado en ambas
 direcciones (Trust Score de Sur Andino 77.8) y con una incidencia `CARGO_DAMAGE` abierta comentada; chat en
 Arequipa → Puno (lácteos) y pregunta de Titicaca en Lima → Cusco; contra-oferta aceptada (Tacna → Arequipa) y otra
 pendiente (quinua Juliaca → Lima); Puno → Tacna y Lima → Arequipa con `created_at` retrocedido 30/27 h (alertas
 SLA asignables por el operador); notificaciones generadas por todos esos eventos. Los archivos van a
-`logyx.documents.storage-dir`. En dev `logyx.auction.duration=PT72H` para que las subastas sigan abiertas. Dev Services recrea la BD
+`logyx.documents.storage-dir`. Fase 4: 3 solicitudes nuevas (Juliaca → Arequipa lana 3 500 kg, +1 día = carga de retorno; Lima → Juliaca 7 500 kg y Lima → Puno
+6 000 kg, +3 días, combinables); 4 viajes publicados (Sur Andino: Lima → Juliaca ASA-202 12 000 kg S/ 0.48/kg y Arequipa → Cusco ASA-101
+6 000 kg tarifa por tramo S/ 3 200; Titicaca: Puno → Lima LTT-502 12 000 kg y Juliaca → Arequipa LTT-401 3 500 kg S/ 0.60/kg);
+2 reservas de `pyme@logyx.pe` (2 500 kg en el viaje de Sur Andino, **pendiente**; 1 200 kg en el de Titicaca, **confirmada** con envío
+generado → viaje en `FILLING`); 1 sugerencia Smart Load `PENDING` para `carrier@logyx.pe` (ASA-202 con las dos cargas desde Lima, 67.5 %);
+`carrier@logyx.pe` ve 3 cargas de retorno (Juliaca → Arequipa, Juliaca → Lima quinua y Puno → Tacna) en `/return-loads` y en el dashboard.
+En dev `logyx.auction.duration=PT72H` para que las subastas sigan abiertas. Dev Services recrea la BD
 en cada arranque, así que el seed corre cada vez.

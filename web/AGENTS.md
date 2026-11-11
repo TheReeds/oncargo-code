@@ -97,5 +97,11 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - Enlaces de notificaciones: `lib/notification-links.ts`. Operador: `/operador/*` solo OPERATOR (middleware), `homeFor` → `/operador`.
 - e2e: specs por módulo (`negotiation`, `reputation`, `documents`, `incidents`, `notifications`, `operator`, `a11y-*`); helpers `openBidScenario`, `deliveredShipment` (envío entregado vía API), `operatorToken`. Backend de pruebas: `MAVEN_OPTS=-Xmx512m ./mvnw quarkus:dev -Dquarkus.http.port=8180 -Dlogyx.operator.sla=PT0S` (SLA 0 para poder asignar manualmente; con 24 h ese test se salta). Si `astro dev` ya tiene lock, levanta uno con `--ignore-lock` y usa `E2E_BASE_URL`. Usa `--workers=1`.
 
+## Módulos fase 4 (viajes)
+- `features/trips/` (server, actions, components): publicar viaje, detalle con reservas, retornos, Smart Load, buscar viajes (PYME), mis reservas. Rutas: `/transportista/{index,viajes,viajes/nuevo,viajes/[id],retornos,smart-load}`, `/pyme/{viajes,reservas}`.
+- Componentes nuevos compartidos: `ui/time-select`, `domain/CapacityBar`, `StatusPill kind=trip|booking|smart` (ver `references/web.md`). Notificaciones: `TRIP` y `SMART_LOAD` en `lib/notification-links.ts`.
+- El login del transportista sigue yendo a `/transportista/marketplace`; `/transportista` es "Tu actividad".
+- e2e: `trips.spec.ts`, `a11y-trips.spec.ts` (helpers `tripScenario`, `publishTrip`, `bookTrip`); las capturas de retornos dependen de los datos demo (carrier@logyx.pe).
+
 ## Pendientes conocidos
 Modo oscuro, tiempo real (hoy polling), polling de tracking, vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

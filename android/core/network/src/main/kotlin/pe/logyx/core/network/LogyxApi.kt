@@ -24,6 +24,16 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.client.statement.readRawBytes
 import pe.logyx.core.model.AcceptResult
+import pe.logyx.core.model.BookingStatus
+import pe.logyx.core.model.CreateTripBookingRequest
+import pe.logyx.core.model.CreateTripRequest
+import pe.logyx.core.model.RejectBookingRequest
+import pe.logyx.core.model.ReturnLoadView
+import pe.logyx.core.model.SmartLoadStatus
+import pe.logyx.core.model.SmartLoadView
+import pe.logyx.core.model.TripBookingView
+import pe.logyx.core.model.TripFilter
+import pe.logyx.core.model.TripView
 import pe.logyx.core.model.AddCommentRequest
 import pe.logyx.core.model.ChatThreadView
 import pe.logyx.core.model.CounterOfferView
@@ -258,6 +268,47 @@ class LogyxApi(
     suspend fun unreadCount(): UnreadCount = get("api/v1/notifications/unread-count")
     suspend fun markNotificationRead(id: String): NotificationView = post("api/v1/notifications/$id/read")
     suspend fun markAllNotificationsRead(): MarkedRead = post("api/v1/notifications/read-all")
+
+    // --- Viajes publicados (fase 4) ---
+    suspend fun createTrip(body: CreateTripRequest): TripView = post("api/v1/trips", body)
+    suspend fun myTrips(): List<TripView> = get("api/v1/trips/mine")
+    suspend fun trip(id: String): TripView = get("api/v1/trips/$id")
+    suspend fun closeTrip(id: String): TripView = post("api/v1/trips/$id/close")
+    suspend fun cancelTrip(id: String): TripView = post("api/v1/trips/$id/cancel")
+    suspend fun tripBookings(tripId: String): List<TripBookingView> = get("api/v1/trips/$tripId/bookings")
+    suspend fun confirmBooking(id: String): TripBookingView = post("api/v1/trip-bookings/$id/confirm")
+    suspend fun rejectBooking(id: String, reason: String?): TripBookingView =
+        post("api/v1/trip-bookings/$id/reject", RejectBookingRequest(reason?.takeIf { it.isNotBlank() }))
+
+    /** Búsqueda de viajes abiertos (PYME) con filtros y paginación en servidor. */
+    suspend fun searchTrips(filter: TripFilter = TripFilter(), page: Int = 0, size: Int = 20): pe.logyx.core.model.Page<TripView> {
+        val env = callEnvelope<List<TripView>> {
+            client.get("api/v1/trips") {
+                filter.originCity?.let { parameter("originCity", it) }
+                filter.destinationCity?.let { parameter("destinationCity", it) }
+                filter.fromDate?.let { parameter("fromDate", it) }
+                filter.toDate?.let { parameter("toDate", it) }
+                filter.minWeightKg?.let { parameter("minWeightKg", it) }
+                parameter("page", page); parameter("size", size)
+            }
+        }
+        return pe.logyx.core.model.Page(env.data, env.meta?.page ?: page, env.meta?.size ?: size, env.meta?.total ?: env.data.size)
+    }
+
+    suspend fun bookTrip(tripId: String, body: CreateTripBookingRequest): TripBookingView = post("api/v1/trips/$tripId/bookings", body)
+    suspend fun myBookings(status: BookingStatus? = null): List<TripBookingView> = call {
+        client.get("api/v1/trip-bookings/mine") { status?.let { parameter("status", it.name) } }
+    }
+    suspend fun cancelBooking(id: String): TripBookingView = post("api/v1/trip-bookings/$id/cancel")
+
+    // --- Cargas de retorno y Smart Load (fase 4) ---
+    suspend fun returnLoads(): List<ReturnLoadView> = get("api/v1/return-loads")
+    suspend fun smartLoads(status: SmartLoadStatus? = null): List<SmartLoadView> = call {
+        client.get("api/v1/smart-loads") { status?.let { parameter("status", it.name) } }
+    }
+    suspend fun generateSmartLoads(): List<SmartLoadView> = post("api/v1/smart-loads/generate")
+    suspend fun acceptSmartLoad(id: String): SmartLoadView = post("api/v1/smart-loads/$id/accept")
+    suspend fun rejectSmartLoad(id: String): SmartLoadView = post("api/v1/smart-loads/$id/reject")
 
     // --- Infraestructura ---
     private suspend inline fun <reified T> get(path: String): T = call { client.get(path) }

@@ -66,6 +66,7 @@ dependencies {
     implementation(project(":feature:notifications"))
     implementation(project(":feature:reputation"))
     implementation(project(":feature:documents"))
+    implementation(project(":feature:trips"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -37,6 +37,7 @@ LogyxButton("Llegué al recojo", onAdvance, size = ButtonSize.Xl, loading = stat
 - **`LogyxDropdown(label, options, selected, onSelected, optionLabel, optionSupporting, onClear)`** — ≤ 8 opciones (tipo de carga, vehículo, conductor).
 - **`LogyxCombobox(label, options, selected, onSelected(T?), optionLabel, clearable, searchPlaceholder)`** — hoja con búsqueda sin tildes; ciudades y listas largas.
 - **`LogyxDateField(label, value: LocalDate?, onValueChange)`** / **`LogyxDateRangeField(label, start, end, onValueChange)`** — campos que abren `LogyxDatePicker` (atajos Hoy / Mañana) y `LogyxDateRangePicker` (Hoy / Próximos 7 días), localizados a es-PE. Usa `LocalDate` en el estado; convierte a ISO al enviar.
+- **`LogyxTimeField(label, value: LocalTime?, onValueChange, hint, error)`** / `LogyxTimePicker` — hora 24 h (es-PE) para salidas; úsalo junto a `LogyxDateField` (fecha + hora se combinan en el ViewModel, hora de Lima).
 - **`LogyxPickerField(label, valueText, onClick, …)`** — base para cualquier selector propio.
 ```kotlin
 LogyxCombobox("Origen", cities, state.origin, vm::onOrigin, { it.name }, clearable = true)
@@ -84,6 +85,7 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - **`TrustScoreBadge(score: Double?, onClick?)`** — Trust Score 0–100 (≥85 esmeralda, ≥70 petróleo, <70 ámbar); en `LoadCard`, comparación de ofertas y perfil. **`StarRating(value, onValueChange?, size)`** (interactivo 44–48 dp o solo lectura) y **`RatingRow(label, average)`**.
 - **`ChatBubble(text, mine, time, sender, system, price, state: BubbleState, onRetry)`** (Sent/Sending/Failed; `system` = aviso centrado de contraoferta) y **`ChatComposer(value, onValueChange, onSend, error, sending)`** (error de RN07 bajo el campo; incluye `imePadding`).
 - **`SignaturePad(state)`** + `rememberSignaturePadState()` (`toPng()`, `clear()`, `isEmpty`) y **`EvidenceTile(caption, image, pdf, status: TileStatus, progress, onClick)`** (miniatura con estado de subida).
+- Etiquetas fase 4: `TripStatus.pill()`, `BookingStatus.pill()`, `SmartLoadStatus.pill()`, `TripPricingMode.label`.
 - Etiquetas: `IncidentCategory.label`, `IncidentStatus.pill()`, `DocumentType.label`, `CounterOfferStatus.pill()`.
 
 ## Textos (español peruano, "tú")

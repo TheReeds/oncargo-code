@@ -1,0 +1,30 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import SearchTrips from '@/features/trips/components/SearchTrips';
+import { searchTrips, type TripView } from '@/features/trips/server';
+import { getCatalog } from '@/features/catalog/server';
+const t = Astro.locals.session!.token;
+const q = Astro.url.searchParams;
+const get = (k: string) => q.get(k) ?? '';
+const filters = { origin: get('origen'), dest: get('destino'), from: get('desde'), to: get('hasta'), minKg: get('peso') };
+const pageNo = Math.max(1, Number(get('pagina')) || 1);
+const { cities } = await getCatalog();
+let result = { items: [] as TripView[], meta: { page: 0, size: 20, total: 0 } };
+let loadError: string | null = null;
+try {
+  result = await searchTrips(t, {
+    originCity: filters.origin || undefined, destinationCity: filters.dest || undefined,
+    fromDate: filters.from || undefined, toDate: (filters.to || filters.from) || undefined,
+    minWeightKg: Number(filters.minKg) > 0 ? Number(filters.minKg) : undefined, page: pageNo - 1, size: 20,
+  });
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar los viajes.';
+}
+---
+<AppShell title="Buscar viajes" active="viajes" wide>
+  <PageHeader title="Buscar viajes" subtitle="Reserva solo el espacio que necesitas en un vehículo que ya sale hacia tu destino." />
+  {loadError && <Alert tone="error" title="No pudimos cargar los viajes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <SearchTrips client:load trips={result.items} cities={cities} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} />
+</AppShell>

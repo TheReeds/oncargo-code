@@ -44,5 +44,7 @@ fun dataModule(baseUrl: String) = module {
     single<NegotiationRepository> { DefaultNegotiationRepository(get()) }
     single<ReputationRepository> { DefaultReputationRepository(get()) }
     single<NotificationsRepository> { DefaultNotificationsRepository(get()) }
+    single<TripsRepository> { DefaultTripsRepository(get()) }
+    single<SmartLoadsRepository> { DefaultSmartLoadsRepository(get()) }
     single<EvidenceRepository> { DefaultEvidenceRepository(get(), java.io.File(androidContext().filesDir, "evidence")) }
 }

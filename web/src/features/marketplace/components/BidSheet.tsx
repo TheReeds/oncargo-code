@@ -16,7 +16,7 @@ import { Countdown } from '@/components/domain/Countdown';
 import { CARGO_LABELS, formatDate, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { RequestView, VehicleView } from '@/lib/api/server';
 
-export default function BidSheet({ request, vehicles, onClose, onAsk }: { request: RequestView | null; vehicles: VehicleView[]; onClose: () => void; onAsk?: (r: RequestView) => void }) {
+export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVehicleId }: { request: RequestView | null; vehicles: VehicleView[]; onClose: () => void; onAsk?: (r: RequestView) => void; defaultVehicleId?: string }) {
   const [vehicleId, setVehicleId] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
@@ -25,7 +25,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk }: { reques
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setVehicleId('');
+    setVehicleId(defaultVehicleId ?? '');
     setAmount('');
     setNotes('');
     setError(null);
@@ -70,7 +70,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk }: { reques
             <RouteLine origin={request.originCity!} destination={request.destinationCity!} km={request.distanceKm} />
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-700">
               <span>{CARGO_LABELS[request.cargoType!]} · <span className="font-mono">{formatTons(request.weightKg)}</span> · recojo {formatDate(request.pickupDate)}</span>
-              <Countdown closesAt={request.auction?.closesAt} />
+              {request.auction?.closesAt && <Countdown closesAt={request.auction.closesAt} />}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-steel-200 pt-3 text-sm">
               <span className="text-ink-700">{request.requesterName ?? 'Solicitante'}</span>

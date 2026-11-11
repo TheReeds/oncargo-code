@@ -41,7 +41,7 @@ reset de sesión `adb shell pm clear pe.logyx.app.debug`. Apagar: `adb emu kill`
 Memoria (máquina de 15 GB): un solo proceso pesado a la vez; `./gradlew --stop` antes de levantar emulador/backend, Gradle con `-Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.daemon.jvmargs=-Xmx1g`, emulador con `-memory 2048`; con poca RAM libre los tests de Compose dan timeout.
 Tests instrumentados (Compose, repositorios fake vía Koin, sin backend; el emulador debe estar encendido; con poca RAM añade `-Dorg.gradle.jvmargs=-Xmx4g`):
 ```bash
-./gradlew connectedDebugAndroidTest      # app/src/androidTest: RoleHomeTest, BidFlowTest, DriverAdvanceTest (con evidencia), ChatTest (RN07)
+./gradlew connectedDebugAndroidTest      # app/src/androidTest: RoleHomeTest, BidFlowTest, DriverAdvanceTest (con evidencia), ChatTest (RN07), TripsFlowTest (PymeBookingFlowTest, CarrierTripBookingsFlowTest; fakes en `FakeTrips.kt`)
 ```
 Capturas de referencia (claro/oscuro): `docs/screenshots/`.
 
@@ -69,6 +69,7 @@ El tráfico HTTP en claro solo se permite en **debug** (`app/src/debug/res/xml/n
 :feature:incidents    Reportar incidencia (categoría + descripción + foto opcional), lista y detalle con comentarios
 :feature:reputation   Perfil público de organización (Trust Score) y calificar tras la entrega (`canReview`)
 :feature:documents    Documentos/evidencias del envío: miniaturas, visor a pantalla completa, PDF por intent externo
+:feature:trips        Fase 4. Transportista: Mis viajes, Publicar viaje, Detalle con reservas (confirmar/rechazar), Cargas de retorno (oferta con el `vehicleId` sugerido), Sugerencias Smart Load. PYME: pestaña "Viajes" (buscar con filtros, reservar espacio, Mis reservas con cancelar). Datos: `TripsRepository`/`SmartLoadsRepository`
 :feature:notifications Centro de notificaciones + `UnreadCounter`/`rememberUnreadCount` (badge, polling 30 s en primer plano)
 ```
 Contra-ofertas: la PYME propone desde la comparación de ofertas (`:feature:requests`) y el transportista acepta/rechaza en "Mis ofertas" (`:feature:loads`).
@@ -128,3 +129,11 @@ Un 401 en cualquier llamada cierra sesión automáticamente (`dataModule`).
 ## Dependencias con requisitos ocultos
 - OkHttp ≥ 5.5 / androidx 2026 exigen `compileSdk 37`. Si bajas el compileSdk, tendrás que fijar versiones antiguas.
 - `kotlin("test")` no funciona en módulos Android: usa `libs.kotlin.test`.
+
+## Viajes, reservas, retornos y Smart Load (fase 4)
+- Contrato: `docs/api/CHANGELOG.md` "Fase 4". DTOs en `core/model/.../Trips.kt` (`TripView`, `TripBookingView`, `ReturnLoadView`, `SmartLoadView`, `TripFilter`; `TripView.priceFor(kg)` espeja `TripPricingPolicy` y da el precio estimado de la reserva).
+- `LogyxJson` usa `coerceInputValues`: un valor de enum desconocido en `NotificationType` cae en `UNKNOWN` y en `NotificationTarget` en `null` (no rompe la lista de avisos).
+- La salida del viaje se envía en hora de Lima: `LocalDateTime.atOffset(-05:00)` con `ISO_OFFSET_DATE_TIME`. Errores de campo del API (`capacityKg`, `departureAt`, `weightKg`, `cargoType`, `amount`) se muestran bajo el campo; el resto, en snackbar.
+- Cargas de retorno: se oferta con `LoadsRepository.placeBid(requestId, item.vehicleId, ...)`. Smart Load: aceptar solo avisa a las PYMEs, no oferta.
+- Navegación: el Home del transportista abre `CarrierTrips`, `ReturnLoads` y `SmartLoads` (no hay pestañas nuevas para no pasar de 6); la PYME tiene la pestaña `PymeTrips`. Avisos `TRIP`/`SMART_LOAD` navegan en `openNotification`.
+- Tests instrumentados con campos de texto: el botón puede quedar tapado por el teclado dentro de una hoja; usa `performSemanticsAction(SemanticsActions.OnClick)` en lugar de `performClick`.

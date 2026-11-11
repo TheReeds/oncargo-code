@@ -112,4 +112,20 @@
     <string name="ds_counteroffer_accepted">Aceptada</string>
     <string name="ds_counteroffer_rejected">Rechazada</string>
     <string name="ds_counteroffer_expired">Vencida</string>
+    <string name="ds_tripstatus_open">Abierto</string>
+    <string name="ds_tripstatus_filling">Llenándose</string>
+    <string name="ds_tripstatus_closed">Cerrado</string>
+    <string name="ds_tripstatus_completed">Completado</string>
+    <string name="ds_tripstatus_cancelled">Cancelado</string>
+    <string name="ds_bookingstatus_pending">Por confirmar</string>
+    <string name="ds_bookingstatus_confirmed">Confirmada</string>
+    <string name="ds_bookingstatus_rejected">Rechazada</string>
+    <string name="ds_bookingstatus_cancelled">Cancelada</string>
+    <string name="ds_pricing_per_kg">Por kg</string>
+    <string name="ds_pricing_per_trip">Por viaje completo</string>
+    <string name="ds_smartload_pending">Pendiente</string>
+    <string name="ds_smartload_accepted">Aceptada</string>
+    <string name="ds_smartload_rejected">Rechazada</string>
+    <string name="ds_smartload_expired">Vencida</string>
+    <string name="ds_pick_time">Elige una hora</string>
 </resources>

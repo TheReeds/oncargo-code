@@ -77,6 +77,14 @@ public class FleetService {
     }
 
     /**
+     * Vehículos disponibles de todas las organizaciones visibles. Sin usuario (planificador programado) corre como
+     * dueño del esquema; con usuario, RLS deja solo los propios (transportista) o todos (operador).
+     */
+    public List<Vehicle> availableVehicles() {
+        return vehicles.listAvailableWithCapacity(java.math.BigDecimal.ZERO);
+    }
+
+    /**
      * Placa a copiar en el contrato de envío. La flota es privada del
      * transportista (RLS) y quien acepta es la PYME: se lee en contexto de
      * sistema, una sola vez, y solo la placa.

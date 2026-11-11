@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 val LogyxJson = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
+    coerceInputValues = true
     encodeDefaults = true
 }
 

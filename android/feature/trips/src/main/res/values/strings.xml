@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Comunes -->
+    <string name="trips_back">Volver</string>
+    <string name="trips_departure">Sale %1$s</string>
+    <string name="trips_rate_per_kg">%1$s por kg</string>
+    <string name="trips_rate_per_trip">%1$s por viaje completo</string>
+    <string name="trips_capacity_line">%1$s de %2$s confirmados</string>
+    <string name="trips_remaining">Quedan %1$s</string>
+    <string name="trips_capacity_cd">Capacidad ocupada: %1$s de %2$s</string>
+    <string name="trips_vehicle_line">%1$s · %2$s</string>
+    <plurals name="trips_pending_bookings">
+        <item quantity="one">%1$d reserva por confirmar</item>
+        <item quantity="other">%1$d reservas por confirmar</item>
+    </plurals>
+
+    <!-- Mis viajes (transportista) -->
+    <string name="trips_my_title">Mis viajes</string>
+    <string name="trips_publish_action">Publicar viaje</string>
+    <string name="trips_empty_title">Aún no publicas viajes</string>
+    <string name="trips_empty_message">Publica un viaje con tu capacidad libre y las PYMEs podrán reservar espacio.</string>
+
+    <!-- Publicar viaje -->
+    <string name="trips_publish_title">Publicar viaje</string>
+    <string name="trips_f_origin">Origen</string>
+    <string name="trips_f_destination">Destino</string>
+    <string name="trips_f_date">Fecha de salida</string>
+    <string name="trips_f_time">Hora de salida</string>
+    <string name="trips_f_time_hint">Hora de Lima</string>
+    <string name="trips_f_vehicle">Vehículo</string>
+    <string name="trips_f_vehicle_support">Hasta %1$s</string>
+    <string name="trips_f_capacity">Capacidad que ofreces</string>
+    <string name="trips_f_capacity_hint">Máximo %1$s según tu vehículo</string>
+    <string name="trips_f_capacity_hint_generic">Elige un vehículo para ver su máximo</string>
+    <string name="trips_f_pricing">Cómo cobras</string>
+    <string name="trips_f_rate_per_kg">Tarifa por kg</string>
+    <string name="trips_f_rate_per_trip">Tarifa por viaje completo</string>
+    <string name="trips_f_rate_hint_per_kg">Lo que cobras por cada kg reservado</string>
+    <string name="trips_f_rate_hint_per_trip">Tarifa de todo el tramo con la capacidad completa</string>
+    <string name="trips_f_notes">Notas para las PYMEs</string>
+    <string name="trips_f_notes_hint">Por ejemplo: punto de encuentro o tipo de carga que no llevas</string>
+    <string name="trips_published">Viaje publicado</string>
+    <string name="trips_err_origin">Elige la ciudad de origen.</string>
+    <string name="trips_err_destination">Elige la ciudad de destino.</string>
+    <string name="trips_err_same_city">El destino debe ser distinto del origen.</string>
+    <string name="trips_err_departure_missing">Elige la fecha y la hora de salida.</string>
+    <string name="trips_err_departure_past">La salida debe ser en el futuro. Elige otra fecha u hora.</string>
+    <string name="trips_err_vehicle">Elige el vehículo del viaje.</string>
+    <string name="trips_err_capacity">Ingresa la capacidad que ofreces, en kg.</string>
+    <string name="trips_err_capacity_max">La capacidad máxima es de %1$s.</string>
+    <string name="trips_err_capacity_vehicle">Tu vehículo %1$s admite hasta %2$s. Baja la capacidad.</string>
+    <string name="trips_err_rate">Ingresa una tarifa mayor a S/ 0.00.</string>
+    <string name="trips_err_rate_max">La tarifa máxima es de %1$s.</string>
+    <string name="trips_no_vehicles_title">Aún no tienes vehículos</string>
+    <string name="trips_no_vehicles_message">Registra un vehículo en la web para poder publicar viajes.</string>
+
+    <!-- Detalle del viaje (transportista) -->
+    <string name="trips_detail_title">Detalle del viaje</string>
+    <string name="trips_detail_not_found">No encontramos este viaje. Vuelve atrás e inténtalo de nuevo.</string>
+    <string name="trips_bookings_title">Reservas</string>
+    <string name="trips_bookings_empty_title">Sin reservas todavía</string>
+    <string name="trips_bookings_empty_message">Cuando una PYME reserve espacio en este viaje, la verás aquí.</string>
+    <string name="trips_booking_confirm">Confirmar reserva</string>
+    <string name="trips_booking_reject">Rechazar reserva</string>
+    <string name="trips_booking_pickup">Recojo: %1$s</string>
+    <string name="trips_booking_delivery">Entrega: %1$s</string>
+    <string name="trips_booking_note">Motivo: %1$s</string>
+    <string name="trips_view_shipment">Ver envío</string>
+    <string name="trips_close_action">Cerrar viaje</string>
+    <string name="trips_cancel_action">Cancelar viaje</string>
+    <string name="trips_confirm_booking_title">¿Confirmar la reserva de %1$s?</string>
+    <string name="trips_confirm_booking_message">Descontaremos ese peso de tu viaje y crearemos el envío para %1$s.</string>
+    <string name="trips_reject_booking_title">¿Rechazar esta reserva?</string>
+    <string name="trips_reject_booking_message">Avisaremos a %1$s. No se puede deshacer.</string>
+    <string name="trips_close_title">¿Cerrar el viaje?</string>
+    <string name="trips_close_message">Ya no recibirás reservas nuevas y rechazaremos las pendientes. Las confirmadas se mantienen.</string>
+    <string name="trips_cancel_title">¿Cancelar el viaje?</string>
+    <string name="trips_cancel_message">Cancelaremos las reservas y los envíos que aún no salieron. No se puede deshacer.</string>
+    <string name="trips_booking_confirmed">Reserva confirmada</string>
+    <string name="trips_booking_rejected">Reserva rechazada</string>
+    <string name="trips_trip_closed">Viaje cerrado</string>
+    <string name="trips_trip_cancelled">Viaje cancelado</string>
+
+    <!-- Cargas de retorno -->
+    <string name="trips_return_title">Cargas de retorno</string>
+    <string name="trips_return_empty_title">Sin cargas de retorno por ahora</string>
+    <string name="trips_return_empty_message">Cuando entregues un envío, te sugeriremos cargas que salgan cerca de donde terminaste.</string>
+    <string name="trips_return_from">Retorno desde %1$s</string>
+    <string name="trips_return_pickup">Recojo %1$s</string>
+    <string name="trips_return_distance">A %1$s del destino</string>
+    <string name="trips_return_score">Coincidencia %1$d %%</string>
+    <string name="trips_return_vehicle">Con tu vehículo %1$s</string>
+    <string name="trips_return_bid">Ofertar</string>
+    <string name="trips_return_already_bid">Ya ofertaste</string>
+    <string name="trips_return_suggested">Precio sugerido</string>
+    <string name="trips_bid_title">Ofertar por esta carga</string>
+    <string name="trips_bid_amount">Tu oferta</string>
+    <string name="trips_bid_hint">Sugerido %1$s · Piso %2$s</string>
+    <string name="trips_bid_submit">Enviar oferta</string>
+    <string name="trips_bid_err_amount">Ingresa un monto mayor a S/ 0.00.</string>
+    <string name="trips_bid_err_floor">Tu oferta es menor al piso de %1$s. Súbela para continuar.</string>
+    <string name="trips_bid_confirm_title">¿Enviar oferta de %1$s?</string>
+    <string name="trips_bid_confirm_message">Ofertarás con tu vehículo %1$s. Si la PYME acepta, se genera el envío.</string>
+    <string name="trips_bid_sent">Oferta enviada</string>
+
+    <!-- Smart Load -->
+    <string name="trips_smart_title">Sugerencias de carga</string>
+    <string name="trips_smart_generate">Buscar sugerencias</string>
+    <string name="trips_smart_empty_title">Sin sugerencias por ahora</string>
+    <string name="trips_smart_empty_message">Combinamos cargas compatibles con tu flota. Busca sugerencias para ver si hay nuevas.</string>
+    <string name="trips_smart_empty_filtered_title">Nada por aquí</string>
+    <string name="trips_smart_empty_filtered_message">No tienes sugerencias en este estado.</string>
+    <string name="trips_smart_occupancy">Ocupación %1$s %%</string>
+    <string name="trips_smart_income">Ingreso combinado</string>
+    <string name="trips_smart_weight">%1$s de %2$s</string>
+    <string name="trips_smart_stop_pickup">Recojo en %1$s</string>
+    <string name="trips_smart_stop_delivery">Entrega en %1$s</string>
+    <string name="trips_smart_expires">Vence en %1$s</string>
+    <string name="trips_smart_expired">Vencida</string>
+    <string name="trips_smart_accept">Aceptar sugerencia</string>
+    <string name="trips_smart_reject">Rechazar</string>
+    <string name="trips_smart_accept_title">¿Aceptar esta sugerencia?</string>
+    <string name="trips_smart_accept_message">Avisaremos a las PYMEs de las %1$d cargas. No se adjudica nada: tú sigues ofertando en cada carga.</string>
+    <string name="trips_smart_reject_title">¿Rechazar esta sugerencia?</string>
+    <string name="trips_smart_reject_message">No volverás a verla entre las pendientes.</string>
+    <string name="trips_smart_reject_confirm">Rechazar sugerencia</string>
+    <string name="trips_smart_accepted">Sugerencia aceptada</string>
+    <string name="trips_smart_rejected">Sugerencia rechazada</string>
+    <string name="trips_smart_generated_one">Encontramos 1 sugerencia nueva</string>
+    <string name="trips_smart_generated_many">Encontramos %1$d sugerencias nuevas</string>
+    <string name="trips_smart_generated_none">No hay sugerencias nuevas por ahora</string>
+
+    <!-- PYME: buscar viajes -->
+    <string name="trips_pyme_title">Viajes</string>
+    <string name="trips_pyme_tab_search">Buscar viajes</string>
+    <string name="trips_pyme_tab_bookings">Mis reservas</string>
+    <string name="trips_search_empty_title">Sin viajes disponibles</string>
+    <string name="trips_search_empty_message">Cuando un transportista publique un viaje con espacio libre, lo verás aquí.</string>
+    <string name="trips_search_no_match_title">Ningún viaje coincide</string>
+    <string name="trips_search_no_match_message">Quita algún filtro para ver más viajes.</string>
+    <plurals name="trips_search_count">
+        <item quantity="one">%1$d viaje</item>
+        <item quantity="other">%1$d viajes</item>
+    </plurals>
+    <string name="trips_filters">Filtros</string>
+    <string name="trips_filters_count">Filtros (%1$d)</string>
+    <string name="trips_filters_title">Filtrar viajes</string>
+    <string name="trips_filters_date">Día de salida</string>
+    <string name="trips_filters_weight">Espacio libre mínimo</string>
+    <string name="trips_filters_weight_hint">Solo viajes con al menos este espacio libre</string>
+    <string name="trips_filters_apply">Aplicar filtros</string>
+    <string name="trips_filters_clear">Limpiar filtros</string>
+    <string name="trips_reserve">Reservar espacio</string>
+
+    <!-- PYME: reservar -->
+    <string name="trips_book_title">Reservar espacio</string>
+    <string name="trips_book_weight">Peso de tu carga</string>
+    <string name="trips_book_weight_hint">Quedan %1$s libres</string>
+    <string name="trips_book_description">Descripción de la carga</string>
+    <string name="trips_book_cargo_type">Tipo de carga</string>
+    <string name="trips_book_pickup">Dirección de recojo</string>
+    <string name="trips_book_delivery">Dirección de entrega</string>
+    <string name="trips_book_price">Precio estimado</string>
+    <string name="trips_book_submit">Reservar espacio</string>
+    <string name="trips_book_confirm_action">Enviar reserva</string>
+    <string name="trips_book_err_weight">Ingresa el peso de tu carga, en kg.</string>
+    <string name="trips_book_err_weight_max">Solo quedan %1$s en este viaje. Baja el peso.</string>
+    <string name="trips_book_err_description">Describe qué vas a enviar.</string>
+    <string name="trips_book_err_cargo_type">Elige el tipo de carga.</string>
+    <string name="trips_book_err_pickup">Ingresa la dirección de recojo.</string>
+    <string name="trips_book_err_delivery">Ingresa la dirección de entrega.</string>
+    <string name="trips_book_confirm_title">¿Reservar %1$s por %2$s?</string>
+    <string name="trips_book_confirm_message">El transportista debe confirmar tu reserva. Hasta entonces puedes cancelarla.</string>
+    <string name="trips_book_sent">Reserva enviada</string>
+
+    <!-- PYME: mis reservas -->
+    <string name="trips_bookings_mine_empty_title">Aún no reservas espacio</string>
+    <string name="trips_bookings_mine_empty_message">Busca un viaje y reserva el espacio que necesitas.</string>
+    <string name="trips_bookings_mine_empty_action">Buscar viajes</string>
+    <string name="trips_booking_cancel">Cancelar reserva</string>
+    <string name="trips_booking_cancel_title">¿Cancelar esta reserva?</string>
+    <string name="trips_booking_cancel_message">Liberaremos el espacio en el viaje. Si ya estaba confirmada, también se cancela el envío. No se puede deshacer.</string>
+    <string name="trips_booking_cancelled">Reserva cancelada</string>
+    <string name="trips_booking_weight_price">%1$s · %2$s</string>
+</resources>

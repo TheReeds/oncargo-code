@@ -70,6 +70,17 @@ public final class Shipment {
         }
     }
 
+    /**
+     * Cancela un envío que aún no sale (PENDING). Lo usan las reservas de viajes publicados al cancelarse.
+     * Un envío en tránsito o cerrado no se cancela: LOGYX-SHP-003.
+     */
+    public void cancel() {
+        if (status != Status.PENDING) {
+            throw BusinessException.conflict("LOGYX-SHP-003", "Solo se cancela un envío que aún no salió del recojo");
+        }
+        status = Status.CANCELLED;
+    }
+
     public void ensureOpen() {
         if (status == Status.DELIVERED || status == Status.CANCELLED) {
             throw BusinessException.conflict("LOGYX-TRK-004", "El envío ya está cerrado");

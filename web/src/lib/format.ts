@@ -73,3 +73,13 @@ export function formatRelative(iso: string | null | undefined, now = Date.now())
 
 export const formatFileSize = (bytes: number | null | undefined) =>
   bytes == null ? '—' : bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+
+/** Tarifa de un viaje: `S/ 0.48 por kg` o `S/ 3,200.00 por el tramo`. */
+export const formatTripRate = (mode: string | null | undefined, rate: number | null | undefined) =>
+  mode === 'PER_TRIP' ? `${formatMoney(rate)} por el tramo` : `${formatMoney(rate)} por kg`;
+
+/** Precio de una reserva (misma regla que el backend: PER_KG = tarifa × kg; PER_TRIP = tarifa × kg / capacidad; 2 decimales, mínimo S/ 1.00). */
+export function estimateBookingPrice(mode: string | null | undefined, rate: number, kg: number, capacityKg: number) {
+  const raw = mode === 'PER_TRIP' ? (capacityKg > 0 ? (rate * kg) / capacityKg : 0) : rate * kg;
+  return Math.max(1, Math.round(raw * 100) / 100);
+}

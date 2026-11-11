@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.ReportProblem
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Route
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Icon
@@ -175,6 +177,11 @@ internal fun NotificationType.icon() = when (this) {
     NotificationType.INCIDENT_REPORTED -> Icons.Rounded.ReportProblem
     NotificationType.INCIDENT_RESOLVED -> Icons.Rounded.TaskAlt
     NotificationType.NEW_REVIEW -> Icons.Rounded.Star
+    NotificationType.TRIP_BOOKING_REQUESTED -> Icons.Rounded.Route
+    NotificationType.TRIP_BOOKING_CONFIRMED -> Icons.Rounded.CheckCircle
+    NotificationType.TRIP_BOOKING_REJECTED, NotificationType.TRIP_BOOKING_CANCELLED, NotificationType.TRIP_CANCELLED -> Icons.Rounded.Cancel
+    NotificationType.SMART_LOAD_SUGGESTED, NotificationType.SMART_LOAD_ACCEPTED -> Icons.Rounded.LocalOffer
+    NotificationType.UNKNOWN -> Icons.Rounded.Notifications
 }
 
 @Composable

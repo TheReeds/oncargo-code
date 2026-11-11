@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object DriverTrip
 @Serializable data object Account
 @Serializable data object NotificationsTab
+@Serializable data object PymeTrips
 
 // Destinos secundarios
 @Serializable data class LoadDetail(val id: String)
@@ -24,3 +25,10 @@ import kotlinx.serialization.Serializable
 @Serializable data class IncidentsList(val shipmentId: String)
 @Serializable data class ReportIncident(val shipmentId: String)
 @Serializable data class IncidentDetail(val incidentId: String)
+
+// Fase 4: viajes publicados, retornos y Smart Load
+@Serializable data object CarrierTrips
+@Serializable data object PublishTrip
+@Serializable data class CarrierTripDetail(val id: String, val published: Boolean = false)
+@Serializable data object ReturnLoads
+@Serializable data object SmartLoads

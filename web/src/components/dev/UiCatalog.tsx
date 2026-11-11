@@ -35,6 +35,8 @@ import { TrustScore } from '@/components/domain/TrustScore';
 import { PasswordInput } from '@/components/ui/password-input';
 import { FilterBar } from '@/components/ui/filter-bar';
 import { Timeline } from '@/components/ui/timeline';
+import { TimeSelect } from '@/components/ui/time-select';
+import { CapacityBar } from '@/components/domain/CapacityBar';
 import { AuthCard } from '@/components/ui/auth-card';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
 
@@ -67,6 +69,7 @@ const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 
 
 export default function UiCatalog() {
   const [city, setCity] = useState('');
+  const [time, setTime] = useState('08:00');
   const [multi, setMulti] = useState<string[]>(['LIMA', 'JULIACA']);
   const [cargo, setCargo] = useState('GENERAL');
   const [date, setDate] = useState('');
@@ -254,6 +257,13 @@ export default function UiCatalog() {
             <div className="flex flex-wrap items-center gap-2"><StatusPill status="PUBLISHED" /><StatusPill status="MATCHED" /><StatusPill status="CANCELLED" /><StatusPill status="PENDING" /><StatusPill status="IN_TRANSIT" /><StatusPill status="DELIVERED" /><StatusPill status="REJECTED" /><StatusPill status="MAINTENANCE" /></div>
             <div className="flex items-center gap-2 text-sm">Cierra en <Countdown closesAt={new Date(Date.now() + 3 * 60_000).toISOString()} /> · <Countdown closesAt={new Date(Date.now() + 5 * 3600_000).toISOString()} /></div>
           </CardBody></Card>
+        </Section>
+
+        <Section id="fase4" title="Viajes" note="TimeSelect (hora cada 30 min junto a DatePicker) y CapacityBar (ocupación en kg, role meter).">
+          <Card className="grid gap-5 p-5 sm:grid-cols-2">
+            <Field label="Hora de salida" htmlFor="d-time"><TimeSelect id="d-time" value={time} onValueChange={setTime} /></Field>
+            <div className="space-y-3"><CapacityBar used={4500} total={12000} label="Ocupación de ejemplo" /><CapacityBar used={11000} total={12000} label="Ocupación casi llena" /></div>
+          </Card>
         </Section>
 
         <Section id="composicion" title="Composición" note="Piezas compartidas para pantallas completas: FilterBar (listados), Timeline (paradas/hitos), VerifiedBadge (RUC verificado), AuthCard (login/registro).">

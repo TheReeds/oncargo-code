@@ -12,7 +12,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerState
@@ -40,6 +44,7 @@ import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.R
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -247,6 +252,59 @@ fun LogyxDateRangeField(
     if (open) LogyxDateRangePicker(start, end, onValueChange, { open = false }, minDate, maxDate)
 }
 
+/** Diálogo de hora (formato 24 h) para la salida de un viaje. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LogyxTimePicker(
+    selected: LocalTime?,
+    onSelected: (LocalTime) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    WithPeLocale {
+        val state = rememberTimePickerState(initialHour = selected?.hour ?: 8, initialMinute = selected?.minute ?: 0, is24Hour = true)
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            text = { TimePicker(state) },
+            confirmButton = {
+                LogyxButton(
+                    stringResource(R.string.ds_accept), { onSelected(LocalTime.of(state.hour, state.minute)); onDismiss() },
+                    size = ButtonSize.Medium, fullWidth = false,
+                )
+            },
+            dismissButton = {
+                LogyxButton(stringResource(R.string.ds_cancel), onDismiss, variant = ButtonVariant.Ghost, size = ButtonSize.Medium, fullWidth = false)
+            },
+        )
+    }
+}
+
+/** `08:00` para mostrar la hora elegida dentro del campo. */
+fun formatPickerTime(time: LocalTime): String = "%02d:%02d".format(time.hour, time.minute)
+
+/** Campo de hora que abre [LogyxTimePicker] (24 h). Úsalo junto a [LogyxDateField] para fecha-hora. */
+@Composable
+fun LogyxTimeField(
+    label: String,
+    value: LocalTime?,
+    onValueChange: (LocalTime) -> Unit,
+    modifier: Modifier = Modifier,
+    hint: String? = null,
+    error: String? = null,
+    placeholder: String = stringResource(R.string.ds_pick_time),
+    optional: Boolean = false,
+) {
+    var open by remember { mutableStateOf(false) }
+    LogyxPickerField(
+        label, value?.let(::formatPickerTime), { open = true }, modifier,
+        placeholder = placeholder, hint = hint, error = error, optional = optional,
+        leadingIcon = Icons.Rounded.Schedule, trailingIcon = null,
+    )
+    if (open) LogyxTimePicker(value, onValueChange, { open = false })
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun DateFieldsPreview() {
@@ -254,6 +312,7 @@ private fun DateFieldsPreview() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             LogyxDateField("Fecha de recojo", LocalDate.of(2026, 11, 28), {})
             LogyxDateRangeField("Disponibilidad", LocalDate.of(2026, 11, 28), LocalDate.of(2026, 12, 3), { _, _ -> })
+            LogyxTimeField("Hora de salida", LocalTime.of(8, 0), {})
         }
     }
 }

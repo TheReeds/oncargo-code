@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.NearMe
 import androidx.compose.material.icons.rounded.Paid
+import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +90,7 @@ import pe.logyx.core.designsystem.components.SkeletonList
 import pe.logyx.core.designsystem.components.SkeletonLoadCard
 import pe.logyx.core.designsystem.components.VerifiedBadge
 import pe.logyx.core.designsystem.components.StatusPill
+import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.designsystem.components.moneyToInput
 import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
@@ -101,6 +103,7 @@ import pe.logyx.core.model.VehicleType
 import pe.logyx.core.model.CityItem
 import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.RequestView
+import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.isCompatibleWith
 import java.time.LocalDate
@@ -113,10 +116,13 @@ fun CarrierHomeRoute(
     onOpenFeed: () -> Unit,
     onOpenBids: () -> Unit,
     onOpenShipment: (String) -> Unit,
+    onOpenTrips: () -> Unit,
+    onOpenReturnLoads: () -> Unit,
+    onOpenSmartLoads: () -> Unit,
     viewModel: CarrierHomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    CarrierHomeScreen(state, viewModel::refresh, onOpenLoad, onOpenFeed, onOpenBids, onOpenShipment)
+    CarrierHomeScreen(state, viewModel::refresh, onOpenLoad, onOpenFeed, onOpenBids, onOpenShipment, onOpenTrips, onOpenReturnLoads, onOpenSmartLoads)
 }
 
 @Composable
@@ -127,6 +133,9 @@ fun CarrierHomeScreen(
     onOpenFeed: () -> Unit,
     onOpenBids: () -> Unit,
     onOpenShipment: (String) -> Unit,
+    onOpenTrips: () -> Unit = {},
+    onOpenReturnLoads: () -> Unit = {},
+    onOpenSmartLoads: () -> Unit = {},
 ) {
     LogyxScreen(stringResource(R.string.loads_home_title)) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
@@ -176,6 +185,13 @@ fun CarrierHomeScreen(
                             }
                         }
                         state.activeShipment?.let { s -> item { ActiveShipmentCard(s) { onOpenShipment(s.id) } } }
+                        item { TripsActivityCard(state.openTrips ?: 0, state.pendingTripBookings ?: 0, onOpenTrips) }
+                        if ((state.pendingSmartLoads ?: 0) > 0) {
+                            item { SmartLoadsCard(state.pendingSmartLoads ?: 0, onOpenSmartLoads) }
+                        }
+                        if ((state.returnLoadCount ?: 0) > 0) {
+                            item { ReturnLoadsSection(state.returnLoadCount ?: 0, state.topReturnLoads, onOpenReturnLoads) }
+                        }
                         item {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.loads_home_suggested), style = MaterialTheme.typography.titleMedium)
@@ -208,6 +224,83 @@ fun CarrierHomeScreen(
                 }
             }
         }
+    }
+}
+
+/** Viajes publicados: abiertos y reservas por confirmar, con acceso a "Mis viajes". */
+@Composable
+private fun TripsActivityCard(openTrips: Int, pendingBookings: Int, onClick: () -> Unit) {
+    LogyxCard(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Route, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.loads_home_trips_title), style = MaterialTheme.typography.titleMedium)
+            }
+            if (pendingBookings > 0) {
+                StatusPill(pluralStringResource(R.plurals.loads_home_trips_pending, pendingBookings, pendingBookings), PillTone.Amber)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (openTrips > 0) pluralStringResource(R.plurals.loads_home_trips_open, openTrips, openTrips)
+            else stringResource(R.string.loads_home_trips_none),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            stringResource(R.string.loads_home_trips_action), style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** Sugerencias Smart Load por revisar. */
+@Composable
+private fun SmartLoadsCard(pending: Int, onClick: () -> Unit) {
+    LogyxCard(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.loads_home_smart_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            StatusPill(pluralStringResource(R.plurals.loads_home_smart_pending, pending, pending), PillTone.Amber)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            stringResource(R.string.loads_home_smart_message), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.loads_home_smart_action), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Cargas de retorno: las 3 mejores del dashboard y acceso a la lista completa. */
+@Composable
+private fun ReturnLoadsSection(count: Int, top: List<ReturnLoadHintView>, onOpen: () -> Unit) {
+    LogyxCard(Modifier.fillMaxWidth(), onClick = onOpen) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.loads_home_return_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            StatusPill(pluralStringResource(R.plurals.loads_home_return_count, count, count), PillTone.Emerald)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.loads_home_return_message), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        top.forEach { hint ->
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${cityLabel(hint.originCity)} → ${cityLabel(hint.destinationCity)}", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "${Fmt.tons(hint.weightKg)} · ${stringResource(R.string.loads_home_return_pickup, Fmt.date(hint.pickupDate))}",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(Fmt.money(hint.suggestedPrice), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.loads_home_return_action), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
     }
 }
 

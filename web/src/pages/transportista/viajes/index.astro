@@ -1,0 +1,52 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
+import { Table, Td, Th, Tr } from '@/components/ui/table';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { CapacityBar } from '@/components/domain/CapacityBar';
+import { buttonVariants } from '@/components/ui/button';
+import { listMyTrips, type TripView } from '@/features/trips/server';
+import { CITY_LABELS, formatDateTime, formatTripRate, VEHICLE_LABELS } from '@/lib/format';
+import { Plus } from '@lucide/astro';
+let trips: TripView[] = [];
+let loadError: string | null = null;
+try {
+  trips = await listMyTrips(Astro.locals.session!.token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus viajes.';
+}
+---
+<AppShell title="Viajes" active="viajes">
+  <PageHeader title="Viajes" subtitle="Publica tus salidas con espacio libre y deja que las empresas reserven.">
+    <a slot="actions" href="/transportista/viajes/nuevo" class={buttonVariants({ variant: 'money' })}><Plus size={16} /> Publicar viaje</a>
+  </PageHeader>
+  {loadError && <Alert tone="error" title="No pudimos cargar tus viajes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <Card>
+    {trips.length === 0 && !loadError ? (
+      <EmptyState title="Aún no publicaste viajes" description="Publica una salida con tu capacidad libre y recibe reservas de empresas que ya viajan por tu ruta." />
+    ) : (
+      <Table className="[&_td]:px-3 [&_th]:px-3 sm:[&_td:first-child]:pl-5 sm:[&_th:first-child]:pl-5 sm:[&_td:last-child]:pr-5">
+        <thead><tr><Th>Ruta</Th><Th>Vehículo</Th><Th>Tarifa</Th><Th>Ocupación</Th><Th>Reservas</Th><Th>Estado</Th><Th><span class="sr-only">Acción</span></Th></tr></thead>
+        <tbody>
+          {trips.map((t) => (
+            <Tr>
+              <Td className="min-w-0"><div class="font-medium">{CITY_LABELS[t.originCity!]} <span class="text-ink-500" aria-hidden="true">→</span><span class="sr-only">a</span> {CITY_LABELS[t.destinationCity!]}</div><div class="text-xs text-ink-700">{formatDateTime(t.departureAt)}</div></Td>
+              <Td><div class="font-mono">{t.vehiclePlate}</div><div class="text-xs text-ink-500">{VEHICLE_LABELS[t.vehicleType!] ?? t.vehicleType}</div></Td>
+              <Td className="whitespace-nowrap"><span class="money">{formatTripRate(t.pricingMode, t.rate)}</span></Td>
+              <Td className="min-w-40"><CapacityBar used={t.confirmedWeightKg ?? 0} total={t.capacityKg ?? 0} label={`Ocupación del viaje de ${CITY_LABELS[t.originCity!]} a ${CITY_LABELS[t.destinationCity!]}`} /></Td>
+              <Td className="whitespace-nowrap text-sm">
+                <span class="font-mono tabular-nums">{t.confirmedBookings ?? 0}</span> confirmada{t.confirmedBookings === 1 ? '' : 's'}
+                {(t.pendingBookings ?? 0) > 0 && <div class="text-xs font-medium text-amber-700"><span class="font-mono">{t.pendingBookings}</span> por confirmar</div>}
+              </Td>
+              <Td><StatusPill kind="trip" status={t.status!} /></Td>
+              <Td className="whitespace-nowrap text-right"><a href={`/transportista/viajes/${t.id}`} class={buttonVariants({ variant: 'outline', size: 'sm' })}>Ver detalle<span class="sr-only"> del viaje de {CITY_LABELS[t.originCity!]} a {CITY_LABELS[t.destinationCity!]}</span></a></Td>
+            </Tr>
+          ))}
+        </tbody>
+      </Table>
+    )}
+  </Card>
+</AppShell>

@@ -36,11 +36,18 @@ import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shipment.application.AssignDriverUseCase;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.TrackStopsUseCase;
+import pe.logyx.trip.application.BookTripCommand;
+import pe.logyx.trip.application.BookingService;
+import pe.logyx.trip.application.PublishTripCommand;
+import pe.logyx.trip.application.SmartLoadService;
+import pe.logyx.trip.application.TripService;
+import pe.logyx.trip.domain.model.TripPricingMode;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +64,9 @@ import java.util.function.Supplier;
  * <p>Fase 2: operador {@code operator@logyx.pe}, un envío entregado con foto/firma/guía, calificaciones en ambas
  * direcciones y una incidencia abierta; chats, una contra-oferta aceptada y otra pendiente; dos solicitudes con SLA
  * vencido (sin ofertas hace más de 24 h) y las notificaciones que generan esos eventos.
+ *
+ * <p>Fase 4: viajes publicados (Sur Andino y Titicaca) con una reserva pendiente y otra confirmada de la PYME demo, cargas
+ * de retorno desde Juliaca para Sur Andino y una sugerencia Smart Load pendiente (ASA-202 con dos cargas desde Lima).
  */
 @IfBuildProfile("dev")
 @ApplicationScoped
@@ -82,6 +92,9 @@ public class DemoDataSeeder {
     @Inject DocumentService documents;
     @Inject ReviewService reviews;
     @Inject IncidentService incidents;
+    @Inject TripService trips;
+    @Inject BookingService tripBookings;
+    @Inject SmartLoadService smartLoads;
     @Inject EntityManager em;
     @Inject CurrentIdentityAssociation identity;
     @Inject JWTParser jwtParser;
@@ -218,6 +231,50 @@ public class DemoDataSeeder {
             tracking.arrive(shipmentId, pickup);
             return tracking.complete(shipmentId, pickup);
         });
+
+        seedTripsAndLoadPlanning(pyme, carrier, carrier2, sur.large(), titicaca.small(), titicaca.platform(), sur.medium());
+    }
+
+    /** Fase 4: viajes publicados, reservas, cargas de retorno y Smart Load. */
+    private void seedTripsAndLoadPlanning(AuthResult pyme, AuthResult carrier, AuthResult carrier2, UUID asa202,
+                                          UUID ltt401, UUID ltt502, UUID asa101) {
+        // Cargas nuevas de la PYME: una desde Juliaca (retorno del Lima → Juliaca en curso y del Arequipa → Juliaca
+        // entregado) y dos desde Lima con destinos cercanos entre sí y fecha común (combinables en el ASA-202).
+        as(pyme, () -> {
+            request("JULIACA", "Av. Circunvalación 540, Juliaca", "AREQUIPA", "Parque Industrial, Calle 5",
+                    CargoType.GENERAL, "Lana de alpaca en fardos", 3500, 1);
+            request("LIMA", "Av. Argentina 3100, Callao", "JULIACA", "Jr. Moquegua 210, Juliaca",
+                    CargoType.GENERAL, "Cemento y materiales de construcción", 7500, 3);
+            request("LIMA", "Av. Colonial 1850, Callao", "PUNO", "Jr. Deustua 450, Puno",
+                    CargoType.GENERAL, "Herramientas y ferretería", 6000, 3);
+            return null;
+        });
+
+        // Viajes publicados
+        UUID tripLimaJuliaca = as(carrier, () -> trips.publish(new PublishTripCommand("LIMA", "JULIACA",
+                OffsetDateTime.now().plusDays(4), asa202, new BigDecimal("12000"), TripPricingMode.PER_KG,
+                new BigDecimal("0.48"), "Salida 6 a. m. desde el Callao, carga consolidada")).trip().id());
+        as(carrier, () -> trips.publish(new PublishTripCommand("AREQUIPA", "CUSCO", OffsetDateTime.now().plusDays(3),
+                asa101, new BigDecimal("6000"), TripPricingMode.PER_TRIP, new BigDecimal("3200"),
+                "Tarifa por tramo completo, se prorratea por peso")));
+        as(carrier2, () -> trips.publish(new PublishTripCommand("PUNO", "LIMA", OffsetDateTime.now().plusDays(5),
+                ltt502, new BigDecimal("12000"), TripPricingMode.PER_KG, new BigDecimal("0.42"),
+                "Plataforma con carpa, ideal para carga paletizada")));
+        UUID tripJuliacaArequipa = as(carrier2, () -> trips.publish(new PublishTripCommand("JULIACA", "AREQUIPA",
+                OffsetDateTime.now().plusDays(2), ltt401, new BigDecimal("3500"), TripPricingMode.PER_KG,
+                new BigDecimal("0.60"), null)).trip().id());
+
+        // Reservas de la PYME: una pendiente (Sur Andino) y otra confirmada (Titicaca) que ya generó su envío
+        as(pyme, () -> tripBookings.book(tripLimaJuliaca, new BookTripCommand(new BigDecimal("2500"),
+                "Mercadería de bazar en cajas", CargoType.GENERAL, "Av. Argentina 1234, Callao",
+                "Jr. San Román 456, Juliaca")));
+        UUID confirmedBooking = as(pyme, () -> tripBookings.book(tripJuliacaArequipa, new BookTripCommand(
+                new BigDecimal("1200"), "Quinua perlada en sacos", CargoType.GENERAL, "Salida a Puno km 3, Juliaca",
+                "Mercado Andrés Avelino Cáceres, Arequipa")).booking().id());
+        as(carrier2, () -> tripBookings.confirm(confirmedBooking));
+
+        // Smart Load pendiente para Sur Andino (ASA-202 + dos cargas Lima → Juliaca/Puno del mismo día)
+        as(carrier, () -> smartLoads.generateForCurrentCarrier());
     }
 
     // ------------------------------------------------------------ helpers

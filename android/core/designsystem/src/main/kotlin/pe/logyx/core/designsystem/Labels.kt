@@ -4,6 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.model.AuctionStatus
+import pe.logyx.core.model.BookingStatus
+import pe.logyx.core.model.SmartLoadStatus
+import pe.logyx.core.model.TripPricingMode
+import pe.logyx.core.model.TripStatus
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.CargoType
 import pe.logyx.core.model.CounterOfferStatus
@@ -121,4 +125,38 @@ fun CounterOfferStatus.pill() = when (this) {
     CounterOfferStatus.ACCEPTED -> stringResource(R.string.ds_counteroffer_accepted) to PillTone.Emerald
     CounterOfferStatus.REJECTED -> stringResource(R.string.ds_counteroffer_rejected) to PillTone.Red
     CounterOfferStatus.EXPIRED -> stringResource(R.string.ds_counteroffer_expired) to PillTone.Neutral
+}
+
+// --- Fase 4: viajes, reservas y Smart Load ---
+@Composable
+fun TripStatus.pill() = when (this) {
+    TripStatus.OPEN -> stringResource(R.string.ds_tripstatus_open) to PillTone.Emerald
+    TripStatus.FILLING -> stringResource(R.string.ds_tripstatus_filling) to PillTone.Petrol
+    TripStatus.CLOSED -> stringResource(R.string.ds_tripstatus_closed) to PillTone.Neutral
+    TripStatus.COMPLETED -> stringResource(R.string.ds_tripstatus_completed) to PillTone.Emerald
+    TripStatus.CANCELLED -> stringResource(R.string.ds_tripstatus_cancelled) to PillTone.Neutral
+}
+
+@Composable
+fun BookingStatus.pill() = when (this) {
+    BookingStatus.PENDING -> stringResource(R.string.ds_bookingstatus_pending) to PillTone.Amber
+    BookingStatus.CONFIRMED -> stringResource(R.string.ds_bookingstatus_confirmed) to PillTone.Emerald
+    BookingStatus.REJECTED -> stringResource(R.string.ds_bookingstatus_rejected) to PillTone.Red
+    BookingStatus.CANCELLED -> stringResource(R.string.ds_bookingstatus_cancelled) to PillTone.Neutral
+}
+
+val TripPricingMode.label: String
+    @Composable get() = stringResource(
+        when (this) {
+            TripPricingMode.PER_KG -> R.string.ds_pricing_per_kg
+            TripPricingMode.PER_TRIP -> R.string.ds_pricing_per_trip
+        },
+    )
+
+@Composable
+fun SmartLoadStatus.pill() = when (this) {
+    SmartLoadStatus.PENDING -> stringResource(R.string.ds_smartload_pending) to PillTone.Amber
+    SmartLoadStatus.ACCEPTED -> stringResource(R.string.ds_smartload_accepted) to PillTone.Emerald
+    SmartLoadStatus.REJECTED -> stringResource(R.string.ds_smartload_rejected) to PillTone.Red
+    SmartLoadStatus.EXPIRED -> stringResource(R.string.ds_smartload_expired) to PillTone.Neutral
 }

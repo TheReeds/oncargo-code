@@ -58,6 +58,29 @@ public class MarketplaceQueries {
     }
 
     /**
+     * Solicitudes publicadas con subasta abierta (hasta {@code max}, recojo más próximo primero), con su resumen.
+     * Para cargas de retorno (trip): el transportista actual.
+     */
+    public List<RequestSummary> openRequests(int max) {
+        return summaries.of(openRequestsForPlanning(max), true);
+    }
+
+    /**
+     * Igual que {@link #openRequests(int)} pero sin resúmenes ni contexto de usuario: lo usa el planificador
+     * programado (sin JWT, rol dueño), que no necesita nombres ni conteos.
+     */
+    public List<ShipmentRequest> openRequestsForPlanning(int max) {
+        List<ShipmentRequest> out = new java.util.ArrayList<>();
+        for (int page = 0; out.size() < max; page++) {
+            Paged<ShipmentRequest> p = requests.searchOpenMarketplace(MarketplaceFilter.none(),
+                    new PageRequest(page, PageRequest.MAX_SIZE));
+            out.addAll(p.items());
+            if (p.items().size() < PageRequest.MAX_SIZE) break;
+        }
+        return out.size() > max ? out.subList(0, max) : out;
+    }
+
+    /**
      * KPIs del dashboard. PYME: solicitudes activas y ofertas por revisar. Transportista: cargas abiertas
      * que caben en su vehículo disponible más grande (incluye las que ya ofertó) y ofertas pendientes.
      */

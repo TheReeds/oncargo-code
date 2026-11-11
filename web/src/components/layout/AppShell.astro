@@ -4,7 +4,7 @@ import Logo from './Logo.astro';
 import UserMenu from './UserMenu';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 import { me } from '@/features/auth/server';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar } from '@lucide/astro';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
@@ -16,12 +16,18 @@ const NAV = {
     { id: 'panel', href: '/pyme', label: 'Panel', icon: LayoutDashboard },
     { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
     { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
+    { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
+    { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
     { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
     { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
   ],
   CARRIER: [
+    { id: 'panel', href: '/transportista', label: 'Tu actividad', icon: LayoutDashboard },
     { id: 'marketplace', href: '/transportista/marketplace', label: 'Cargas disponibles', icon: Store },
+    { id: 'retornos', href: '/transportista/retornos', label: 'Cargas de retorno', icon: Undo2 },
     { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
+    { id: 'viajes', href: '/transportista/viajes', label: 'Viajes', icon: CalendarClock },
+    { id: 'smart-load', href: '/transportista/smart-load', label: 'Smart Load', icon: Sparkles },
     { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
     { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
     { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },

@@ -9,6 +9,7 @@ import { reputation } from '@/features/reputation/actions';
 import { documents } from '@/features/documents/actions';
 import { incidents } from '@/features/incidents/actions';
 import { notifications } from '@/features/notifications/actions';
+import { trips } from '@/features/trips/actions';
 import { operator } from '@/features/operator/actions';
 
-export const server = { auth, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator };
+export const server = { auth, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips };
