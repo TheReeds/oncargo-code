@@ -34,8 +34,10 @@ Además la notificación es casi siempre para **otra** organización que la que 
 ## Consecuencias
 - (+) Módulos desacoplados: agregar un aviso nuevo es un observer, sin tocar el caso de uso.
 - (+) Las notificaciones reflejan solo transacciones confirmadas.
-- (−) Entrega "al menos una vez" no garantizada: si el proceso cae entre el commit y el observer, el aviso se
-  pierde. Aceptable para avisos in-app; para email (RF50) o push se necesitará un outbox transaccional.
+- ~~(−) Entrega "al menos una vez" no garantizada: si el proceso cae entre el commit y el observer, el aviso se
+  pierde.~~ **Resuelto en ADR-0006 (2026-11-10):** outbox transaccional (`outbox_events`, V11). Los consumidores ahora
+  observan `@Outboxed` (no `AFTER_SUCCESS`) y corren en la transacción del despacho, con reintentos. Email (RF50), push y
+  tiempo real se alimentarán del mismo outbox.
 - (−) Los observers corren en el hilo de la petición (latencia extra pequeña). Si crece, pasar a `@ObservesAsync`
   o a un outbox.
 - `SystemTx` suma dos usos justificados: `NotificationPublisher` y `ReputationRecalculator`.

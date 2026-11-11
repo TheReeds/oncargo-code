@@ -4,7 +4,7 @@ import pe.logyx.incident.domain.model.IncidentStatus;
 import pe.logyx.incident.domain.model.IncidentCategory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.TransactionPhase;
+import pe.logyx.shared.outbox.Outboxed;
 import jakarta.inject.Inject;
 import pe.logyx.identity.application.OrganizationDirectory;
 import pe.logyx.incident.application.event.IncidentReported;
@@ -31,8 +31,9 @@ import java.util.UUID;
 
 /**
  * Traduce eventos de dominio de otros módulos en notificaciones (ADR-0004). Los módulos que publican no conocen
- * a notification: solo disparan {@code Event<...>}. Todos los observadores son {@code AFTER_SUCCESS}: se notifica
- * lo que de verdad se confirmó.
+ * a notification: solo disparan {@code Event<...>}. Los eventos llegan por el outbox transaccional
+ * ({@code @Outboxed}, ADR-0006): se notifica solo lo confirmado, dentro de la transacción del despacho, y si algo
+ * falla el evento se reintenta (no se pierde).
  */
 @ApplicationScoped
 public class NotificationObservers {
@@ -41,13 +42,13 @@ public class NotificationObservers {
     @Inject OrganizationDirectory organizations;
     @Inject SystemTx system;
 
-    void onBidPlaced(@Observes(during = TransactionPhase.AFTER_SUCCESS) BidPlaced e) {
+    void onBidPlaced(@Observes @Outboxed BidPlaced e) {
         publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.NEW_BID, "Nueva oferta recibida",
                 e.carrierName() + " ofertó " + Money.soles(e.amount()) + " por tu carga " + e.route() + ".",
                 NotificationTarget.REQUEST, e.requestId())));
     }
 
-    void onBidAccepted(@Observes(during = TransactionPhase.AFTER_SUCCESS) BidAccepted e) {
+    void onBidAccepted(@Observes @Outboxed BidAccepted e) {
         List<Notification> out = new ArrayList<>();
         out.add(Notification.to(e.carrierOrgId(), NotificationType.BID_ACCEPTED,
                 e.byOperator() ? "LOGYX te asignó una carga" : "¡Tu oferta fue aceptada!",
@@ -66,7 +67,7 @@ public class NotificationObservers {
         publisher.publish(out);
     }
 
-    void onCounterOffer(@Observes(during = TransactionPhase.AFTER_SUCCESS) CounterOfferUpdated e) {
+    void onCounterOffer(@Observes @Outboxed CounterOfferUpdated e) {
         Notification n = switch (e.status()) {
             case PENDING -> Notification.to(e.carrierOrgId(), NotificationType.COUNTER_OFFER, "Nueva contra-oferta",
                     "La PYME propone " + Money.soles(e.amount()) + " por tu oferta. Acéptala o recházala.",
@@ -82,12 +83,12 @@ public class NotificationObservers {
         if (n != null) publisher.publish(List.of(n));
     }
 
-    void onMessage(@Observes(during = TransactionPhase.AFTER_SUCCESS) MessagePosted e) {
+    void onMessage(@Observes @Outboxed MessagePosted e) {
         publisher.publish(List.of(Notification.to(e.recipientOrgId(), NotificationType.NEW_MESSAGE,
                 "Nuevo mensaje de " + e.senderName(), e.preview(), NotificationTarget.REQUEST, e.requestId())));
     }
 
-    void onShipmentStatus(@Observes(during = TransactionPhase.AFTER_SUCCESS) ShipmentStatusChanged e) {
+    void onShipmentStatus(@Observes @Outboxed ShipmentStatusChanged e) {
         List<Notification> out = new ArrayList<>();
         if (e.status() == Shipment.Status.IN_TRANSIT) {
             out.add(Notification.to(e.requesterOrgId(), NotificationType.SHIPMENT_STATUS_CHANGE, "Tu carga está en camino",
@@ -103,7 +104,7 @@ public class NotificationObservers {
         publisher.publish(out);
     }
 
-    void onIncidentReported(@Observes(during = TransactionPhase.AFTER_SUCCESS) IncidentReported e) {
+    void onIncidentReported(@Observes @Outboxed IncidentReported e) {
         UUID other = e.reportedByOrgId().equals(e.requesterOrgId()) ? e.carrierOrgId() : e.requesterOrgId();
         String text = "Se reportó una incidencia (" + label(e.category()) + ") en el envío " + e.route()
                 + ". El avance de paradas queda en pausa hasta que el operador la resuelva.";
@@ -115,7 +116,7 @@ public class NotificationObservers {
         publisher.publish(out);
     }
 
-    void onIncidentStatus(@Observes(during = TransactionPhase.AFTER_SUCCESS) IncidentStatusChanged e) {
+    void onIncidentStatus(@Observes @Outboxed IncidentStatusChanged e) {
         if (e.status().isActive()) return;   // IN_REVIEW no se notifica
         String title = e.status() == IncidentStatus.RESOLVED ? "Incidencia resuelta" : "Incidencia cerrada";
         String body = (e.resolutionNotes() == null ? "El operador cerró la incidencia." : e.resolutionNotes())
@@ -127,7 +128,7 @@ public class NotificationObservers {
                         e.incidentId())));
     }
 
-    void onReview(@Observes(during = TransactionPhase.AFTER_SUCCESS) ReviewSubmitted e) {
+    void onReview(@Observes @Outboxed ReviewSubmitted e) {
         publisher.publish(List.of(Notification.to(e.reviewedOrgId(), NotificationType.NEW_REVIEW, "Nueva calificación",
                 e.reviewerName() + " te calificó con " + e.rating().stripTrailingZeros().toPlainString()
                         + " de 5.", NotificationTarget.SHIPMENT, e.shipmentId())));
@@ -135,42 +136,42 @@ public class NotificationObservers {
 
     // ----- Viajes publicados y reservas (módulo trip)
 
-    void onTripBookingRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingRequested e) {
+    void onTripBookingRequested(@Observes @Outboxed TripBookingRequested e) {
         publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.TRIP_BOOKING_REQUESTED,
                 "Nueva reserva en tu viaje", e.requesterName() + " pidió reservar " + kg(e.weightKg()) + " kg en tu viaje "
                         + e.route() + " por " + Money.soles(e.price()) + ". Confírmala o recházala.",
                 NotificationTarget.TRIP, e.tripId())));
     }
 
-    void onTripBookingConfirmed(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingConfirmed e) {
+    void onTripBookingConfirmed(@Observes @Outboxed TripBookingConfirmed e) {
         publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.TRIP_BOOKING_CONFIRMED,
                 "Reserva confirmada", e.carrierName() + " confirmó tu reserva en el viaje " + e.route() + " por "
                         + Money.soles(e.price()) + ". Ya puedes seguir tu envío.",
                 NotificationTarget.SHIPMENT, e.shipmentId())));
     }
 
-    void onTripBookingRejected(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingRejected e) {
+    void onTripBookingRejected(@Observes @Outboxed TripBookingRejected e) {
         publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.TRIP_BOOKING_REJECTED,
                 "Reserva rechazada", e.carrierName() + " no pudo aceptar tu reserva en el viaje " + e.route()
                         + (e.reason() == null ? "." : ": " + e.reason() + "."),
                 NotificationTarget.TRIP, e.tripId())));
     }
 
-    void onTripBookingCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripBookingCancelled e) {
+    void onTripBookingCancelled(@Observes @Outboxed TripBookingCancelled e) {
         publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.TRIP_BOOKING_CANCELLED,
                 "Reserva cancelada", e.requesterName() + " canceló su reserva en tu viaje " + e.route()
                         + (e.wasConfirmed() ? ". El espacio vuelve a estar disponible." : "."),
                 NotificationTarget.TRIP, e.tripId())));
     }
 
-    void onTripCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) TripCancelled e) {
+    void onTripCancelled(@Observes @Outboxed TripCancelled e) {
         publisher.publish(e.affected().stream().map(a -> Notification.to(a.requesterOrgId(),
                 NotificationType.TRIP_CANCELLED, "Viaje cancelado", e.carrierName() + " canceló el viaje " + e.route()
                         + ". Tu reserva " + (a.wasConfirmed() ? "confirmada " : "") + "quedó cancelada; busca otro viaje o publica tu carga.",
                 NotificationTarget.TRIP, e.tripId())).toList());
     }
 
-    void onSmartLoadSuggested(@Observes(during = TransactionPhase.AFTER_SUCCESS) SmartLoadSuggested e) {
+    void onSmartLoadSuggested(@Observes @Outboxed SmartLoadSuggested e) {
         publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.SMART_LOAD_SUGGESTED,
                 "Nueva carga combinada sugerida", "Combina " + e.itemCount() + " cargas en el vehículo " + e.vehiclePlate()
                         + ": ocupación " + e.occupancyPct().stripTrailingZeros().toPlainString() + " % e ingreso estimado "
@@ -178,7 +179,7 @@ public class NotificationObservers {
                 NotificationTarget.SMART_LOAD, e.suggestionId())));
     }
 
-    void onSmartLoadAccepted(@Observes(during = TransactionPhase.AFTER_SUCCESS) SmartLoadAccepted e) {
+    void onSmartLoadAccepted(@Observes @Outboxed SmartLoadAccepted e) {
         publisher.publish(e.items().stream().map(i -> Notification.to(i.requesterOrgId(),
                 NotificationType.SMART_LOAD_ACCEPTED, "Tu carga fue agrupada",
                 e.carrierName() + " incluyó tu carga " + i.route() + " en un plan de carga combinada con otras cargas. "
@@ -190,7 +191,7 @@ public class NotificationObservers {
         return v.stripTrailingZeros().toPlainString();
     }
 
-    /** Organizaciones operadoras (perfil público orgs_read; en SystemTx porque corre tras el commit). */
+    /** Organizaciones operadoras (SystemTx: se une a la transacción de sistema del despacho del outbox). */
     private List<UUID> operators() {
         return system.call(() -> organizations.idsOfType(OrgType.OPERATOR));
     }

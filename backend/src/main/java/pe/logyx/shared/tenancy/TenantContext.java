@@ -23,8 +23,6 @@ public class TenantContext {
     @Inject
     JsonWebToken jwt;
 
-    private boolean system;
-
     public boolean isAuthenticated() {
         return jwt != null && jwt.getRawToken() != null;
     }
@@ -54,7 +52,5 @@ public class TenantContext {
     }
 
     /** true mientras se ejecuta una operación de sistema (ver {@link SystemTx}). */
-    public boolean isSystem() { return system; }
-
-    void setSystem(boolean system) { this.system = system; }
+    public boolean isSystem() { return SystemTx.isActive(); }
 }

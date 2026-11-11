@@ -20,8 +20,8 @@ Una sola BD y un solo schema con datos **org-scoped**:
    usuario autenticado, `TenantSessionBinder` ejecuta `set_config('app.org_id', …, true)` y
    `SET LOCAL ROLE logyx_app` (rol sin `BYPASSRLS`). Si el código olvida un `WHERE`, la BD igual filtra.
 4. Operaciones de plataforma que cruzan organizaciones por definición (login, registro, scheduler, conteo
-   agregado de ofertas, unicidad global de placa/email) corren **sin** `SET ROLE` usando `SystemTx`.
-   Cada uso de `SystemTx` debe estar comentado con su justificación.
+   agregado de ofertas, unicidad global de placa/email) corren en `SystemTx`, sobre un datasource privilegiado
+   separado (ADR-0006). Cada uso de `SystemTx` debe estar comentado con su justificación.
 
 Datos públicos del marketplace (solicitudes `PUBLISHED`, perfil público de organizaciones) son visibles
 entre organizaciones por política explícita; la flota, usuarios, ofertas ajenas y envíos no.
@@ -30,7 +30,9 @@ entre organizaciones por política explícita; la flota, usuarios, ofertas ajena
 - (+) El marketplace funciona sin fricción; el aislamiento está probado a nivel BD (`RowLevelSecurityTest`).
 - (+) Defensa en profundidad exigida por la Ley N° 29733 (medidas técnicas de seguridad).
 - (−) Todo acceso a datos de usuario debe ir en `@Transactional`; lecturas fuera de transacción no activan RLS.
-- (−) La app se conecta como dueño del esquema y baja a `logyx_app` con `SET LOCAL ROLE`; una inyección SQL
-  podría hacer `RESET ROLE`. **Antes de producción:** conectar con un usuario `LOGIN` miembro solo de
-  `logyx_app` y usar un datasource separado y privilegiado para `SystemTx`/Flyway.
+- ~~(−) La app se conecta como dueño del esquema y baja a `logyx_app` con `SET LOCAL ROLE`; una inyección SQL
+  podría hacer `RESET ROLE`.~~ **Resuelto en ADR-0006 (2026-11-10):** la app se conecta como `logyx_api` (LOGIN,
+  miembro solo de `logyx_app`); Flyway y `SystemTx` usan un datasource separado con `logyx_owner`. Sin JWT y fuera de
+  `SystemTx` ya no hay privilegios implícitos (fail-closed). Riesgo residual: suplantar `app.org_id` vía `set_config`
+  con una inyección (ver ADR-0006).
 - Si en el futuro LOGYX se vende como SaaS de marca blanca a cooperativas, se reevalúa (schema por cooperativa).

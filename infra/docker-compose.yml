@@ -1,0 +1,105 @@
+# LOGYX — producción local / staging en una máquina (ver infra/README.md).
+#   cp infra/.env.example infra/.env   (y cambia TODAS las contraseñas)
+#   infra/scripts/gen-jwt-keys.sh
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
+# Web en http://localhost:${WEB_PORT:-8580}, API en http://localhost:${BACKEND_PORT:-8680}.
+# Solo web y API se publican en el host (127.0.0.1); Postgres y MinIO quedan en la red interna.
+name: logyx
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?define POSTGRES_SUPERUSER_PASSWORD en infra/.env}
+      LOGYX_DB: logyx
+      LOGYX_OWNER_PASSWORD: ${DB_ADMIN_PASSWORD:?define DB_ADMIN_PASSWORD}
+      LOGYX_APP_PASSWORD: ${DB_APP_PASSWORD:?define DB_APP_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d logyx"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+    mem_limit: 512m
+
+  minio:
+    # MinIO ya no publica minio/minio en Docker Hub; chainguard/minio fijada por digest (actualízala con dependabot o a mano).
+    image: chainguard/minio@sha256:fb893e36fc369d41e92f678b17ec27378fa5bf0576aeef7ac15460c13629ab5a
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?define MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?define MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      # La imagen no trae curl/wget/grep: petición HTTP con bash puro.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+    mem_limit: 512m
+
+  backend:
+    build: ../backend
+    image: logyx-backend:local
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/logyx
+      DB_ADMIN_USER: logyx_owner
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD}
+      DB_APP_USER: logyx_api
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      JWT_PUBLIC_KEY: /run/secrets/jwt_public_key
+      JWT_PRIVATE_KEY: /run/secrets/jwt_private_key
+      LOGYX_DOCUMENTS_STORAGE: s3
+      LOGYX_S3_ENDPOINT: http://minio:9000
+      LOGYX_S3_BUCKET: ${LOGYX_S3_BUCKET:-logyx-documents}
+      LOGYX_S3_ACCESS_KEY: ${LOGYX_S3_ACCESS_KEY:-${MINIO_ROOT_USER}}
+      LOGYX_S3_SECRET_KEY: ${LOGYX_S3_SECRET_KEY:-${MINIO_ROOT_PASSWORD}}
+      LOGYX_S3_CREATE_BUCKET: "true"
+      CORS_ENABLED: "false"
+    secrets: [jwt_private_key, jwt_public_key]
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8680}:8080"
+    networks: [internal, edge]
+    mem_limit: 768m
+
+  web:
+    build: ../web
+    image: logyx-web:local
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    environment:
+      API_URL: http://backend:8080
+      # En local se sirve por http: la cookie de sesión no puede ser Secure. En producción (https) quítalo.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8580}:4321"
+    networks: [edge]
+    mem_limit: 384m
+
+secrets:
+  jwt_private_key:
+    file: ./secrets/jwt-private.pem
+  jwt_public_key:
+    file: ./secrets/jwt-public.pem
+
+volumes:
+  pgdata:
+  miniodata:
+
+networks:
+  internal:
+  edge:

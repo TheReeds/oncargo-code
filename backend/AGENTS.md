@@ -2,7 +2,8 @@
 
 Quarkus 3.40 · Java 21 · PostgreSQL 16 (Flyway) · JWT RSA · Hibernate ORM Panache.
 Contexto general: `../AGENTS.md`, `../docs/architecture/overview.md`, ADR-0001 (RLS), ADR-0002 (hexagonal),
-ADR-0004 (eventos de dominio, notificaciones, escrituras del operador) y ADR-0005 (almacenamiento de documentos).
+ADR-0004 (eventos de dominio, notificaciones, escrituras del operador), ADR-0005 (almacenamiento de documentos) y
+ADR-0006 (dos usuarios de BD, outbox transaccional, S3). Despliegue: `../infra/README.md`; seguridad: `../docs/security.md`.
 
 ## Correr y testear
 ```bash
@@ -12,7 +13,8 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk      # el JDK por defecto de la m�
 ./mvnw test                                        # unit (dominio) + @QuarkusTest (flujo HTTP y RLS contra Postgres real)
 ./mvnw package -DskipTests                         # regenera ../docs/api/openapi.yaml (contrato)
 ```
-Requiere Docker en marcha (Dev Services levanta `postgres:16-alpine` en dev y test).
+Requiere Docker en marcha (Dev Services levanta `postgres:16-alpine` en dev y test; `S3DocumentStorageTest` levanta
+`chainguard/minio` con Testcontainers). Imagen: `docker build -t logyx-backend backend/` (multi-stage, usuario no root).
 En dev `%dev.quarkus.http.host-validation.require-localhost=false`: el emulador Android llama con
 `Host: 10.0.2.2:<puerto>` y, sin eso, Quarkus dev responde 400 vacío.
 
@@ -65,6 +67,7 @@ sobre los objetos de dominio.
 | `notification` | centro de notificaciones alimentado por eventos | `notifications` (V8) |
 | `operator` | alertas SLA, métricas, candidatos y asignación manual (RN10); sin tablas propias | políticas de escritura (V9) |
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
+| `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
 `reputation → shipment, documents`; `incident → shipment`; `marketplace → reputation` (Trust Score en ofertas);
@@ -74,8 +77,12 @@ Dependencias entre módulos nuevos (todas por `application`): `negotiation → m
 `shipment/infrastructure/integration` (igual que `RequestInfoProvider`).
 
 ### Eventos de dominio (ADR-0004)
-Records en `<modulo>/application/event/`, publicados con `@Inject Event<X>` + `fire(...)` dentro de la transacción.
-Consumidores con `@Observes(during = TransactionPhase.AFTER_SUCCESS)` (solo lo confirmado; un fallo no revierte):
+Records en `<modulo>/application/event/` que implementan `shared.outbox.OutboxEvent`, publicados con `@Inject Event<X>` +
+`fire(...)` dentro de la transacción. **Outbox (ADR-0006):** `OutboxRecorder` los guarda en `outbox_events` (V11) en esa misma
+transacción; `OutboxDispatcher` los entrega tras el commit (y por job cada `logyx.outbox.every`, con reintentos exponenciales,
+`FOR UPDATE SKIP LOCKED` y `FAILED` tras 10 intentos). Consumidores con `@Observes @Outboxed X e`: corren dentro de la
+transacción de sistema del despacho; si lanzan, todo se revierte y el evento se reintenta (deben ser idempotentes o escribir
+solo en esa transacción). No uses `AFTER_SUCCESS` para efectos que no deben perderse. Tests: `outbox/OutboxTest`.
 | Evento | Publica | Consumen |
 |---|---|---|
 | `BidPlaced`, `BidAccepted` | `PlaceBidUseCase`, `AcceptBidUseCase.award` (también asignación manual) | notification |
@@ -88,14 +95,17 @@ Consumidores con `@Observes(during = TransactionPhase.AFTER_SUCCESS)` (solo lo c
 | `TripCancelled` | `TripService.cancel` | notification (a cada PYME con reserva activa) |
 | `SmartLoadSuggested` | `SmartLoadService.generate*` (a demanda y job) | notification (al transportista) |
 | `SmartLoadAccepted` | `SmartLoadService.accept` | notification (a cada PYME agrupada, RF33) |
-Para un aviso nuevo: agrega el record al módulo que publica, dispara el evento y un método observer en
-`NotificationObservers` (los textos van ahí, en español). El evento debe traer los datos que el aviso necesita.
+Para un aviso nuevo: agrega el record (`implements OutboxEvent`) al módulo que publica, dispara el evento y un método
+`@Observes @Outboxed` en `NotificationObservers` (los textos van ahí, en español). El evento debe traer los datos que el aviso
+necesita y es un formato persistido: agrega campos, no los renombres. `ReputationRecalculator` también consume por outbox.
 
-### Almacenamiento de archivos (ADR-0005)
-`documents/application/port/out/DocumentStorage` → `infrastructure/storage/LocalFileSystemDocumentStorage`
-(`logyx.documents.storage-dir`, por omisión `~/.logyx/documents`, env `LOGYX_DOCUMENTS_DIR`; en tests un temp dir).
+### Almacenamiento de archivos (ADR-0005, ADR-0006)
+`documents/application/port/out/DocumentStorage`; `infrastructure/storage/DocumentStorageProducer` elige por
+`logyx.documents.storage` (env `LOGYX_DOCUMENTS_STORAGE`): `local` → `LocalFileSystemDocumentStorage`
+(`logyx.documents.storage-dir`, por omisión `~/.logyx/documents`, env `LOGYX_DOCUMENTS_DIR`; en tests un temp dir) o
+`s3` → `S3DocumentStorage` (AWS SDK v2 + cliente `java.net`; `logyx.documents.s3.*` / env `LOGYX_S3_*`, ver `infra/README.md`).
 Claves generadas por el servidor; formato por firma binaria (`documents/domain/FileFormat`: jpg/png/pdf);
-`logyx.documents.max-size-bytes` = 10 MB (200 KB en test). Para S3/MinIO: otro adaptador del mismo puerto.
+`logyx.documents.max-size-bytes` = 10 MB (200 KB en test).
 
 ### Mapa de reglas
 `PriceFloorPolicy` (RN03, pricing) · `TariffCalculator` (motor de costos, pricing) · `BidEligibilityPolicy`
@@ -155,28 +165,38 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 8. **Regenerar OpenAPI** `./mvnw package -DskipTests` y revisar `git diff ../docs/api/openapi.yaml`.
 9. **STATUS**: actualiza la fila del módulo en `../docs/STATUS.md` y `../docs/domain/business-rules.md`.
 
-## RLS y SystemTx (ADR-0001) — no romper
+## RLS, dos datasources y SystemTx (ADR-0001, ADR-0006) — no romper
+- **Dos datasources sobre la misma BD.** Por defecto = dueño del esquema (`logyx_owner` en prod; `quarkus` en dev/test):
+  Flyway y `SystemTx`. `app` = `logyx_api` (LOGIN, miembro solo de `logyx_app`): todo lo demás. Hibernate elige con
+  multitenencia `DATABASE` usada como enrutador (`shared/tenancy/DataSourceRouting`): tenant `system` solo dentro de
+  `SystemTx`. En dev/test `db/local-roles/R__local_roles.sql` crea `logyx_api` (contraseña `logyx_api`) y el datasource
+  `app` apunta a la URL de Dev Services. En prod los roles los crea `infra/db/init-roles.sh`.
 - `shared/tenancy/TenantSessionBinder` observa `@Initialized(TransactionScoped.class)`: en cada transacción con
   usuario autenticado hace `set_config('app.org_id'|'app.org_type', …, true)` y `SET LOCAL ROLE logyx_app`.
-  **Todo acceso a datos de usuario va dentro de `@Transactional`** (en `application`), si no, no hay RLS.
-- Sin request context / sin JWT (login, registro, scheduler, arranque) la transacción corre como dueño del esquema.
-- `SystemTx.call(...)` abre una transacción nueva **sin** RLS. Solo para operaciones de plataforma que cruzan
-  organizaciones; cada uso lleva comentario. Usos actuales:
+  **Todo acceso a datos de usuario va dentro de `@Transactional`** (en `application`).
+- **Sin JWT y fuera de `SystemTx` no se ve nada** (fail-closed: `logyx_api` sin organización). Todo lo que corre sin
+  usuario (login, registro, alta de operador, jobs, seed, outbox) entra explícitamente por `SystemTx`.
+- `SystemTx.call(...)` abre una transacción nueva en el datasource privilegiado (sin RLS); si ya hay una de sistema activa en
+  el hilo, se une a ella; activa el request context si falta. Solo para operaciones de plataforma que cruzan
+  organizaciones; cada uso lleva comentario. En tests, las consultas "como dueño" van con `systemTx.run/call`
+  (no con `QuarkusTransaction`, que ahora es `logyx_api`). Usos actuales:
+  - `AuthService.register` / `provisionOperator` / `login`: sin usuario aún; unicidad de RUC/email y búsqueda por email.
+  - Jobs: `CloseExpiredAuctionsUseCase.closeExpired`, `SmartLoadService.generateForAllCarriers`, `TripMaintenanceUseCase.run`,
+    `OutboxDispatcher` (despacho y limpieza). `DemoDataSeeder` (arranque dev).
   - `FleetService.addVehicle`: unicidad global de placa.
   - `UserAccounts.createDriverAccount`: unicidad global de email.
   - `FleetService.plateForContract`: la PYME que acepta copia la placa (flota privada del transportista).
   - `PlaceBidUseCase`: conteo total de ofertas para RN04 (bajo RLS un transportista solo ve la suya).
   - `RequestSummaries.bidCounts`: conteo agregado de ofertas para transportistas (sin montos ni competidores).
   - `NotificationPublisher.publish`: la notificación es para otra organización; `notifications` no tiene política
-    de INSERT para `logyx_app` (ADR-0004).
+    de INSERT para `logyx_app` (ADR-0004). Se une a la transacción del despacho del outbox.
   - `ReputationRecalculator.recalculate`: quien califica actualiza la reputación de otra organización;
     `reputation_scores` es de solo lectura para `logyx_app`.
-  - `NotificationObservers.operators`: ids de las organizaciones operadoras (corre tras el commit).
+  - `NotificationObservers.operators`: ids de las organizaciones operadoras (dentro del despacho del outbox).
   - `DirectContractUseCase.create` (marketplace): al confirmar una reserva de viaje, el transportista debe escribir la solicitud
     (de la PYME, `requests_owner`) y la oferta (suya) a la vez; ninguna transacción de usuario puede con ambas bajo RLS.
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
     la fila y se resta el peso de esa reserva.
-  - El job de `trip` (`TripScheduler`) no usa `SystemTx`: sin JWT corre como dueño del esquema.
 - El operador **no** usa `SystemTx`: lee con las políticas `*_operator` (V2, V4–V7) y la asignación manual escribe
   con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.).
 - RLS por tabla nueva: `messages`/`counter_offers`/`documents`/`incidents`/`incident_comments` → las dos partes
@@ -186,14 +206,24 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 - `trip`: `carrier_trips` → dueño (solo `CARRIER`), PYMEs leen los OPEN/FILLING y los que reservaron, operador lee; `trip_bookings` →
   las dos partes leen/actualizan, solo la PYME (`PYME`) inserta, operador lee, sin DELETE; `smart_load_*` → solo el transportista
   dueño (+ lectura del operador, RF59).
-- La transacción de `SystemTx` no ve lo no confirmado de la transacción externa (ver comentario en `PlaceBidUseCase`).
+- La transacción de `SystemTx` no ve lo no confirmado de la transacción externa de usuario (ver comentario en `PlaceBidUseCase`).
+- `outbox_events` (V11): `logyx_app` solo INSERT con `actor_org_id = app_org()`. `DatabasePrivilegesTest` prueba que
+  `logyx_api` no puede `RESET ROLE`/`SET ROLE` a un rol privilegiado, alterar tablas/políticas ni leer sin organización.
+
+## Seguridad HTTP (docs/security.md)
+- Rate limiting de login/registro en `shared/security/AuthRateLimits` (en memoria, por instancia): `logyx.rate-limit.*`;
+  en dev/test el límite por IP es enorme (tests y e2e registran cientos de cuentas desde 127.0.0.1), el bloqueo por email
+  (10 fallos / 15 min) sí aplica. 429 `LOGYX-AUTH-429` con `Retry-After`. La IP sale de `X-Forwarded-For` solo desde
+  `TRUSTED_PROXIES` (`%prod.quarkus.http.proxy.*`).
+- Cabeceras `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` en `/api/*`; HSTS en `%prod`.
+  CORS desactivado en prod (`CORS_ENABLED`), Swagger UI fuera del build prod. No loguees emails, RUC, teléfonos ni tokens.
 
 ## Códigos de error
 Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, meta }` (`shared/api/ExceptionMappers`).
 | Área | Códigos |
 |---|---|
 | GEN | `404` no encontrado, `403` regla de permiso de negocio, `500` |
-| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token, `403` rol sin permiso |
+| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token, `403` rol sin permiso, `429` demasiados intentos (login/registro) |
 | VAL | `001` Bean Validation (`field` = propiedad) |
 | ORG | `001` RUC inválido, `002` RUC duplicado |
 | FLT | `001` placa duplicada, `002` estado "en ruta" lo controla el envío |

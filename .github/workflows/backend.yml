@@ -1,0 +1,42 @@
+# Backend: tests (Quarkus + Dev Services/Testcontainers) y verificación de que el contrato
+# versionado (docs/api/openapi.{yaml,json}) coincide con el que genera el build.
+name: backend
+on:
+  push:
+    paths: ['backend/**', 'docs/api/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', 'docs/api/**', '.github/workflows/backend.yml']
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MAVEN_OPTS: -Xmx2g
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Tests
+        working-directory: backend
+        run: ./mvnw -B test
+      - name: Generar contrato
+        working-directory: backend
+        run: ./mvnw -B package -DskipTests
+      - name: Contrato versionado == generado
+        run: git diff --exit-code docs/api/openapi.yaml docs/api/openapi.json
+      - name: Reportes surefire
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
+          if-no-files-found: ignore

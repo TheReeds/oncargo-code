@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import pe.logyx.identity.application.AuthService;
+import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.support.Api;
 import pe.logyx.support.Flows;
 import pe.logyx.support.Api.Session;
@@ -53,8 +54,12 @@ class RowLevelSecurityTest {
         return new Session(r.accessToken(), r.user().organization().id().toString(), null);
     }
 
+    @Inject
+    SystemTx systemTx;
+
+    /** Datasource privilegiado (dueño del esquema): sin RLS. */
     private long countAsOwner(String sql) {
-        return QuarkusTransaction.requiringNew().call(() ->
+        return systemTx.call(() ->
                 ((Number) em.createNativeQuery(sql).getSingleResult()).longValue());
     }
 
@@ -117,10 +122,12 @@ class RowLevelSecurityTest {
     @Test
     void elBackendActivaRlsEnLasPeticionesAutenticadas() {
         Session a = register("CARRIER", "RLS Probe");
-        // Si el binder no hiciera SET ROLE, current_user sería el dueño.
+        // Fuera de SystemTx la conexión es la del usuario de la app (ADR-0006), nunca la del dueño.
         String role = QuarkusTransaction.requiringNew().call(() ->
                 (String) em.createNativeQuery("SELECT current_user").getSingleResult());
-        assertNotEquals("logyx_app", role, "fuera de una petición se usa el rol dueño");
+        assertEquals("logyx_api", role, "sin SystemTx se usa el usuario de la aplicación");
+        String system = systemTx.call(() -> (String) em.createNativeQuery("SELECT current_user").getSingleResult());
+        assertNotEquals("logyx_api", system, "SystemTx usa el datasource privilegiado");
         Api.as(a).get("/api/v1/vehicles").then().statusCode(200);
     }
 
@@ -248,7 +255,7 @@ class RowLevelSecurityTest {
         assertEquals(0, executeAs(pymeA, "PYME", "UPDATE carrier_trips SET capacity_kg = 1 WHERE id = '" + trip + "'"));
         assertEquals(0, executeAs(carrierB, "CARRIER", "UPDATE trip_bookings SET status = 'CONFIRMED' WHERE id = '"
                 + booking + "'"));
-        String requestedBy = QuarkusTransaction.requiringNew().call(() -> String.valueOf(em.createNativeQuery(
+        String requestedBy = systemTx.call(() -> String.valueOf(em.createNativeQuery(
                 "SELECT requested_by FROM trip_bookings WHERE id = ?1").setParameter(1, java.util.UUID.fromString(booking))
                 .getSingleResult()));
         var ex2 = assertThrows(Exception.class, () -> executeAs(pymeB, "PYME",
@@ -260,7 +267,7 @@ class RowLevelSecurityTest {
 
         // Smart Load: sugerencias e ítems privados del transportista (el operador las lee, RF59)
         java.util.UUID suggestion = java.util.UUID.randomUUID();
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                 "INSERT INTO smart_load_suggestions (id, carrier_org_id, vehicle_id, vehicle_type, vehicle_plate, "
                         + "capacity_kg, total_weight_kg, combined_income, occupancy_pct, expires_at) VALUES (?1, ?2, ?3, "
                         + "'TRUCK_MEDIUM', 'AAA-111', 8000, 5000, 4000, 62.5, now() + interval '4 hours')")

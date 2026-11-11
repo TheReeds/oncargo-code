@@ -25,3 +25,5 @@ de servicios externos.
   Con S3 se podría devolver una URL firmada temporal en vez de transmitir el archivo.
 - (−) En disco local no hay replicación ni antivirus; antes de producción: volumen persistente con backup o S3.
 - (−) Si el commit falla después de escribir el archivo puede quedar un huérfano (se borra si falla el insert).
+- **2026-11-10 (ADR-0006):** adaptador `S3DocumentStorage` (S3/MinIO) seleccionable con `logyx.documents.storage=s3`;
+  el disco local queda para dev/test. `infra/docker-compose.yml` usa MinIO.

@@ -137,3 +137,6 @@ Un 401 en cualquier llamada cierra sesión automáticamente (`dataModule`).
 - Cargas de retorno: se oferta con `LoadsRepository.placeBid(requestId, item.vehicleId, ...)`. Smart Load: aceptar solo avisa a las PYMEs, no oferta.
 - Navegación: el Home del transportista abre `CarrierTrips`, `ReturnLoads` y `SmartLoads` (no hay pestañas nuevas para no pasar de 6); la PYME tiene la pestaña `PymeTrips`. Avisos `TRIP`/`SMART_LOAD` navegan en `openNotification`.
 - Tests instrumentados con campos de texto: el botón puede quedar tapado por el teclado dentro de una hoja; usa `performSemanticsAction(SemanticsActions.OnClick)` en lugar de `performClick`.
+
+## CI
+`.github/workflows/android.yml` corre `./gradlew assembleDebug testDebugUnitTest` (sin emulador) en cada cambio a `android/**` o `docs/api/**`. Los tests instrumentados siguen siendo locales.

@@ -1,5 +1,6 @@
 package pe.logyx.trip.application;
 
+import pe.logyx.shared.tenancy.SystemTx;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -36,6 +37,8 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class SmartLoadService {
 
+    @Inject SystemTx systemTx;
+
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
     private static final int MAX_REQUESTS_SCANNED = 300;
 
@@ -58,17 +61,19 @@ public class SmartLoadService {
     }
 
     /** Job programado: recorre los vehículos disponibles de todos los transportistas. Sin RLS (sin usuario). */
-    @Transactional
+    // SystemTx: job sin usuario; recorre los vehículos de todos los transportistas.
     public int generateForAllCarriers() {
-        List<ShipmentRequest> requests = marketplace.openRequestsForPlanning(MAX_REQUESTS_SCANNED);
-        Map<UUID, List<Vehicle>> byCarrier = fleet.availableVehicles().stream()
-                .collect(Collectors.groupingBy(Vehicle::organizationId));
-        int created = 0;
-        for (var e : byCarrier.entrySet()) {
-            created += generate(e.getKey(), e.getValue(), requests).size();
-        }
-        if (created > 0) Log.infof("Smart Load: %d sugerencias nuevas", created);
-        return created;
+        return systemTx.call(() -> {
+            List<ShipmentRequest> requests = marketplace.openRequestsForPlanning(MAX_REQUESTS_SCANNED);
+            Map<UUID, List<Vehicle>> byCarrier = fleet.availableVehicles().stream()
+                    .collect(Collectors.groupingBy(Vehicle::organizationId));
+            int created = 0;
+            for (var e : byCarrier.entrySet()) {
+                created += generate(e.getKey(), e.getValue(), requests).size();
+            }
+            if (created > 0) Log.infof("Smart Load: %d sugerencias nuevas", created);
+            return created;
+        });
     }
 
     @Transactional

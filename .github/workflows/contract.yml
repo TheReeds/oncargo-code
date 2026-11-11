@@ -1,0 +1,24 @@
+# Contrato: en PRs falla si docs/api/openapi.json introduce cambios incompatibles respecto a la rama base.
+name: contract
+on:
+  pull_request:
+    paths: ['docs/api/**', 'backend/**', 'scripts/openapi-compat.py', '.github/workflows/contract.yml']
+permissions:
+  contents: read
+concurrency:
+  group: contract-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tests del script
+        run: python3 scripts/test_openapi_compat.py
+      - name: Comparar contra la rama base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: scripts/check-contract.sh "origin/${BASE_REF}"

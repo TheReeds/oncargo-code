@@ -5,6 +5,15 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-10 — Fase 5: preparación para producción
+
+`openapi.yaml`/`openapi.json` **sin cambios** (`scripts/check-contract.sh` en verde). Cambios de comportamiento:
+- **Nuevo código `LOGYX-AUTH-429`** (HTTP 429, cabecera `Retry-After` en segundos) en `POST /api/v1/auth/login` y
+  `POST /api/v1/auth/register` por rate limiting: login 50 intentos / 15 min por IP, bloqueo de un email tras 10 fallos
+  en 15 min (incluso con la contraseña correcta), registro 10 / 15 min por IP. Los clientes deben mostrar el `message`.
+- Las notificaciones se crean tras el commit vía outbox (mismo momento que antes; si el despacho falla se reintentan).
+- En prod: CORS desactivado, Swagger UI no incluido, `Cache-Control: no-store` y HSTS en las respuestas de la API.
+
 ## 2026-11-10 — Fase 4: viajes publicados, reservas, cargas de retorno y Smart Load Planner
 
 Todo es **aditivo** (paths y schemas nuevos; campos nuevos opcionales en `DashboardSummaryView`; valores nuevos en los

@@ -17,9 +17,11 @@ import jakarta.transaction.TransactionScoped;
  *   set_config('app.org_id', ..., true)   -- LOCAL: muere con la transacción
  *   SET LOCAL ROLE logyx_app              -- rol sin BYPASSRLS
  * </pre>
- * A partir de ahí PostgreSQL aplica las políticas RLS de V2. Si no hay usuario
- * (login, registro, scheduler) o la operación es de sistema, no se hace nada y
- * la transacción corre con el rol dueño del esquema.
+ * A partir de ahí PostgreSQL aplica las políticas RLS de V2. La conexión ya es del
+ * usuario de la aplicación ({@code logyx_api}, miembro solo de {@code logyx_app}; ADR-0006),
+ * así que el {@code SET ROLE} no da privilegios: fija el rol explícitamente. Sin usuario
+ * (y fuera de {@link SystemTx}) no se fija organización y las políticas no devuelven filas.
+ * Las operaciones de sistema usan otra conexión (datasource privilegiado) y no pasan por aquí.
  *
  * <p>Por eso todo acceso a datos de usuario debe ir dentro de {@code @Transactional}.
  */
@@ -30,9 +32,8 @@ public class TenantSessionBinder {
     EntityManager em;
 
     void onTransactionBegin(@Observes @Initialized(TransactionScoped.class) Object event) {
-        if (!Arc.container().requestContext().isActive()) return;
+        if (SystemTx.isActive() || !Arc.container().requestContext().isActive()) return;
         TenantContext ctx = Arc.container().instance(TenantContext.class).get();
-        if (ctx.isSystem()) return;
         var org = ctx.currentOrgId();
         if (org.isEmpty()) return;
 

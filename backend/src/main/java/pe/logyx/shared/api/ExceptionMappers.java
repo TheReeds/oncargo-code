@@ -2,6 +2,7 @@ package pe.logyx.shared.api;
 
 import io.quarkus.logging.Log;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.security.AuthRateLimits;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
@@ -14,7 +15,9 @@ public class ExceptionMappers {
 
     @ServerExceptionMapper
     public Response business(BusinessException e) {
-        return Response.status(e.status()).entity(ApiError.of(e.code(), e.getMessage(), e.field())).build();
+        var r = Response.status(e.status()).entity(ApiError.of(e.code(), e.getMessage(), e.field()));
+        if (e instanceof AuthRateLimits.TooManyRequests t) r.header("Retry-After", t.retryAfterSeconds());
+        return r.build();
     }
 
     @ServerExceptionMapper

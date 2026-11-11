@@ -2,7 +2,7 @@ import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { clearSession, homeFor, writeSession, readSession } from '@/lib/session';
 import { login, register } from './server';
-import { run } from '@/lib/actions';
+import { run, clientIpOf } from '@/lib/actions';
 
 const homeAfter = (cookies: any) => {
   const s = readSession(cookies)!;
@@ -14,7 +14,7 @@ export const auth = {
     accept: 'json',
     input: z.object({ email: z.email('Ingresa un correo válido'), password: z.string().min(1, 'Ingresa tu contraseña') }),
     handler: async (input, ctx) => {
-      const r = await run(() => login(input.email, input.password));
+      const r = await run(() => login(input.email, input.password, clientIpOf(ctx)));
       writeSession(ctx.cookies, r.accessToken!, r.expiresIn ?? 28800);
       return { home: homeAfter(ctx.cookies) };
     },
@@ -33,7 +33,7 @@ export const auth = {
       acceptPrivacyPolicy: z.literal(true, { error: 'Debes aceptar la política de privacidad' }),
     }),
     handler: async (input, ctx) => {
-      const r = await run(() => register(input));
+      const r = await run(() => register(input, clientIpOf(ctx)));
       writeSession(ctx.cookies, r.accessToken!, r.expiresIn ?? 28800);
       return { home: homeAfter(ctx.cookies) };
     },

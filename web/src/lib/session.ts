@@ -42,11 +42,19 @@ export function readSession(cookies: AstroCookies): Session | null {
   };
 }
 
+/** `COOKIE_SECURE=true|false` manda; si no, secure en producción (INSECURE_COOKIES=1 sigue desactivándolo, compat con e2e). */
+function cookieSecure(): boolean {
+  const v = process.env.COOKIE_SECURE?.toLowerCase();
+  if (v === 'true' || v === '1') return true;
+  if (v === 'false' || v === '0') return false;
+  return import.meta.env.PROD && process.env.INSECURE_COOKIES !== '1';
+}
+
 export function writeSession(cookies: AstroCookies, token: string, expiresInSec: number) {
   cookies.set(COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: import.meta.env.PROD && process.env.INSECURE_COOKIES !== '1',
+    secure: cookieSecure(),
     path: '/',
     maxAge: expiresInSec,
   });

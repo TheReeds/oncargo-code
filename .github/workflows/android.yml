@@ -1,0 +1,42 @@
+# Android: compila debug y corre unit tests (sin emulador).
+name: android
+on:
+  push:
+    paths: ['android/**', 'docs/api/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'docs/api/**', '.github/workflows/android.yml']
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # compileSdk 37 requiere platforms;android-37.0 (el runner trae el SDK en ANDROID_HOME)
+      - name: SDK Android
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          "$SDKM" --licenses < <(yes) >/dev/null || true
+          "$SDKM" "platforms;android-37.0" "platforms;android-36"
+      - run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - name: Reportes de test
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: |
+            android/**/build/reports/tests
+            android/**/build/test-results
+          if-no-files-found: ignore

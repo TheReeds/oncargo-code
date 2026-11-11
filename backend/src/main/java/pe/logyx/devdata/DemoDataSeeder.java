@@ -6,6 +6,7 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.profile.IfBuildProfile;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
+import pe.logyx.shared.tenancy.SystemTx;
 import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.jwt.auth.principal.JWTParser;
@@ -13,7 +14,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.JsonWebToken;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.persistence.EntityManager;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.documents.application.DocumentService;
@@ -96,11 +96,13 @@ public class DemoDataSeeder {
     @Inject BookingService tripBookings;
     @Inject SmartLoadService smartLoads;
     @Inject EntityManager em;
+    @Inject SystemTx systemTx;
     @Inject CurrentIdentityAssociation identity;
     @Inject JWTParser jwtParser;
 
     void onStart(@Observes StartupEvent event) {
-        if (accounts.byEmail(PYME_EMAIL).isPresent()) {
+        // SystemTx: arranque sin usuario; busca la cuenta demo en todas las organizaciones.
+        if (systemTx.call(() -> accounts.byEmail(PYME_EMAIL).isPresent())) {
             Log.info("Datos demo ya presentes; no se vuelven a crear");
             return;
         }
@@ -291,7 +293,7 @@ public class DemoDataSeeder {
 
     /** Simula una solicitud publicada hace {@code hours} horas (solo dev, como dueño del esquema). */
     private void backdate(UUID requestId, int hours) {
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                         "UPDATE shipment_requests SET created_at = now() - make_interval(hours => ?1) WHERE id = ?2")
                 .setParameter(1, hours).setParameter(2, requestId).executeUpdate());
     }

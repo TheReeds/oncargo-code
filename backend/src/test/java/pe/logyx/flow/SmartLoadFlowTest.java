@@ -1,6 +1,5 @@
 package pe.logyx.flow;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -20,6 +19,7 @@ import static pe.logyx.support.Api.*;
 class SmartLoadFlowTest {
 
     @Inject EntityManager em;
+    @Inject pe.logyx.shared.tenancy.SystemTx systemTx;
     @Inject SmartLoadService service;
 
     /**
@@ -29,7 +29,7 @@ class SmartLoadFlowTest {
      */
     @BeforeEach
     void aislarPublicadas() {
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                 "UPDATE shipment_requests SET status = 'CANCELLED' WHERE status = 'PUBLISHED' "
                         + "AND pickup_date < current_date + 30").executeUpdate());
     }
@@ -105,7 +105,7 @@ class SmartLoadFlowTest {
         // Tras rechazar, el planificador puede volver a proponerla; esa nueva vence
         String again = as(carrier).post("/api/v1/smart-loads/generate").then().statusCode(201).body("data", hasSize(1))
                 .extract().path("data[0].id");
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                 "UPDATE smart_load_suggestions SET expires_at = now() - interval '1 minute' WHERE id = ?1")
                 .setParameter(1, UUID.fromString(again)).executeUpdate());
         as(carrier).post("/api/v1/smart-loads/" + again + "/accept").then().statusCode(409).body("error.code", is("LOGYX-TRP-009"));

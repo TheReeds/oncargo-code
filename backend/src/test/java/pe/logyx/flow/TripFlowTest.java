@@ -1,6 +1,5 @@
 package pe.logyx.flow;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -19,6 +18,7 @@ import static pe.logyx.support.Api.*;
 class TripFlowTest {
 
     @Inject EntityManager em;
+    @Inject pe.logyx.shared.tenancy.SystemTx systemTx;
     @Inject TripMaintenanceUseCase maintenance;
 
     @Test
@@ -267,7 +267,7 @@ class TripFlowTest {
         Session pyme = register("PYME", "Trip Maint Pyme");
         String tripId = publishTrip(carrier, vehicle(carrier, plate(), 8000), 8000, "PER_KG", 0.4, 2).extract().path("data.id");
         String bookingId = bookTrip(pyme, tripId, 500).extract().path("data.id");
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                 "UPDATE carrier_trips SET departure_at = now() - interval '2 hours' WHERE id = ?1")
                 .setParameter(1, java.util.UUID.fromString(tripId)).executeUpdate());
 
@@ -276,7 +276,7 @@ class TripFlowTest {
         as(pyme).get("/api/v1/trip-bookings/mine").then().body("data.find { it.id == '" + bookingId + "' }.status",
                 is("REJECTED"));
 
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                 "UPDATE carrier_trips SET departure_at = now() - interval '30 hours' WHERE id = ?1")
                 .setParameter(1, java.util.UUID.fromString(tripId)).executeUpdate());
         maintenance.run();

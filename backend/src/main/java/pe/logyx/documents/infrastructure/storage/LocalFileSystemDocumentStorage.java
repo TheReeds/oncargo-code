@@ -1,8 +1,6 @@
 package pe.logyx.documents.infrastructure.storage;
 
 import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import pe.logyx.documents.application.port.out.DocumentStorage;
 
 import java.io.IOException;
@@ -15,15 +13,14 @@ import java.nio.file.StandardCopyOption;
  * Almacenamiento en disco local bajo {@code logyx.documents.storage-dir} (por omisión {@code ~/.logyx/documents},
  * fuera del repo; en tests un directorio temporal). Escritura atómica: archivo temporal + move. Las claves las
  * genera el servidor; aun así se rechaza cualquier clave que escape del directorio raíz.
- * Para producción se reemplaza por un adaptador S3/MinIO que implemente {@link DocumentStorage}.
+ * Lo elige {@link DocumentStorageProducer} con {@code logyx.documents.storage=local} (dev/test); en producción
+ * se usa {@link S3DocumentStorage}.
  */
-@ApplicationScoped
 public class LocalFileSystemDocumentStorage implements DocumentStorage {
 
     private final Path root;
 
-    public LocalFileSystemDocumentStorage(
-            @ConfigProperty(name = "logyx.documents.storage-dir") String storageDir) {
+    public LocalFileSystemDocumentStorage(String storageDir) {
         this.root = Path.of(storageDir).toAbsolutePath().normalize();
     }
 

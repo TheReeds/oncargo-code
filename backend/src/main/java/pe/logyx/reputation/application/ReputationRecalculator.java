@@ -2,7 +2,7 @@ package pe.logyx.reputation.application;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.TransactionPhase;
+import pe.logyx.shared.outbox.Outboxed;
 import jakarta.inject.Inject;
 import pe.logyx.reputation.application.event.ReviewSubmitted;
 import pe.logyx.reputation.application.port.out.ReputationScoreRepository;
@@ -14,7 +14,8 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * RN09: recalcula el Trust Score de la organización calificada tras el commit de cada calificación.
+ * RN09: recalcula el Trust Score de la organización calificada tras el commit de cada calificación (vía outbox,
+ * {@code @Outboxed}: si falla, se reintenta).
  * SystemTx justificado: quien califica escribe la reputación de OTRA organización y reputation_scores no admite
  * escrituras de logyx_app (V6). La fila se bloquea para que recálculos concurrentes no se pisen y se recalcula
  * desde todas las calificaciones confirmadas (no incrementalmente).
@@ -27,7 +28,7 @@ public class ReputationRecalculator {
     @Inject ReputationSettings settings;
     @Inject SystemTx system;
 
-    void onReview(@Observes(during = TransactionPhase.AFTER_SUCCESS) ReviewSubmitted e) {
+    void onReview(@Observes @Outboxed ReviewSubmitted e) {
         recalculate(e.reviewedOrgId());
     }
 

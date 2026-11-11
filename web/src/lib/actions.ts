@@ -23,3 +23,12 @@ export async function run<T>(fn: () => Promise<T>): Promise<T> {
     throw e;
   }
 }
+
+/** IP del navegador (para X-Forwarded-For hacia la API). `clientAddress` lanza si el adaptador no la conoce. */
+export function clientIpOf(ctx: ActionAPIContext): string | undefined {
+  try {
+    return ctx.clientAddress || undefined;
+  } catch {
+    return undefined;
+  }
+}

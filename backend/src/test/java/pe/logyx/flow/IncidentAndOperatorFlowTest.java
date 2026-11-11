@@ -1,6 +1,5 @@
 package pe.logyx.flow;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -22,6 +21,7 @@ class IncidentAndOperatorFlowTest {
 
     @Inject AuthService auth;
     @Inject EntityManager em;
+    @Inject pe.logyx.shared.tenancy.SystemTx systemTx;
 
     private Session operator() {
         String email = "operador" + System.nanoTime() + "@logyx.pe";
@@ -31,7 +31,7 @@ class IncidentAndOperatorFlowTest {
     }
 
     private void backdate(String requestId, int hours) {
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+        systemTx.run(() -> em.createNativeQuery(
                         "UPDATE shipment_requests SET created_at = now() - make_interval(hours => ?1) WHERE id = ?2")
                 .setParameter(1, hours).setParameter(2, UUID.fromString(requestId)).executeUpdate());
     }

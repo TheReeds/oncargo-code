@@ -1,9 +1,9 @@
 package pe.logyx.trip.application;
 
+import pe.logyx.shared.tenancy.SystemTx;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import pe.logyx.trip.application.port.out.CarrierTripRepository;
 import pe.logyx.trip.application.port.out.SmartLoadRepository;
 import pe.logyx.trip.domain.model.CarrierTrip;
@@ -21,6 +21,8 @@ import java.util.List;
 @ApplicationScoped
 public class TripMaintenanceUseCase {
 
+    @Inject SystemTx systemTx;
+
     static final String DEPARTED_NOTE = "El viaje ya salió sin confirmar esta reserva";
     static final Duration COMPLETE_AFTER = Duration.ofHours(24);
 
@@ -28,27 +30,29 @@ public class TripMaintenanceUseCase {
     @Inject SmartLoadRepository smartLoads;
     @Inject BookingSweeper sweeper;
 
-    @Transactional
+    // SystemTx: job sin usuario; mantiene viajes y sugerencias de todas las organizaciones.
     public int run() {
-        OffsetDateTime now = OffsetDateTime.now();
-        int changed = 0;
-        for (CarrierTrip t : trips.listByStatusDepartedBefore(List.of(TripStatus.OPEN, TripStatus.FILLING), now)) {
-            t.close();
-            sweeper.rejectPending(t, DEPARTED_NOTE);
-            trips.save(t);
-            changed++;
-        }
-        for (CarrierTrip t : trips.listByStatusDepartedBefore(List.of(TripStatus.CLOSED), now.minus(COMPLETE_AFTER))) {
-            t.complete();
-            trips.save(t);
-            changed++;
-        }
-        for (var s : smartLoads.listPendingExpiredBefore(now)) {
-            s.expire(now);
-            smartLoads.save(s);
-            changed++;
-        }
-        if (changed > 0) Log.infof("Mantenimiento de viajes: %d cambios", changed);
-        return changed;
+        return systemTx.call(() -> {
+            OffsetDateTime now = OffsetDateTime.now();
+            int changed = 0;
+            for (CarrierTrip t : trips.listByStatusDepartedBefore(List.of(TripStatus.OPEN, TripStatus.FILLING), now)) {
+                t.close();
+                sweeper.rejectPending(t, DEPARTED_NOTE);
+                trips.save(t);
+                changed++;
+            }
+            for (CarrierTrip t : trips.listByStatusDepartedBefore(List.of(TripStatus.CLOSED), now.minus(COMPLETE_AFTER))) {
+                t.complete();
+                trips.save(t);
+                changed++;
+            }
+            for (var s : smartLoads.listPendingExpiredBefore(now)) {
+                s.expire(now);
+                smartLoads.save(s);
+                changed++;
+            }
+            if (changed > 0) Log.infof("Mantenimiento de viajes: %d cambios", changed);
+            return changed;
+        });
     }
 }

@@ -103,5 +103,12 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - El login del transportista sigue yendo a `/transportista/marketplace`; `/transportista` es "Tu actividad".
 - e2e: `trips.spec.ts`, `a11y-trips.spec.ts` (helpers `tripScenario`, `publishTrip`, `bookTrip`); las capturas de retornos dependen de los datos demo (carrier@logyx.pe).
 
+## Producción: contenedor, entorno y seguridad
+- `web/Dockerfile` (multi-stage, node:22-alpine, usuario `node`, puerto 4321, healthcheck `GET /login`): `docker build -t logyx-web web/`. Runtime = `dist/` + `node_modules` de producción.
+- Variables de runtime: `API_URL` (en `lib/api/client.ts` `process.env.API_URL` tiene prioridad sobre `import.meta.env`, así no se congela en el build), `HOST`/`PORT`, `COOKIE_SECURE` (`true|false`; por defecto `true` en prod; usa `false` si se sirve por http, p. ej. compose local; `INSECURE_COOKIES=1` sigue funcionando), `HSTS=true` (fuerza `Strict-Transport-Security` aunque la petición no llegue por https; si no, se envía solo en prod y con https / `X-Forwarded-Proto: https`).
+- Cabeceras (`middleware.ts`, respuestas HTML y redirecciones): `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` (cámara/micrófono/geolocalización desactivadas: la web no las usa) y CSP **solo en producción**. CSP por cabecera, no `security.csp` de Astro (sus hashes anulan `'unsafe-inline'` y rompen los estilos inline de Radix). `script-src 'self' 'unsafe-inline'` es necesario por los scripts inline de hidratación de Astro (islas); `style-src 'unsafe-inline'` por Radix/Tailwind; MapLibre: `worker-src blob:`, `img-src/connect-src https://tiles.openfreemap.org`. Si agregas otro origen externo, añádelo a `CSP`.
+- Sesión: cookie `logyx_session` httpOnly, SameSite=Lax, `secure` según `COOKIE_SECURE`.
+- `X-Forwarded-For`: login y registro (`features/auth`) reenvían a la API la IP del navegador (`ctx.clientAddress`) para el rate limiting por cliente. Detrás de un proxy, Astro solo usa el `X-Forwarded-For` entrante si el host está validado (`security.allowedDomains`); de lo contrario `clientAddress` es la IP del proxy.
+
 ## Pendientes conocidos
 Modo oscuro, tiempo real (hoy polling), polling de tracking, vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

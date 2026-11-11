@@ -1,7 +1,8 @@
 import createClient from 'openapi-fetch';
 import type { paths } from './schema';
 
-export const API_URL: string = import.meta.env.API_URL ?? process.env.API_URL ?? 'http://localhost:8080';
+// process.env primero: en producción se lee en runtime (no se congela en el build); en dev cae a .env vía import.meta.env.
+export const API_URL: string = process.env.API_URL ?? import.meta.env.API_URL ?? 'http://localhost:8080';
 
 /** Error normalizado de la API: `{ error: { code, message, field } }`. */
 export class ApiError extends Error {
@@ -15,10 +16,14 @@ export class ApiError extends Error {
   }
 }
 
-export function apiClient(token?: string) {
+/** `clientIp`: IP del navegador; se reenvía en X-Forwarded-For para el rate limiting por cliente del backend. */
+export function apiClient(token?: string, clientIp?: string) {
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (clientIp) headers['X-Forwarded-For'] = clientIp;
   return createClient<paths>({
     baseUrl: API_URL,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: Object.keys(headers).length ? headers : undefined,
   });
 }
 
