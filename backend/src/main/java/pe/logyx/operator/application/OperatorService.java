@@ -14,6 +14,11 @@ import pe.logyx.marketplace.application.AcceptOutcome;
 import pe.logyx.marketplace.application.ManualAssignmentCommand;
 import pe.logyx.marketplace.application.ManualAssignmentUseCase;
 import pe.logyx.marketplace.application.MarketplaceQueries;
+import pe.logyx.marketplace.application.OperatorRequestFilter;
+import pe.logyx.marketplace.application.RequestSummary;
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shared.domain.Paged;
+import pe.logyx.shipment.application.OperatorShipmentFilter;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 import pe.logyx.reputation.application.ReputationQueries;
 import pe.logyx.shared.tenancy.OrgType;
@@ -72,6 +77,18 @@ public class OperatorService {
                 marketplace.countRequests(ShipmentRequest.Status.CANCELLED),
                 s.pending(), s.inTransit(), s.delivered(), incidents.countActive(),
                 organizations.countOfType(OrgType.PYME), organizations.countOfType(OrgType.CARRIER));
+    }
+
+    /** Listado global paginado de solicitudes, más recientes primero. */
+    @Transactional
+    public Paged<RequestSummary> requests(OperatorRequestFilter filter, PageRequest page) {
+        return marketplace.allRequests(filter, page);
+    }
+
+    /** Listado global paginado de envíos, más recientes primero. */
+    @Transactional
+    public Paged<ShipmentSummary> shipments(OperatorShipmentFilter filter, PageRequest page) {
+        return shipments.allShipments(filter, page);
     }
 
     /** Vehículos que pueden tomar la solicitud (disponibles y con capacidad, RN02), mejor Trust Score primero. */

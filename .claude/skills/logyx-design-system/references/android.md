@@ -79,6 +79,7 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - **`LogyxScreen(title, subtitle, onBack, snackbar, actions, bottomBar) { padding -> }`** — Scaffold estándar con `LogyxTopBar` y host de mensajes.
 - **`LogyxTopBar`**, **`LogyxBottomBar(items: List<LogyxNavItem>, selectedIndex, onSelect)`** (la usa `:app`).
 - **`LogyxCard(onClick?)`**, `KpiTile`, `PriceTag`, `RouteLine`, `LoadCard`, `StopTimeline`, `TruckIllustration`, `AuctionCountdown`, `RouteMap`, `Refreshable`.
+- **`LiveIndicator(status)`** + **`ProvideRealtimeStatus(status) { … }`** — "En vivo" (esmeralda, punto que pulsa) / "Reconectando…" (ámbar) discreto en `LogyxTopBar`; `:app` provee `RealtimeRepository.status` una vez, no lo uses en features. Con `CONNECTING`/`OFFLINE` no pinta nada. Región viva + `contentDescription` para TalkBack.
 - **`LiveEffect(key) { viewModel.liveLoop() }`** — corre el bloque solo con la pantalla en primer plano (`repeatOnLifecycle(STARTED)`); es el único punto por el que las pantallas se suscriben al tiempo real (sin UI propia).
 - Estados: `LoadingState`, **`SkeletonList` / `SkeletonLoadCard` / `SkeletonBox` / `Modifier.shimmer()`** (primer render de listas; reservan `LoadingState` para acciones bloqueantes), `EmptyState(title, message, actionLabel, onAction)` (camión + siguiente acción), `ErrorState(message, onRetry)` (camión averiado + Reintentar).
 

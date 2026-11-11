@@ -1,6 +1,7 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import LiveRegion from '@/components/ui/live-region';
 import { Alert } from '@/components/ui/alert';
 import SearchTrips from '@/features/trips/components/SearchTrips';
 import { searchTrips, type TripView } from '@/features/trips/server';
@@ -24,7 +25,10 @@ try {
 }
 ---
 <AppShell title="Buscar viajes" active="viajes" wide>
+  <LiveRegion client:load types={['trip_booking.updated', 'trip.cancelled']} region="viajes" />
+  <div data-live-region="viajes">
   <PageHeader title="Buscar viajes" subtitle="Reserva solo el espacio que necesitas en un vehículo que ya sale hacia tu destino." />
   {loadError && <Alert tone="error" title="No pudimos cargar los viajes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   <SearchTrips client:load trips={result.items} cities={cities} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} />
+</div>
 </AppShell>

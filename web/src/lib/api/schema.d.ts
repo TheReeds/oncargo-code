@@ -1393,6 +1393,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listado global paginado de solicitudes, más recientes primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Código de ciudad de destino (p. ej. JULIACA). */
+                    destinationCity?: string;
+                    /** @description Creada desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    fromDate?: string;
+                    /** @description Código de ciudad de origen (p. ej. LIMA). */
+                    originCity?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Estado (PUBLISHED, MATCHED, CANCELLED). */
+                    status?: string;
+                    /** @description Creada hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorRequestRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/{id}/assign": {
         parameters: {
             query?: never;
@@ -1482,6 +1547,71 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseListAssignmentCandidateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/shipments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listado global paginado de envíos, más recientes primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Código de ciudad de destino (p. ej. JULIACA). */
+                    destinationCity?: string;
+                    /** @description Creado desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    fromDate?: string;
+                    /** @description Código de ciudad de origen (p. ej. LIMA). */
+                    originCity?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Estado (PENDING, IN_TRANSIT, DELIVERED, CANCELLED). */
+                    status?: string;
+                    /** @description Creado hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorShipmentRow"];
                     };
                 };
                 /** @description Not Authorized */
@@ -3538,6 +3668,8 @@ export interface paths {
                     page?: number;
                     /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
                     size?: number;
+                    /** @description Orden: departure (salida más próxima primero, por omisión), departure_desc (salida más lejana primero) o recent (publicados más recientemente primero). */
+                    sort?: string;
                 };
                 header?: never;
                 path?: never;
@@ -4072,6 +4204,14 @@ export interface components {
             data?: components["schemas"]["NotificationView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListOperatorRequestRow: {
+            data?: components["schemas"]["OperatorRequestRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListOperatorShipmentRow: {
+            data?: components["schemas"]["OperatorShipmentRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListRequestView: {
             data?: components["schemas"]["RequestView"][];
             meta?: components["schemas"]["Meta"];
@@ -4510,6 +4650,42 @@ export interface components {
             pymes?: number;
             /** Format: int64 */
             carriers?: number;
+        };
+        OperatorRequestRow: {
+            id?: components["schemas"]["UUID"];
+            requesterOrgId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoType?: components["schemas"]["CargoType"];
+            cargoDescription?: string;
+            weightKg?: number;
+            pickupDate?: components["schemas"]["LocalDate"];
+            suggestedPrice?: number;
+            status?: components["schemas"]["Status2"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int64 */
+            bidCount?: number;
+            auctionStatus?: components["schemas"]["Status4"];
+            auctionClosesAt?: components["schemas"]["OffsetDateTime"];
+            assignedCarrierOrgId?: components["schemas"]["UUID"];
+        };
+        OperatorShipmentRow: {
+            id?: components["schemas"]["UUID"];
+            requestId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            carrierName?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoDescription?: string;
+            weightKg?: number;
+            agreedPrice?: number;
+            vehiclePlate?: string;
+            driverName?: string;
+            status?: components["schemas"]["Status5"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            deliveredAt?: components["schemas"]["OffsetDateTime"];
+            hasActiveIncident?: boolean;
         };
         /** @enum {string} */
         OrgType: "PYME" | "CARRIER" | "OPERATOR";

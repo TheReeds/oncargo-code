@@ -3,6 +3,7 @@ package pe.logyx.marketplace.infrastructure.persistence;
 import jakarta.enterprise.context.ApplicationScoped;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
 import pe.logyx.marketplace.application.MarketplaceFilter;
+import pe.logyx.marketplace.application.OperatorRequestFilter;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
@@ -17,6 +18,8 @@ import java.util.UUID;
 
 @ApplicationScoped
 public class PanacheShipmentRequestRepository implements ShipmentRequestRepository {
+
+    private static final java.time.ZoneId LIMA = java.time.ZoneId.of("America/Lima");
 
     @Override
     public Optional<ShipmentRequest> findById(UUID id) {
@@ -72,6 +75,21 @@ public class PanacheShipmentRequestRepository implements ShipmentRequestReposito
                 .setParameter("open", Auction.Status.OPEN)
                 .setParameter("until", until)
                 .getResultList().stream().map(ShipmentRequestEntity::toDomain).toList();
+    }
+
+    @Override
+    public Paged<ShipmentRequest> searchAll(OperatorRequestFilter f, PageRequest page) {
+        StringBuilder where = new StringBuilder("1 = 1");
+        List<Object> params = new ArrayList<>();
+        if (f.status() != null) where.append(" and status = ?").append(add(params, f.status()));
+        if (f.originCity() != null) where.append(" and originCity = ?").append(add(params, f.originCity()));
+        if (f.destinationCity() != null) where.append(" and destinationCity = ?").append(add(params, f.destinationCity()));
+        if (f.fromDate() != null) where.append(" and createdAt >= ?").append(add(params, f.fromDate().atStartOfDay(LIMA).toOffsetDateTime()));
+        if (f.toDate() != null) where.append(" and createdAt < ?").append(add(params, f.toDate().plusDays(1).atStartOfDay(LIMA).toOffsetDateTime()));
+        var query = ShipmentRequestEntity.<ShipmentRequestEntity>find(where + " order by createdAt desc, id", params.toArray())
+                .page(page.page(), page.size());
+        long total = ShipmentRequestEntity.count(where.toString(), params.toArray());
+        return new Paged<>(map(query.list()), page, total);
     }
 
     @Override

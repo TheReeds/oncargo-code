@@ -71,11 +71,11 @@ class FakeCatalog : CatalogRepository {
     override suspend fun organization(id: String) = Result.failure<PublicOrganization>(IllegalStateException())
 }
 
-class FakeLoads(var items: List<RequestView> = listOf(Data.load())) : LoadsRepository {
+class FakeLoads(var items: List<RequestView> = listOf(Data.load()), var pendingSmartLoads: Int? = null) : LoadsRepository {
     val placed = mutableListOf<Triple<String, Double, String>>()
     override suspend fun marketplace() = Result.success(items)
     override suspend fun marketplacePage(filter: MarketplaceFilter, page: Int, size: Int) = Result.success(Page(items, 0, size, items.size))
-    override suspend fun dashboard() = Result.success(DashboardSummary("CARRIER", compatibleLoads = items.size, pendingBids = 0, activeShipments = 0, deliveredThisMonth = 0))
+    override suspend fun dashboard() = Result.success(DashboardSummary("CARRIER", compatibleLoads = items.size, pendingBids = 0, activeShipments = 0, deliveredThisMonth = 0, pendingSmartLoads = pendingSmartLoads))
     override suspend fun load(id: String) = Result.success(items.first { it.id == id })
     override suspend fun myBids() = Result.success(emptyList<RequestView>())
     override suspend fun vehicles() = Result.success(listOf(Data.vehicle))

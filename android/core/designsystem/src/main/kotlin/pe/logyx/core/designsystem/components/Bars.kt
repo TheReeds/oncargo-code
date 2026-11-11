@@ -88,6 +88,7 @@ fun LogyxTopBar(
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
+        LiveIndicator(LocalRealtimeStatus.current)
         actions()
     }
 }

@@ -179,6 +179,24 @@ components:
             $ref: "#/components/schemas/NotificationView"
         meta:
           $ref: "#/components/schemas/Meta"
+    ApiResponseListOperatorRequestRow:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorRequestRow"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ApiResponseListOperatorShipmentRow:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorShipmentRow"
+        meta:
+          $ref: "#/components/schemas/Meta"
     ApiResponseListRequestView:
       type: object
       properties:
@@ -1116,6 +1134,75 @@ components:
         carriers:
           type: integer
           format: int64
+    OperatorRequestRow:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        requesterOrgId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        cargoType:
+          $ref: "#/components/schemas/CargoType"
+        cargoDescription:
+          type: string
+        weightKg:
+          type: number
+        pickupDate:
+          $ref: "#/components/schemas/LocalDate"
+        suggestedPrice:
+          type: number
+        status:
+          $ref: "#/components/schemas/Status2"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        bidCount:
+          type: integer
+          format: int64
+        auctionStatus:
+          $ref: "#/components/schemas/Status4"
+        auctionClosesAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        assignedCarrierOrgId:
+          $ref: "#/components/schemas/UUID"
+    OperatorShipmentRow:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        requestId:
+          $ref: "#/components/schemas/UUID"
+        requesterName:
+          type: string
+        carrierName:
+          type: string
+        originCity:
+          $ref: "#/components/schemas/City"
+        destinationCity:
+          $ref: "#/components/schemas/City"
+        cargoDescription:
+          type: string
+        weightKg:
+          type: number
+        agreedPrice:
+          type: number
+        vehiclePlate:
+          type: string
+        driverName:
+          type: string
+        status:
+          $ref: "#/components/schemas/Status5"
+        createdAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        deliveredAt:
+          $ref: "#/components/schemas/OffsetDateTime"
+        hasActiveIncident:
+          type: boolean
     OrgType:
       type: string
       enum:
@@ -2641,6 +2728,67 @@ paths:
       security:
       - SecurityScheme:
         - OPERATOR
+  /api/v1/operator/requests:
+    get:
+      summary: "Listado global paginado de solicitudes, más recientes primero"
+      parameters:
+      - description: Código de ciudad de destino (p. ej. JULIACA).
+        name: destinationCity
+        in: query
+        schema:
+          type: string
+      - description: "Creada desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: fromDate
+        in: query
+        schema:
+          format: date
+          type: string
+      - description: Código de ciudad de origen (p. ej. LIMA).
+        name: originCity
+        in: query
+        schema:
+          type: string
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Estado (PUBLISHED, MATCHED, CANCELLED)."
+        name: status
+        in: query
+        schema:
+          type: string
+      - description: "Creada hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: toDate
+        in: query
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListOperatorRequestRow"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
   /api/v1/operator/requests/{id}/assign:
     post:
       summary: "RN10: asigna un transportista a una solicitud con SLA vencido; genera\
@@ -2692,6 +2840,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListAssignmentCandidateView"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Operator Resource
+      security:
+      - SecurityScheme:
+        - OPERATOR
+  /api/v1/operator/shipments:
+    get:
+      summary: "Listado global paginado de envíos, más recientes primero"
+      parameters:
+      - description: Código de ciudad de destino (p. ej. JULIACA).
+        name: destinationCity
+        in: query
+        schema:
+          type: string
+      - description: "Creado desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: fromDate
+        in: query
+        schema:
+          format: date
+          type: string
+      - description: Código de ciudad de origen (p. ej. LIMA).
+        name: originCity
+        in: query
+        schema:
+          type: string
+      - description: Página 0-based (por omisión 0).
+        name: page
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Tamaño de página (1-100, por omisión 20)."
+        name: size
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - description: "Estado (PENDING, IN_TRANSIT, DELIVERED, CANCELLED)."
+        name: status
+        in: query
+        schema:
+          type: string
+      - description: "Creado hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de\
+          \ Lima."
+        name: toDate
+        in: query
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListOperatorShipmentRow"
         "401":
           description: Not Authorized
         "403":
@@ -3881,6 +4090,13 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Orden: departure (salida más próxima primero, por omisión),\
+          \ departure_desc (salida más lejana primero) o recent (publicados más recientemente\
+          \ primero)."
+        name: sort
+        in: query
+        schema:
+          type: string
       responses:
         "200":
           description: OK

@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ds_back">Volver</string>
+    <string name="ds_live">En vivo</string>
+    <string name="ds_reconnecting">Reconectando…</string>
+    <string name="ds_live_description">Actualizaciones en vivo activas</string>
+    <string name="ds_reconnecting_description">Se perdió la conexión en vivo; reintentando. Actualizamos cada minuto mientras tanto</string>
     <string name="ds_close">Cerrar</string>
     <string name="ds_loading">Cargando…</string>
     <string name="ds_retry">Reintentar</string>

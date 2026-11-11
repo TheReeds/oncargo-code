@@ -47,6 +47,9 @@ import pe.logyx.app.AppConfig
 import pe.logyx.app.R
 import androidx.compose.ui.res.stringResource
 import pe.logyx.core.data.AuthRepository
+import pe.logyx.core.data.RealtimeRepository
+import pe.logyx.core.designsystem.components.ProvideRealtimeStatus
+import androidx.compose.runtime.collectAsState
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.designsystem.catalog.UiCatalogScreen
 import pe.logyx.core.designsystem.components.LoadingState
@@ -79,6 +82,7 @@ import pe.logyx.feature.reputation.OrganizationProfileRoute
 import pe.logyx.feature.trips.CarrierTripDetailRoute
 import pe.logyx.feature.trips.CarrierTripsRoute
 import pe.logyx.feature.trips.PublishTripRoute
+import pe.logyx.feature.trips.PymeTripDetailRoute
 import pe.logyx.feature.trips.PymeTripsRoute
 import pe.logyx.feature.trips.ReturnLoadsRoute
 import pe.logyx.feature.trips.SmartLoadsRoute
@@ -174,6 +178,8 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
     val unread by rememberUnreadCount(enabled = role != AppRole.Driver)
     val showBar = tabs.any { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
 
+    val realtimeStatus by koinInject<RealtimeRepository>().status.collectAsState()
+    ProvideRealtimeStatus(realtimeStatus) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -222,6 +228,12 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 val d = e.toRoute<CarrierTripDetail>()
                 CarrierTripDetailRoute(
                     d.id, d.published, onBack = { nav.popBackStack() },
+                    onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
+                )
+            }
+            composable<PymeTripDetail> { e ->
+                PymeTripDetailRoute(
+                    e.toRoute<PymeTripDetail>().id, onBack = { nav.popBackStack() },
                     onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
                 )
             }
@@ -307,6 +319,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
             composable<Account> { AccountRoute(config.apiBaseUrl, config.versionName) }
         }
     }
+    }
 }
 
 private fun Modifier.consumeInsets(padding: androidx.compose.foundation.layout.PaddingValues) =
@@ -317,7 +330,7 @@ private fun NavHostController.openNotification(n: NotificationView, role: AppRol
     val id = n.relatedId
     when {
         id == null -> Unit
-        n.relatedType == NotificationTarget.TRIP -> if (role == AppRole.Pyme) navigateTab(PymeTrips) else navigate(CarrierTripDetail(id))
+        n.relatedType == NotificationTarget.TRIP -> if (role == AppRole.Pyme) navigate(PymeTripDetail(id)) else navigate(CarrierTripDetail(id))
         n.relatedType == NotificationTarget.SMART_LOAD -> navigate(SmartLoads)
         n.type == NotificationType.NEW_MESSAGE && n.relatedType == NotificationTarget.REQUEST ->
             navigate(if (role == AppRole.Pyme) Threads(id) else Chat(id, orgId, null))

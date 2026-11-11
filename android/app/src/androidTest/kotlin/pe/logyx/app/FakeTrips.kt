@@ -37,20 +37,22 @@ class FakeTrips(
     val booked = mutableListOf<Pair<String, CreateTripBookingRequest>>()
     val confirmed = mutableListOf<String>()
     val cancelled = mutableListOf<String>()
+    val created = mutableListOf<CreateTripRequest>()
+    val rejected = mutableListOf<Pair<String, String?>>()
 
     private fun setBooking(id: String, status: BookingStatus): Result<TripBookingView> {
         bookings = bookings.map { if (it.id == id) it.copy(status = status) else it }
         return Result.success(bookings.first { it.id == id })
     }
 
-    override suspend fun create(body: CreateTripRequest) = Result.success(trips.first())
+    override suspend fun create(body: CreateTripRequest): Result<TripView> { created += body; return Result.success(trips.first()) }
     override suspend fun myTrips() = Result.success(trips)
     override suspend fun trip(id: String) = Result.success(trips.first { it.id == id })
     override suspend fun close(id: String) = Result.success(trips.first { it.id == id })
     override suspend fun cancel(id: String) = Result.success(trips.first { it.id == id })
     override suspend fun bookings(tripId: String) = Result.success(bookings.filter { it.tripId == tripId })
     override suspend fun confirm(bookingId: String): Result<TripBookingView> { confirmed += bookingId; return setBooking(bookingId, BookingStatus.CONFIRMED) }
-    override suspend fun reject(bookingId: String, reason: String?) = setBooking(bookingId, BookingStatus.REJECTED)
+    override suspend fun reject(bookingId: String, reason: String?): Result<TripBookingView> { rejected += bookingId to reason; return setBooking(bookingId, BookingStatus.REJECTED) }
 
     override suspend fun search(filter: TripFilter, page: Int, size: Int) = Result.success(Page(trips, 0, size, trips.size))
     override suspend fun book(tripId: String, body: CreateTripBookingRequest): Result<TripBookingView> {
@@ -63,12 +65,27 @@ class FakeTrips(
     override suspend fun cancelBooking(bookingId: String): Result<TripBookingView> { cancelled += bookingId; return setBooking(bookingId, BookingStatus.CANCELLED) }
 }
 
-class FakeSmartLoads : SmartLoadsRepository {
+object SmartData {
+    fun load(id: String = "s1", status: SmartLoadStatus = SmartLoadStatus.PENDING) = SmartLoadView(
+        id, vehiclePlate = "ASA-202", capacityKg = 20000.0, totalWeightKg = 13500.0, combinedIncome = 14772.9, occupancyPct = 67.5,
+        status = status, expiresAt = "2099-01-01T00:00:00Z",
+        items = listOf(SmartLoadItemView("r1", "LIMA", "JULIACA", 7500.0, 8211.4), SmartLoadItemView("r2", "LIMA", "JULIACA", 6000.0, 6561.5)),
+        route = listOf(SmartLoadRouteStop(StopType.PICKUP, "LIMA"), SmartLoadRouteStop(StopType.DELIVERY, "JULIACA")),
+    )
+}
+
+class FakeSmartLoads(var items: List<SmartLoadView> = emptyList()) : SmartLoadsRepository {
+    val accepted = mutableListOf<String>()
+    val rejected = mutableListOf<String>()
+    private fun decide(id: String, to: SmartLoadStatus): Result<SmartLoadView> {
+        items = items.map { if (it.id == id) it.copy(status = to) else it }
+        return Result.success(items.first { it.id == id })
+    }
     override suspend fun returnLoads() = Result.success(emptyList<ReturnLoadView>())
-    override suspend fun smartLoads(status: SmartLoadStatus?) = Result.success(emptyList<SmartLoadView>())
+    override suspend fun smartLoads(status: SmartLoadStatus?) = Result.success(items.filter { status == null || it.status == status })
     override suspend fun generate() = Result.success(emptyList<SmartLoadView>())
-    override suspend fun accept(id: String) = Result.failure<SmartLoadView>(IllegalStateException())
-    override suspend fun reject(id: String) = Result.failure<SmartLoadView>(IllegalStateException())
+    override suspend fun accept(id: String): Result<SmartLoadView> { accepted += id; return decide(id, SmartLoadStatus.ACCEPTED) }
+    override suspend fun reject(id: String): Result<SmartLoadView> { rejected += id; return decide(id, SmartLoadStatus.REJECTED) }
 }
 
 /** Sustituye los repositorios de viajes de Koin por fakes (se encadena después de [FakeKoinRule]). */

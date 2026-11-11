@@ -5,6 +5,6 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val requestsModule = module {
-    viewModelOf(::RequestsViewModel)
+    viewModel { RequestsViewModel(get(), get(), get()) }
     viewModel { (requestId: String) -> RequestDetailViewModel(requestId, get(), get(), get(), get()) }
 }

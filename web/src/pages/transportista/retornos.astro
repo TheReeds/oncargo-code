@@ -1,6 +1,7 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import LiveRegion from '@/components/ui/live-region';
 import { Alert } from '@/components/ui/alert';
 import ReturnLoadsList from '@/features/trips/components/ReturnLoadsList';
 import { listReturnLoads, type ReturnLoadView } from '@/features/trips/server';
@@ -17,7 +18,10 @@ try {
 const vehicles = await vehiclesP;
 ---
 <AppShell title="Cargas de retorno" active="retornos">
+  <LiveRegion client:load types={['shipment.status_changed', 'auction.updated', 'trip_booking.updated', 'trip.cancelled']} region="retornos" />
+  <div data-live-region="retornos">
   <PageHeader title="Cargas de retorno" subtitle="Cargas que salen desde el destino de tus envíos recientes. Ofértalas y evita regresar vacío." />
   {loadError && <Alert tone="error" title="No pudimos cargar las cargas de retorno" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   {!loadError && <ReturnLoadsList client:load loads={loads} vehicles={vehicles} />}
+</div>
 </AppShell>

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.CatalogRepository
+import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.NegotiationRepository
 import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.RequestsRepository
@@ -36,9 +37,15 @@ data class RequestsUiState(
     val refreshing: Boolean = false,
     val error: String? = null,
     val items: List<RequestView> = emptyList(),
+    /** Reservas de espacio en viajes que siguen vivas (PENDING o CONFIRMED); null si el API no lo envió. */
+    val activeTripBookings: Int? = null,
 )
 
-class RequestsViewModel(private val repo: RequestsRepository, private val realtime: RealtimeRepository) : ViewModel() {
+class RequestsViewModel(
+    private val repo: RequestsRepository,
+    private val realtime: RealtimeRepository,
+    private val loads: LoadsRepository,
+) : ViewModel() {
     private val _state = MutableStateFlow(RequestsUiState())
     val state: StateFlow<RequestsUiState> = _state.asStateFlow()
 
@@ -48,15 +55,23 @@ class RequestsViewModel(private val repo: RequestsRepository, private val realti
 
     /** Tiempo real (solo en primer plano): ofertas/estado de mis solicitudes refrescan la lista en silencio. */
     suspend fun liveLoop() {
-        realtime.refreshSignals(REQUEST_TYPES).collect { load(initial = false, silent = true) }
+        realtime.refreshSignals(REQUEST_LIST_TYPES).collect { load(initial = false, silent = true) }
     }
 
     private fun load(initial: Boolean, silent: Boolean = false) {
         if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
-            repo.mine().fold(
+            val dash = async { loads.dashboard().getOrNull() }
+            val mine = repo.mine()
+            val tripBookings = dash.await()?.activeTripBookings
+            mine.fold(
                 onSuccess = { list ->
-                    _state.update { it.copy(loading = false, refreshing = false, items = list.sortedByDescending { r -> r.createdAt.orEmpty() }) }
+                    _state.update {
+                        it.copy(
+                            loading = false, refreshing = false, items = list.sortedByDescending { r -> r.createdAt.orEmpty() },
+                            activeTripBookings = tripBookings,
+                        )
+                    }
                 },
                 onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
@@ -68,6 +83,7 @@ class RequestsViewModel(private val repo: RequestsRepository, private val realti
 private val REQUEST_TYPES = setOf(
     RealtimeTypes.BID_PLACED, RealtimeTypes.COUNTER_OFFER_UPDATED, RealtimeTypes.REQUEST_MATCHED, RealtimeTypes.AUCTION_UPDATED,
 )
+private val REQUEST_LIST_TYPES = REQUEST_TYPES + RealtimeTypes.TRIP_BOOKING_UPDATED
 
 // ───────────────────────── Detalle: comparar y aceptar ─────────────────────────
 

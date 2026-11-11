@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 /** Cliente mínimo de la API de LOGYX para preparar datos en los tests (cada test crea sus propias cuentas). */
 export const API_URL = process.env.E2E_API_URL ?? 'http://localhost:8180';
 export const PASSWORD = 'Logyx2026!';
@@ -84,10 +85,13 @@ export const assignDriver = (token: string, shipmentId: string, driverId: string
 /** PNG válido de 1x1 px (la API reconoce el formato por firma binaria). */
 export const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
 
+/** Foto de prueba real (400x300, caja de carga) usada como evidencia de entrega por omisión. */
+export const EVIDENCE_PHOTO = readFileSync(new URL('../fixtures/evidencia.png', import.meta.url));
+
 /** Sube un documento (multipart) a un envío. */
 export async function uploadDocument(token: string, shipmentId: string, type: string, opts: { stopId?: string; bytes?: Buffer; name?: string; mime?: string } = {}) {
   const form = new FormData();
-  form.set('file', new Blob([new Uint8Array(opts.bytes ?? PNG_1X1)], { type: opts.mime ?? 'image/png' }), opts.name ?? 'evidencia.png');
+  form.set('file', new Blob([new Uint8Array(opts.bytes ?? EVIDENCE_PHOTO)], { type: opts.mime ?? 'image/png' }), opts.name ?? 'evidencia.png');
   form.set('type', type);
   if (opts.stopId) form.set('stopId', opts.stopId);
   const res = await fetch(`${API_URL}/api/v1/shipments/${shipmentId}/documents`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: form });

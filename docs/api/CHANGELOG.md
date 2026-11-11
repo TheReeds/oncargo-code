@@ -5,6 +5,21 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-11 — Listados globales del operador y orden de "mis viajes"
+
+**Aditivo** (`scripts/check-contract.sh` compatible).
+- `GET /api/v1/operator/requests` (solo OPERATOR; PYME/CARRIER/DRIVER reciben 403): listado global paginado de solicitudes,
+  más recientes primero. Respuesta `{ data: OperatorRequestRow[], meta: { page, size, total } }`. Query: `status`
+  (`PUBLISHED|MATCHED|CANCELLED`), `originCity`, `destinationCity` (códigos de ciudad), `fromDate`/`toDate`
+  (`yyyy-MM-dd`, inclusive, sobre la fecha de creación en hora de Lima), `page` (0-based) y `size` (1-100, por omisión 20).
+- `GET /api/v1/operator/shipments` (solo OPERATOR): igual para envíos, `OperatorShipmentRow`; `status`
+  (`PENDING|IN_TRANSIT|DELIVERED|CANCELLED`); las ciudades son las de la solicitud del envío; las fechas, las de creación.
+  Los valores inválidos dan 400 `LOGYX-VAL-001` (`field` = parámetro) o `LOGYX-PRC-001` (ciudad fuera del corredor).
+  El detalle sigue en `GET /shipments/{id}` y `GET /shipment-requests/{id}`.
+- `GET /api/v1/trips/mine` (CARRIER) ya aceptaba `page`/`size` (sin ellos devuelve todos); ahora suma `sort`:
+  `departure` (por omisión: salida más próxima primero), `departure_desc` o `recent` (publicados más recientemente
+  primero). Sin parámetros la respuesta es la misma de antes; con `page`/`size` suma `meta.page|size|total`.
+
 ## 2026-11-10 — Fase 6: tiempo real por SSE (ADR-0007)
 
 **Aditivo**: path nuevo `GET /api/v1/events/stream` y schema `RealtimeStreamEvent` (`scripts/check-contract.sh` en verde).

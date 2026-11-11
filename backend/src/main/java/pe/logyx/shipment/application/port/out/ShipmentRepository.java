@@ -24,6 +24,9 @@ public interface ShipmentRepository {
     long countDeliveredSince(UUID orgId, boolean asCarrier, OffsetDateTime since);
     /** Todos los visibles (RLS) en ese estado. */
     long countAllByStatus(Shipment.Status status);
+    /** Listado global (operador, vía RLS), más recientes primero. */
+    pe.logyx.shared.domain.Paged<Shipment> searchAll(pe.logyx.shipment.application.OperatorShipmentFilter filter,
+                                                      pe.logyx.shared.domain.PageRequest page);
     List<Shipment> listByIds(Collection<UUID> ids);
     /** Inserta o actualiza. */
     void save(Shipment shipment);

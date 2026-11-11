@@ -1,6 +1,8 @@
 package pe.logyx.app
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -105,5 +107,127 @@ class CarrierTripBookingsFlowTest {
         compose.waitUntil(10_000) { trips.confirmed.size == 1 }
         waitFor("Reserva confirmada")
         assertEquals(BookingStatus.CONFIRMED, trips.bookings.single().status)
+    }
+}
+
+/** Transportista: Home -> Mis viajes -> Publicar viaje (ciudades, fecha y hora con selectores, tarifa) -> detalle del viaje publicado. */
+@RunWith(AndroidJUnit4::class)
+class PublishTripFlowTest {
+    private val trips = FakeTrips()
+    private val auth = FakeAuth(SessionState.LoggedIn(Data.carrier))
+    private val compose = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(FakeKoinRule(auth)).around(FakeTripsKoinRule(trips)).around(compose)
+
+    private fun waitFor(text: String) = compose.waitUntil(10_000) {
+        compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test
+    fun publish_a_trip_with_date_and_time_pickers() {
+        compose.setContent { LogyxTheme { LogyxApp() } }
+        waitFor("Tu actividad")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Ver mis viajes"))
+        compose.onNodeWithText("Ver mis viajes").performClick()
+        waitFor("Mis viajes")
+        compose.onAllNodesWithText("Publicar viaje").onFirst().performClick()
+        waitFor("Capacidad que ofreces")
+
+        // Sin datos: validación inline y no se envía nada
+        compose.onAllNodes(hasText("Publicar viaje") and hasClickAction()).onLast().performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("Elige la ciudad de origen.")
+        assertEquals(0, trips.created.size)
+
+        compose.onNode(hasContentDescription("Origen", substring = true)).performClick()
+        compose.onNodeWithText("Lima").performClick()
+        compose.onNode(hasContentDescription("Destino", substring = true)).performClick()
+        compose.onNodeWithText("Juliaca").performClick()
+
+        // Fecha: atajo "Mañana" del selector; hora: la propuesta (08:00)
+        compose.onNode(hasContentDescription("Fecha de salida", substring = true)).performClick()
+        waitFor("Mañana")
+        compose.onNodeWithText("Mañana").performClick()
+        compose.onNodeWithText("Aceptar").performClick()
+        compose.onNode(hasContentDescription("Hora de salida", substring = true)).performClick()
+        waitFor("Aceptar")
+        compose.onNodeWithText("Aceptar").performClick()
+
+        compose.onAllNodes(hasSetTextAction())[0].performTextInput("12000")
+        compose.onAllNodes(hasSetTextAction())[1].performTextInput("0.48")
+        compose.onAllNodes(hasText("Publicar viaje") and hasClickAction()).onLast().performSemanticsAction(SemanticsActions.OnClick)
+
+        compose.waitUntil(10_000) { trips.created.size == 1 }
+        val sent = trips.created.single()
+        assertEquals("LIMA", sent.originCity)
+        assertEquals("JULIACA", sent.destinationCity)
+        assertEquals(12000.0, sent.capacityKg)
+        assertEquals(0.48, sent.rate)
+        // Reemplaza el formulario por el detalle del viaje recién publicado
+        waitFor("Viaje publicado")
+        waitFor("Reservas")
+    }
+}
+
+/** Transportista: rechazar una reserva pide un motivo opcional y lo envía al API. */
+@RunWith(AndroidJUnit4::class)
+class RejectBookingReasonFlowTest {
+    private val trips = FakeTrips(bookings = listOf(TripData.booking()))
+    private val auth = FakeAuth(SessionState.LoggedIn(Data.carrier))
+    private val compose = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(FakeKoinRule(auth)).around(FakeTripsKoinRule(trips)).around(compose)
+
+    private fun waitFor(text: String) = compose.waitUntil(10_000) {
+        compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test
+    fun reject_with_an_optional_reason() {
+        compose.setContent { LogyxTheme { LogyxApp() } }
+        waitFor("Tu actividad")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Ver mis viajes"))
+        compose.onNodeWithText("Ver mis viajes").performClick()
+        waitFor("ASA-202")
+        compose.onNodeWithText("ASA-202").performClick()
+        waitFor("Comercial Altiplano SAC")
+        compose.onAllNodesWithText("Rechazar reserva").onFirst().performClick()
+        waitFor("¿Rechazar esta reserva?")
+        assertEquals(0, trips.rejected.size)
+        compose.onAllNodes(hasSetTextAction()).onFirst().performTextInput("Ya no hay espacio")
+        compose.onAllNodesWithText("Rechazar reserva").onLast().performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(10_000) { trips.rejected.size == 1 }
+        assertEquals("b1" to "Ya no hay espacio", trips.rejected.single())
+        waitFor("Reserva rechazada")
+        assertEquals(BookingStatus.REJECTED, trips.bookings.single().status)
+    }
+}
+
+/** Transportista: Home (aviso de sugerencias) -> Smart Load -> aceptar con confirmación. */
+@RunWith(AndroidJUnit4::class)
+class SmartLoadFlowTest {
+    private val trips = FakeTrips()
+    private val smart = FakeSmartLoads(listOf(SmartData.load()))
+    private val auth = FakeAuth(SessionState.LoggedIn(Data.carrier))
+    private val compose = createComposeRule()
+    @get:Rule val chain: RuleChain =
+        RuleChain.outerRule(FakeKoinRule(auth, loads = FakeLoads(pendingSmartLoads = 1))).around(FakeTripsKoinRule(trips, smart)).around(compose)
+
+    private fun waitFor(text: String) = compose.waitUntil(10_000) {
+        compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test
+    fun accept_a_smart_load_suggestion() {
+        compose.setContent { LogyxTheme { LogyxApp() } }
+        waitFor("Tu actividad")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Ver sugerencias"))
+        compose.onNodeWithText("Ver sugerencias").performClick()
+        waitFor("Ingreso combinado")
+        waitFor("ASA-202")
+        compose.onAllNodesWithText("Aceptar sugerencia").onFirst().performClick()
+        waitFor("¿Aceptar esta sugerencia?")
+        assertEquals(0, smart.accepted.size)
+        compose.onAllNodesWithText("Aceptar sugerencia").onLast().performClick()
+        compose.waitUntil(10_000) { smart.accepted.size == 1 }
+        assertEquals("s1", smart.accepted.single())
+        waitFor("Sugerencia aceptada")
     }
 }

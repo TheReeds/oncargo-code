@@ -23,7 +23,7 @@ src/
 │   ├── index, login, registro, privacidad, conductor, logout(POST)
 │   ├── pyme/               # index (panel), solicitudes/{index,nueva,[id]}, envios
 │   ├── transportista/      # marketplace, ofertas, flota, envios
-│   ├── operador/           # index (panel), incidencias, solicitudes/[id], envios/[id] (solo rol OPERATOR)
+│   ├── operador/           # index (panel), incidencias, solicitudes/{index,[id]}, envios/{index,[id]} (solo rol OPERATOR)
 │   └── notificaciones, incidencias/{index,[id]}, organizaciones/[id], documentos/{[id],subir} (proxy autenticado de archivos)
 ├── features/<feature>/     # auth, catalog, requests, shipments, marketplace, fleet, dashboard, negotiation, reputation, documents, incidents, notifications, operator
 │   ├── server.ts           #   llamadas a la API (solo servidor)
@@ -96,7 +96,11 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - Paneles del envío (`shipments/components/ShipmentExtras`): pestañas Documentos / Calificación / Incidencias + banner `hasActiveIncident`; cada panel carga sus datos por Astro Actions.
 - Tiempo real: ver la sección "Tiempo real" (reemplaza al polling de chat, campana y operador). Descarga de documentos solo por `/documentos/<id>` (el token no sale del servidor).
 - Enlaces de notificaciones: `lib/notification-links.ts`. Operador: `/operador/*` solo OPERATOR (middleware), `homeFor` → `/operador`.
-- e2e: specs por módulo (`negotiation`, `reputation`, `documents`, `incidents`, `notifications`, `operator`, `a11y-*`); helpers `openBidScenario`, `deliveredShipment` (envío entregado vía API), `operatorToken`. Backend de pruebas: `MAVEN_OPTS=-Xmx512m ./mvnw quarkus:dev -Dquarkus.http.port=8180 -Dlogyx.operator.sla=PT0S` (SLA 0 para poder asignar manualmente; con 24 h ese test se salta). Si `astro dev` ya tiene lock, levanta uno con `--ignore-lock` y usa `E2E_BASE_URL`. Usa `--workers=1`.
+- e2e: specs por módulo (`negotiation`, `reputation`, `documents`, `incidents`, `notifications`, `operator`, `a11y-*`); helpers `openBidScenario`, `deliveredShipment` (envío entregado vía API), `operatorToken`. Backend de pruebas: `MAVEN_OPTS=-Xmx512m ./mvnw quarkus:dev -Dquarkus.http.port=8180 -Dlogyx.operator.sla=PT0S` (SLA 0 para poder asignar manualmente; con 24 h ese test se salta). Usa `--workers=1`. El `webServer` de Playwright arranca `astro dev --config astro.e2e.config.mjs --ignore-lock` (misma config sin la barra de herramientas de dev de Astro, para que no salga en `docs/screenshots/`, y sin chocar con el `astro dev` que ya tengas en :4321; con `VITE_CACHE_DIR=<dir>` usa otra caché de Vite). Las capturas de `docs/screenshots/` se regeneran al correr la suite; la evidencia de entrega usa `tests/e2e/fixtures/evidencia.png` (`EVIDENCE_PHOTO`, no un PNG de 1x1).
+
+## Listados globales del operador
+- `/operador/solicitudes` y `/operador/envios` (`features/operator/components/OperatorListing.tsx`, una isla con `kind`): tabla paginada en el servidor (`GET /api/v1/operator/requests|shipments`, `listRequests`/`listShipments` en `features/operator/server.ts`), filtros en la URL (`estado`, `origen`, `destino`, `desde`, `hasta`, `pagina`; 20 por página) y enlace a los detalles `/operador/{solicitudes,envios}/[id]`. Entradas "Solicitudes" y "Envíos" en la navegación del operador (`AppShell`, ids `operador-solicitudes|envios`).
+- e2e: `operator-listings.spec.ts` (tabla, filtros, detalle, PYME/transportista redirigidos, axe).
 
 ## Módulos fase 4 (viajes)
 - `features/trips/` (server, actions, components): publicar viaje, detalle con reservas, retornos, Smart Load, buscar viajes (PYME), mis reservas. Rutas: `/transportista/{index,viajes,viajes/nuevo,viajes/[id],retornos,smart-load}`, `/pyme/{viajes,reservas}`.
@@ -119,6 +123,8 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 | Envíos (`TrackingSplit`), `ShipmentExtras > IncidentsPanel`, `/conductor` (`LiveRegion`) | `shipment.status_changed|stop_updated|driver_assigned`, `incident.reported|updated` |
 | Incidencias (`IncidentsList`, `IncidentDetail`) y panel del operador | `incident.reported|updated` (el operador además refresca cada 60 s: el SLA depende del reloj) |
 | Viajes (`MyBookings`, `TripDetail`, `/transportista/viajes`) y Smart Load | `trip_booking.updated`, `trip.cancelled`; `smart_load.suggested|accepted` |
+| Buscar viajes (`/pyme/viajes`, `LiveRegion` `viajes`) | `trip_booking.updated`, `trip.cancelled` |
+| Cargas de retorno (`/transportista/retornos`, `LiveRegion` `retornos`) | `shipment.status_changed`, `auction.updated`, `trip_booking.updated`, `trip.cancelled` |
 - Agregar un evento a una pantalla: `useLiveRefresh` con `types` + `match`; si no hay action de lectura, créala en `features/<f>/actions.ts`. Los `setInterval` solo se aceptan para relojes (`Countdown`) o respaldo vía `useLiveRefresh`.
 - e2e: `realtime.spec.ts` (indicador, oferta, chat y campana en vivo, sin recargar y sin depender del respaldo).
 
@@ -130,4 +136,4 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - `X-Forwarded-For`: login y registro (`features/auth`) reenvían a la API la IP del navegador (`ctx.clientAddress`) para el rate limiting por cliente. Detrás de un proxy, Astro solo usa el `X-Forwarded-For` entrante si el host está validado (`security.allowedDomains`); de lo contrario `clientAddress` es la IP del proxy.
 
 ## Pendientes conocidos
-Vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.
+Mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

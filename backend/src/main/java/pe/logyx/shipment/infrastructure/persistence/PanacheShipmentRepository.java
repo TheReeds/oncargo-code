@@ -1,10 +1,14 @@
 package pe.logyx.shipment.infrastructure.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shared.domain.Paged;
+import pe.logyx.shipment.application.OperatorShipmentFilter;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.domain.model.Shipment;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +16,8 @@ import java.util.UUID;
 
 @ApplicationScoped
 public class PanacheShipmentRepository implements ShipmentRepository {
+
+    private static final java.time.ZoneId LIMA = java.time.ZoneId.of("America/Lima");
 
     @Override
     public Optional<Shipment> findById(UUID id) {
@@ -61,6 +67,33 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     @Override
     public long countAllByStatus(Shipment.Status status) {
         return ShipmentEntity.count("status", status);
+    }
+
+    @Override
+    public Paged<Shipment> searchAll(OperatorShipmentFilter f, PageRequest page) {
+        StringBuilder where = new StringBuilder("1 = 1");
+        List<Object> params = new ArrayList<>();
+        if (f.status() != null) where.append(" and status = ?").append(add(params, f.status()));
+        // Las ciudades viven en la solicitud de origen (JPQL por nombre de entidad: sin dependencia de clases de marketplace).
+        if (f.originCity() != null) {
+            where.append(" and requestId in (select r.id from ShipmentRequestEntity r where r.originCity = ?")
+                    .append(add(params, f.originCity())).append(")");
+        }
+        if (f.destinationCity() != null) {
+            where.append(" and requestId in (select r.id from ShipmentRequestEntity r where r.destinationCity = ?")
+                    .append(add(params, f.destinationCity())).append(")");
+        }
+        if (f.fromDate() != null) where.append(" and createdAt >= ?").append(add(params, f.fromDate().atStartOfDay(LIMA).toOffsetDateTime()));
+        if (f.toDate() != null) where.append(" and createdAt < ?").append(add(params, f.toDate().plusDays(1).atStartOfDay(LIMA).toOffsetDateTime()));
+        var query = ShipmentEntity.<ShipmentEntity>find(where + " order by createdAt desc, id", params.toArray())
+                .page(page.page(), page.size());
+        long total = ShipmentEntity.count(where.toString(), params.toArray());
+        return new Paged<>(map(query.list()), page, total);
+    }
+
+    private static int add(List<Object> params, Object value) {
+        params.add(value);
+        return params.size();
     }
 
     @Override

@@ -43,6 +43,7 @@ import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
+import pe.logyx.core.designsystem.components.KpiTile
 import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxButton
@@ -118,6 +119,14 @@ fun RequestsScreen(state: RequestsUiState, onRefresh: () -> Unit, onOpen: (Strin
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
+                            state.activeTripBookings?.let { n ->
+                                item {
+                                    KpiTile(
+                                        "$n", stringResource(R.string.requests_kpi_trip_bookings), Modifier.fillMaxWidth(),
+                                        stringResource(R.string.requests_kpi_trip_bookings_context),
+                                    )
+                                }
+                            }
                             if (state.items.isNotEmpty()) {
                                 item {
                                     val filterDescription = stringResource(R.string.requests_filter_description)
@@ -529,7 +538,7 @@ private val previewRequest = RequestView(
 @Preview(showBackground = true)
 @Composable
 private fun RequestsScreenPreview() {
-    LogyxTheme { RequestsScreen(RequestsUiState(loading = false, items = listOf(previewRequest)), {}, {}) }
+    LogyxTheme { RequestsScreen(RequestsUiState(loading = false, items = listOf(previewRequest), activeTripBookings = 2), {}, {}) }
 }
 
 @Preview(showBackground = true)

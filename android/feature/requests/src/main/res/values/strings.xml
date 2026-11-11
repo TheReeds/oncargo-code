@@ -65,4 +65,6 @@
     <string name="requests_counter_confirm_title">¿Enviar contraoferta?</string>
     <string name="requests_counter_confirm_message">Propondrás %2$s a %1$s. Si la acepta, su oferta cambiará a ese monto.</string>
     <string name="requests_counter_sent">Contraoferta enviada</string>
+    <string name="requests_kpi_trip_bookings">Reservas en viajes</string>
+    <string name="requests_kpi_trip_bookings_context">Por confirmar o confirmadas</string>
 </resources>

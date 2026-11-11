@@ -77,6 +77,10 @@
     <string name="trips_cancel_title">¿Cancelar el viaje?</string>
     <string name="trips_cancel_message">Cancelaremos las reservas y los envíos que aún no salieron. No se puede deshacer.</string>
     <string name="trips_booking_confirmed">Reserva confirmada</string>
+    <string name="trips_the_pyme">la PYME</string>
+    <string name="trips_reject_reason_label">Motivo</string>
+    <string name="trips_reject_reason_hint">Opcional. La PYME lo verá en su reserva (%1$d/%2$d).</string>
+    <string name="trips_reject_reason_placeholder">Ej.: ya no hay espacio para esa carga</string>
     <string name="trips_booking_rejected">Reserva rechazada</string>
     <string name="trips_trip_closed">Viaje cerrado</string>
     <string name="trips_trip_cancelled">Viaje cancelado</string>
@@ -182,4 +186,6 @@
     <string name="trips_booking_cancel_message">Liberaremos el espacio en el viaje. Si ya estaba confirmada, también se cancela el envío. No se puede deshacer.</string>
     <string name="trips_booking_cancelled">Reserva cancelada</string>
     <string name="trips_booking_weight_price">%1$s · %2$s</string>
+    <string name="trips_pyme_my_bookings_title">Mis reservas en este viaje</string>
+    <string name="trips_pyme_my_bookings_empty">No tienes reservas en este viaje.</string>
 </resources>

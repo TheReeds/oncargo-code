@@ -24,6 +24,8 @@ public interface ShipmentRequestRepository {
     /** Publicadas cuya subasta sigue abierta y cierra antes de {@code until}, la más próxima primero. */
     List<ShipmentRequest> listWithOpenAuctionClosingBefore(java.time.OffsetDateTime until);
     long countByStatus(ShipmentRequest.Status status);
+    /** Listado global (operador, vía RLS), más recientes primero. */
+    Paged<ShipmentRequest> searchAll(pe.logyx.marketplace.application.OperatorRequestFilter filter, PageRequest page);
     /** Más recientes primero. */
     List<ShipmentRequest> listByIds(Collection<UUID> ids);
     /** Inserta o actualiza. */

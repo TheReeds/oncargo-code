@@ -8,6 +8,7 @@ val tripsModule = module {
     viewModelOf(::PublishTripViewModel)
     viewModelOf(::CarrierTripsViewModel)
     viewModel { (tripId: String, justPublished: Boolean) -> CarrierTripDetailViewModel(tripId, justPublished, get(), get()) }
+    viewModel { (tripId: String) -> PymeTripDetailViewModel(tripId, get(), get()) }
     viewModelOf(::ReturnLoadsViewModel)
     viewModelOf(::SmartLoadsViewModel)
     viewModelOf(::TripSearchViewModel)

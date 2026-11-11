@@ -150,6 +150,12 @@ public class MarketplaceQueries {
         return summaries.of(requests.listWithOpenAuctionClosingBefore(until), false);
     }
 
+    /** Listado global paginado de solicitudes (RLS requests_operator), más recientes primero. */
+    public Paged<RequestSummary> allRequests(OperatorRequestFilter filter, PageRequest page) {
+        Paged<ShipmentRequest> p = requests.searchAll(filter, page);
+        return new Paged<>(summaries.of(p.items(), false), page, p.total());
+    }
+
     public long countRequests(ShipmentRequest.Status status) {
         return requests.countByStatus(status);
     }

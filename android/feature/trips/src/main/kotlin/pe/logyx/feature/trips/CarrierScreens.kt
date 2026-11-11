@@ -48,7 +48,9 @@ import pe.logyx.core.designsystem.components.LogyxCombobox
 import pe.logyx.core.designsystem.components.LogyxDateField
 import pe.logyx.core.designsystem.components.LogyxDropdown
 import pe.logyx.core.designsystem.components.LogyxScreen
+import pe.logyx.core.designsystem.components.LogyxBottomSheet
 import pe.logyx.core.designsystem.components.LogyxTextField
+import androidx.compose.ui.platform.testTag
 import pe.logyx.core.designsystem.components.LogyxTimeField
 import pe.logyx.core.designsystem.components.MessageEffect
 import pe.logyx.core.designsystem.components.MessageKind
@@ -252,7 +254,7 @@ fun CarrierTripDetailRoute(
     CarrierTripDetailScreen(
         state, onBack, viewModel::refresh, onOpenShipment,
         onConfirm = viewModel::askConfirm, onReject = viewModel::askReject, onClose = viewModel::askClose, onCancel = viewModel::askCancel,
-        onPerform = viewModel::perform, onDismissConfirm = viewModel::dismissConfirm, onMessageShown = viewModel::onMessageShown,
+        onPerform = viewModel::perform, onRejectReason = viewModel::onRejectReason, onDismissConfirm = viewModel::dismissConfirm, onMessageShown = viewModel::onMessageShown,
     )
 }
 
@@ -267,6 +269,7 @@ fun CarrierTripDetailScreen(
     onClose: () -> Unit,
     onCancel: () -> Unit,
     onPerform: () -> Unit,
+    onRejectReason: (String) -> Unit,
     onDismissConfirm: () -> Unit,
     onMessageShown: () -> Unit,
 ) {
@@ -317,13 +320,52 @@ fun CarrierTripDetailScreen(
             }
         }
     }
-    state.pending?.let { action ->
+    (state.pending as? TripAction.Reject)?.let { action ->
+        RejectBookingSheet(action.booking, state.rejectReason, state.busy, onRejectReason, onPerform, onDismissConfirm)
+    }
+    state.pending?.takeIf { it !is TripAction.Reject }?.let { action ->
         val (title, message, label, destructive) = confirmCopy(action)
         LogyxConfirmDialog(
             title = title, message = message, confirmLabel = label,
             onConfirm = onPerform, onDismiss = onDismissConfirm,
             dismissLabel = stringResource(R.string.trips_back), destructive = destructive, loading = state.busy,
         )
+    }
+}
+
+/** Hoja para rechazar una reserva con motivo opcional (se envía a la PYME). */
+@Composable
+internal fun RejectBookingSheet(
+    booking: TripBookingView,
+    reason: String,
+    busy: Boolean,
+    onReason: (String) -> Unit,
+    onReject: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    LogyxBottomSheet(onDismiss, title = stringResource(R.string.trips_reject_booking_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                stringResource(R.string.trips_reject_booking_message, booking.requesterName ?: stringResource(R.string.trips_the_pyme)),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LogyxTextField(
+                reason, onReason, stringResource(R.string.trips_reject_reason_label), optional = true, singleLine = false, minLines = 3,
+                hint = stringResource(R.string.trips_reject_reason_hint, reason.length, MAX_REJECT_REASON),
+                placeholder = stringResource(R.string.trips_reject_reason_placeholder),
+                modifier = Modifier.testTag("reject-reason"),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LogyxButton(
+                    stringResource(R.string.trips_back), onDismiss, Modifier.weight(1f),
+                    variant = ButtonVariant.Secondary, size = ButtonSize.Medium, enabled = !busy,
+                )
+                LogyxButton(
+                    stringResource(R.string.trips_booking_reject), onReject, Modifier.weight(1f),
+                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, loading = busy,
+                )
+            }
+        }
     }
 }
 
@@ -338,7 +380,7 @@ private fun confirmCopy(action: TripAction): ConfirmCopy = when (action) {
     )
     is TripAction.Reject -> ConfirmCopy(
         stringResource(R.string.trips_reject_booking_title),
-        stringResource(R.string.trips_reject_booking_message, action.booking.requesterName ?: "la PYME"),
+        stringResource(R.string.trips_reject_booking_message, action.booking.requesterName ?: stringResource(R.string.trips_the_pyme)),
         stringResource(R.string.trips_booking_reject), true,
     )
     TripAction.Close -> ConfirmCopy(

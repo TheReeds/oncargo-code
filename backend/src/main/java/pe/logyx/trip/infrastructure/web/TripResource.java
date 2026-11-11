@@ -44,9 +44,15 @@ public class TripResource {
             @Parameter(description = "Página 0-based. Si se omite page y size, se devuelven todos.")
             @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20 cuando se pagina).")
-            @QueryParam("size") Integer size) {
-        if (page == null && size == null) return ApiResponse.of(queries.myTrips().stream().map(TripView::of).toList());
-        return ApiResponse.of(queries.myTrips(PageRequest.of(page, size)).map(TripView::of));
+            @QueryParam("size") Integer size,
+            @Parameter(description = "Orden: departure (salida más próxima primero, por omisión), departure_desc "
+                    + "(salida más lejana primero) o recent (publicados más recientemente primero).")
+            @QueryParam("sort") String sort) {
+        var order = TripSort.parse(sort);
+        if (page == null && size == null) {
+            return ApiResponse.of(queries.myTrips(order).stream().map(TripView::of).toList());
+        }
+        return ApiResponse.of(queries.myTrips(PageRequest.of(page, size), order).map(TripView::of));
     }
 
     @POST

@@ -214,6 +214,7 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
     (de la PYME, `requests_owner`) y la oferta (suya) a la vez; ninguna transacción de usuario puede con ambas bajo RLS.
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
     la fila y se resta el peso de esa reserva.
+- Listados globales del operador (`GET /api/v1/operator/requests|shipments`, `OperatorService` → `MarketplaceQueries.allRequests` / `ShipmentQueries.allShipments`, paginados y filtrados por estado/ciudad/fechas): leen con las políticas `*_operator`, sin SystemTx. Viven en `OperatorResource` (un `@Path` más corto en otra clase daría 404: RESTEasy elige la clase por el prefijo más largo).
 - El operador **no** usa `SystemTx`: lee con las políticas `*_operator` (V2, V4–V7) y la asignación manual escribe
   con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.).
 - RLS por tabla nueva: `messages`/`counter_offers`/`documents`/`incidents`/`incident_comments` → las dos partes

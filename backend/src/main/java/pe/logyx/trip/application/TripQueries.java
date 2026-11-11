@@ -36,12 +36,30 @@ public class TripQueries {
     // ----- Transportista
 
     public List<TripSummary> myTrips() {
-        return summaries.trips(trips.listByCarrier(tenant.orgId()), true);
+        return myTrips(TripSort.DEPARTURE);
+    }
+
+    public List<TripSummary> myTrips(TripSort sort) {
+        return summaries.trips(sorted(sort), true);
     }
 
     public Paged<TripSummary> myTrips(PageRequest page) {
-        Paged<CarrierTrip> p = Paged.slice(trips.listByCarrier(tenant.orgId()), page);
+        return myTrips(page, TripSort.DEPARTURE);
+    }
+
+    public Paged<TripSummary> myTrips(PageRequest page, TripSort sort) {
+        Paged<CarrierTrip> p = Paged.slice(sorted(sort), page);
         return new Paged<>(summaries.trips(p.items(), true), page, p.total());
+    }
+
+    private List<CarrierTrip> sorted(TripSort sort) {
+        List<CarrierTrip> all = trips.listByCarrier(tenant.orgId());   // salida más próxima primero
+        return switch (sort) {
+            case DEPARTURE -> all;
+            case DEPARTURE_DESC -> all.reversed();
+            case RECENT -> all.stream().sorted(java.util.Comparator.comparing(CarrierTrip::createdAt).reversed()
+                    .thenComparing(CarrierTrip::id)).toList();
+        };
     }
 
     /** Reservas del viaje (solo el transportista dueño). */

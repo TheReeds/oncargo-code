@@ -253,9 +253,13 @@ data class TripDetailUiState(
     val trip: TripView? = null,
     val bookings: List<TripBookingView> = emptyList(),
     val pending: TripAction? = null,
+    /** Motivo opcional al rechazar una reserva (máx. [MAX_REJECT_REASON]). */
+    val rejectReason: String = "",
     val busy: Boolean = false,
     val message: UiMessage? = null,
 )
+
+internal const val MAX_REJECT_REASON = 300
 
 class CarrierTripDetailViewModel(
     private val tripId: String,
@@ -297,8 +301,9 @@ class CarrierTripDetailViewModel(
     fun askReject(b: TripBookingView) = ask(TripAction.Reject(b))
     fun askClose() = ask(TripAction.Close)
     fun askCancel() = ask(TripAction.Cancel)
-    private fun ask(a: TripAction) = _state.update { if (it.busy) it else it.copy(pending = a) }
-    fun dismissConfirm() = _state.update { if (it.busy) it else it.copy(pending = null) }
+    private fun ask(a: TripAction) = _state.update { if (it.busy) it else it.copy(pending = a, rejectReason = "") }
+    fun dismissConfirm() = _state.update { if (it.busy) it else it.copy(pending = null, rejectReason = "") }
+    fun onRejectReason(text: String) = _state.update { it.copy(rejectReason = text.take(MAX_REJECT_REASON)) }
     fun onMessageShown() = _state.update { it.copy(message = null) }
 
     fun perform() {
@@ -308,17 +313,17 @@ class CarrierTripDetailViewModel(
         viewModelScope.launch {
             val (result, success) = when (action) {
                 is TripAction.Confirm -> trips.confirm(action.booking.id) to R.string.trips_booking_confirmed
-                is TripAction.Reject -> trips.reject(action.booking.id) to R.string.trips_booking_rejected
+                is TripAction.Reject -> trips.reject(action.booking.id, _state.value.rejectReason.trim().ifEmpty { null }) to R.string.trips_booking_rejected
                 TripAction.Close -> trips.close(tripId) to R.string.trips_trip_closed
                 TripAction.Cancel -> trips.cancel(tripId) to R.string.trips_trip_cancelled
             }
             result.fold(
                 onSuccess = {
-                    _state.update { it.copy(busy = false, pending = null, message = UiMessage.success(success)) }
+                    _state.update { it.copy(busy = false, pending = null, rejectReason = "", message = UiMessage.success(success)) }
                     load(initial = false)
                 },
                 onFailure = { e ->
-                    _state.update { it.copy(busy = false, pending = null, message = UiMessage.error(e.userMessage())) }
+                    _state.update { it.copy(busy = false, pending = null, rejectReason = "", message = UiMessage.error(e.userMessage())) }
                     load(initial = false)
                 },
             )

@@ -5,6 +5,12 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import pe.logyx.marketplace.application.OperatorRequestFilter;
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shipment.application.OperatorShipmentFilter;
 import pe.logyx.operator.application.OperatorService;
 import pe.logyx.operator.infrastructure.web.OperatorDtos.*;
 import pe.logyx.shared.api.ApiResponse;
@@ -32,6 +38,50 @@ public class OperatorResource {
     @Operation(summary = "Métricas globales de la plataforma")
     public ApiResponse<OperatorMetricsView> metrics() {
         return ApiResponse.of(OperatorMetricsView.of(service.metrics()));
+    }
+
+    @GET
+    @Path("/requests")
+    @Operation(summary = "Listado global paginado de solicitudes, más recientes primero")
+    public ApiResponse<List<OperatorRequestRow>> requests(
+            @Parameter(description = "Estado (PUBLISHED, MATCHED, CANCELLED).")
+            @QueryParam("status") String status,
+            @Parameter(description = "Código de ciudad de origen (p. ej. LIMA).")
+            @QueryParam("originCity") String originCity,
+            @Parameter(description = "Código de ciudad de destino (p. ej. JULIACA).")
+            @QueryParam("destinationCity") String destinationCity,
+            @Parameter(description = "Creada desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
+            @Parameter(description = "Creada hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+            @Parameter(description = "Página 0-based (por omisión 0).")
+            @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20).")
+            @QueryParam("size") Integer size) {
+        var filter = OperatorRequestFilter.of(status, originCity, destinationCity, fromDate, toDate);
+        return ApiResponse.of(service.requests(filter, PageRequest.of(page, size)).map(OperatorRequestRow::of));
+    }
+
+    @GET
+    @Path("/shipments")
+    @Operation(summary = "Listado global paginado de envíos, más recientes primero")
+    public ApiResponse<List<OperatorShipmentRow>> shipments(
+            @Parameter(description = "Estado (PENDING, IN_TRANSIT, DELIVERED, CANCELLED).")
+            @QueryParam("status") String status,
+            @Parameter(description = "Código de ciudad de origen (p. ej. LIMA).")
+            @QueryParam("originCity") String originCity,
+            @Parameter(description = "Código de ciudad de destino (p. ej. JULIACA).")
+            @QueryParam("destinationCity") String destinationCity,
+            @Parameter(description = "Creado desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
+            @Parameter(description = "Creado hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+            @Parameter(description = "Página 0-based (por omisión 0).")
+            @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20).")
+            @QueryParam("size") Integer size) {
+        var filter = OperatorShipmentFilter.of(status, originCity, destinationCity, fromDate, toDate);
+        return ApiResponse.of(service.shipments(filter, PageRequest.of(page, size)).map(OperatorShipmentRow::of));
     }
 
     @GET

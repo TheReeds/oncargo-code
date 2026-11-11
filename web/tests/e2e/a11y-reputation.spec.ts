@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import * as api from './helpers/api';
 import { goto, setSession } from './helpers/ui';
 
-const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4332';
+const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4322';
 
 async function expectNoSeriousViolations(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();

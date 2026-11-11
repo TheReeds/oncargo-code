@@ -27,7 +27,7 @@ const rows: [string, string][] = [
   ['Vehículo mínimo', r.minVehicleType ? (VEHICLE_LABELS[r.minVehicleType] ?? r.minVehicleType) : '—'],
 ];
 ---
-<AppShell title="Detalle de solicitud" active="operador" wide>
+<AppShell title="Detalle de solicitud" active="operador-solicitudes" wide>
   <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Solicitud</span></nav>
   <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)} · solo lectura`}>
     <div slot="actions" class="flex flex-wrap items-center gap-3"><VerifiedBadge verified={r.requesterRucVerified} /><StatusPill status={r.status!} /></div>

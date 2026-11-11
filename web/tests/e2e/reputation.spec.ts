@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import * as api from './helpers/api';
 import { goto, setSession, toastWith } from './helpers/ui';
 
-const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4332';
+const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4322';
 const SHOTS = 'docs/screenshots';
 
 async function openRating(page: Page, token: string, path: string, id: string) {

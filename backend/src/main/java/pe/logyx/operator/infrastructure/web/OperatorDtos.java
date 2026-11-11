@@ -20,6 +20,7 @@ import pe.logyx.operator.application.AssignmentCandidate;
 import pe.logyx.operator.application.OperatorAlerts;
 import pe.logyx.operator.application.OperatorMetrics;
 import pe.logyx.shipment.application.ShipmentSummary;
+import pe.logyx.shipment.domain.model.Shipment;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -86,6 +87,40 @@ public final class OperatorDtos {
                     a.expiringAuctions().stream().map(r -> SlaRequestView.of(r, now)).toList(),
                     a.activeIncidents().stream().map(i -> IncidentAlertView.of(i,
                             a.incidentShipments().get(i.incident().shipmentId()), now)).toList());
+        }
+    }
+
+    /** Fila del listado global de solicitudes. */
+    public record OperatorRequestRow(UUID id, UUID requesterOrgId, String requesterName, City originCity,
+                                     City destinationCity, CargoType cargoType, String cargoDescription,
+                                     BigDecimal weightKg, LocalDate pickupDate, BigDecimal suggestedPrice,
+                                     ShipmentRequest.Status status, OffsetDateTime createdAt, long bidCount,
+                                     Auction.Status auctionStatus, OffsetDateTime auctionClosesAt,
+                                     UUID assignedCarrierOrgId) {
+        static OperatorRequestRow of(RequestSummary s) {
+            ShipmentRequest r = s.request();
+            Auction a = s.auction();
+            var c = r.cargo();
+            return new OperatorRequestRow(r.id(), r.requesterOrgId(), s.requesterName(), c.originCity(),
+                    c.destinationCity(), c.cargoType(), c.cargoDescription(), c.weightKg(), c.pickupDate(),
+                    r.pricing().suggestedPrice(), r.status(), r.createdAt(), s.bidCount(),
+                    a == null ? null : a.status(), a == null ? null : a.closesAt(), r.assignedCarrierOrgId());
+        }
+    }
+
+    /** Fila del listado global de envíos. */
+    public record OperatorShipmentRow(UUID id, UUID requestId, String requesterName, String carrierName,
+                                      City originCity, City destinationCity, String cargoDescription,
+                                      BigDecimal weightKg, BigDecimal agreedPrice, String vehiclePlate,
+                                      String driverName, Shipment.Status status, OffsetDateTime createdAt,
+                                      OffsetDateTime deliveredAt, boolean hasActiveIncident) {
+        static OperatorShipmentRow of(ShipmentSummary sum) {
+            Shipment s = sum.shipment();
+            var r = sum.request();
+            return new OperatorShipmentRow(s.id(), s.requestId(), sum.requesterName(), sum.carrierName(),
+                    r == null ? null : r.originCity(), r == null ? null : r.destinationCity(),
+                    r == null ? null : r.cargoDescription(), r == null ? null : r.weightKg(), s.agreedPrice(),
+                    s.vehiclePlate(), s.driverName(), s.status(), s.createdAt(), s.deliveredAt(), sum.activeIncident());
         }
     }
 

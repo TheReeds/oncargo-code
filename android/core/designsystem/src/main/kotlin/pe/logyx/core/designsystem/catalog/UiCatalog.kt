@@ -48,6 +48,8 @@ import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
 import pe.logyx.core.designsystem.components.KpiTile
+import pe.logyx.core.designsystem.components.LiveIndicator
+import pe.logyx.core.model.RealtimeStatus
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxBottomBar
 import pe.logyx.core.designsystem.components.LogyxBottomSheet
@@ -115,6 +117,12 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
             Section("Datos de negocio") { Domain() }
             Section("Reputación, chat y evidencia") { Phase3() }
+            Section("Indicador en vivo") {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    LiveIndicator(RealtimeStatus.LIVE)
+                    LiveIndicator(RealtimeStatus.RECONNECTING)
+                }
+            }
             Section("Navegación") {
                 var sel by remember { mutableStateOf(1) }
                 LogyxBottomBar(

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as api from './helpers/api';
 import { goto, setSession, toastWith } from './helpers/ui';
 
-const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4332';
+const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4322';
 const SHOTS = 'docs/screenshots';
 const PDF = Buffer.from('%PDF-1.4\n%%EOF');
 

@@ -68,6 +68,7 @@ private class FakeTrips : TripsRepository {
     var lastBooking: Pair<String, CreateTripBookingRequest>? = null
     var bookResult: Result<TripBookingView> = Result.success(booking("nb"))
     var mine: Result<List<TripBookingView>> = Result.success(emptyList())
+    var lastReason: String? = "sin llamar"
 
     override suspend fun create(body: CreateTripRequest): Result<TripView> { created = body; return createResult }
     override suspend fun myTrips() = myTrips
@@ -76,7 +77,7 @@ private class FakeTrips : TripsRepository {
     override suspend fun cancel(id: String): Result<TripView> { calls += "cancel:$id"; return tripResult }
     override suspend fun bookings(tripId: String) = bookings
     override suspend fun confirm(bookingId: String): Result<TripBookingView> { calls += "confirm:$bookingId"; return actionResult }
-    override suspend fun reject(bookingId: String, reason: String?): Result<TripBookingView> { calls += "reject:$bookingId"; return actionResult }
+    override suspend fun reject(bookingId: String, reason: String?): Result<TripBookingView> { calls += "reject:$bookingId"; lastReason = reason; return actionResult }
     override suspend fun search(filter: TripFilter, page: Int, size: Int): Result<Page<TripView>> { lastFilter = filter; return searchResult }
     override suspend fun book(tripId: String, body: CreateTripBookingRequest): Result<TripBookingView> { lastBooking = tripId to body; return bookResult }
     override suspend fun myBookings(status: BookingStatus?) = mine
@@ -269,6 +270,52 @@ class TripsViewModelsTest {
         vm.askClose(); vm.perform()
         vm.askCancel(); vm.perform()
         assertEquals(listOf("reject:b2", "close:t1", "cancel:t1"), trips.calls)
+    }
+
+    @Test fun `rechazar envia el motivo recortado y sin motivo envia null`() = runTest {
+        val trips = FakeTrips()
+        val vm = CarrierTripDetailViewModel("t1", false, trips, FakeRealtime())
+        vm.askReject(booking("b1"))
+        vm.onRejectReason("  Ya no hay espacio  ")
+        vm.perform()
+        assertEquals("Ya no hay espacio", trips.lastReason)
+        assertEquals("", vm.state.value.rejectReason, "se limpia al terminar")
+        vm.askReject(booking("b2"))
+        vm.onRejectReason("   ")
+        vm.perform()
+        assertNull(trips.lastReason)
+    }
+
+    @Test fun `el motivo se limita a 300 caracteres y se limpia al cancelar`() = runTest {
+        val vm = CarrierTripDetailViewModel("t1", false, FakeTrips(), FakeRealtime())
+        vm.askReject(booking("b1"))
+        vm.onRejectReason("x".repeat(400))
+        assertEquals(300, vm.state.value.rejectReason.length)
+        vm.dismissConfirm()
+        assertEquals("", vm.state.value.rejectReason)
+        vm.askReject(booking("b1"))
+        assertEquals("", vm.state.value.rejectReason)
+    }
+
+    @Test fun `detalle PYME muestra el viaje y solo mis reservas de ese viaje`() = runTest {
+        val trips = FakeTrips().apply {
+            mine = Result.success(listOf(
+                booking("rej", BookingStatus.REJECTED, "2026-11-10T12:00:00Z"),
+                booking("ok", BookingStatus.CONFIRMED, "2026-11-09T12:00:00Z"),
+                booking("otro", BookingStatus.PENDING).copy(tripId = "t9"),
+            ))
+        }
+        val vm = PymeTripDetailViewModel("t1", trips, FakeRealtime())
+        assertNotNull(vm.state.value.trip)
+        assertEquals(listOf("ok", "rej"), vm.state.value.bookings.map { it.id })
+        assertFalse(vm.state.value.loading)
+    }
+
+    @Test fun `detalle PYME con viaje inexistente muestra el error`() = runTest {
+        val trips = FakeTrips().apply { tripResult = Result.failure(apiError("LOGYX-TRP-001", "Viaje no encontrado", status = 404)) }
+        val vm = PymeTripDetailViewModel("t1", trips, FakeRealtime())
+        assertNull(vm.state.value.trip)
+        assertEquals("Viaje no encontrado", vm.state.value.error)
     }
 
     @Test fun `descartar el dialogo no ejecuta nada y un error de API se muestra`() = runTest {

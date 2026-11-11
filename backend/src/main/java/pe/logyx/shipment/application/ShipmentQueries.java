@@ -75,6 +75,12 @@ public class ShipmentQueries {
                 shipments.countAllByStatus(Shipment.Status.CANCELLED));
     }
 
+    /** Listado global paginado de envíos (RLS shipments_operator), más recientes primero. */
+    public Paged<ShipmentSummary> allShipments(OperatorShipmentFilter filter, PageRequest page) {
+        Paged<Shipment> p = shipments.searchAll(filter, page);
+        return new Paged<>(summaries(p.items()), page, p.total());
+    }
+
     /** Envíos por id visibles para el usuario actual (otros módulos: incident, operator). */
     public List<ShipmentSummary> byIds(Collection<UUID> ids) {
         if (ids.isEmpty()) return List.of();

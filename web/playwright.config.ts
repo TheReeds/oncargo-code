@@ -32,7 +32,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: prod ? `npm run build && node ./dist/server/entry.mjs` : `npm run dev -- --port ${port}`,
+        command: prod ? `npm run build && node ./dist/server/entry.mjs` : `npx astro dev --config astro.e2e.config.mjs --ignore-lock --port ${port}`,
         url: baseURL,
         reuseExistingServer: true,
         timeout: 180_000,
