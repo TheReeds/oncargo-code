@@ -31,6 +31,7 @@ import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
 import pe.logyx.core.designsystem.components.LogyxScreen
@@ -59,6 +60,7 @@ fun IncidentsListRoute(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (first[0]) first[0] = false else viewModel.refresh()
     }
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     IncidentsListScreen(state, onBack, viewModel::refresh, onOpenIncident, onReport)
 }
 

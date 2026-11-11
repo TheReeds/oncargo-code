@@ -1,4 +1,5 @@
 ---
+import LiveRegion from '@/components/ui/live-region';
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
@@ -24,6 +25,8 @@ try {
     <a slot="actions" href="/transportista/viajes/nuevo" class={buttonVariants({ variant: 'money' })}><Plus size={16} /> Publicar viaje</a>
   </PageHeader>
   {loadError && <Alert tone="error" title="No pudimos cargar tus viajes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <LiveRegion client:load types={['trip_booking.updated', 'trip.cancelled']} region="trips" />
+  <div data-live-region="trips">
   <Card>
     {trips.length === 0 && !loadError ? (
       <EmptyState title="Aún no publicaste viajes" description="Publica una salida con tu capacidad libre y recibe reservas de empresas que ya viajan por tu ruta." />
@@ -49,4 +52,5 @@ try {
       </Table>
     )}
   </Card>
+  </div>
 </AppShell>

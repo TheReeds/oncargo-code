@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 export function Checkbox({ className, ...p }: React.ComponentPropsWithoutRef<typeof C.Root>) {
   return (
     <C.Root className={cn('flex size-[18px] shrink-0 items-center justify-center rounded border border-ink-400 bg-surface transition-colors data-[state=checked]:border-petrol-700 data-[state=checked]:bg-petrol-700 disabled:opacity-50 aria-[invalid=true]:border-red-600', className)} {...p}>
-      <C.Indicator><Check className="size-3.5 text-white" strokeWidth={3} aria-hidden="true" /></C.Indicator>
+      <C.Indicator><Check className="size-3.5 text-on-solid" strokeWidth={3} aria-hidden="true" /></C.Indicator>
     </C.Root>
   );
 }

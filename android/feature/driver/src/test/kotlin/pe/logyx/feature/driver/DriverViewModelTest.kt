@@ -10,6 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceTimeBy
 import pe.logyx.core.data.CatalogRepository
@@ -102,7 +103,7 @@ class DriverViewModelTest {
 
     @Test fun `avanzar el viaje completo hasta entregado`() = runTest {
         val repo = FakeShipments(fresh)
-        val vm = DriverTripViewModel(repo, FakeCatalog(), FakeEvidenceRepository())
+        val vm = DriverTripViewModel(repo, FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         assertNotNull(vm.state.value.origin)
         assertEquals(DriverStep.ARRIVE_PICKUP, vm.state.value.action?.step)
         assertEquals(StopOp.ARRIVE, vm.state.value.action?.op)
@@ -123,7 +124,7 @@ class DriverViewModelTest {
 
     @Test fun `error al avanzar conserva el viaje y muestra el mensaje`() = runTest {
         val repo = FakeShipments(fresh, failNext = ApiException(409, "LOGYX-SHP-002", "La parada anterior no está completada"))
-        val vm = DriverTripViewModel(repo, FakeCatalog(), FakeEvidenceRepository())
+        val vm = DriverTripViewModel(repo, FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         vm.advance()
         assertEquals("La parada anterior no está completada", vm.state.value.actionError)
         assertEquals(DriverStep.ARRIVE_PICKUP, vm.state.value.action?.step)
@@ -138,7 +139,7 @@ class DriverViewModelTest {
 
     @Test fun `sin foto subida el boton Entregado esta bloqueado`() = runTest {
         val ev = FakeEvidenceRepository()
-        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev)
+        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev, FakeRealtime())
         assertEquals(DriverStep.DELIVERED, vm.state.value.action?.step)
         assertTrue(vm.state.value.photoBlocked)
         assertFalse(vm.state.value.canAdvance)
@@ -149,14 +150,14 @@ class DriverViewModelTest {
     }
 
     @Test fun `la firma sola no habilita la entrega`() = runTest {
-        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), FakeEvidenceRepository())
+        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         vm.onSignatureCaptured(byteArrayOf(9))
         assertFalse(vm.state.value.canAdvance)
     }
 
     @Test fun `al subir la foto se habilita y la foto fallida no cuenta`() = runTest {
         val ev = FakeEvidenceRepository(uploadOk = false)
-        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev)
+        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev, FakeRealtime())
         vm.onPhotoCaptured(byteArrayOf(1))
         assertFalse(vm.state.value.canAdvance)
         ev.uploadOk = true
@@ -167,7 +168,7 @@ class DriverViewModelTest {
     @Test fun `TRK-006 muestra falta de foto y refresca la evidencia`() = runTest {
         val ev = FakeEvidenceRepository()
         val shipments = FakeShipments(atDestination, failNext = ApiException(409, "LOGYX-TRK-006", "Falta evidencia"))
-        val vm = DriverTripViewModel(shipments, FakeCatalog(), ev)
+        val vm = DriverTripViewModel(shipments, FakeCatalog(), ev, FakeRealtime())
         vm.onPhotoCaptured(byteArrayOf(1))
         val loadsBefore = ev.loads.size
         vm.advance()
@@ -179,13 +180,13 @@ class DriverViewModelTest {
 
     @Test fun `incidencia activa bloquea el avance y TRK-005 tambien`() = runTest {
         val blocked = atDestination.copy(hasActiveIncident = true)
-        val vm = DriverTripViewModel(FakeShipments(blocked), FakeCatalog(), FakeEvidenceRepository())
+        val vm = DriverTripViewModel(FakeShipments(blocked), FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         vm.onPhotoCaptured(byteArrayOf(1))
         assertTrue(vm.state.value.incidentBlocked)
         assertFalse(vm.state.value.canAdvance)
 
         val shipments = FakeShipments(atDestination, failNext = ApiException(409, "LOGYX-TRK-005", "Incidencia activa"))
-        val vm2 = DriverTripViewModel(shipments, FakeCatalog(), FakeEvidenceRepository())
+        val vm2 = DriverTripViewModel(shipments, FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         vm2.onPhotoCaptured(byteArrayOf(1))
         vm2.advance()
         assertTrue(vm2.state.value.incidentBlocked)
@@ -196,7 +197,7 @@ class DriverViewModelTest {
 
     @Test fun `reintenta cada 20 segundos mientras haya evidencia fallida`() = runTest {
         val ev = FakeEvidenceRepository(uploadOk = false)
-        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev)
+        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev, FakeRealtime())
         vm.onPhotoCaptured(byteArrayOf(1))
         assertEquals(0, ev.retryAllCalls)
         advanceTimeBy(20_001)
@@ -207,5 +208,22 @@ class DriverViewModelTest {
         advanceTimeBy(60_000)
         assertEquals(2, ev.retryAllCalls)
         assertTrue(vm.state.value.canAdvance)
+    }
+
+    @Test fun `tiempo real refresca el viaje en silencio con driver_assigned`() = runTest(UnconfinedTestDispatcher()) {
+        val repo = FakeShipments(fresh)
+        val rt = FakeRealtime()
+        val vm = DriverTripViewModel(repo, FakeCatalog(), FakeEvidenceRepository(), rt)
+        val job = launch { vm.liveLoop() }
+        assertEquals(ShipmentStatus.PENDING, vm.state.value.trip?.status)
+        repo.current = repo.current.copy(status = ShipmentStatus.IN_TRANSIT)
+        rt.emit(RealtimeTypes.SHIPMENT_DRIVER_ASSIGNED, "shipmentId" to "s2", "assigned" to "true")
+        assertEquals(ShipmentStatus.IN_TRANSIT, vm.state.value.trip?.status)
+        assertFalse(vm.state.value.refreshing)
+        // Una señal de tipo ajeno no consulta nada.
+        repo.current = repo.current.copy(status = ShipmentStatus.DELIVERED)
+        rt.emit(RealtimeTypes.MESSAGE_POSTED, "requestId" to "r1")
+        assertEquals(ShipmentStatus.IN_TRANSIT, vm.state.value.trip?.status)
+        job.cancel()
     }
 }

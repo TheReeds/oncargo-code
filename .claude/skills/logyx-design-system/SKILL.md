@@ -35,6 +35,17 @@ Fuente de verdad visual y de contenido del monorepo. Si vas a escribir UI, léel
 | red-600 / 50 | #DC2626 / #FEF2F2 | Error, rechazada, incidencia |
 Android usa los mismos valores (ver `references/android.md`). Modo oscuro: pendiente.
 
+## Modo oscuro (web)
+- `html[data-theme="dark"]` (en `styles/global.css`) **redefine los tokens** (`ink-*`, `steel-*`, `surface`, `petrol-*`, `emerald-*`, `amber-*`, `red-*`) más `chrome`, `on-solid`, `scrim`. Valores y contrastes: `docs/design/DESIGN.md`.
+- Escribe componentes solo con tokens: **nunca** hex, `bg-white`, `text-black`, `bg-black` ni `bg-ink-900/40`. Texto sobre un relleno sólido (`bg-petrol-700`, `bg-emerald-700`, `bg-red-600`, `bg-emerald-500`) = `text-on-solid` (no `text-white`: en oscuro esos rellenos son claros). Fondos oscuros fijos en ambos temas (sidebar, tooltip, hero) = `bg-chrome text-white`. Velo de overlays = `bg-scrim`. SVG: `style={{ fill: 'var(--color-surface)' }}`. Variante `dark:` disponible (`@custom-variant`), pero casi nunca hace falta.
+- Selector: `components/ui/theme-toggle.tsx` (Claro/Oscuro/Sistema, `aria-label="Tema"`), ya montado en el topbar de `AppShell` y en `Public.astro`. Lógica en `lib/theme.ts` (`useResolvedTheme()` para islas que dependen del tema: sonner, mapas).
+- Sin parpadeo: script `is:inline` en el `<head>` de `Base.astro` fija `data-theme` leyendo `localStorage['logyx-theme']` (light|dark|system) antes de pintar. La CSP de producción ya permite `script-src 'unsafe-inline'`; no la endurezcas sin hash.
+- Mapas MapLibre: estilo `positron` en claro, `https://tiles.openfreemap.org/styles/dark` en oscuro; al cambiar el tema `map.setStyle` y se re-agregan fuente/capa/marcadores (ver `TrackingMap.tsx`).
+- e2e: `tests/e2e/a11y-dark.spec.ts` (axe en oscuro). Revisa cada pantalla nueva en ambos temas en `/dev/ui`.
+
+## Tiempo real (web)
+Datos que cambian en el servidor se actualizan con SSE, no con `setInterval`: `useLiveRefresh({ types, match, refresh, fallbackMs })` (`lib/realtime.ts`), páginas solo-SSR con `<LiveRegion>`; el indicador `LiveIndicator` ya está en el topbar. Detalle y ejemplos en `references/web.md` (sección "Tiempo real").
+
 ## Tipografía
 Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, montos en tablas), números tabulares en precios/tablas. Escala web: página 30/semibold · sección 20/semibold · tarjeta 15/semibold · cuerpo 14 · etiqueta 13/medium · ayuda 12 `ink-500` · encabezado de tabla 12/semibold mayúsculas. Dinero = clase `.money` (mono, emerald-700).
 

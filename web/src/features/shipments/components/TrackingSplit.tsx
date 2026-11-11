@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
 import { Calendar, Truck, User, Weight } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +67,14 @@ function AssignDriver({ shipment, drivers }: { shipment: ShipmentView; drivers: 
   );
 }
 
-export default function TrackingSplit({ shipments, cities, initialId, perspective, drivers = [] }: Props) {
+export default function TrackingSplit({ shipments: initialShipments, cities, initialId, perspective, drivers = [] }: Props) {
+  // Lista viva: shipment.* / incident.* vuelven a pedir los envíos sin recargar la página (el mapa y la selección se conservan).
+  const [shipments, setShipments] = useState<ShipmentView[]>(initialShipments);
+  const refresh = useCallback(async () => {
+    const { data } = await actions.shipments.list();
+    if (data) setShipments(data);
+  }, []);
+  useLiveRefresh({ types: ['shipment.status_changed', 'shipment.stop_updated', 'shipment.driver_assigned', 'incident.reported', 'incident.updated'], refresh, fallbackMs: 60_000 });
   const [selectedId, setSelectedId] = useState<string | null>(initialId && shipments.some((s) => s.id === initialId) ? initialId : (shipments[0]?.id ?? null));
   const [filter, setFilter] = useState<'active' | 'all'>('active');
   const list = useMemo(() => shipments.filter((s) => filter === 'all' || s.status !== 'DELIVERED' && s.status !== 'CANCELLED'), [shipments, filter]);

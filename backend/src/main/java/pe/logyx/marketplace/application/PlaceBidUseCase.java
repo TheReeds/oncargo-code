@@ -61,14 +61,15 @@ public class PlaceBidUseCase {
         // La transacción de sistema no ve la oferta aún no confirmada: se cuentan
         // las ajenas (ya confirmadas, gracias al lock de la subasta) + la propia.
         long total = system.call(() -> bids.countByAuctionExcludingCarrier(a.id(), me)) + 1;
-        if (AuctionClosingPolicy.reachedMaxBids(a, total)) {
+        boolean closed = AuctionClosingPolicy.reachedMaxBids(a, total);
+        if (closed) {
             a.close(Auction.CloseReason.MAX_BIDS, now);
             auctions.save(a);
         }
         BidSummary summary = summaries.bids(java.util.List.of(b)).getFirst();
         // Notificación a la PYME (módulo notification) tras el commit
         bidPlaced.fire(new BidPlaced(b.id(), r.id(), r.requesterOrgId(), me, summary.carrierName(), b.amount(),
-                r.routeLabel()));
+                r.routeLabel(), (int) total, closed));
         return summary;
     }
 }

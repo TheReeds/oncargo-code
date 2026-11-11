@@ -831,6 +831,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eventos en tiempo real (SSE)
+         * @description Stream text/event-stream autenticado. Cada conexión recibe solo los eventos dirigidos a su organización (el conductor, solo los de sus envíos; el operador, los suyos y las incidencias). Payload mínimo (ids + tipo + datos no sensibles): el cliente vuelve a pedir por la API lo que necesite. Primero llega stream.ready (o stream.resync si no se pudo reanudar: recarga todo). Latido: comentario ': ping' cada ~20 s. Reanudación: cabecera Last-Event-ID (o ?lastEventId=) con el último id recibido. Al vencer el JWT llega stream.expired y se cierra: reconecta con un token nuevo. Máximo 5 conexiones por usuario (429 LOGYX-RTM-001).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Alternativa a Last-Event-ID para clientes que reconectan a mano */
+                    lastEventId?: string;
+                };
+                header?: {
+                    /** @description Último id recibido (lo envía EventSource al reconectar) */
+                    "Last-Event-ID"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stream de eventos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": components["schemas"]["RealtimeStreamEvent"];
+                    };
+                };
+                /** @description Sin token o token vencido */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Demasiadas conexiones del usuario (LOGYX-RTM-001) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidents": {
         parameters: {
             query?: never;
@@ -4481,6 +4547,22 @@ export interface components {
             destinationCity: string;
             weightKg: number;
             cargoType: components["schemas"]["CargoType"];
+        };
+        /** @description Mensaje del stream SSE (campo data:, JSON). El id SSE es seq. */
+        RealtimeStreamEvent: {
+            /** @description Tipo de evento: bid.placed, auction.updated, bid.accepted, bid.rejected, request.matched, counter_offer.updated, message.posted, shipment.status_changed, shipment.stop_updated, shipment.driver_assigned, incident.reported, incident.updated, notification.created, review.submitted, trip_booking.updated, trip.cancelled, smart_load.suggested, smart_load.accepted; control: stream.ready, stream.resync, stream.expired. Ver docs/api/CHANGELOG.md. Ignora los tipos desconocidos. */
+            type?: string;
+            /**
+             * Format: int64
+             * @description Secuencia del evento (= id SSE, úsalo como Last-Event-ID); null en stream.expired
+             */
+            seq?: number;
+            /** @description Cuándo ocurrió (ISO-8601) */
+            occurredAt?: string;
+            /** @description Payload mínimo: ids, estados y contadores (nunca montos, nombres ni textos) */
+            data?: {
+                [key: string]: unknown;
+            };
         };
         RegisterRequest: {
             organizationType: components["schemas"]["OrgType"];

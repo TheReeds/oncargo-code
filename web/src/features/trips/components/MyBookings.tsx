@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,13 @@ import type { TripBookingView } from '../server';
 
 type Tab = 'ACTIVE' | 'HISTORY';
 
-export default function MyBookings({ bookings }: { bookings: TripBookingView[] }) {
+export default function MyBookings({ bookings: initial }: { bookings: TripBookingView[] }) {
+  const [bookings, setBookings] = useState(initial);
+  useLiveRefresh({
+    types: ['trip_booking.updated', 'trip.cancelled'],
+    refresh: async () => { const { data } = await actions.trips.myBookings(); if (data) setBookings(data); },
+    fallbackMs: 60_000,
+  });
   const [tab, setTab] = useState<Tab>('ACTIVE');
   const [busy, setBusy] = useState<string | null>(null);
   const isActive = (b: TripBookingView) => b.status === 'PENDING' || b.status === 'CONFIRMED';

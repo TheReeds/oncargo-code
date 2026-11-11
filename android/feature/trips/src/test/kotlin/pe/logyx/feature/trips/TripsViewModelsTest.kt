@@ -230,12 +230,12 @@ class TripsViewModelsTest {
                 aTrip("soon", TripStatus.FILLING, departure = "2099-11-01T00:00:00Z"),
             ))
         }
-        val vm = CarrierTripsViewModel(trips)
+        val vm = CarrierTripsViewModel(trips, FakeRealtime())
         assertEquals(listOf("soon", "late", "done"), vm.state.value.trips.map { it.id })
     }
 
     @Test fun `mis viajes - error de red muestra mensaje`() = runTest {
-        val vm = CarrierTripsViewModel(FakeTrips().apply { myTrips = Result.failure(apiError("NETWORK", "No pudimos conectar con LOGYX.", status = 0)) })
+        val vm = CarrierTripsViewModel(FakeTrips().apply { myTrips = Result.failure(apiError("NETWORK", "No pudimos conectar con LOGYX.", status = 0)) }, FakeRealtime())
         assertEquals("No pudimos conectar con LOGYX.", vm.state.value.error)
     }
 
@@ -245,14 +245,14 @@ class TripsViewModelsTest {
         val trips = FakeTrips().apply {
             bookings = Result.success(listOf(booking("old", BookingStatus.CONFIRMED), booking("new", BookingStatus.PENDING)))
         }
-        val vm = CarrierTripDetailViewModel("t1", true, trips)
+        val vm = CarrierTripDetailViewModel("t1", true, trips, FakeRealtime())
         assertEquals(R.string.trips_published, vm.state.value.message?.textRes)
         assertEquals(listOf("new", "old"), vm.state.value.bookings.map { it.id })
     }
 
     @Test fun `confirmar reserva pide confirmacion y luego llama al API`() = runTest {
         val trips = FakeTrips().apply { bookings = Result.success(listOf(booking("b1"))) }
-        val vm = CarrierTripDetailViewModel("t1", false, trips)
+        val vm = CarrierTripDetailViewModel("t1", false, trips, FakeRealtime())
         vm.askConfirm(booking("b1"))
         assertTrue(vm.state.value.pending is TripAction.Confirm)
         assertTrue(trips.calls.isEmpty())
@@ -264,7 +264,7 @@ class TripsViewModelsTest {
 
     @Test fun `rechazar y cancelar viaje usan los endpoints correctos`() = runTest {
         val trips = FakeTrips()
-        val vm = CarrierTripDetailViewModel("t1", false, trips)
+        val vm = CarrierTripDetailViewModel("t1", false, trips, FakeRealtime())
         vm.askReject(booking("b2")); vm.perform()
         vm.askClose(); vm.perform()
         vm.askCancel(); vm.perform()
@@ -273,7 +273,7 @@ class TripsViewModelsTest {
 
     @Test fun `descartar el dialogo no ejecuta nada y un error de API se muestra`() = runTest {
         val trips = FakeTrips().apply { actionResult = Result.failure(apiError("LOGYX-TRP-004", "El peso excede la capacidad restante", "weightKg")) }
-        val vm = CarrierTripDetailViewModel("t1", false, trips)
+        val vm = CarrierTripDetailViewModel("t1", false, trips, FakeRealtime())
         vm.askConfirm(booking("b1")); vm.dismissConfirm()
         assertNull(vm.state.value.pending)
         assertTrue(trips.calls.isEmpty())
@@ -331,7 +331,7 @@ class TripsViewModelsTest {
 
     @Test fun `smart load - inicia en pendientes y recarga al cambiar de filtro`() = runTest {
         val smart = FakeSmart().apply { smarts = Result.success(listOf(smartLoad("s1"))) }
-        val vm = SmartLoadsViewModel(smart)
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
         assertEquals(SmartLoadStatus.PENDING, smart.lastStatus)
         vm.setFilter(SmartLoadStatus.ACCEPTED)
         assertEquals(SmartLoadStatus.ACCEPTED, smart.lastStatus)
@@ -340,7 +340,7 @@ class TripsViewModelsTest {
 
     @Test fun `smart load - generar informa cuantas sugerencias nuevas hay`() = runTest {
         val smart = FakeSmart()
-        val vm = SmartLoadsViewModel(smart)
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
         vm.generate()
         assertEquals(R.string.trips_smart_generated_none, vm.state.value.message?.textRes)
         smart.generated = Result.success(listOf(smartLoad("a"), smartLoad("b")))
@@ -351,7 +351,7 @@ class TripsViewModelsTest {
 
     @Test fun `smart load - aceptar y rechazar piden confirmacion`() = runTest {
         val smart = FakeSmart().apply { smarts = Result.success(listOf(smartLoad("s1"))) }
-        val vm = SmartLoadsViewModel(smart)
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
         vm.askAccept(smartLoad("s1"))
         assertTrue(vm.state.value.pending!!.accept)
         assertTrue(smart.calls.isEmpty())
@@ -364,7 +364,7 @@ class TripsViewModelsTest {
 
     @Test fun `smart load - sugerencia vencida muestra el mensaje del API`() = runTest {
         val smart = FakeSmart().apply { decision = Result.failure(apiError("LOGYX-TRP-009", "La sugerencia venció")) }
-        val vm = SmartLoadsViewModel(smart)
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
         vm.askAccept(smartLoad("s1")); vm.confirm()
         assertEquals("La sugerencia venció", vm.state.value.message?.text)
         assertNull(vm.state.value.pending)
@@ -459,14 +459,14 @@ class TripsViewModelsTest {
                 booking("new", BookingStatus.PENDING, "2026-11-10T09:00:00Z"),
             ))
         }
-        val vm = MyBookingsViewModel(trips)
+        val vm = MyBookingsViewModel(trips, FakeRealtime())
         assertEquals(listOf("new", "old", "rej"), vm.state.value.bookings.map { it.id })
         assertEquals(2, vm.state.value.activeCount)
     }
 
     @Test fun `mis reservas - cancelar exige confirmacion`() = runTest {
         val trips = FakeTrips().apply { mine = Result.success(listOf(booking("b1"))) }
-        val vm = MyBookingsViewModel(trips)
+        val vm = MyBookingsViewModel(trips, FakeRealtime())
         vm.askCancel(booking("b1"))
         assertNotNull(vm.state.value.pendingCancel)
         assertTrue(trips.calls.isEmpty())
@@ -481,7 +481,7 @@ class TripsViewModelsTest {
             mine = Result.success(listOf(booking("b1", BookingStatus.CONFIRMED)))
             actionResult = Result.failure(apiError("LOGYX-SHP-003", "El envío ya salió del recojo"))
         }
-        val vm = MyBookingsViewModel(trips)
+        val vm = MyBookingsViewModel(trips, FakeRealtime())
         vm.askCancel(booking("b1", BookingStatus.CONFIRMED)); vm.confirmCancel()
         assertEquals("El envío ya salió del recojo", vm.state.value.message?.text)
     }

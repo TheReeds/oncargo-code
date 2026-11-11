@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import pe.logyx.core.designsystem.components.LiveEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -130,6 +131,7 @@ fun DriverTripRoute(
         }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     val shipmentId = state.trip?.id
     DriverTripScreen(
         state, viewModel::refresh, viewModel::advance, viewModel::onNoticeShown, viewModel::dismissActionError,

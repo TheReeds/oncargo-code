@@ -2,6 +2,8 @@
 import Base from '@/layouts/Base.astro';
 import Logo from './Logo.astro';
 import UserMenu from './UserMenu';
+import ThemeToggle from '@/components/ui/theme-toggle';
+import LiveIndicator from '@/components/layout/LiveIndicator';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 import { me } from '@/features/auth/server';
 import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck } from '@lucide/astro';
@@ -41,9 +43,9 @@ const items = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'
 const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador LOGYX' : 'Transportista';
 ---
 <Base title={title}>
-  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-white focus:px-3 focus:py-2">Saltar al contenido</a>
+  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-surface focus:text-ink-900 focus:px-3 focus:py-2">Saltar al contenido</a>
   <div class="flex min-h-screen">
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex w-64 -translate-x-full flex-col bg-ink-900 text-white shadow-xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:translate-x-0 lg:shadow-none" aria-label="Navegación principal">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex w-64 -translate-x-full flex-col bg-chrome text-white shadow-xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:translate-x-0 lg:shadow-none" aria-label="Navegación principal">
       <div class="flex h-14 items-center justify-between px-5">
         <a href="/" aria-label="LOGYX inicio"><Logo dark /></a>
         <button id="menu-close" type="button" class="rounded-input p-1.5 text-white/70 hover:bg-white/10 hover:text-white lg:hidden" aria-label="Cerrar menú"><X size={18} /></button>
@@ -51,7 +53,7 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
       <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {items.map((it) => (
           <a href={it.href} aria-current={active === it.id ? 'page' : undefined}
-            class:list={['group relative flex items-center gap-3 rounded-input px-3 py-2.5 text-sm font-medium transition-colors', active === it.id ? 'bg-petrol-700 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white']}>
+            class:list={['group relative flex items-center gap-3 rounded-input px-3 py-2.5 text-sm font-medium transition-colors', active === it.id ? 'bg-petrol-700 text-on-solid' : 'text-white/70 hover:bg-white/10 hover:text-white']}>
             {active === it.id && <span class="absolute -left-3 top-2 h-6 w-1 rounded-r bg-emerald-500" aria-hidden="true"></span>}
             <it.icon size={18} aria-hidden="true" /> {it.label}
           </a>
@@ -61,7 +63,7 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
         <a href="/privacidad" class="rounded hover:text-white">Política de privacidad</a>
       </div>
     </aside>
-    <div id="scrim" class="fixed inset-0 z-20 hidden bg-ink-900/40 lg:hidden"></div>
+    <div id="scrim" class="fixed inset-0 z-20 hidden bg-scrim lg:hidden"></div>
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-steel-200 bg-surface/95 px-4 backdrop-blur lg:px-8">
@@ -70,6 +72,8 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
           <span class="truncate text-sm font-semibold text-ink-900">{user?.organizationName ?? 'Mi empresa'}</span>
           {user?.rucVerified && <span class="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} aria-hidden="true" /> Empresa verificada</span>}
         </div>
+        <LiveIndicator client:load />
+        <ThemeToggle client:load />
         <NotificationBell client:load />
         <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} verified={!!user?.rucVerified} />
       </header>

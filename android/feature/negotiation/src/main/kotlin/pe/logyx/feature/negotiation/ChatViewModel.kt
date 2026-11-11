@@ -2,13 +2,15 @@ package pe.logyx.feature.negotiation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.NegotiationRepository
+import pe.logyx.core.data.RealtimeRepository
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.BubbleState
 import pe.logyx.core.designsystem.components.UiMessage
@@ -54,6 +56,7 @@ class ChatViewModel(
     private val requestId: String,
     private val carrierOrgId: String,
     private val repo: NegotiationRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
@@ -98,12 +101,16 @@ class ChatViewModel(
         }
     }
 
-    /** Bucle de polling; la UI lo ejecuta mientras está en primer plano y se cancela al salir. */
-    suspend fun pollLoop(intervalMs: Long = POLL_INTERVAL_MS) {
-        while (true) {
-            delay(intervalMs)
-            pollOnce()
-        }
+    /**
+     * Señales de tiempo real; la UI lo ejecuta mientras está en primer plano y se cancela al salir. Refresca con
+     * `message.posted` de ESTE hilo (`requestId` + `carrierOrgId`), con `counter_offer.updated` de la solicitud y con
+     * `stream.resync`; el polling de respaldo (>= 30 s) solo corre si el stream no está en vivo.
+     */
+    suspend fun liveLoop(fallbackMs: Long = FALLBACK_INTERVAL_MS) {
+        realtime.refreshSignals(setOf(RealtimeTypes.MESSAGE_POSTED, RealtimeTypes.COUNTER_OFFER_UPDATED), fallbackMs) { e ->
+            e.string("requestId") == requestId &&
+                (e.type != RealtimeTypes.MESSAGE_POSTED || e.string("carrierOrgId") == carrierOrgId)
+        }.collect { pollOnce() }
     }
 
     fun onDraft(text: String) = _state.update { it.copy(draft = text, composerError = null) }
@@ -170,7 +177,7 @@ class ChatViewModel(
     }
 
     companion object {
-        const val POLL_INTERVAL_MS = 5_000L
+        const val FALLBACK_INTERVAL_MS = 30_000L
     }
 }
 

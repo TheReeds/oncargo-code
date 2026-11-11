@@ -59,7 +59,9 @@ test.describe('Incidencias', () => {
     await goto(op, '/operador/incidencias');
     const orow = op.locator('tbody tr').filter({ hasText: sc.pyme.name });
     // la bandeja pone las más antiguas primero y la base de pruebas acumula incidencias: avanza de página hasta encontrarla
-    for (let i = 0; i < 20 && !(await orow.count()); i++) await op.getByRole('button', { name: /Siguiente|Página siguiente/ }).first().click();
+    await expect(op.locator('tbody tr').first()).toBeVisible(); // espera a que cargue la bandeja
+    const next = op.getByRole('button', { name: /Siguiente|Página siguiente/ }).first();
+    for (let i = 0; i < 20 && !(await orow.count()) && (await next.count()); i++) await next.click();
     await expect(orow).toBeVisible();
     await op.screenshot({ path: `${SHOTS}/incidencias-operador-bandeja.png` });
     await orow.getByRole('button', { name: 'Pasar a revisión' }).click();

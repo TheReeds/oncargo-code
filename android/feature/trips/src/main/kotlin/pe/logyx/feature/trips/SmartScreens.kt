@@ -29,6 +29,7 @@ import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.cityLabel
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
@@ -188,6 +189,7 @@ private fun ReturnLoadCard(r: ReturnLoadView, onBid: () -> Unit) {
 @Composable
 fun SmartLoadsRoute(onBack: () -> Unit, viewModel: SmartLoadsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     SmartLoadsScreen(
         state, onBack, viewModel::refresh, viewModel::setFilter, viewModel::generate,
         viewModel::askAccept, viewModel::askReject, viewModel::confirm, viewModel::dismissConfirm, viewModel::onMessageShown,

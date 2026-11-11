@@ -11,6 +11,17 @@ const { title, description = 'LOGYX — marketplace de fletes para PYMEs del cor
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Anti-parpadeo: fija data-theme antes del primer pintado (lógica espejo de src/lib/theme.ts). -->
+    <script is:inline>
+      (function () {
+        var p = 'system';
+        try { var v = localStorage.getItem('logyx-theme'); if (v === 'light' || v === 'dark' || v === 'system') p = v; } catch (e) {}
+        var t = p === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      })();
+    </script>
     <title>{title} · LOGYX</title>
   </head>
   <body>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
+import { useLiveRefresh } from '@/lib/realtime';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
@@ -59,6 +60,7 @@ export default function IncidentsList({ variant, routes }: { variant: 'party' | 
     setMeta(data.meta);
   }, [operator, tab, status, page]);
   useEffect(() => { load(); }, [load]);
+  useLiveRefresh({ types: ['incident.reported', 'incident.updated'], refresh: load, fallbackMs: 60_000 });
 
   const visible = useMemo(() => {
     if (!rows) return null;

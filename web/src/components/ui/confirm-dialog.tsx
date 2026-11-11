@@ -20,7 +20,7 @@ export function ConfirmDialog({ open, onOpenChange, onConfirm, title, descriptio
   return (
     <AD.Root open={open} onOpenChange={onOpenChange}>
       <AD.Portal>
-        <AD.Overlay className="fixed inset-0 z-[70] bg-ink-900/40" />
+        <AD.Overlay className="fixed inset-0 z-[70] bg-scrim" />
         <AD.Content className="fixed left-1/2 top-1/2 z-[70] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-card border border-steel-200 bg-surface p-5 shadow-xl focus:outline-none">
           <div className="flex gap-3">
             <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', destructive ? 'bg-red-50 text-red-600' : 'bg-petrol-50 text-petrol-700')}><Icon className="size-5" aria-hidden="true" /></span>

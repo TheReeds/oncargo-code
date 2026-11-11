@@ -1,12 +1,17 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
-import { addComment, changeStatus, listIncidents, reportIncident, shipmentIncidents } from './server';
+import { addComment, changeStatus, getIncident, listIncidents, reportIncident, shipmentIncidents } from './server';
 
 const CATEGORY = z.enum(['CARGO_DAMAGE', 'DELAY', 'LOST_CARGO', 'WRONG_DELIVERY', 'DRIVER_CONDUCT', 'OTHER']);
 const STATUS = z.enum(['OPEN', 'IN_REVIEW', 'RESOLVED', 'CLOSED']);
 
 export const incidents = {
+  get: defineAction({
+    accept: 'json',
+    input: z.object({ id: z.uuid() }),
+    handler: ({ id }, ctx) => run(() => getIncident(requireToken(ctx), id)),
+  }),
   list: defineAction({
     accept: 'json',
     input: z.object({ status: z.string().optional(), active: z.boolean().optional(), page: z.number().int().min(0).optional(), size: z.number().int().min(1).max(100).optional() }),

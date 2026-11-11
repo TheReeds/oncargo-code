@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.CatalogRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.TripsRepository
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.designsystem.components.UiText
@@ -225,7 +228,7 @@ data class MyBookingsUiState(
     val activeCount: Int get() = bookings.count { it.status == BookingStatus.PENDING || it.status == BookingStatus.CONFIRMED }
 }
 
-class MyBookingsViewModel(private val trips: TripsRepository) : ViewModel() {
+class MyBookingsViewModel(private val trips: TripsRepository, private val realtime: RealtimeRepository) : ViewModel() {
     private val _state = MutableStateFlow(MyBookingsUiState())
     val state: StateFlow<MyBookingsUiState> = _state.asStateFlow()
 
@@ -233,8 +236,13 @@ class MyBookingsViewModel(private val trips: TripsRepository) : ViewModel() {
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.bookings.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano, lo lanza la UI): `trip_booking.updated`/`trip.cancelled` refresca en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(setOf(RealtimeTypes.TRIP_BOOKING_UPDATED, RealtimeTypes.TRIP_CANCELLED)).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.bookings.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             trips.myBookings().fold(
                 onSuccess = { list ->
@@ -245,7 +253,7 @@ class MyBookingsViewModel(private val trips: TripsRepository) : ViewModel() {
                     )
                     _state.update { it.copy(loading = false, refreshing = false, bookings = sorted) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

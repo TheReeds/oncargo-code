@@ -5,6 +5,53 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-10 — Fase 6: tiempo real por SSE (ADR-0007)
+
+**Aditivo**: path nuevo `GET /api/v1/events/stream` y schema `RealtimeStreamEvent` (`scripts/check-contract.sh` en verde).
+Código nuevo `LOGYX-RTM-001` (HTTP 429): más de 5 conexiones abiertas del mismo usuario.
+
+### Protocolo
+- `GET /api/v1/events/stream` con `Authorization: Bearer <jwt>` y `Accept: text/event-stream`. Roles: PYME, CARRIER,
+  DRIVER, OPERATOR. Cada mensaje SSE: `id: <seq>` + `data: {"type","seq","occurredAt","data":{...}}` (sin `event:`:
+  todo llega por `onmessage`). Ignora los `type` que no conozcas.
+- Al abrir llega `stream.ready` (`data.replayed` = eventos reenviados; su `id` es el último seq visible). Si se pidió
+  reanudar y hay más de 500 eventos pendientes llega `stream.resync`: recarga todo lo que muestras.
+- Reanudación: cabecera `Last-Event-ID` (EventSource la envía sola) o `?lastEventId=<seq>` si reconectas a mano. Los
+  eventos se conservan 24 h.
+- Latido: comentario `: ping` cada ~20 s. `retry: 3000` sugerido.
+- Al vencer el JWT llega `stream.expired` (`data.reason = TOKEN_EXPIRED`) y el servidor cierra: reconecta con un token
+  nuevo (o vuelve a iniciar sesión).
+- **Payload mínimo**: ids, estados y contadores; nunca montos, nombres, rutas ni textos. El cliente vuelve a pedir por REST
+  lo que necesita (con RLS). Entrega al mejor esfuerzo: refresca al (re)conectar y conserva un polling lento de respaldo.
+
+### Tipos y destinatarios
+"Partes" = PYME dueña de la solicitud y transportista; "conductor" = el usuario conductor asignado al envío (el conductor
+**solo** recibe eventos de sus envíos, nunca chat, avisos ni subastas de su empresa).
+
+| `type` | Para | `data` |
+|---|---|---|
+| `bid.placed` | PYME dueña y transportista que ofertó | `requestId`, `bidId`, `bidCount`, `auctionClosed` |
+| `auction.updated` | todos los transportistas | `requestId`, `bidCount?`, `auctionClosed` |
+| `request.matched` | PYME dueña | `requestId`, `bidId`, `shipmentId`, `byOperator` |
+| `bid.accepted` | transportista ganador | `requestId`, `bidId`, `shipmentId`, `byOperator` |
+| `bid.rejected` | cada transportista no elegido | `requestId`, `bidId` |
+| `counter_offer.updated` | partes | `counterOfferId`, `bidId`, `requestId`, `status` |
+| `message.posted` | las dos partes del hilo | `requestId`, `carrierOrgId` (= hilo), `messageId`, `senderOrgId` |
+| `shipment.status_changed` | partes + conductor | `shipmentId`, `status` |
+| `shipment.stop_updated` | partes + conductor | `shipmentId`, `stopId`, `stopStatus`, `status` |
+| `shipment.driver_assigned` | partes + conductor nuevo (`assigned=true`) y anterior (`false`) | `shipmentId`, `assigned` |
+| `incident.reported` / `incident.updated` | partes + conductor + operadores | `incidentId`, `shipmentId`, `status` |
+| `notification.created` | organización destinataria (no conductores) | `notificationId`, `notificationType`, `relatedType`, `relatedId`, `unreadCount` |
+| `review.submitted` | organización calificada | `reviewId`, `shipmentId` |
+| `trip_booking.updated` | PYME y transportista | `bookingId`, `tripId`, `status` (PENDING/CONFIRMED/REJECTED/CANCELLED), `shipmentId?` |
+| `trip.cancelled` | transportista y cada PYME con reserva | `tripId`, `bookingId?` |
+| `smart_load.suggested` | transportista | `suggestionId`, `itemCount` |
+| `smart_load.accepted` | transportista (`suggestionId`) y cada PYME agrupada (`requestId`) | |
+| `stream.ready` / `stream.resync` / `stream.expired` | control | `replayed` / `replayed` / `reason` |
+
+Eventos de dominio nuevos (solo los consume el tiempo real): `ShipmentStopUpdated`, `DriverAssigned`; `BidPlaced` suma
+`bidCount` y `auctionClosed` (nulos en eventos encolados antes).
+
 ## 2026-11-10 — Fase 5: preparación para producción
 
 `openapi.yaml`/`openapi.json` **sin cambios** (`scripts/check-contract.sh` en verde). Cambios de comportamiento:

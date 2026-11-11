@@ -9,6 +9,7 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { toast } from '@/components/ui/toaster';
+import { useLiveRefresh } from '@/lib/realtime';
 import { notificationHref, type NotifOrg } from '@/lib/notification-links';
 import { NotificationItem, type NotificationRow } from './NotificationItem';
 
@@ -37,6 +38,7 @@ export default function NotificationsList({ orgType }: { orgType: NotifOrg }) {
   }, []);
 
   useEffect(() => { load(filter, page); }, [filter, page, load]);
+  useLiveRefresh({ types: ['notification.created'], refresh: () => load(filter, page), fallbackMs: 60_000 });
 
   async function open(n: Row) {
     if (!n.read && n.id) await actions.notifications.markRead({ id: n.id }).catch(() => null);

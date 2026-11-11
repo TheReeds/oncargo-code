@@ -64,10 +64,10 @@ fun ChatRoute(
     viewModel: ChatViewModel = koinViewModel(key = "chat-$requestId-$carrierOrgId") { parametersOf(requestId, carrierOrgId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Polling solo en primer plano (RF26): se cancela al salir de STARTED.
+    // Tiempo real solo en primer plano (RF26): se cancela al salir de STARTED.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(viewModel, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.pollLoop() }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.liveLoop() }
     }
     ChatScreen(
         state, title, onBack, viewModel::load, viewModel::loadOlder, viewModel::onDraft, viewModel::send,

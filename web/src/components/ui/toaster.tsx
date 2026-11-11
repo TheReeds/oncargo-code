@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Toaster as Sonner, toast as sonner } from 'sonner';
 import { AlertCircle, CheckCircle2, Info, Loader2, TriangleAlert } from 'lucide-react';
 import { ConfirmHost } from './confirm-dialog';
+import { useResolvedTheme } from '@/lib/theme';
 
 const FLASH_KEY = 'logyx:flash';
 
@@ -24,6 +25,7 @@ export function flash(message: string, kind: 'success' | 'info' = 'success') {
 }
 
 export function Toaster() {
+  const theme = useResolvedTheme();
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(FLASH_KEY);
@@ -35,6 +37,7 @@ export function Toaster() {
   }, []);
   return (
     <Sonner
+      theme={theme}
       position="bottom-right"
       closeButton
       duration={4500}

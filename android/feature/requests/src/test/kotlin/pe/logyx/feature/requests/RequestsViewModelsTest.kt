@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -15,6 +16,7 @@ import pe.logyx.core.data.RequestsRepository
 import pe.logyx.core.model.*
 import pe.logyx.core.network.ApiException
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -26,7 +28,7 @@ private val request = RequestView(
     suggestedPrice = 2000.0, priceFloor = 1500.0, status = RequestStatus.PUBLISHED,
 )
 
-private class FakeRequests(val bids: List<BidView>, var acceptResult: Result<AcceptResult>) : RequestsRepository {
+private class FakeRequests(var bids: List<BidView>, var acceptResult: Result<AcceptResult>) : RequestsRepository {
     var accepted: String? = null
     override suspend fun mine() = Result.success(listOf(request))
     override suspend fun detail(id: String) = Result.success(request)
@@ -66,7 +68,7 @@ class RequestsViewModelsTest {
 
     @Test fun `aceptar pide confirmacion y entrega el id del envio`() = runTest {
         val repo = FakeRequests(listOf(bid("a", 1900.0), bid("b", 1600.0)), Result.success(AcceptResult("ship-9")))
-        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation())
+        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation(), FakeRealtime())
         assertEquals(2, vm.state.value.bids.size)
         assertTrue(vm.state.value.canDecide)
 
@@ -81,7 +83,7 @@ class RequestsViewModelsTest {
 
     @Test fun `error al aceptar muestra el mensaje de la API`() = runTest {
         val repo = FakeRequests(listOf(bid("a", 1900.0)), Result.failure(ApiException(409, "LOGYX-MKT-009", "La solicitud ya fue adjudicada")))
-        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation())
+        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation(), FakeRealtime())
         vm.askAccept(bid("a", 1900.0)); vm.confirmAccept()
         assertEquals("La solicitud ya fue adjudicada", vm.state.value.message?.text)
         assertNull(vm.state.value.createdShipmentId)
@@ -89,7 +91,7 @@ class RequestsViewModelsTest {
 
     @Test fun `contraoferta valida piso y monto menor antes de confirmar`() = runTest {
         val nego = FakeNegotiation()
-        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego, FakeRealtime())
         vm.openCounter(bid("a", 1900.0))
         assertEquals(1, vm.state.value.counter?.previous?.size)
 
@@ -105,7 +107,7 @@ class RequestsViewModelsTest {
 
     @Test fun `contraoferta enviada cierra la hoja y avisa`() = runTest {
         val nego = FakeNegotiation()
-        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego, FakeRealtime())
         vm.openCounter(bid("a", 1900.0))
         vm.onCounterAmount("1700"); vm.onCounterMessage(" ¿Podemos? "); vm.askConfirmCounter(); vm.confirmCounter()
         assertEquals(Triple("a", 1700.0, "¿Podemos?"), nego.proposed)
@@ -115,12 +117,28 @@ class RequestsViewModelsTest {
 
     @Test fun `error de campo de la API se muestra en el campo monto`() = runTest {
         val nego = FakeNegotiation(Result.failure(ApiException(422, "LOGYX-NEG-005", "El monto no puede ser menor al piso de S/ 1,500.00.", field = "amount")))
-        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego)
+        val vm = RequestDetailViewModel("r1", FakeRequests(listOf(bid("a", 1900.0)), Result.failure(IllegalStateException())), FakeCatalog(), nego, FakeRealtime())
         vm.openCounter(bid("a", 1900.0))
         vm.onCounterAmount("1600"); vm.askConfirmCounter(); vm.confirmCounter()
         val c = vm.state.value.counter!!
         assertEquals(pe.logyx.core.designsystem.components.UiText.Raw("El monto no puede ser menor al piso de S/ 1,500.00."), c.amountError)
         assertTrue(!c.sending && !c.confirming)
         assertNull(vm.state.value.message)
+    }
+
+    @Test fun `tiempo real refresca la comparacion con bid placed de la solicitud y no con otra`() = runTest(UnconfinedTestDispatcher()) {
+        val repo = FakeRequests(listOf(bid("a", 1900.0)), Result.success(AcceptResult("s")))
+        val rt = FakeRealtime()
+        val vm = RequestDetailViewModel("r1", repo, FakeCatalog(), FakeNegotiation(), rt)
+        val job = launch { vm.liveLoop() }
+        assertEquals(1, vm.state.value.bids.size)
+        repo.bids = listOf(bid("a", 1900.0), bid("b", 1600.0))
+        rt.emit(RealtimeTypes.BID_PLACED, "requestId" to "otra", "bidId" to "b")
+        assertEquals(1, vm.state.value.bids.size)
+        rt.emit(RealtimeTypes.BID_PLACED, "requestId" to "r1", "bidId" to "b")
+        assertEquals(2, vm.state.value.bids.size)
+        assertEquals("b", vm.state.value.bids.first().bid.id)
+        assertFalse(vm.state.value.refreshing)
+        job.cancel()
     }
 }

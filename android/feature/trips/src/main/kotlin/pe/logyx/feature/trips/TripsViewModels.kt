@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.LoadsRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.TripsRepository
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.components.UiMessage
@@ -205,7 +208,7 @@ data class CarrierTripsUiState(
     val trips: List<TripView> = emptyList(),
 )
 
-class CarrierTripsViewModel(private val trips: TripsRepository) : ViewModel() {
+class CarrierTripsViewModel(private val trips: TripsRepository, private val realtime: RealtimeRepository) : ViewModel() {
     private val _state = MutableStateFlow(CarrierTripsUiState())
     val state: StateFlow<CarrierTripsUiState> = _state.asStateFlow()
 
@@ -213,8 +216,13 @@ class CarrierTripsViewModel(private val trips: TripsRepository) : ViewModel() {
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.trips.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano, lo lanza la UI): `trip_booking.updated`/`trip.cancelled` refresca en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(setOf(RealtimeTypes.TRIP_BOOKING_UPDATED, RealtimeTypes.TRIP_CANCELLED)).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.trips.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             trips.myTrips().fold(
                 onSuccess = { list ->
@@ -222,7 +230,7 @@ class CarrierTripsViewModel(private val trips: TripsRepository) : ViewModel() {
                     val sorted = list.sortedWith(compareBy<TripView>({ !it.isManageable }, { it.departureAt }))
                     _state.update { it.copy(loading = false, refreshing = false, trips = sorted) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
@@ -253,6 +261,7 @@ class CarrierTripDetailViewModel(
     private val tripId: String,
     private val justPublished: Boolean,
     private val trips: TripsRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         TripDetailUiState(message = if (justPublished) UiMessage.success(R.string.trips_published) else null),
@@ -263,8 +272,13 @@ class CarrierTripDetailViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.trip == null, refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano, lo lanza la UI): `trip_booking.updated`/`trip.cancelled` de ESTE viaje refresca en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(setOf(RealtimeTypes.TRIP_BOOKING_UPDATED, RealtimeTypes.TRIP_CANCELLED)) { it.string("tripId") == tripId }.collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.trip == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
             val tripRes = async { trips.trip(tripId) }
             val bookingsRes = async { trips.bookings(tripId) }
@@ -274,7 +288,7 @@ class CarrierTripDetailViewModel(
                         it.copy(loading = false, refreshing = false, trip = t, bookings = bookingsRes.await().getOrDefault(it.bookings).sortedForCarrier())
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

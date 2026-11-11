@@ -4,14 +4,15 @@ import { RefreshCw } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { formatMoney, formatRelative } from '@/lib/format';
+import { useLiveRefresh } from '@/lib/realtime';
 import { MetricsGrid } from './MetricsGrid';
 import { SlaAlerts } from './SlaAlerts';
 import AssignSheet from './AssignSheet';
 import type { AssignmentResult, OperatorMetrics, SlaAlerts as Alerts, SlaRequest } from '../server';
 
-const POLL_MS = 30_000;
+const POLL_MS = 60_000; // SLA depende del reloj (no hay evento): se refresca aunque haya stream, más lento
 
-/** Panel de operación: métricas + alertas SLA con refresco ligero (30 s, en pausa con la pestaña oculta). */
+/** Panel de operación: métricas + alertas SLA. Se refresca con `incident.*` en vivo y cada minuto (el SLA depende del reloj). */
 export default function OperatorPanel({ metrics: m0, alerts: a0, loadedAt }: { metrics: OperatorMetrics; alerts: Alerts; loadedAt: number }) {
   const [metrics, setMetrics] = useState(m0);
   const [alerts, setAlerts] = useState(a0);
@@ -36,6 +37,8 @@ export default function OperatorPanel({ metrics: m0, alerts: a0, loadedAt }: { m
     setAlerts(data.alerts);
     setUpdatedAt(Date.now());
   }, []);
+
+  useLiveRefresh({ types: ['incident.reported', 'incident.updated'], refresh, fallbackMs: 30_000 });
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 15_000);

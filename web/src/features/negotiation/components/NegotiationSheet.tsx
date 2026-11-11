@@ -9,14 +9,14 @@ import { flash, toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { formatMoney } from '@/lib/format';
 import type { CounterOffer } from '../server';
-import { notifyNegotiationChanged, usePolling } from '../usePolling';
+import { notifyNegotiationChanged, useNegotiationLive } from '../usePolling';
 import { ChatPanel } from './ChatPanel';
 import { CounterOfferCard } from './CounterOfferCard';
 
 export interface MyBid { id: string; amount?: number | null; status?: string | null }
 
-/** Carga las contra-ofertas de una oferta y las refresca con el polling de la negociación. */
-export function useCounterOffers(bidId: string | undefined, enabled = true, pollMs = 8000) {
+/** Carga las contra-ofertas de una oferta y las refresca con el tiempo real de la negociación. */
+export function useCounterOffers(bidId: string | undefined, enabled = true, pollMs = 30000) {
   const [offers, setOffers] = useState<CounterOffer[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +29,12 @@ export function useCounterOffers(bidId: string | undefined, enabled = true, poll
     setLoaded(true);
   }, [bidId]);
   useEffect(() => { if (enabled) load(); }, [load, enabled]);
-  usePolling(() => { if (enabled) load(); }, pollMs, enabled && !!bidId);
+  useNegotiationLive(() => { load(); }, {
+    types: ['counter_offer.updated'],
+    match: (e) => e.data.bidId === bidId,
+    fallbackMs: pollMs,
+    enabled: enabled && !!bidId,
+  });
   return { offers, loaded, error, reload: load };
 }
 

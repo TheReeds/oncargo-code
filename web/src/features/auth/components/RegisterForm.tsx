@@ -87,7 +87,7 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
         <RadioGroup value={type} onValueChange={(v) => setType(v as OrgType)} className="grid gap-3 sm:grid-cols-2" aria-label="Tipo de cuenta">
           {TYPES.map(({ v, title, desc, Icon }) => (
             <label key={v} htmlFor={`type-${v}`} className="flex cursor-pointer items-start gap-3 rounded-card border border-steel-200 bg-surface p-4 transition-colors hover:bg-steel-100 has-[[data-state=checked]]:border-petrol-700 has-[[data-state=checked]]:bg-petrol-50">
-              <span className={`grid size-9 shrink-0 place-items-center rounded-input ${type === v ? 'bg-petrol-700 text-white' : 'bg-steel-100 text-ink-500'}`}><Icon className="size-5" aria-hidden="true" /></span>
+              <span className={`grid size-9 shrink-0 place-items-center rounded-input ${type === v ? 'bg-petrol-700 text-on-solid' : 'bg-steel-100 text-ink-500'}`}><Icon className="size-5" aria-hidden="true" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-ink-900">{title}</span>
                 <span className="block text-xs text-ink-500">{desc}</span>

@@ -8,8 +8,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.LoadsRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.SmartLoadsRepository
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.designsystem.components.UiText
@@ -133,7 +136,7 @@ data class SmartLoadsUiState(
     val message: UiMessage? = null,
 )
 
-class SmartLoadsViewModel(private val smart: SmartLoadsRepository) : ViewModel() {
+class SmartLoadsViewModel(private val smart: SmartLoadsRepository, private val realtime: RealtimeRepository) : ViewModel() {
     private val _state = MutableStateFlow(SmartLoadsUiState())
     val state: StateFlow<SmartLoadsUiState> = _state.asStateFlow()
 
@@ -147,8 +150,13 @@ class SmartLoadsViewModel(private val smart: SmartLoadsRepository) : ViewModel()
         load(initial = true)
     }
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano, lo lanza la UI): `smart_load.*` refresca en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(setOf(RealtimeTypes.SMART_LOAD_SUGGESTED, RealtimeTypes.SMART_LOAD_ACCEPTED)).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         val status = _state.value.filter
         viewModelScope.launch {
             smart.smartLoads(status).fold(
@@ -156,7 +164,7 @@ class SmartLoadsViewModel(private val smart: SmartLoadsRepository) : ViewModel()
                     // Descarta respuestas de un filtro anterior si el usuario ya cambió de pestaña.
                     if (status == _state.value.filter) _state.update { it.copy(loading = false, refreshing = false, items = list) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

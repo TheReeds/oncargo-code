@@ -72,6 +72,7 @@ import pe.logyx.core.designsystem.components.MessageEffect
 import pe.logyx.core.designsystem.components.MessageKind
 import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.designsystem.components.Refreshable
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.RouteLine
 import pe.logyx.core.designsystem.components.RouteMap
 import pe.logyx.core.designsystem.components.SkeletonList
@@ -89,6 +90,7 @@ import pe.logyx.core.model.VehicleType
 @Composable
 fun ShipmentsRoute(onOpen: (String) -> Unit, viewModel: ShipmentsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     ShipmentsScreen(state, viewModel::refresh, onOpen)
 }
 
@@ -196,6 +198,7 @@ fun ShipmentDetailRoute(
     viewModel: ShipmentDetailViewModel = koinViewModel { parametersOf(shipmentId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     // Al volver de documentos / incidencias / calificación el estado puede haber cambiado.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {

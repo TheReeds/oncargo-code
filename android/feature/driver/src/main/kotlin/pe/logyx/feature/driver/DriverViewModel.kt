@@ -14,10 +14,13 @@ import pe.logyx.core.data.EvidenceItem
 import pe.logyx.core.data.EvidenceRepository
 import pe.logyx.core.data.EvidenceState
 import pe.logyx.core.data.apiCode
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.ShipmentsRepository
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.model.DocumentType
 import pe.logyx.core.model.GeoPoint
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.ShipmentStatus
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.StopStatus
@@ -105,6 +108,7 @@ class DriverTripViewModel(
     private val repo: ShipmentsRepository,
     private val catalog: CatalogRepository,
     private val evidence: EvidenceRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DriverUiState())
     val state: StateFlow<DriverUiState> = _state.asStateFlow()
@@ -122,6 +126,15 @@ class DriverTripViewModel(
     }
 
     fun refresh() = load(initial = false)
+
+    /**
+     * Tiempo real (solo en primer plano, lo lanza la UI). El conductor solo recibe eventos de SUS envíos, así que
+     * cualquier `shipment.*`/`incident.*` refresca el viaje en silencio (`driver_assigned` puede traer un envío nuevo).
+     * Mientras avanza una parada no se pisa el estado; el propio resultado de la acción ya lo actualiza.
+     */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(RealtimeTypes.SHIPMENT).collect { if (!_state.value.acting) load(initial = false, silent = true) }
+    }
 
     /** Al volver a primer plano: refresca viaje y evidencia (si el primer load aún no terminó, no hace nada). */
     fun onResume() {
@@ -149,8 +162,8 @@ class DriverTripViewModel(
         }
     }
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.trip == null, refreshing = !initial, error = null) }
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.trip == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
             repo.driverActive().fold(
                 onSuccess = { trip ->
@@ -168,7 +181,7 @@ class DriverTripViewModel(
                         updateRetryLoop()
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

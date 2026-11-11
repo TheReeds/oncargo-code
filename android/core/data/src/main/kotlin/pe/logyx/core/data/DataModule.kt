@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import pe.logyx.core.network.LogyxApi
+import pe.logyx.core.network.RealtimeClient
 import pe.logyx.core.network.createLogyxHttpClient
 
 /**
@@ -27,13 +28,28 @@ fun dataModule(baseUrl: String) = module {
     }
     single {
         val tokens = get<TokenHolder>()
-        val client = createLogyxHttpClient(baseUrl, tokenProvider = { tokens.token })
-        LogyxApi(client, onUnauthorized = {
+        createLogyxHttpClient(baseUrl, tokenProvider = { tokens.token })
+    }
+    single {
+        val tokens = get<TokenHolder>()
+        LogyxApi(get(), onUnauthorized = {
             // Solo cierra sesión si había una; evita bucles en el login con credenciales inválidas.
             if (tokens.token != null) {
                 CoroutineScope(Dispatchers.Main.immediate).launch { get<AuthRepository>().logout() }
             }
         })
+    }
+    // Tiempo real (SSE): misma conexión HTTP/token; un 401 del stream también cierra la sesión.
+    single {
+        val tokens = get<TokenHolder>()
+        RealtimeClient(get(), tokenProvider = { tokens.token }, onUnauthorized = {
+            if (tokens.token != null) {
+                CoroutineScope(Dispatchers.Main.immediate).launch { get<AuthRepository>().logout() }
+            }
+        })
+    }
+    single<RealtimeRepository> {
+        DefaultRealtimeRepository(get(), CoroutineScope(SupervisorJob() + Dispatchers.IO))
     }
     single<CatalogRepository> { DefaultCatalogRepository(get()) }
     single<LoadsRepository> { DefaultLoadsRepository(get()) }

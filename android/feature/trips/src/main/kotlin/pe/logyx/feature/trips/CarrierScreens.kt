@@ -34,6 +34,7 @@ import org.koin.core.parameter.parametersOf
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.cityLabel
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
@@ -195,6 +196,7 @@ fun CarrierTripsRoute(
     viewModel: CarrierTripsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     CarrierTripsScreen(state, onBack, viewModel::refresh, onOpenTrip, onPublish)
 }
 
@@ -246,6 +248,7 @@ fun CarrierTripDetailRoute(
     viewModel: CarrierTripDetailViewModel = koinViewModel { parametersOf(tripId, justPublished) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     CarrierTripDetailScreen(
         state, onBack, viewModel::refresh, onOpenShipment,
         onConfirm = viewModel::askConfirm, onReject = viewModel::askReject, onClose = viewModel::askClose, onCancel = viewModel::askCancel,

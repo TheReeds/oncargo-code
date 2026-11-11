@@ -90,7 +90,7 @@ class LoadsViewModelsTest {
 
     @Test fun `feed manda filtros al servidor`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
-        val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog("Lima"))
+        val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog("Lima"), FakeRealtime())
         assertEquals(3, vm.state.value.visible.size)
         assertEquals(3, vm.state.value.total)
         assertEquals(3, vm.state.value.cities.size)
@@ -113,7 +113,7 @@ class LoadsViewModelsTest {
 
     @Test fun `origen y destino elegidos se envian y excluyen cerca de mi`() = runTest {
         val repo = FakeLoads(Result.success(loads))
-        val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog())
+        val vm = LoadsFeedViewModel(FakeAuth(), repo, FakeCatalog(), FakeRealtime())
         vm.toggle(LoadFilter.Nearby)
         vm.setOrigin(CityItem("AREQUIPA", "Arequipa", -16.4, -71.5))
         assertEquals("AREQUIPA", repo.lastFilter?.originCity)
@@ -126,7 +126,7 @@ class LoadsViewModelsTest {
 
     @Test fun `scroll infinito agrega paginas sin duplicar`() = runTest {
         val many = (1..45).map { req("$it", "LIMA", 1000.0, it.toDouble()) }
-        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.success(many)), FakeCatalog())
+        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.success(many)), FakeCatalog(), FakeRealtime())
         assertEquals(20, vm.state.value.items.size)
         assertEquals(45, vm.state.value.total)
         assertTrue(vm.state.value.hasMore)
@@ -145,7 +145,7 @@ class LoadsViewModelsTest {
             override suspend fun logout() {}
         }
         val repo = FakeLoads(Result.success(loads))
-        val vm = LoadsFeedViewModel(noCity, repo, FakeCatalog(orgCity = null))
+        val vm = LoadsFeedViewModel(noCity, repo, FakeCatalog(orgCity = null), FakeRealtime())
         vm.toggle(LoadFilter.Nearby)
         assertTrue(vm.state.value.nearbyUnavailable)
         assertNull(repo.lastFilter?.originCity)
@@ -153,7 +153,7 @@ class LoadsViewModelsTest {
     }
 
     @Test fun `feed muestra error del API si falla`() = runTest {
-        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.failure(ApiException(0, "NETWORK", "Sin conexión"))), FakeCatalog())
+        val vm = LoadsFeedViewModel(FakeAuth(), FakeLoads(Result.failure(ApiException(0, "NETWORK", "Sin conexión"))), FakeCatalog(), FakeRealtime())
         assertEquals("Sin conexión", vm.state.value.error)
         assertTrue(vm.state.value.items.isEmpty())
     }
@@ -161,7 +161,7 @@ class LoadsViewModelsTest {
     @Test fun `home sugiere solo cargas compatibles y sin oferta`() = runTest {
         val withBid = req("4", "LIMA", 1000.0, 999.0, myBid = BidView("b", "4", amount = 900.0, status = BidStatus.PENDING))
         val repo = FakeLoads(Result.success(loads + withBid), fleet = listOf(truck("1", 5000.0)), bids = listOf(withBid))
-        val vm = CarrierHomeViewModel(FakeAuth(), repo, FakeShipments())
+        val vm = CarrierHomeViewModel(FakeAuth(), repo, FakeShipments(), FakeRealtime())
         val s = vm.state.value
         assertEquals(listOf("3", "1"), s.suggested.map { it.id })
         assertEquals(2, s.compatibleCount)
@@ -171,7 +171,7 @@ class LoadsViewModelsTest {
 
     @Test fun `ofertar valida piso localmente y muestra error de la API`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
-        val vm = LoadDetailViewModel("1", repo, FakeCatalog())
+        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeRealtime())
         assertNotNull(vm.state.value.origin)
         vm.openBidSheet()
         assertEquals("1", vm.state.value.form?.vehicleId, "un solo vehículo compatible se preselecciona")
@@ -195,7 +195,7 @@ class LoadsViewModelsTest {
 
     @Test fun `error de campo de la API se muestra en el campo`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
-        val vm = LoadDetailViewModel("1", repo, FakeCatalog())
+        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeRealtime())
         vm.openBidSheet()
         vm.onAmountChange("1200")
         repo.placeResult = Result.failure(ApiException(400, "X", "Monto bajo el piso", "amount"))
@@ -209,14 +209,14 @@ class LoadsViewModelsTest {
     @Test fun `home usa el resumen del dashboard`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
         repo.dash = Result.success(DashboardSummary(compatibleLoads = 9, pendingBids = 4, activeShipments = 2, deliveredThisMonth = 7))
-        val s = CarrierHomeViewModel(FakeAuth(), repo, FakeShipments()).state.value
+        val s = CarrierHomeViewModel(FakeAuth(), repo, FakeShipments(), FakeRealtime()).state.value
         assertEquals(9, s.compatibleCount)
         assertEquals(4, s.pendingBids)
         assertEquals(7, s.deliveredThisMonth)
     }
 
     @Test fun `sin vehiculo compatible no hay opciones`() = runTest {
-        val vm = LoadDetailViewModel("2", FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0))), FakeCatalog())
+        val vm = LoadDetailViewModel("2", FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0))), FakeCatalog(), FakeRealtime())
         assertTrue(vm.state.value.compatibleVehicles.isEmpty())
     }
 }
@@ -263,7 +263,7 @@ class MyBidsCounterOfferTest {
     @Test fun `solo consulta contraofertas de ofertas PENDING y muestra la pendiente`() = runTest {
         val nego = FakeNegotiation(mapOf("b1" to listOf(CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING))))
         val loads = FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)), req("r2", "LIMA", 1000.0, 2000.0, myBid = bid("b2", BidStatus.ACCEPTED))))
-        val vm = MyBidsViewModel(loads, nego)
+        val vm = MyBidsViewModel(loads, nego, FakeRealtime())
         assertEquals(listOf("b1"), nego.queried)
         assertEquals("co1", vm.state.value.counters["b1"]?.id)
         assertNull(vm.state.value.counters["b2"])
@@ -272,7 +272,7 @@ class MyBidsCounterOfferTest {
     @Test fun `aceptar contraoferta pide confirmacion, acepta y refresca`() = runTest {
         val co = CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING)
         val nego = FakeNegotiation(mapOf("b1" to listOf(co)))
-        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego)
+        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego, FakeRealtime())
         vm.askAccept(co)
         assertTrue(vm.state.value.confirm?.accept == true)
         assertNull(nego.accepted)
@@ -285,7 +285,7 @@ class MyBidsCounterOfferTest {
     @Test fun `rechazar contraoferta llama a reject`() = runTest {
         val co = CounterOfferView("co1", "b1", amount = 1700.0, status = CounterOfferStatus.PENDING)
         val nego = FakeNegotiation(mapOf("b1" to listOf(co)))
-        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego)
+        val vm = MyBidsViewModel(FakeLoads(bids = listOf(req("r1", "LIMA", 1000.0, 2000.0, myBid = bid("b1", BidStatus.PENDING)))), nego, FakeRealtime())
         vm.askReject(co); vm.confirm()
         assertEquals("co1", nego.rejected)
     }

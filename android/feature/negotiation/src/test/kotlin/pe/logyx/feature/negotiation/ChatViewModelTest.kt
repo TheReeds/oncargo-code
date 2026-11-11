@@ -3,6 +3,7 @@ package pe.logyx.feature.negotiation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -16,6 +17,8 @@ import pe.logyx.core.model.ChatThreadView
 import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.CursorPage
 import pe.logyx.core.model.MessageView
+import pe.logyx.core.model.RealtimeStatus
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.network.ApiException
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -31,10 +34,12 @@ private class FakeNegotiation : NegotiationRepository {
     var sendImmediate: Result<MessageView>? = null
     val sent = mutableListOf<String>()
     var lastBefore: String? = "unset"
+    var messageCalls = 0
 
     override suspend fun threads(requestId: String) = Result.success(emptyList<ChatThreadView>())
     override suspend fun messages(requestId: String, carrierOrgId: String, before: String?): Result<CursorPage<MessageView>> {
         lastBefore = before
+        messageCalls++
         return Result.success(if (before == null) latest else older)
     }
     override suspend fun send(requestId: String, carrierOrgId: String, body: String): Result<MessageView> {
@@ -52,7 +57,7 @@ class ChatViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm(repo: FakeNegotiation) = ChatViewModel("r1", "c1", repo)
+    private fun vm(repo: FakeNegotiation, rt: FakeRealtime = FakeRealtime()) = ChatViewModel("r1", "c1", repo, rt)
 
     @Test fun `carga mensajes en orden cronologico y expone el cursor`() {
         val repo = FakeNegotiation().apply {
@@ -149,5 +154,39 @@ class ChatViewModelTest {
         vm.pollOnce()
         repo.sendResult!!.complete(Result.success(real))
         assertEquals(listOf("1", "2", "3"), vm.state.value.entries.map { it.id })
+    }
+
+    @Test fun `tiempo real refresca con message posted del mismo hilo y no con el de otro`() = runTest(UnconfinedTestDispatcher()) {
+        val repo = FakeNegotiation()
+        val rt = FakeRealtime()
+        val vm = vm(repo, rt)
+        val job = launch { vm.liveLoop() }
+        val base = repo.messageCalls
+        rt.emit(RealtimeTypes.MESSAGE_POSTED, "requestId" to "r1", "carrierOrgId" to "otro")
+        rt.emit(RealtimeTypes.MESSAGE_POSTED, "requestId" to "r2", "carrierOrgId" to "c1")
+        assertEquals(base, repo.messageCalls)
+        repo.latest = CursorPage(listOf(msg("9", "2026-11-10T09:00:00-05:00")), null)
+        rt.emit(RealtimeTypes.MESSAGE_POSTED, "requestId" to "r1", "carrierOrgId" to "c1")
+        assertEquals(base + 1, repo.messageCalls)
+        assertEquals(listOf("9"), vm.state.value.entries.map { it.id })
+        rt.emit(RealtimeTypes.COUNTER_OFFER_UPDATED, "requestId" to "r1")
+        assertEquals(base + 2, repo.messageCalls)
+        rt.emit(RealtimeTypes.STREAM_RESYNC)
+        assertEquals(base + 3, repo.messageCalls)
+        job.cancel()
+    }
+
+    @Test fun `respaldo solo corre cuando el stream no esta en vivo`() = runTest(UnconfinedTestDispatcher()) {
+        val repo = FakeNegotiation()
+        val rt = FakeRealtime(RealtimeStatus.LIVE)
+        val vm = vm(repo, rt)
+        val job = launch { vm.liveLoop(fallbackMs = 1_000) }
+        val base = repo.messageCalls
+        testScheduler.advanceTimeBy(3_500)
+        assertEquals(base, repo.messageCalls)
+        rt.statusFlow.value = RealtimeStatus.RECONNECTING
+        testScheduler.advanceTimeBy(2_500)
+        assertEquals(base + 2, repo.messageCalls)
+        job.cancel()
     }
 }

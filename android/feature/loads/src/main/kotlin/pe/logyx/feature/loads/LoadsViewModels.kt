@@ -17,8 +17,10 @@ import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.NegotiationRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.components.UiMessage
@@ -34,6 +36,7 @@ import pe.logyx.core.model.DashboardSummary
 import pe.logyx.core.model.MarketplaceFilter
 import pe.logyx.core.model.MarketplaceSort
 import pe.logyx.core.model.GeoPoint
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
@@ -73,6 +76,7 @@ class CarrierHomeViewModel(
     private val auth: AuthRepository,
     private val loads: LoadsRepository,
     private val shipments: ShipmentsRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(CarrierHomeUiState(userName = auth.currentUser()?.fullName.orEmpty()))
     val state: StateFlow<CarrierHomeUiState> = _state.asStateFlow()
@@ -81,8 +85,13 @@ class CarrierHomeViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.suggested.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano): subasta (`auction.updated`) y resultado de mis ofertas refrescan en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(CARRIER_AUCTION_TYPES).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.suggested.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             val market = async { loads.marketplace() }
             val fleet = async { loads.vehicles() }
@@ -116,11 +125,16 @@ class CarrierHomeViewModel(
                         )
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
 }
+
+/** Eventos de subasta que ve el transportista: `auction.updated`, `bid.accepted`, `bid.rejected` (+ contraofertas). */
+private val CARRIER_AUCTION_TYPES = setOf(
+    RealtimeTypes.AUCTION_UPDATED, RealtimeTypes.BID_ACCEPTED, RealtimeTypes.BID_REJECTED, RealtimeTypes.COUNTER_OFFER_UPDATED,
+)
 
 // ───────────────────────── Feed de cargas ─────────────────────────
 
@@ -180,6 +194,7 @@ class LoadsFeedViewModel(
     private val auth: AuthRepository,
     private val loads: LoadsRepository,
     private val catalog: CatalogRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoadsFeedUiState(userCity = auth.currentUser()?.organizationCity))
     val state: StateFlow<LoadsFeedUiState> = _state.asStateFlow()
@@ -195,6 +210,17 @@ class LoadsFeedViewModel(
     }
 
     fun refresh() = reload(refreshing = true)
+
+    /**
+     * Tiempo real (solo en primer plano): recarga la primera página en silencio. Si el usuario ya paginó (`page > 0`)
+     * no se le salta la lista; ahí manda el pull-to-refresh.
+     */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(CARRIER_AUCTION_TYPES).collect {
+            val s = _state.value
+            if (!s.loading && !s.refreshing && !s.loadingMore && s.page == 0) reload(refreshing = false, silent = true)
+        }
+    }
 
     fun toggle(filter: LoadFilter) {
         _state.update {
@@ -235,9 +261,9 @@ class LoadsFeedViewModel(
     }
 
     /** Primera página con los filtros actuales; cancela cualquier carga en curso. */
-    private fun reload(refreshing: Boolean) {
+    private fun reload(refreshing: Boolean, silent: Boolean = false) {
         job?.cancel()
-        _state.update { it.copy(loading = !refreshing, refreshing = refreshing, loadingMore = false, error = null) }
+        if (!silent) _state.update { it.copy(loading = !refreshing, refreshing = refreshing, loadingMore = false, error = null) }
         val filter = _state.value.toServerFilter()
         job = viewModelScope.launch {
             loads.marketplacePage(filter, 0, FEED_PAGE_SIZE).fold(
@@ -249,7 +275,7 @@ class LoadsFeedViewModel(
                         )
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
@@ -319,6 +345,7 @@ class LoadDetailViewModel(
     private val requestId: String,
     private val loads: LoadsRepository,
     private val catalog: CatalogRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoadDetailUiState())
     val state: StateFlow<LoadDetailUiState> = _state.asStateFlow()
@@ -327,8 +354,14 @@ class LoadDetailViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.request == null, refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano): `auction.updated`/`bid.*` de ESTA carga refrescan el detalle en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(CARRIER_AUCTION_TYPES) { it.string("requestId") == requestId }
+            .collect { if (_state.value.form?.submitting != true) load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.request == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
             val req = async { loads.load(requestId) }
             val cities = async { catalog.cities() }
@@ -344,7 +377,7 @@ class LoadDetailViewModel(
                         )
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
@@ -457,6 +490,7 @@ data class MyBidsUiState(
 class MyBidsViewModel(
     private val loads: LoadsRepository,
     private val negotiation: NegotiationRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MyBidsUiState())
     val state: StateFlow<MyBidsUiState> = _state.asStateFlow()
@@ -465,8 +499,13 @@ class MyBidsViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano): `bid.accepted`/`bid.rejected`/contraofertas refrescan mis ofertas en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(CARRIER_AUCTION_TYPES).collect { if (!_state.value.busy) load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             loads.myBids().fold(
                 onSuccess = { list ->
@@ -474,7 +513,7 @@ class MyBidsViewModel(
                     _state.update { it.copy(loading = false, refreshing = false, items = sorted) }
                     loadCounters(sorted)
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

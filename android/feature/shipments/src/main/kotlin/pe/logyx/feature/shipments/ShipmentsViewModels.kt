@@ -10,14 +10,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.CatalogRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.model.DriverStatus
 import pe.logyx.core.model.DriverView
 import pe.logyx.core.model.GeoPoint
 import pe.logyx.core.model.OrgType
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.Role
 import pe.logyx.core.model.ShipmentStatus
 import pe.logyx.core.model.ShipmentView
@@ -33,7 +36,7 @@ data class ShipmentsUiState(
     val isCarrier: Boolean = false,
 )
 
-class ShipmentsViewModel(auth: AuthRepository, private val repo: ShipmentsRepository) : ViewModel() {
+class ShipmentsViewModel(auth: AuthRepository, private val repo: ShipmentsRepository, private val realtime: RealtimeRepository) : ViewModel() {
     private val user = (auth.state.value as? SessionState.LoggedIn)?.user
     private val _state = MutableStateFlow(ShipmentsUiState(isCarrier = user?.organizationType == OrgType.CARRIER && user.role != Role.DRIVER))
     val state: StateFlow<ShipmentsUiState> = _state.asStateFlow()
@@ -42,8 +45,13 @@ class ShipmentsViewModel(auth: AuthRepository, private val repo: ShipmentsReposi
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano, lo lanza la UI): cualquier cambio de envío/incidencia refresca en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(RealtimeTypes.SHIPMENT).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             repo.list().fold(
                 onSuccess = { list ->
@@ -51,7 +59,7 @@ class ShipmentsViewModel(auth: AuthRepository, private val repo: ShipmentsReposi
                     val sorted = list.sortedWith(compareByDescending<ShipmentView> { it.isActive }.thenByDescending { it.createdAt.orEmpty() })
                     _state.update { it.copy(loading = false, refreshing = false, items = sorted) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
@@ -83,6 +91,7 @@ class ShipmentDetailViewModel(
     private val repo: ShipmentsRepository,
     private val catalog: CatalogRepository,
     private val reputation: pe.logyx.core.data.ReputationRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val user = (auth.state.value as? SessionState.LoggedIn)?.user
     private val _state = MutableStateFlow(ShipmentDetailUiState(isCarrier = user?.organizationType == OrgType.CARRIER && user.role != Role.DRIVER))
@@ -92,8 +101,17 @@ class ShipmentDetailViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.shipment == null, refreshing = !initial, error = null) }
+    /**
+     * Tiempo real (solo en primer plano, lo lanza la UI): `shipment.*` e `incident.*` de ESTE envío refrescan en
+     * silencio (sin spinner ni error si ya hay datos); respaldo solo si el stream no está en vivo.
+     */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(RealtimeTypes.SHIPMENT) { it.string("shipmentId") == shipmentId }
+            .collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.shipment == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
             val s = async { repo.detail(shipmentId) }
             val c = async { catalog.cities() }
@@ -108,7 +126,7 @@ class ShipmentDetailViewModel(
                         }
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

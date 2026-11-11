@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
+import { useLiveRefresh } from '@/lib/realtime';
 import { splitActionError } from '@/lib/action-error';
 import { Ban, Check, Lock, X } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +43,15 @@ function RejectDialog({ booking, onClose }: { booking: TripBookingView | null; o
   );
 }
 
-export default function TripDetail({ trip, bookings }: { trip: TripView; bookings: TripBookingView[] }) {
+export default function TripDetail({ trip: initialTrip, bookings: initialBookings }: { trip: TripView; bookings: TripBookingView[] }) {
+  const [trip, setTrip] = useState(initialTrip);
+  const [bookings, setBookings] = useState(initialBookings);
+  useLiveRefresh({
+    types: ['trip_booking.updated', 'trip.cancelled'],
+    match: (e) => e.data.tripId === initialTrip.id,
+    refresh: async () => { const { data } = await actions.trips.detail({ id: initialTrip.id! }); if (data) { setTrip(data.trip); setBookings(data.bookings); } },
+    fallbackMs: 60_000,
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<TripBookingView | null>(null);
   const active = trip.status === 'OPEN' || trip.status === 'FILLING';

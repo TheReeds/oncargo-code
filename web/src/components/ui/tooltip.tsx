@@ -8,9 +8,9 @@ export function Tooltip({ content, children, side = 'top' }: { content: React.Re
       <T.Root>
         <T.Trigger asChild>{children}</T.Trigger>
         <T.Portal>
-          <T.Content side={side} sideOffset={6} className="z-[80] max-w-xs rounded-md bg-ink-900 px-2.5 py-1.5 text-xs text-white shadow-lg">
+          <T.Content side={side} sideOffset={6} className="z-[80] max-w-xs rounded-md bg-chrome px-2.5 py-1.5 text-xs text-white shadow-lg ring-1 ring-white/10">
             {content}
-            <T.Arrow className="fill-ink-900" />
+            <T.Arrow className="fill-chrome" />
           </T.Content>
         </T.Portal>
       </T.Root>

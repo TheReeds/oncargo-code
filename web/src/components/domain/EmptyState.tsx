@@ -3,12 +3,12 @@ import type { ReactNode } from 'react';
 export function TruckIllustration() {
   return (
     <svg width="96" height="64" viewBox="0 0 96 64" fill="none" aria-hidden="true">
-      <rect x="4" y="12" width="52" height="34" rx="4" fill="#E6F1F5" stroke="#0B4F6C" strokeWidth="2" />
-      <path d="M56 22h18l12 12v12H56V22Z" fill="#fff" stroke="#0B4F6C" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M62 27h9l7 8H62v-8Z" fill="#E6F1F5" />
-      <circle cx="24" cy="48" r="7" fill="#0E1726" /><circle cx="24" cy="48" r="2.5" fill="#fff" />
-      <circle cx="70" cy="48" r="7" fill="#0E1726" /><circle cx="70" cy="48" r="2.5" fill="#fff" />
-      <path d="M12 20h20M12 27h12" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+      <rect x="4" y="12" width="52" height="34" rx="4" style={{ fill: "var(--color-petrol-50)", stroke: "var(--color-petrol-700)" }} strokeWidth="2" />
+      <path d="M56 22h18l12 12v12H56V22Z" style={{ fill: "var(--color-surface)", stroke: "var(--color-petrol-700)" }} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M62 27h9l7 8H62v-8Z" style={{ fill: "var(--color-petrol-50)" }} />
+      <circle cx="24" cy="48" r="7" style={{ fill: "var(--color-ink-900)" }} /><circle cx="24" cy="48" r="2.5" style={{ fill: "var(--color-surface)" }} />
+      <circle cx="70" cy="48" r="7" style={{ fill: "var(--color-ink-900)" }} /><circle cx="70" cy="48" r="2.5" style={{ fill: "var(--color-surface)" }} />
+      <path d="M12 20h20M12 27h12" style={{ stroke: "var(--color-emerald-500)" }} strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

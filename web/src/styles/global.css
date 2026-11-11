@@ -28,9 +28,49 @@
   --color-red-600: #dc2626;
   --color-red-700: #b91c1c; /* texto de error (AA sobre red-50) */
 
+  --color-chrome: #0e1726; /* fondo de sidebar, tooltips y banners oscuros (en ambos temas) */
+  --color-on-solid: #ffffff; /* texto sobre rellenos sólidos petrol/emerald/red */
+  --color-scrim: rgb(14 23 38 / 0.4); /* velo de diálogos y sheets */
+
   --radius-card: 10px;
   --radius-input: 8px;
 }
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Modo oscuro: se redefinen los mismos tokens (los componentes no cambian). Contrastes en docs/design/DESIGN.md. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-ink-900: #e8eef6;
+  --color-ink-700: #c0cbd9;
+  --color-ink-500: #94a3b8;
+  --color-ink-400: #6b7c93;
+  --color-steel-100: #0b1220; /* fondo de app */
+  --color-steel-200: #25324a; /* bordes */
+  --color-surface: #111a2b;
+  --color-petrol-700: #38a3c9; /* primario aclarado: texto, enlaces y relleno */
+  --color-petrol-800: #7cc4de;
+  --color-petrol-50: #12303f;
+  --color-emerald-50: #0f2a26;
+  --color-emerald-500: #10b981;
+  --color-emerald-700: #34d399;
+  --color-amber-50: #2a2210;
+  --color-amber-500: #f59e0b;
+  --color-amber-700: #fbbf24;
+  --color-red-50: #2d1518;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-chrome: #162033;
+  --color-on-solid: #07121c; /* los rellenos son claros: el texto encima es oscuro */
+  --color-scrim: rgb(0 0 0 / 0.62);
+}
+html[data-theme='dark'] .select-chevron { filter: brightness(1.6); }
+/* MapLibre: controles y atribución */
+html[data-theme='dark'] .maplibregl-ctrl-group { background: var(--color-surface); }
+html[data-theme='dark'] .maplibregl-ctrl-group button + button { border-top-color: var(--color-steel-200); }
+html[data-theme='dark'] .maplibregl-ctrl-icon { filter: invert(1) brightness(1.2); }
+html[data-theme='dark'] .maplibregl-ctrl-attrib { background: rgb(17 26 43 / 0.8); color: var(--color-ink-500); }
+html[data-theme='dark'] .maplibregl-ctrl-attrib a { color: var(--color-ink-700); }
 
 @layer base {
   html { font-family: var(--font-sans); color: var(--color-ink-900); background: var(--color-steel-100); }

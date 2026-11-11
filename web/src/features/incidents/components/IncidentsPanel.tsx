@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
+import { useLiveRefresh } from '@/lib/realtime';
 import { TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -34,6 +35,7 @@ export default function IncidentsPanel({ shipmentId, status, hasActiveIncident }
     setList(data);
   }, [shipmentId]);
   useEffect(() => { load(); }, [load]);
+  useLiveRefresh({ types: ['incident.reported', 'incident.updated'], match: (e) => e.data.shipmentId === shipmentId, refresh: load, fallbackMs: 60_000 });
 
   const active = hasActiveIncident || !!list?.some((i) => i.active);
   const cancelled = status === 'CANCELLED';

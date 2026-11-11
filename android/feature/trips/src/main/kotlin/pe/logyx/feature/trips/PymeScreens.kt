@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.cityLabel
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
@@ -75,6 +76,7 @@ fun PymeTripsRoute(
 ) {
     val search by searchViewModel.state.collectAsStateWithLifecycle()
     val bookings by bookingsViewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(bookingsViewModel) { bookingsViewModel.liveLoop() }
     var tab by rememberSaveable { mutableStateOf(PymeTripsTab.Search) }
     // Tras reservar con éxito se muestra el listado de reservas.
     LaunchedEffect(search.bookedTick) { if (search.bookedTick > 0) { tab = PymeTripsTab.Bookings; bookingsViewModel.refresh() } }

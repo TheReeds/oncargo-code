@@ -2,6 +2,8 @@ package pe.logyx.app
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import org.koin.core.context.loadKoinModules
 import org.koin.core.context.unloadKoinModules
 import org.koin.core.module.Module
@@ -12,9 +14,12 @@ import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.EvidenceRepository
 import pe.logyx.core.data.LoadsRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.RequestsRepository
 import pe.logyx.core.data.SessionState
 import pe.logyx.core.data.ShipmentsRepository
+import pe.logyx.core.model.RealtimeEvent
+import pe.logyx.core.model.RealtimeStatus
 import pe.logyx.core.model.*
 import pe.logyx.core.network.ApiException
 
@@ -114,6 +119,12 @@ class FakeShipments(var current: ShipmentView, private val evidence: FakeEvidenc
     }
 }
 
+/** Tiempo real apagado en los tests instrumentados: sin eventos y sin conexión (solo cuenta el respaldo lento). */
+object OfflineRealtime : RealtimeRepository {
+    override val events: SharedFlow<RealtimeEvent> = MutableSharedFlow()
+    override val status: StateFlow<RealtimeStatus> = MutableStateFlow(RealtimeStatus.OFFLINE)
+}
+
 /** Sustituye los repositorios reales de Koin por fakes durante el test y los restaura al terminar. */
 class FakeKoinRule(
     private val auth: FakeAuth,
@@ -130,6 +141,7 @@ class FakeKoinRule(
             single<RequestsRepository> { FakeRequests() }
             single<ShipmentsRepository> { shipments }
             single<EvidenceRepository> { evidence }
+            single<RealtimeRepository> { OfflineRealtime }
         }.also { loadKoinModules(it) }
     }
     override fun finished(description: Description) { overrides?.let { unloadKoinModules(it) } }

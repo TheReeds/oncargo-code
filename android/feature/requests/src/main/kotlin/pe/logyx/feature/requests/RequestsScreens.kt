@@ -43,6 +43,7 @@ import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
@@ -96,6 +97,7 @@ private fun StatusFilter.text() = stringResource(
 @Composable
 fun RequestsRoute(onOpenRequest: (String) -> Unit, viewModel: RequestsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     RequestsScreen(state, viewModel::refresh, onOpenRequest)
 }
 
@@ -194,6 +196,7 @@ fun RequestDetailRoute(
     viewModel: RequestDetailViewModel = koinViewModel { parametersOf(requestId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     LaunchedEffect(state.createdShipmentId) {
         state.createdShipmentId?.let { viewModel.navigationHandled(); onOpenShipment(it) }
     }

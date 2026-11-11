@@ -23,7 +23,7 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
         week: '',
         day: 'p-0 text-center text-sm',
         day_button: 'size-9 rounded-input tabular-nums hover:bg-steel-100 focus-visible:outline-2',
-        selected: '[&>button]:bg-petrol-700 [&>button]:text-white [&>button:hover]:bg-petrol-800',
+        selected: '[&>button]:bg-petrol-700 [&>button]:text-on-solid [&>button:hover]:bg-petrol-800',
         range_start: 'rounded-l-input bg-petrol-50',
         range_end: 'rounded-r-input bg-petrol-50',
         range_middle: 'bg-petrol-50 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:text-petrol-800 [&>button:hover]:bg-petrol-700/10',

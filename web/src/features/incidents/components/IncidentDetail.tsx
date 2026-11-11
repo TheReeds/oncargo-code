@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
 import { MessageSquare, TriangleAlert, CircleCheck, Lock } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,12 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
   const [notes, setNotes] = useState(initial.resolutionNotes ?? '');
   const [notesError, setNotesError] = useState<string | null>(null);
   const [changing, setChanging] = useState<string | null>(null);
+  // Estado y comentarios en vivo (incident.updated de esta incidencia).
+  const reloadIncident = useCallback(async () => {
+    const { data } = await actions.incidents.get({ id: initial.id! });
+    if (data) setInc(data);
+  }, [initial.id]);
+  useLiveRefresh({ types: ['incident.updated', 'incident.reported'], match: (e) => e.data.incidentId === initial.id, refresh: reloadIncident, fallbackMs: 60_000 });
   const operator = orgType === 'OPERATOR';
   const closed = inc.status === 'CLOSED';
   const shipmentHref = orgType === 'PYME' ? `/pyme/envios?id=${inc.shipmentId}` : orgType === 'CARRIER' ? `/transportista/envios?id=${inc.shipmentId}` : null;

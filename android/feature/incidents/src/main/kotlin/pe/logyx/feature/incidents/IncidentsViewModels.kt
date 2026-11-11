@@ -2,21 +2,28 @@ package pe.logyx.feature.incidents
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.DocumentsRepository
 import pe.logyx.core.data.IncidentsRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.SessionState
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.model.DocumentType
 import pe.logyx.core.model.IncidentCategory
 import pe.logyx.core.model.IncidentView
+import pe.logyx.core.model.RealtimeEvent
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.network.ApiException
 
 const val MAX_DESCRIPTION = 2000
@@ -122,6 +129,7 @@ data class IncidentsListUiState(
 class IncidentsListViewModel(
     private val shipmentId: String,
     private val repo: IncidentsRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(IncidentsListUiState())
     val state: StateFlow<IncidentsListUiState> = _state.asStateFlow()
@@ -130,18 +138,29 @@ class IncidentsListViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano): `incident.*` de este envío refresca la lista en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(INCIDENT_TYPES) { it.string("shipmentId") == shipmentId }
+            .collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             repo.forShipment(shipmentId).fold(
                 onSuccess = { list ->
                     _state.update { it.copy(loading = false, refreshing = false, items = list.sortedByDescending { i -> i.createdAt.orEmpty() }) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
 }
+
+private val INCIDENT_TYPES = setOf(RealtimeTypes.INCIDENT_REPORTED, RealtimeTypes.INCIDENT_UPDATED)
+
+/** Los comentarios no emiten evento: el detalle conserva un refresco lento (30 s) además de `incident.*`. */
+const val INCIDENT_COMMENTS_POLL_MS = 30_000L
 
 // ───────────────────────── Detalle ─────────────────────────
 
@@ -164,6 +183,7 @@ class IncidentDetailViewModel(
     private val incidentId: String,
     private val repo: IncidentsRepository,
     private val auth: AuthRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(IncidentDetailUiState(organizationId = orgId()))
     val state: StateFlow<IncidentDetailUiState> = _state.asStateFlow()
@@ -174,7 +194,18 @@ class IncidentDetailViewModel(
 
     fun refresh() = load(initial = false)
 
-    /** Refresco silencioso (polling): no muestra spinner ni errores si ya hay datos. */
+    /**
+     * Tiempo real (solo en primer plano): `incident.*` de ESTA incidencia refresca el detalle en silencio. Los
+     * comentarios no tienen evento, así que además hay un refresco lento cada [INCIDENT_COMMENTS_POLL_MS].
+     */
+    suspend fun liveLoop(commentsPollMs: Long = INCIDENT_COMMENTS_POLL_MS) {
+        merge(
+            realtime.refreshSignals(INCIDENT_TYPES, fallbackMs = 0) { it.string("incidentId") == incidentId },
+            flow<RealtimeEvent?> { while (true) { delay(commentsPollMs); emit(null) } },
+        ).collect { poll() }
+    }
+
+    /** Refresco silencioso: no muestra spinner ni errores si ya hay datos. */
     fun poll() {
         if (_state.value.incident == null || _state.value.sending) return
         viewModelScope.launch {

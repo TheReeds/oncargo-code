@@ -9,12 +9,12 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-petrol-700 text-white hover:bg-petrol-800',
-        money: 'bg-emerald-700 text-white hover:bg-emerald-700/90',
+        default: 'bg-petrol-700 text-on-solid hover:bg-petrol-800',
+        money: 'bg-emerald-700 text-on-solid hover:bg-emerald-700/90',
         outline: 'border border-steel-200 bg-surface text-ink-900 hover:bg-steel-100',
         ghost: 'text-ink-700 hover:bg-steel-100',
         destructive: 'border border-red-600/30 bg-surface text-red-600 hover:bg-red-50',
-        'destructive-solid': 'bg-red-600 text-white hover:bg-red-600/90',
+        'destructive-solid': 'bg-red-600 text-on-solid hover:bg-red-600/90',
         link: 'text-petrol-700 underline-offset-4 hover:underline',
       },
       size: { default: 'h-10 px-4', sm: 'h-8 px-3 text-[13px]', lg: 'h-11 px-6 text-base', icon: 'size-9' },

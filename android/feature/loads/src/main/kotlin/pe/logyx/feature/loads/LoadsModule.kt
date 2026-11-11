@@ -8,5 +8,5 @@ val loadsModule = module {
     viewModelOf(::CarrierHomeViewModel)
     viewModelOf(::LoadsFeedViewModel)
     viewModelOf(::MyBidsViewModel)
-    viewModel { (requestId: String) -> LoadDetailViewModel(requestId, get(), get()) }
+    viewModel { (requestId: String) -> LoadDetailViewModel(requestId, get(), get(), get()) }
 }

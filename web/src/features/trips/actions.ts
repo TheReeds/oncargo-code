@@ -6,6 +6,18 @@ import * as s from './server';
 const id = z.object({ id: z.uuid() });
 
 export const trips = {
+  // Lecturas para el refresco en vivo (trip_booking.updated, trip.cancelled, smart_load.*).
+  myBookings: defineAction({ accept: 'json', handler: (_i, ctx) => run(() => s.listMyBookings(requireToken(ctx))) }),
+  smartLoads: defineAction({ accept: 'json', handler: (_i, ctx) => run(() => s.listSmartLoads(requireToken(ctx))) }),
+  detail: defineAction({
+    accept: 'json',
+    input: id,
+    handler: ({ id }, ctx) => run(async () => {
+      const token = requireToken(ctx);
+      const [trip, bookings] = await Promise.all([s.getTrip(token, id), s.listTripBookings(token, id)]);
+      return { trip, bookings };
+    }),
+  }),
   create: defineAction({
     accept: 'json',
     input: z.object({

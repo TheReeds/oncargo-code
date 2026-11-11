@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.NegotiationRepository
+import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.RequestsRepository
+import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.components.UiMessage
@@ -20,6 +22,7 @@ import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.BidView
 import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.GeoPoint
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.RequestStatus
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.normalizeCity
@@ -35,7 +38,7 @@ data class RequestsUiState(
     val items: List<RequestView> = emptyList(),
 )
 
-class RequestsViewModel(private val repo: RequestsRepository) : ViewModel() {
+class RequestsViewModel(private val repo: RequestsRepository, private val realtime: RealtimeRepository) : ViewModel() {
     private val _state = MutableStateFlow(RequestsUiState())
     val state: StateFlow<RequestsUiState> = _state.asStateFlow()
 
@@ -43,18 +46,28 @@ class RequestsViewModel(private val repo: RequestsRepository) : ViewModel() {
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
+    /** Tiempo real (solo en primer plano): ofertas/estado de mis solicitudes refrescan la lista en silencio. */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(REQUEST_TYPES).collect { load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.items.isEmpty(), refreshing = !initial, error = null) }
         viewModelScope.launch {
             repo.mine().fold(
                 onSuccess = { list ->
                     _state.update { it.copy(loading = false, refreshing = false, items = list.sortedByDescending { r -> r.createdAt.orEmpty() }) }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }
 }
+
+/** Eventos que cambian lo que la PYME ve de sus solicitudes (`bid.placed`, `request.matched`, contraofertas, `auction.updated`). */
+private val REQUEST_TYPES = setOf(
+    RealtimeTypes.BID_PLACED, RealtimeTypes.COUNTER_OFFER_UPDATED, RealtimeTypes.REQUEST_MATCHED, RealtimeTypes.AUCTION_UPDATED,
+)
 
 // ───────────────────────── Detalle: comparar y aceptar ─────────────────────────
 
@@ -107,6 +120,7 @@ class RequestDetailViewModel(
     private val repo: RequestsRepository,
     private val catalog: CatalogRepository,
     private val negotiation: NegotiationRepository,
+    private val realtime: RealtimeRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RequestDetailUiState())
     val state: StateFlow<RequestDetailUiState> = _state.asStateFlow()
@@ -115,8 +129,17 @@ class RequestDetailViewModel(
 
     fun refresh() = load(initial = false)
 
-    private fun load(initial: Boolean) {
-        _state.update { it.copy(loading = initial && it.request == null, refreshing = !initial, error = null) }
+    /**
+     * Tiempo real (solo en primer plano): `bid.placed`, `counter_offer.updated`, `request.matched` y `auction.updated`
+     * de ESTA solicitud refrescan la comparación en silencio; respaldo solo si el stream no está en vivo.
+     */
+    suspend fun liveLoop() {
+        realtime.refreshSignals(REQUEST_TYPES) { it.string("requestId") == requestId }
+            .collect { if (!_state.value.busy) load(initial = false, silent = true) }
+    }
+
+    private fun load(initial: Boolean, silent: Boolean = false) {
+        if (!silent) _state.update { it.copy(loading = initial && it.request == null, refreshing = !initial, error = null) }
         viewModelScope.launch {
             val req = async { repo.detail(requestId) }
             val bids = async { repo.bids(requestId) }
@@ -133,7 +156,7 @@ class RequestDetailViewModel(
                         )
                     }
                 },
-                onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
+                onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
     }

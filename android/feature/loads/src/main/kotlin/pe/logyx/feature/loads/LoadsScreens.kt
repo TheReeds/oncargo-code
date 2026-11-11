@@ -67,6 +67,7 @@ import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
 import pe.logyx.core.designsystem.components.KpiTile
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LoadCard
 import pe.logyx.core.designsystem.components.LoadingMoreFooter
 import pe.logyx.core.designsystem.components.LogyxBottomSheet
@@ -122,6 +123,7 @@ fun CarrierHomeRoute(
     viewModel: CarrierHomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     CarrierHomeScreen(state, viewModel::refresh, onOpenLoad, onOpenFeed, onOpenBids, onOpenShipment, onOpenTrips, onOpenReturnLoads, onOpenSmartLoads)
 }
 
@@ -328,6 +330,7 @@ private fun ActiveShipmentCard(s: ShipmentView, onClick: () -> Unit) {
 @Composable
 fun LoadsFeedRoute(onOpenLoad: (String) -> Unit, viewModel: LoadsFeedViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     LoadsFeedScreen(
         state, viewModel::refresh, viewModel::toggle, onOpenLoad,
         onLoadMore = viewModel::loadMore, onOrigin = viewModel::setOrigin, onDestination = viewModel::setDestination,
@@ -498,6 +501,7 @@ fun LoadDetailRoute(
     viewModel: LoadDetailViewModel = koinViewModel { parametersOf(requestId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     LoadDetailScreen(
         state, onBack, viewModel::refresh, viewModel::openBidSheet, viewModel::dismissBidSheet,
         viewModel::selectVehicle, viewModel::onAmountChange, viewModel::onNotesChange,
@@ -734,6 +738,7 @@ fun MyBidsRoute(
     viewModel: MyBidsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     MyBidsScreen(
         state, viewModel::refresh, onOpenLoad,
         onAskAccept = viewModel::askAccept, onAskReject = viewModel::askReject, onConfirm = viewModel::confirm,

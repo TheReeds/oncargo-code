@@ -12,18 +12,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import pe.logyx.core.designsystem.Fmt
@@ -32,6 +27,7 @@ import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.ChatBubble
 import pe.logyx.core.designsystem.components.ChatComposer
 import pe.logyx.core.designsystem.components.ErrorState
+import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LogyxCard
 import pe.logyx.core.designsystem.components.LogyxScreen
 import pe.logyx.core.designsystem.components.MessageEffect
@@ -47,9 +43,8 @@ import pe.logyx.core.model.IncidentCommentView
 import pe.logyx.core.model.IncidentStatus
 import pe.logyx.core.model.IncidentView
 
-private const val POLL_MS = 20_000L
 
-/** Detalle de una incidencia con su hilo de comentarios (polling ~20 s en primer plano). */
+/** Detalle de una incidencia con su hilo de comentarios (tiempo real en primer plano). */
 @Composable
 fun IncidentDetailRoute(
     incidentId: String,
@@ -57,15 +52,7 @@ fun IncidentDetailRoute(
     viewModel: IncidentDetailViewModel = koinViewModel { parametersOf(incidentId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                delay(POLL_MS)
-                viewModel.poll()
-            }
-        }
-    }
+    LiveEffect(viewModel) { viewModel.liveLoop() }
     IncidentDetailScreen(state, onBack, viewModel::refresh, viewModel::onDraft, viewModel::send, viewModel::onMessageShown)
 }
 

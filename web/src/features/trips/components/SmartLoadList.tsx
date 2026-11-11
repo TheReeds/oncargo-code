@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
 import { Check, Sparkles, X } from 'lucide-react';
@@ -19,7 +20,13 @@ type Tab = 'PENDING' | 'ACCEPTED' | 'CLOSED';
 const TABS: { id: Tab; label: string }[] = [{ id: 'PENDING', label: 'Pendientes' }, { id: 'ACCEPTED', label: 'Aceptadas' }, { id: 'CLOSED', label: 'Rechazadas y vencidas' }];
 const tabOf = (s?: string): Tab => (s === 'PENDING' ? 'PENDING' : s === 'ACCEPTED' ? 'ACCEPTED' : 'CLOSED');
 
-export default function SmartLoadList({ items }: { items: SmartLoadView[] }) {
+export default function SmartLoadList({ items: initial }: { items: SmartLoadView[] }) {
+  const [items, setItems] = useState(initial);
+  useLiveRefresh({
+    types: ['smart_load.suggested', 'smart_load.accepted'],
+    refresh: async () => { const { data } = await actions.trips.smartLoads(); if (data) setItems(data); },
+    fallbackMs: 60_000,
+  });
   const [tab, setTab] = useState<Tab>('PENDING');
   const [busy, setBusy] = useState<string | null>(null);
   const shown = items.filter((s) => tabOf(s.status) === tab);

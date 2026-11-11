@@ -38,6 +38,8 @@ import { Timeline } from '@/components/ui/timeline';
 import { TimeSelect } from '@/components/ui/time-select';
 import { CapacityBar } from '@/components/domain/CapacityBar';
 import { AuthCard } from '@/components/ui/auth-card';
+import ThemeToggle from '@/components/ui/theme-toggle';
+import { useResolvedTheme } from '@/lib/theme';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
 
 const cities = Object.entries(CITY_LABELS).map(([value, label]) => ({ value, label }));
@@ -51,6 +53,11 @@ const COLORS: [string, string, string][] = [
   ['amber-500', '#F59E0B', 'Por cerrar'], ['amber-700', '#B45309', 'Pendiente (texto)'], ['amber-50', '#FFFBEB', 'Fondo aviso'],
   ['red-600', '#DC2626', 'Error / incidencia'], ['red-50', '#FEF2F2', 'Fondo error'],
 ];
+const DARK_HEX: Record<string, string> = {
+  'ink-900': '#E8EEF6', 'ink-700': '#C0CBD9', 'ink-500': '#94A3B8', 'ink-400': '#6B7C93', 'steel-100': '#0B1220', 'steel-200': '#25324A', surface: '#111A2B',
+  'petrol-700': '#38A3C9', 'petrol-800': '#7CC4DE', 'petrol-50': '#12303F', 'emerald-500': '#10B981', 'emerald-700': '#34D399', 'emerald-50': '#0F2A26',
+  'amber-500': '#F59E0B', 'amber-700': '#FBBF24', 'amber-50': '#2A2210', 'red-600': '#F87171', 'red-50': '#2D1518',
+};
 const SW: Record<string, string> = { 'ink-900': 'bg-ink-900', 'ink-700': 'bg-ink-700', 'ink-500': 'bg-ink-500', 'ink-400': 'bg-ink-400', 'steel-100': 'bg-steel-100', 'steel-200': 'bg-steel-200', surface: 'bg-surface', 'petrol-700': 'bg-petrol-700', 'petrol-800': 'bg-petrol-800', 'petrol-50': 'bg-petrol-50', 'emerald-500': 'bg-emerald-500', 'emerald-700': 'bg-emerald-700', 'emerald-50': 'bg-emerald-50', 'amber-500': 'bg-amber-500', 'amber-700': 'bg-amber-700', 'amber-50': 'bg-amber-50', 'red-600': 'bg-red-600', 'red-50': 'bg-red-50' };
 
 function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: React.ReactNode }) {
@@ -68,6 +75,7 @@ function Section({ id, title, note, children }: { id: string; title: string; not
 const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['reputacion', 'Reputación y archivos'], ['formatos', 'Formatos']];
 
 export default function UiCatalog() {
+  const theme = useResolvedTheme();
   const [city, setCity] = useState('');
   const [time, setTime] = useState('08:00');
   const [multi, setMulti] = useState<string[]>(['LIMA', 'JULIACA']);
@@ -92,9 +100,12 @@ export default function UiCatalog() {
           <h1 className="text-3xl font-semibold tracking-tight">Catálogo de UI de LOGYX</h1>
           <p className="mt-1 max-w-2xl text-sm text-ink-700">Referencia viva del sistema de diseño. Antes de crear UI, revisa aquí qué componente existe. Documentación: <code className="font-mono">.claude/skills/logyx-design-system/</code> y <code className="font-mono">docs/design/CONTENT.md</code>.</p>
         </div>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+        <ThemeToggle />
         <nav aria-label="Secciones" className="flex flex-wrap gap-1.5 text-sm">
           {NAV.map(([id, l]) => <a key={id} href={`#${id}`} className="rounded-full bg-surface px-3 py-1 text-ink-700 ring-1 ring-steel-200 hover:text-petrol-700">{l}</a>)}
         </nav>
+        </div>
       </header>
 
       <div className="space-y-14">
@@ -112,12 +123,12 @@ export default function UiCatalog() {
           </CardBody></Card>
         </Section>
 
-        <Section id="colores" title="Colores" note="Úsalos solo como clases Tailwind (bg-petrol-700, text-ink-500…). Emerald = dinero y oportunidad; amber = por cerrar/pendiente; red = error.">
+        <Section id="colores" title="Colores" note="Úsalos solo como clases Tailwind (bg-petrol-700, text-ink-500…); los tokens cambian solos en modo oscuro (usa el selector de tema de arriba). Emerald = dinero y oportunidad; amber = por cerrar/pendiente; red = error.">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {COLORS.map(([n, hex, use]) => (
               <div key={n} className="overflow-hidden rounded-card border border-steel-200 bg-surface">
                 <div className={`h-12 ${SW[n]}`} />
-                <div className="p-2"><p className="font-mono text-xs font-semibold">{n}</p><p className="font-mono text-[11px] text-ink-500">{hex}</p><p className="text-[11px] text-ink-500">{use}</p></div>
+                <div className="p-2"><p className="font-mono text-xs font-semibold">{n}</p><p className="font-mono text-[11px] text-ink-500">{theme === 'dark' ? DARK_HEX[n] : hex}</p><p className="text-[11px] text-ink-500">{use}</p></div>
               </div>
             ))}
           </div>

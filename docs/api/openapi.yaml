@@ -1207,6 +1207,32 @@ components:
           minimum: 1
         cargoType:
           $ref: "#/components/schemas/CargoType"
+    RealtimeStreamEvent:
+      description: "Mensaje del stream SSE (campo data:, JSON). El id SSE es seq."
+      type: object
+      properties:
+        type:
+          type: string
+          description: "Tipo de evento: bid.placed, auction.updated, bid.accepted,\
+            \ bid.rejected, request.matched, counter_offer.updated, message.posted,\
+            \ shipment.status_changed, shipment.stop_updated, shipment.driver_assigned,\
+            \ incident.reported, incident.updated, notification.created, review.submitted,\
+            \ trip_booking.updated, trip.cancelled, smart_load.suggested, smart_load.accepted;\
+            \ control: stream.ready, stream.resync, stream.expired. Ver docs/api/CHANGELOG.md.\
+            \ Ignora los tipos desconocidos."
+        seq:
+          type: integer
+          format: int64
+          description: "Secuencia del evento (= id SSE, úsalo como Last-Event-ID);\
+            \ null en stream.expired"
+        occurredAt:
+          type: string
+          description: Cuándo ocurrió (ISO-8601)
+        data:
+          type: object
+          additionalProperties: {}
+          description: "Payload mínimo: ids, estados y contadores (nunca montos, nombres\
+            \ ni textos)"
     RegisterRequest:
       type: object
       required:
@@ -2303,6 +2329,50 @@ paths:
       security:
       - SecurityScheme:
         - CARRIER
+  /api/v1/events/stream:
+    get:
+      summary: Eventos en tiempo real (SSE)
+      description: "Stream text/event-stream autenticado. Cada conexión recibe solo\
+        \ los eventos dirigidos a su organización (el conductor, solo los de sus enví\
+        os; el operador, los suyos y las incidencias). Payload mínimo (ids + tipo\
+        \ + datos no sensibles): el cliente vuelve a pedir por la API lo que necesite.\
+        \ Primero llega stream.ready (o stream.resync si no se pudo reanudar: recarga\
+        \ todo). Latido: comentario ': ping' cada ~20 s. Reanudación: cabecera Last-Event-ID\
+        \ (o ?lastEventId=) con el último id recibido. Al vencer el JWT llega stream.expired\
+        \ y se cierra: reconecta con un token nuevo. Máximo 5 conexiones por usuario\
+        \ (429 LOGYX-RTM-001)."
+      parameters:
+      - description: Alternativa a Last-Event-ID para clientes que reconectan a mano
+        name: lastEventId
+        in: query
+        schema:
+          type: string
+      - description: Último id recibido (lo envía EventSource al reconectar)
+        name: Last-Event-ID
+        in: header
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Stream de eventos
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/RealtimeStreamEvent"
+        "401":
+          description: Sin token o token vencido
+        "429":
+          description: Demasiadas conexiones del usuario (LOGYX-RTM-001)
+        "403":
+          description: Not Allowed
+      tags:
+      - Realtime Resource
+      security:
+      - SecurityScheme:
+        - PYME
+        - CARRIER
+        - DRIVER
+        - OPERATOR
   /api/v1/incidents:
     get:
       summary: "Incidencias de mis envíos (operador: todas), recientes primero"

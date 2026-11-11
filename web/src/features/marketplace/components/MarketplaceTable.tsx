@@ -16,6 +16,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
+import { useRealtime } from '@/lib/realtime';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { CityItem, RequestView, VehicleView } from '@/lib/api/server';
 import { TrustScore } from '@/components/domain/TrustScore';
@@ -59,7 +60,14 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
   }
   const set = (patch: Partial<MarketFilters>) => go({ ...f, ...patch });
   const clear = () => go({ origin: '', dest: '', from: '', to: '', cargo: '', maxKg: '', compat: false, sort: f.sort });
-  const rows = requests;
+  // auction.updated trae el conteo de ofertas y si la subasta cerró: se aplica en sitio, sin recargar.
+  const [live, setLive] = useState<Record<string, { bidCount?: number; closed?: boolean }>>({});
+  useRealtime(['auction.updated'], (e) => {
+    const id = e.data.requestId as string | undefined;
+    if (!id) return;
+    setLive((l) => ({ ...l, [id]: { bidCount: typeof e.data.bidCount === 'number' ? e.data.bidCount : l[id]?.bidCount, closed: !!e.data.auctionClosed } }));
+  });
+  const rows = requests.filter((r) => !live[r.id!]?.closed).map((r) => (live[r.id!]?.bidCount != null && r.auction ? { ...r, auction: { ...r.auction, bidCount: live[r.id!]!.bidCount } } : r));
 
   // El peso máximo se aplica al dejar de escribir.
   useEffect(() => {

@@ -71,7 +71,7 @@ class OutboxTest {
         Session pyme = register("PYME", "Outbox Rollback");
         java.util.UUID org = java.util.UUID.fromString(pyme.orgId());
         java.util.UUID bidId = java.util.UUID.randomUUID();
-        BidPlaced e = new BidPlaced(bidId, java.util.UUID.randomUUID(), org, org, "x", java.math.BigDecimal.TEN, "A → B");
+        BidPlaced e = new BidPlaced(bidId, java.util.UUID.randomUUID(), org, org, "x", java.math.BigDecimal.TEN, "A → B", 1, false);
         assertThrows(IllegalStateException.class, () -> systemTx.run(() -> {
             bidPlaced.fire(e);
             throw new IllegalStateException("el caso de uso falla después de publicar");

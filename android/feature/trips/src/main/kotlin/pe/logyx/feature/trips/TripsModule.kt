@@ -7,7 +7,7 @@ import org.koin.dsl.module
 val tripsModule = module {
     viewModelOf(::PublishTripViewModel)
     viewModelOf(::CarrierTripsViewModel)
-    viewModel { (tripId: String, justPublished: Boolean) -> CarrierTripDetailViewModel(tripId, justPublished, get()) }
+    viewModel { (tripId: String, justPublished: Boolean) -> CarrierTripDetailViewModel(tripId, justPublished, get(), get()) }
     viewModelOf(::ReturnLoadsViewModel)
     viewModelOf(::SmartLoadsViewModel)
     viewModelOf(::TripSearchViewModel)

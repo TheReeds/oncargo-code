@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import type { ChatMessage } from '../server';
-import { RN07_COPY, isContactError, notifyNegotiationChanged, usePolling } from '../usePolling';
+import { RN07_COPY, isContactError, notifyNegotiationChanged, useNegotiationLive } from '../usePolling';
 
 export const MAX_MESSAGE = 1000;
 
@@ -53,13 +53,13 @@ function Bubble({ m }: { m: ChatMessage }) {
   return (
     <li className={cn('flex flex-col', m.mine ? 'items-end' : 'items-start')}>
       {!m.mine && <span className="mb-0.5 px-1 text-xs font-medium text-ink-500">{m.senderName}</span>}
-      <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-card px-3 py-2 text-sm', m.mine ? 'rounded-br-sm bg-petrol-700 text-white' : 'rounded-bl-sm bg-steel-100 text-ink-900')}>{m.body}</div>
+      <div className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-card px-3 py-2 text-sm', m.mine ? 'rounded-br-sm bg-petrol-700 text-on-solid' : 'rounded-bl-sm bg-steel-100 text-ink-900')}>{m.body}</div>
       <span className="mt-0.5 px-1 text-xs text-ink-500">{formatDateTime(m.createdAt)}</span>
     </li>
   );
 }
 
-function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 8000, emptyHint, className }: ChatPanelProps) {
+function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 30000, emptyHint, className }: ChatPanelProps) {
   const uid = useId();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -91,7 +91,11 @@ function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 80
     setLoading(true);
     refresh(true).finally(() => setLoading(false));
   }, [refresh]);
-  usePolling(() => { refresh(); }, pollMs);
+  useNegotiationLive(() => { refresh(); }, {
+    types: ['message.posted', 'counter_offer.updated'],
+    match: (e) => e.data.requestId === requestId && (e.type !== 'message.posted' || e.data.carrierOrgId === carrierOrgId),
+    fallbackMs: pollMs,
+  });
 
   useLayoutEffect(() => {
     const el = listRef.current;

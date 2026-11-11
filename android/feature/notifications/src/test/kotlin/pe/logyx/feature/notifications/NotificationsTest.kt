@@ -2,6 +2,10 @@ package pe.logyx.feature.notifications
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import pe.logyx.core.model.RealtimeEvent
+import pe.logyx.core.model.RealtimeTypes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -68,6 +72,19 @@ class NotificationsTest {
         assertEquals(0, c.count.value)
         c.set(5)
         assertEquals(5, c.count.value)
+    }
+
+    @Test fun badgeUsaUnreadCountDelEventoSinConsultarYResyncConsulta() = runTest {
+        val repo = FakeNotifications(listOf(notif(1), notif(2)))
+        val c = UnreadCounter(repo)
+        c.onSignal(RealtimeEvent(RealtimeTypes.NOTIFICATION_CREATED, data = JsonObject(mapOf("unreadCount" to JsonPrimitive(7)))))
+        assertEquals(7, c.count.value)
+        // Un resync (o el tick de respaldo, null) no trae contador: consulta al backend.
+        c.onSignal(RealtimeEvent(RealtimeTypes.STREAM_RESYNC))
+        assertEquals(2, c.count.value)
+        c.onSignal(RealtimeEvent(RealtimeTypes.NOTIFICATION_CREATED, data = JsonObject(mapOf("unreadCount" to JsonPrimitive(3)))))
+        c.onSignal(null)
+        assertEquals(2, c.count.value)
     }
 
     @Test fun loadsFirstPageAndUpdatesCounter() {

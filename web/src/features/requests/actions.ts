@@ -1,12 +1,22 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
-import { acceptBid, cancelRequest, createRequest, quote } from './server';
+import { acceptBid, cancelRequest, createRequest, getRequest, listBids, quote } from './server';
 
 const city = z.string().min(1, 'Selecciona una ciudad');
 const cargo = z.enum(['GENERAL', 'FRAGILE', 'PERISHABLE', 'HAZARDOUS', 'BULK', 'OVERSIZED']);
 
 export const requests = {
+  /** Solicitud + ofertas (refresco en vivo del detalle de la PYME). */
+  detail: defineAction({
+    accept: 'json',
+    input: z.object({ id: z.uuid() }),
+    handler: ({ id }, ctx) => run(async () => {
+      const token = requireToken(ctx);
+      const [request, bids] = await Promise.all([getRequest(token, id), listBids(token, id)]);
+      return { request, bids };
+    }),
+  }),
   quote: defineAction({
     accept: 'json',
     input: z.object({ originCity: city, destinationCity: city, weightKg: z.number().positive(), cargoType: cargo }),

@@ -2,14 +2,10 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
-import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { Alert } from '@/components/ui/alert';
-import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
-import { buttonVariants } from '@/components/ui/button';
-import { Countdown } from '@/components/domain/Countdown';
 import BidComparison from '@/features/requests/components/BidComparison';
-import CancelRequestButton from '@/features/requests/components/CancelRequestButton';
+import { AuctionCard, RequestHeaderActions, RequestLiveSync } from '@/features/requests/components/RequestLive';
 import NegotiationPanel from '@/features/negotiation/components/NegotiationPanel';
 import { listThreads } from '@/features/negotiation/server';
 import { getRequest, listBids } from '@/features/requests/server';
@@ -29,16 +25,15 @@ const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError
 const threads = await listThreads(token, id!).catch(() => []);
 const hilo = Astro.url.searchParams.get('hilo');
 const a = r.auction;
-const published = r.status === 'PUBLISHED';
 const created = Astro.url.searchParams.has('creada');
-const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_BIDS: 'Se alcanzó el máximo de ofertas', ACCEPTED: 'Oferta aceptada', CANCELLED: 'Solicitud cancelada' };
 ---
 <AppShell title="Detalle de solicitud" active="solicitudes">
   <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/pyme/solicitudes">Solicitudes</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Detalle</span></nav>
   <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)}`}>
-    <div slot="actions" class="flex flex-wrap items-center gap-3"><VerifiedBadge verified={r.requesterRucVerified} /><StatusPill status={r.status!} />{published && <CancelRequestButton client:load id={r.id!} />}</div>
+    <div slot="actions" class="flex flex-wrap items-center gap-3"><RequestHeaderActions client:load requestId={r.id!} status={r.status!} verified={r.requesterRucVerified} /></div>
   </PageHeader>
 
+  <RequestLiveSync client:load requestId={r.id!} />
   {created && <Alert tone="success" className="mb-4">Solicitud publicada. La subasta ya está abierta para los transportistas.</Alert>}
 
   <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -58,29 +53,12 @@ const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_
         </CardBody>
       </Card>
 
-      <BidComparison client:load bids={bids} suggested={r.suggestedPrice} canAccept={published} canNegotiate={published} floor={r.priceFloor} />
+      <BidComparison client:load bids={bids} suggested={r.suggestedPrice} requestId={r.id!} requestStatus={r.status!} floor={r.priceFloor} />
       <NegotiationPanel client:load requestId={r.id!} requestStatus={r.status!} initialThreads={threads} initialCarrierOrgId={hilo && threads.some((t) => t.carrierOrgId === hilo) ? hilo : null} />
     </div>
 
     <aside class="order-1 space-y-4 lg:order-2">
-      <Card>
-        <CardHeader><CardTitle>Subasta</CardTitle></CardHeader>
-        <CardBody className="space-y-4">
-          {a ? (
-            <>
-              <div>
-                <div class="text-xs font-medium text-ink-500">{a.status === 'OPEN' ? 'Cierra en' : 'Estado'}</div>
-                {a.status === 'OPEN' ? <Countdown client:load closesAt={a.closesAt} className="text-2xl font-semibold" /> : <div class="font-medium">Cerrada{a.closeReason ? ` · ${closeReason[a.closeReason] ?? a.closeReason}` : ''}</div>}
-                <div class="text-xs text-ink-500">{formatDateTime(a.closesAt)}</div>
-              </div>
-              <div>
-                <div class="mb-1 flex justify-between text-xs"><span class="text-ink-500">Ofertas</span><span class="font-mono font-semibold">{a.bidCount ?? 0}/{a.maxBids ?? 5}</span></div>
-                <div class="h-2 overflow-hidden rounded-full bg-steel-200" role="progressbar" aria-label="Ofertas recibidas" aria-valuemin="0" aria-valuemax={a.maxBids ?? 5} aria-valuenow={a.bidCount ?? 0}><div class="h-full rounded-full bg-petrol-700" style={`width:${Math.min(100, ((a.bidCount ?? 0) / (a.maxBids ?? 5)) * 100)}%`}></div></div>
-              </div>
-            </>
-          ) : <p class="text-sm text-ink-500">Esta solicitud no tiene una subasta abierta.</p>}
-        </CardBody>
-      </Card>
+      <AuctionCard client:load auction={a ?? null} />
       <Card>
         <CardHeader><CardTitle>Precios de referencia</CardTitle></CardHeader>
         <CardBody className="space-y-3 text-sm">
@@ -88,7 +66,6 @@ const closeReason: Record<string, string> = { TIMEOUT: 'Venció el tiempo', MAX_
           <div class="flex justify-between"><span class="text-ink-700">Piso de subasta</span><span class="font-mono font-semibold tabular-nums text-ink-900">{formatMoney(r.priceFloor)}</span></div>
         </CardBody>
       </Card>
-      {r.status === 'MATCHED' && <a href="/pyme/envios" class={buttonVariants({ className: 'w-full' })}>Ver envío</a>}
     </aside>
   </div>
 </AppShell>

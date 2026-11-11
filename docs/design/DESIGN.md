@@ -30,12 +30,27 @@ cuándo, qué vehículo necesito, con quién trato).
 | `amber-500` | `#F59E0B` | Subasta por cerrar, pendiente |
 | `red-600` | `#DC2626` | Incidencia, error, rechazada |
 
-Modo oscuro (web, opcional en MVP): fondo `#0B1220`, superficie `#111A2B`, mismo primario aclarado `#38A3C9`.
+Modo oscuro (web, implementado): `<html data-theme="dark">` redefine los mismos tokens (los componentes no cambian). Los rellenos sólidos (botones, chips activos) pasan a colores claros con texto oscuro `on-solid`. Contrastes calculados (WCAG, relación de luminancia):
+
+| Token (oscuro) | Hex | vs fondo `#0B1220` | vs superficie `#111A2B` | vs petrol-50 `#12303F` |
+|---|---|---|---|---|
+| `steel-100` (fondo) / `surface` / `steel-200` (borde) / `petrol-50` | `#0B1220` / `#111A2B` / `#25324A` / `#12303F` | — | — | — |
+| `ink-900` (texto) | `#E8EEF6` | 16.0 | 14.9 | 11.8 |
+| `ink-700` | `#C0CBD9` | 11.4 | 10.6 | 8.4 |
+| `ink-500` (terciario) | `#94A3B8` | 7.3 | 6.8 | 5.4 |
+| `ink-400` (decorativo/bordes fuertes, no texto) | `#6B7C93` | 4.4 | 4.1 | 3.2 |
+| `petrol-700` (primario aclarado) | `#38A3C9` | 6.5 | 6.0 | 4.8 |
+| `petrol-800` (hover) | `#7CC4DE` | 9.6 | 9.0 | 7.1 |
+| `emerald-700` (dinero/éxito) / `emerald-500` | `#34D399` / `#10B981` | 9.7 | 9.1 | 7.2 |
+| `amber-700` / `amber-500` | `#FBBF24` / `#F59E0B` | 11.2 | 10.4 | 8.3 |
+| `red-600` / `red-700` | `#F87171` / `#FCA5A5` | 6.8 / 9.9 | 6.3 / 9.2 | 5.0 / 7.3 |
+
+Fondos tintados oscuros: `emerald-50 #0F2A26`, `amber-50 #2A2210`, `red-50 #2D1518` (texto de su color ≥5.3:1). Texto `on-solid #07121C` sobre `petrol-700` 6.5, `emerald-700` 9.8, `red-600` 6.8. Tokens nuevos de ambos temas: `chrome` (sidebar/tooltips), `on-solid`, `scrim`. Mapas: estilo OpenFreeMap *dark* y ruta `#38A3C9`. El tema se elige con el selector Claro/Oscuro/Sistema (`localStorage logyx-theme`).
 
 **Tipografía:** *Geist Sans* (UI) y *Geist Mono* (cifras técnicas: placas, km, toneladas, IDs, montos en tabla).
 Ambas SIL OFL. Números tabulares (`font-variant-numeric: tabular-nums`) en tablas y precios.
 **Iconos:** Lucide (web) / Material Symbols Rounded (Android). **Radio:** 10px tarjetas, 8px inputs, pill en chips.
-**Mapas:** MapLibre + OpenFreeMap estilo *positron* (claro, discreto). Rutas en `petrol-700`, origen ○, destino ■.
+**Mapas:** MapLibre + OpenFreeMap estilo *positron* (claro, discreto) o *dark* en modo oscuro. Rutas en `petrol-700`, origen ○, destino ■.
 
 ## Patrones (componentes con nombre — úsalos igual en web y móvil)
 - **RouteLine** — `Lima ──── 1,010 km ────▶ Juliaca` con fechas debajo de cada ciudad.

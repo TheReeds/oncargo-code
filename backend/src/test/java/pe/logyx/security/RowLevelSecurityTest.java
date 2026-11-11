@@ -282,6 +282,33 @@ class RowLevelSecurityTest {
                 + suggestion + "'"));
     }
 
+    @Test
+    void eventosEnTiempoRealSoloLosLeeSuDestinatarioYNadieLosEscribe() {
+        Session pymeA = register("PYME", "RLS RT Pyme A");
+        Session pymeB = register("PYME", "RLS RT Pyme B");
+        Session carrier = register("CARRIER", "RLS RT Carrier");
+        String tag = "rls-" + System.nanoTime();
+        systemTx.run(() -> {
+            em.createNativeQuery("INSERT INTO realtime_events (event_type, org_id, payload) VALUES ('bid.placed', ?1, "
+                    + "CAST(?2 AS jsonb))").setParameter(1, java.util.UUID.fromString(pymeA.orgId()))
+                    .setParameter(2, "{\"tag\":\"" + tag + "\"}").executeUpdate();
+            em.createNativeQuery("INSERT INTO realtime_events (event_type, org_type, payload) VALUES ('auction.updated', "
+                    + "'CARRIER', CAST(?1 AS jsonb))").setParameter(1, "{\"tag\":\"" + tag + "\"}").executeUpdate();
+        });
+        String q = "SELECT count(*) FROM realtime_events WHERE payload->>'tag' = '" + tag + "'";
+        assertEquals(1, countAs(pymeA, "PYME", q), "la PYME ve solo lo dirigido a ella");
+        assertEquals(0, countAs(pymeB, "PYME", q), "otra PYME no ve nada");
+        assertEquals(1, countAs(carrier, "CARRIER", q), "un transportista ve solo la difusión a transportistas");
+        // logyx_app no inserta, modifica ni borra la proyección
+        for (String sql : java.util.List.of(
+                "INSERT INTO realtime_events (event_type, org_id, payload) VALUES ('x', '" + pymeB.orgId() + "', '{}')",
+                "UPDATE realtime_events SET event_type = 'x' WHERE payload->>'tag' = '" + tag + "'",
+                "DELETE FROM realtime_events WHERE payload->>'tag' = '" + tag + "'")) {
+            var ex = assertThrows(Exception.class, () -> executeAs(pymeA, "PYME", sql), sql);
+            assertTrue(rootMessage(ex).contains("permission denied"), rootMessage(ex));
+        }
+    }
+
     private static String rootMessage(Throwable t) {
         while (t.getCause() != null) t = t.getCause();
         return String.valueOf(t.getMessage());

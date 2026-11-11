@@ -1,4 +1,5 @@
 ---
+import LiveRegion from '@/components/ui/live-region';
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Gavel, Clock, CircleCheck } from 'lucide-react';
@@ -20,6 +21,8 @@ const accepted = rows.filter((r) => r.myBid!.status === 'ACCEPTED').length;
 ---
 <AppShell title="Mis ofertas" active="ofertas">
   <PageHeader title="Mis ofertas" subtitle="Sigue el estado de cada oferta y cuánto falta para que cierre su subasta." />
+  <LiveRegion client:load types={['bid.accepted', 'bid.rejected', 'bid.placed', 'counter_offer.updated']} region="ofertas" />
+  <div data-live-region="ofertas">
   {rows.length > 0 && (
     <div class="mb-6 grid gap-4 sm:grid-cols-3">
       <KpiTile label="Ofertas enviadas" value={rows.length} context="en total" icon={Gavel} />
@@ -57,4 +60,5 @@ const accepted = rows.filter((r) => r.myBid!.status === 'ACCEPTED').length;
       </Table>
     )}
   </Card>
+  </div>
 </AppShell>

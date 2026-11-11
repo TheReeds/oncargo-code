@@ -2,8 +2,14 @@ import { useEffect, useRef } from 'react';
 import type { Map as MlMap, Marker } from 'maplibre-gl';
 import type { CityItem, ShipmentView } from '@/lib/api/server';
 
-const STYLE = 'https://tiles.openfreemap.org/styles/positron';
-const PETROL = '#0B4F6C';
+import { useResolvedTheme, type Theme } from '@/lib/theme';
+
+const STYLES: Record<Theme, string> = {
+  light: 'https://tiles.openfreemap.org/styles/positron',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+};
+const ROUTE_COLOR: Record<Theme, string> = { light: '#0B4F6C', dark: '#38A3C9' };
+const MARKER_FILL: Record<Theme, string> = { light: '#ffffff', dark: '#0B1220' };
 
 /** Coordenadas de la ruta de un envío (paradas en orden; si no hay, origen→destino). */
 export function routeCoords(s: ShipmentView, cities: Record<string, CityItem>): [number, number][] {
@@ -18,6 +24,10 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
   const mapRef = useRef<MlMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const readyRef = useRef(false);
+  const theme = useResolvedTheme();
+  const themeRef = useRef<Theme>(theme);
+  themeRef.current = theme;
+  const appliedTheme = useRef<Theme | null>(null);
   const latest = useRef({ shipments, selectedId });
   latest.current = { shipments, selectedId };
   const byCode = Object.fromEntries(cities.map((c) => [c.code!, c]));
@@ -33,6 +43,8 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
         properties: { id: s.id, sel: s.id === selectedId || shipments.length === 1 ? 1 : 0 },
         geometry: { type: 'LineString' as const, coordinates: routeCoords(s, byCode) },
       }));
+      const th = themeRef.current;
+      const PETROL = ROUTE_COLOR[th];
       const src = map.getSource('routes') as any;
       src?.setData({ type: 'FeatureCollection', features });
       markers.current.forEach((m) => m.remove());
@@ -45,7 +57,7 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
         const sel = s.id === selectedId || shipments.length === 1;
         const mk = (c: [number, number], square: boolean) => {
           const d = document.createElement('div');
-          d.style.cssText = `width:12px;height:12px;background:${square ? PETROL : '#fff'};border:3px solid ${PETROL};border-radius:${square ? '2px' : '50%'};opacity:${sel ? 1 : 0.55}`;
+          d.style.cssText = `width:12px;height:12px;background:${square ? PETROL : MARKER_FILL[th]};border:3px solid ${PETROL};border-radius:${square ? '2px' : '50%'};opacity:${sel ? 1 : 0.55}`;
           return new ml.Marker({ element: d }).setLngLat(c).addTo(map);
         };
         markers.current.push(mk(coords[0], false), mk(coords[coords.length - 1], true));
@@ -60,17 +72,29 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
     import('maplibre-gl').then((ml) => {
       if (cancelled || !el.current) return;
       ml.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
-      const map = new ml.Map({ container: el.current, style: STYLE, center: [-74, -14], zoom: 4.5, attributionControl: { compact: true } });
+      themeRef.current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+      appliedTheme.current = themeRef.current;
+      const map = new ml.Map({ container: el.current, style: STYLES[themeRef.current], center: [-74, -14], zoom: 4.5, attributionControl: { compact: true } });
       mapRef.current = map;
       map.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right');
-      map.on('load', () => {
+      const addRoutes = () => {
+        if (map.getSource('routes')) return;
         map.addSource('routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addLayer({
           id: 'routes', type: 'line', source: 'routes',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': PETROL, 'line-width': ['case', ['==', ['get', 'sel'], 1], 4, 2], 'line-opacity': ['case', ['==', ['get', 'sel'], 1], 1, 0.45] },
+          paint: { 'line-color': ROUTE_COLOR[themeRef.current], 'line-width': ['case', ['==', ['get', 'sel'], 1], 4, 2], 'line-opacity': ['case', ['==', ['get', 'sel'], 1], 1, 0.45] },
         });
+      };
+      map.on('load', () => {
+        addRoutes();
         readyRef.current = true;
+        draw();
+      });
+      // Cambio de tema: nuevo estilo → se vuelven a agregar la fuente/capa y los marcadores.
+      map.on('style.load', () => {
+        if (!readyRef.current) return;
+        addRoutes();
         draw();
       });
     });
@@ -83,6 +107,13 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
   }, []);
 
   useEffect(draw, [shipments, selectedId, cities]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current || appliedTheme.current === theme) return;
+    appliedTheme.current = theme;
+    map.setStyle(STYLES[theme]);
+  }, [theme]);
 
   return <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-card border border-steel-200 bg-steel-100" role="region" aria-label="Mapa de la ruta del envío" />;
 }

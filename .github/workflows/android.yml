@@ -30,7 +30,7 @@ jobs:
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKM" --licenses < <(yes) >/dev/null || true
           "$SDKM" "platforms;android-37.0" "platforms;android-36"
-      - run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - run: ./gradlew --no-daemon assembleDebug testDebugUnitTest :core:network:test
       - name: Reportes de test
         if: failure()
         uses: actions/upload-artifact@v4

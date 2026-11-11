@@ -27,6 +27,8 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 | Acceso a datos de otra organización (bug de app) | Doble barrera: filtros por `TenantContext` + RLS (`RowLevelSecurityTest`) | — |
 | Inyección SQL | JPA/consultas parametrizadas; conexión `logyx_api` sin privilegios de escalada: `RESET ROLE`/`SET ROLE`/`ALTER`/`DROP POLICY` fallan (`DatabasePrivilegesTest`) | Una inyección podría cambiar `app.org_id` con `set_config` y actuar como otra organización dentro de lo que permite `logyx_app` (ADR-0006) |
 | Avisos falsificados para otra organización | `notifications` sin INSERT para `logyx_app`; `outbox_events` solo INSERT con `actor_org_id = app_org()` (auditable) | Con inyección se podría encolar un evento con datos inventados firmado con la propia organización |
+| Fuga entre organizaciones por el stream en tiempo real (SSE) | Destinatario explícito por fila en `realtime_events` (organización / usuario-conductor / difusión por tipo solo con datos públicos para ese tipo); `RealtimeAudiencePolicy` (pura, testeada) en el hub; reanudación bajo RLS (`realtime_events_read`) + filtro explícito; payload mínimo sin montos/nombres/textos; el NOTIFY es solo un aviso (se lee la fila real: un NOTIFY forjado no cambia destinatarios). `RealtimeStreamFlowTest` prueba que otra PYME, otro transportista y otro conductor de la misma empresa no reciben nada | Entrega al mejor esfuerzo (los clientes refrescan por REST) |
+| Agotamiento por conexiones SSE | Máx. 5 streams por usuario (`429 LOGYX-RTM-001`), latido 20 s que detecta caídas, cierre al vencer el JWT; la web abre una sola conexión por pestaña vía proxy (`/eventos`) que aborta la petición al backend si el navegador corta | El límite es por instancia; el proxy debe permitir respuestas largas (`X-Accel-Buffering: no`, timeouts de lectura > 20 s) |
 | Pérdida de avisos / recálculos | Outbox transaccional con reintentos y dead letter (`FAILED`) | Revisar `FAILED` a mano (sin alerta automática aún) |
 | Archivos maliciosos / path traversal | Formato por firma binaria (jpg/png/pdf), tamaño máx. 10 MB, claves generadas por el servidor y validadas (`..`, `/` inicial) en disco y S3; descarga por la API con RLS | Sin antivirus; sin URLs firmadas |
 | Exposición de secretos | Nada en el repo: `infra/.env` y `infra/secrets/` en `.gitignore`; claves JWT montadas como secretos; contraseñas de BD por env | Rotación manual |
@@ -41,3 +43,6 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 3. TLS en el proxy delante de web y API; `COOKIE_SECURE=true` (por omisión en prod); `TRUSTED_PROXIES` = red del proxy.
 4. Backups de Postgres y del bucket; Postgres y MinIO sin puertos públicos.
 5. Revisar `outbox_events` en estado `FAILED` y los logs `ERROR`.
+6. Proxy delante de API/web: sin buffering ni compresión en `text/event-stream` (`/api/v1/events/stream` y `/eventos` de la
+   web), timeout de lectura ≥ 60 s. Con varias réplicas de la API, todas contra la misma BD (fan-out por LISTEN/NOTIFY);
+   si hay PgBouncer en modo transacción, el LISTEN necesita conexión directa (o modo sesión) al datasource `app`.

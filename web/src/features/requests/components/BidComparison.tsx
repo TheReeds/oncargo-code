@@ -16,6 +16,7 @@ import type { BidView } from '@/lib/api/server';
 import { CounterOfferCard } from '@/features/negotiation/components/CounterOfferCard';
 import { CounterOfferDialog } from '@/features/negotiation/components/CounterOfferDialog';
 import { useCounterOffers } from '@/features/negotiation/components/NegotiationSheet';
+import { useRequestState } from './RequestLive';
 import { OPEN_THREAD_EVENT } from '@/features/negotiation/usePolling';
 
 export function diffPct(amount: number, suggested?: number | null) {
@@ -103,7 +104,13 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
   );
 }
 
-export default function BidComparison({ bids, suggested, canAccept, floor, canNegotiate }: { bids: BidView[]; suggested?: number | null; canAccept: boolean; floor?: number | null; /** Solicitud publicada: permite conversar y contraofertar. */ canNegotiate?: boolean }) {
+export default function BidComparison({ bids: initialBids, suggested, requestId, requestStatus, floor }: { bids: BidView[]; suggested?: number | null; requestId: string; requestStatus: string; floor?: number | null }) {
+  // Se actualiza en vivo (RequestLiveSync) sin recargar la página.
+  const live = useRequestState({ request: { id: requestId, status: requestStatus }, bids: initialBids });
+  const bids = live.bids;
+  const published = (live.request.status ?? requestStatus) === 'PUBLISHED';
+  const canAccept = published;
+  const canNegotiate = published;
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const sorted = [...bids].sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0));

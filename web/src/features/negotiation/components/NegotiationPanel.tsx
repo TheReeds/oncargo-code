@@ -8,12 +8,12 @@ import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { formatMoney } from '@/lib/format';
 import type { ChatThread } from '../server';
-import { OPEN_THREAD_EVENT, usePolling } from '../usePolling';
+import { OPEN_THREAD_EVENT, useNegotiationLive } from '../usePolling';
 import { ThreadList } from './ThreadList';
 import { ChatPanel } from './ChatPanel';
 
 /** PYME: panel "Conversación" de una solicitud (hilos por transportista + chat). */
-export default function NegotiationPanel({ requestId, requestStatus, initialThreads, initialCarrierOrgId, readOnly, pollMs = 8000 }: { requestId: string; requestStatus: string; initialThreads: ChatThread[]; initialCarrierOrgId?: string | null; readOnly?: boolean; pollMs?: number }) {
+export default function NegotiationPanel({ requestId, requestStatus, initialThreads, initialCarrierOrgId, readOnly, pollMs = 30000 }: { requestId: string; requestStatus: string; initialThreads: ChatThread[]; initialCarrierOrgId?: string | null; readOnly?: boolean; pollMs?: number }) {
   const [threads, setThreads] = useState<ChatThread[]>(initialThreads);
   const [selected, setSelected] = useState<string | null>(initialCarrierOrgId ?? initialThreads[0]?.carrierOrgId ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,11 @@ export default function NegotiationPanel({ requestId, requestStatus, initialThre
     setError(null);
     setThreads(data);
   }, [requestId]);
-  usePolling(() => { refresh(); }, pollMs);
+  useNegotiationLive(() => { refresh(); }, {
+    types: ['message.posted', 'counter_offer.updated', 'bid.placed', 'request.matched'],
+    match: (e) => e.data.requestId === requestId,
+    fallbackMs: pollMs,
+  });
 
   const select = useCallback((id: string) => {
     setSelected(id);

@@ -4,13 +4,14 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveRefresh, useRealtime } from '@/lib/realtime';
 import { notificationHref, type NotifOrg } from '@/lib/notification-links';
 import { NotificationItem, type NotificationRow } from './NotificationItem';
 
-const POLL_MS = 30_000;
+const FALLBACK_MS = 60_000;
 type Row = NotificationRow & { relatedType?: string; relatedId?: string };
 
-/** Campana de la barra superior: contador de no leídas (polling), últimas notificaciones y accesos a /notificaciones. */
+/** Campana de la barra superior: contador de no leídas (tiempo real; respaldo lento), últimas notificaciones y accesos a /notificaciones. */
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -35,14 +36,16 @@ export default function NotificationBell() {
     refreshCount();
   }, [refreshCount]);
 
-  useEffect(() => {
-    refreshCount();
-    const t = setInterval(() => { refreshCount(); if (openRef.current && !document.hidden) loadList(); }, POLL_MS);
-    const onVisible = () => { if (!document.hidden) refreshCount(); };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
-  }, [refreshCount, loadList]);
+  useEffect(() => { refreshCount(); }, [refreshCount]);
+
+  // `notification.created` trae el contador exacto; si el panel está abierto se recarga la lista.
+  useRealtime(['notification.created'], (e) => {
+    const n = Number(e.data.unreadCount);
+    if (Number.isFinite(n)) setUnread(n); else refreshCount();
+    if (openRef.current) loadList();
+  });
+  // Al reconectar y, solo sin conexión en vivo, cada minuto.
+  useLiveRefresh({ types: [], refresh: () => { refreshCount(); if (openRef.current && !document.hidden) loadList(); }, fallbackMs: FALLBACK_MS });
 
   function onOpenChange(o: boolean) {
     setOpen(o);
@@ -75,7 +78,7 @@ export default function NotificationBell() {
         <button type="button" className="relative rounded-input p-2 text-ink-700 hover:bg-steel-100" aria-haspopup="dialog">
           <Bell className="size-5" aria-hidden="true" />
           <span className="sr-only">{unread > 0 ? `Notificaciones, ${unread} sin leer` : 'Notificaciones'}</span>
-          {unread > 0 && <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-4 text-white">{badge}</span>}
+          {unread > 0 && <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-4 text-on-solid">{badge}</span>}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(24rem,calc(100vw-1.5rem))] p-0" aria-label="Notificaciones">

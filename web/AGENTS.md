@@ -1,6 +1,6 @@
 # LOGYX Web — guía para agentes
 
-Astro 7 (SSR, `@astrojs/node` standalone) · Tailwind 4 · islas React + primitivas estilo shadcn/ui · lucide · MapLibre GL (OpenFreeMap positron) · Geist Sans/Mono (fontsource).
+Astro 7 (SSR, `@astrojs/node` standalone) · Tailwind 4 · islas React + primitivas estilo shadcn/ui · lucide · MapLibre GL (OpenFreeMap positron/dark) · Geist Sans/Mono (fontsource).
 Contexto general: `../AGENTS.md`. Sistema de diseño: `../docs/design/DESIGN.md`. Contrato: `../docs/api/openapi.yaml`.
 
 > **ANTES de crear o modificar UI lee la skill `../.claude/skills/logyx-design-system/SKILL.md`** (+ `references/web.md`: catálogo de componentes, ejemplos, do/don't, trampas). Copy: `../docs/design/CONTENT.md`. Catálogo visual vivo: http://localhost:4321/dev/ui (solo dev, 404 en prod).
@@ -89,11 +89,12 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - Radio: tarjetas `rounded-card` (10px), inputs `rounded-input` (8px), chips `rounded-full`.
 - Siempre `StatusPill` para estados, `RouteLine` para rutas, `KpiTile` (máx. 4 por fila), `EmptyState` con camión.
 - Formatos: `formatMoney` (`S/ 1,850.00`), `formatDateTime` (`28 nov · 08:00`, zona America/Lima), `formatDate`, `formatTons`, `formatKm`.
+- Modo oscuro: `html[data-theme=dark]` redefine los tokens (ver DESIGN.md). Sin hex/`bg-white`/`text-white` sobre rellenos (usa `text-on-solid`; `bg-chrome` para fondos oscuros fijos; `bg-scrim`). Toggle `ui/theme-toggle` (topbar y Public), preferencia en `localStorage logyx-theme`, script anti-parpadeo en `Base.astro`, `lib/theme.ts` (`useResolvedTheme`). Mapas: estilo `dark` de OpenFreeMap. Spec `a11y-dark.spec.ts`.
 - Accesibilidad: todo input con `<Label>`/`Field`, errores con `role="alert"`, foco visible global, enlace "Saltar al contenido", navegación lateral colapsable en tablet/móvil.
 
 ## Módulos fase 3
 - Paneles del envío (`shipments/components/ShipmentExtras`): pestañas Documentos / Calificación / Incidencias + banner `hasActiveIncident`; cada panel carga sus datos por Astro Actions.
-- Polling: chat ~8 s, campana ~30 s, alertas del operador ~30 s; todos pausan con la pestaña oculta. Descarga de documentos solo por `/documentos/<id>` (el token no sale del servidor).
+- Tiempo real: ver la sección "Tiempo real" (reemplaza al polling de chat, campana y operador). Descarga de documentos solo por `/documentos/<id>` (el token no sale del servidor).
 - Enlaces de notificaciones: `lib/notification-links.ts`. Operador: `/operador/*` solo OPERATOR (middleware), `homeFor` → `/operador`.
 - e2e: specs por módulo (`negotiation`, `reputation`, `documents`, `incidents`, `notifications`, `operator`, `a11y-*`); helpers `openBidScenario`, `deliveredShipment` (envío entregado vía API), `operatorToken`. Backend de pruebas: `MAVEN_OPTS=-Xmx512m ./mvnw quarkus:dev -Dquarkus.http.port=8180 -Dlogyx.operator.sla=PT0S` (SLA 0 para poder asignar manualmente; con 24 h ese test se salta). Si `astro dev` ya tiene lock, levanta uno con `--ignore-lock` y usa `E2E_BASE_URL`. Usa `--workers=1`.
 
@@ -103,6 +104,24 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - El login del transportista sigue yendo a `/transportista/marketplace`; `/transportista` es "Tu actividad".
 - e2e: `trips.spec.ts`, `a11y-trips.spec.ts` (helpers `tripScenario`, `publishTrip`, `bookTrip`); las capturas de retornos dependen de los datos demo (carrier@logyx.pe).
 
+## Tiempo real (SSE, ADR-0007)
+- `GET /eventos` (`pages/eventos.ts`): proxy autenticado (cookie `logyx_session` → Bearer) hacia `/api/v1/events/stream`; el JWT no sale del servidor. `middleware.ts` lo deja pasar a todos los roles (incluido conductor). Mismo origen: la CSP (`connect-src 'self'`) no cambia.
+- `lib/realtime.ts`: una sola `EventSource` por pestaña (singleton), reconexión con espera y `Last-Event-ID`, estado `connecting|live|reconnecting|offline` (también en `html[data-realtime]`). API: `subscribe`, `onStatus`, `onResync`, hooks `useRealtime(types, fn)`, `useRealtimeStatus()` y **`useLiveRefresh({ types, match, refresh, fallbackMs, debounceMs })`**: refresca con el evento (agrupado), al (re)conectar y con un polling de respaldo lento (60 s; 30 s en el chat) **solo cuando no está "live"**; pausado con la pestaña oculta.
+- `components/layout/LiveIndicator` en el topbar de `AppShell` ("En vivo" / "Reconectando…"). Páginas solo-SSR: `ui/live-region` + `lib/live-region.ts` (reemplazo suave de `[data-live-region]`).
+- Los eventos son avisos con payload mínimo: la isla vuelve a pedir los datos por Astro Action (`requests.detail`, `shipments.list`, `incidents.get`, `trips.myBookings|smartLoads|detail`, `notifications.*`, `negotiation.*`).
+| Pantalla | Eventos |
+|---|---|
+| Campana (`NotificationBell`) | `notification.created` (usa `unreadCount`; recarga la lista si está abierta). `/notificaciones`: igual |
+| Chat / contra-ofertas (`ChatPanel`, `NegotiationPanel`, `useCounterOffers`) | `message.posted` (mismo `requestId` + `carrierOrgId`), `counter_offer.updated`, `bid.placed`, `request.matched`; `NEGOTIATION_EVENT` tras acción propia |
+| Detalle de solicitud PYME (`RequestLive`, `BidComparison`, `AuctionCard`) | `bid.placed`, `counter_offer.updated`, `request.matched` (toast), `auction.updated` del `requestId` |
+| Marketplace | `auction.updated` (conteo de ofertas y cierre en sitio) |
+| Mis ofertas (`LiveRegion`) | `bid.accepted`, `bid.rejected`, `bid.placed`, `counter_offer.updated` |
+| Envíos (`TrackingSplit`), `ShipmentExtras > IncidentsPanel`, `/conductor` (`LiveRegion`) | `shipment.status_changed|stop_updated|driver_assigned`, `incident.reported|updated` |
+| Incidencias (`IncidentsList`, `IncidentDetail`) y panel del operador | `incident.reported|updated` (el operador además refresca cada 60 s: el SLA depende del reloj) |
+| Viajes (`MyBookings`, `TripDetail`, `/transportista/viajes`) y Smart Load | `trip_booking.updated`, `trip.cancelled`; `smart_load.suggested|accepted` |
+- Agregar un evento a una pantalla: `useLiveRefresh` con `types` + `match`; si no hay action de lectura, créala en `features/<f>/actions.ts`. Los `setInterval` solo se aceptan para relojes (`Countdown`) o respaldo vía `useLiveRefresh`.
+- e2e: `realtime.spec.ts` (indicador, oferta, chat y campana en vivo, sin recargar y sin depender del respaldo).
+
 ## Producción: contenedor, entorno y seguridad
 - `web/Dockerfile` (multi-stage, node:22-alpine, usuario `node`, puerto 4321, healthcheck `GET /login`): `docker build -t logyx-web web/`. Runtime = `dist/` + `node_modules` de producción.
 - Variables de runtime: `API_URL` (en `lib/api/client.ts` `process.env.API_URL` tiene prioridad sobre `import.meta.env`, así no se congela en el build), `HOST`/`PORT`, `COOKIE_SECURE` (`true|false`; por defecto `true` en prod; usa `false` si se sirve por http, p. ej. compose local; `INSECURE_COOKIES=1` sigue funcionando), `HSTS=true` (fuerza `Strict-Transport-Security` aunque la petición no llegue por https; si no, se envía solo en prod y con https / `X-Forwarded-Proto: https`).
@@ -111,4 +130,4 @@ Reglas: espera la hidratación con `goto()`/`hydrated()` de `helpers/ui.ts` (isl
 - `X-Forwarded-For`: login y registro (`features/auth`) reenvían a la API la IP del navegador (`ctx.clientAddress`) para el rate limiting por cliente. Detrás de un proxy, Astro solo usa el `X-Forwarded-For` entrante si el host está validado (`security.allowedDomains`); de lo contrario `clientAddress` es la IP del proxy.
 
 ## Pendientes conocidos
-Modo oscuro, tiempo real (hoy polling), polling de tracking, vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.
+Vista global de solicitudes/envíos del operador (falta endpoint), mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

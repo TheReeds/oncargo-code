@@ -68,6 +68,7 @@ sobre los objetos de dominio.
 | `operator` | alertas SLA, métricas, candidatos y asignación manual (RN10); sin tablas propias | políticas de escritura (V9) |
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
 | `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
+| `realtime` | stream SSE `GET /api/v1/events/stream` alimentado por el outbox (ADR-0007) | `realtime_events` (V12) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
 `reputation → shipment, documents`; `incident → shipment`; `marketplace → reputation` (Trust Score en ofertas);
@@ -95,9 +96,23 @@ solo en esa transacción). No uses `AFTER_SUCCESS` para efectos que no deben per
 | `TripCancelled` | `TripService.cancel` | notification (a cada PYME con reserva activa) |
 | `SmartLoadSuggested` | `SmartLoadService.generate*` (a demanda y job) | notification (al transportista) |
 | `SmartLoadAccepted` | `SmartLoadService.accept` | notification (a cada PYME agrupada, RF33) |
+| `ShipmentStopUpdated`, `DriverAssigned` | `TrackStopsUseCase.arrive/complete`, `AssignDriverUseCase` | realtime (solo) |
+| (todos los anteriores) + `NotificationsPublished` (síncrono, no outbox) | `NotificationPublisher` | realtime (`RealtimeProjector`) |
 Para un aviso nuevo: agrega el record (`implements OutboxEvent`) al módulo que publica, dispara el evento y un método
 `@Observes @Outboxed` en `NotificationObservers` (los textos van ahí, en español). El evento debe traer los datos que el aviso
 necesita y es un formato persistido: agrega campos, no los renombres. `ReputationRecalculator` también consume por outbox.
+
+### Tiempo real (ADR-0007)
+`realtime/`: `RealtimeProjector` (`@Observes @Outboxed`, en la transacción del despacho) escribe en `realtime_events` (V12)
+**una fila por destinatario** (`domain/model/Recipient`: organización, usuario-conductor o difusión por tipo) con payload
+mínimo (ids/estados/contadores; nunca montos, nombres, rutas ni textos). Trigger → `pg_notify('logyx_realtime', seq)` al
+confirmar; `infrastructure/messaging/PgRealtimeListener` (un hilo y una conexión del datasource `app` por instancia) pasa
+los seq a `RealtimeHub`, que lee las filas (SystemTx) y entrega a sus conexiones SSE que cumplen
+`domain/RealtimeAudiencePolicy` (misma regla que la política RLS `realtime_events_read`). Reanudación
+(`Last-Event-ID`/`?lastEventId=`) en `RealtimeStreamService.replay`, `@Transactional` bajo RLS + filtro explícito.
+Config `logyx.realtime.*` (latido 20 s, 5 conexiones por usuario → `LOGYX-RTM-001`, replay 500 → `stream.resync`,
+retención 24 h). Evento nuevo: tipo en `RealtimeEventTypes`, método en el proyector (payload mínimo + destinatarios), fila
+en `docs/api/CHANGELOG.md` y test de aislamiento en `RealtimeStreamFlowTest` (cliente SSE de tests: `support/SseClient`).
 
 ### Almacenamiento de archivos (ADR-0005, ADR-0006)
 `documents/application/port/out/DocumentStorage`; `infrastructure/storage/DocumentStorageProducer` elige por
@@ -193,6 +208,8 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   - `ReputationRecalculator.recalculate`: quien califica actualiza la reputación de otra organización;
     `reputation_scores` es de solo lectura para `logyx_app`.
   - `NotificationObservers.operators`: ids de las organizaciones operadoras (dentro del despacho del outbox).
+  - `RealtimeHub.onCommitted/catchUp` y `RealtimeMaintenance` (realtime): el listener LISTEN/NOTIFY no tiene usuario; lee
+    filas ya dirigidas y filtra en memoria por destinatario. El proyector escribe dentro del despacho del outbox.
   - `DirectContractUseCase.create` (marketplace): al confirmar una reserva de viaje, el transportista debe escribir la solicitud
     (de la PYME, `requests_owner`) y la oferta (suya) a la vez; ninguna transacción de usuario puede con ambas bajo RLS.
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
@@ -207,6 +224,7 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   las dos partes leen/actualizan, solo la PYME (`PYME`) inserta, operador lee, sin DELETE; `smart_load_*` → solo el transportista
   dueño (+ lectura del operador, RF59).
 - La transacción de `SystemTx` no ve lo no confirmado de la transacción externa de usuario (ver comentario en `PlaceBidUseCase`).
+- `realtime_events` (V12): `logyx_app` solo SELECT de lo dirigido a su organización o a su tipo (sin INSERT/UPDATE/DELETE).
 - `outbox_events` (V11): `logyx_app` solo INSERT con `actor_org_id = app_org()`. `DatabasePrivilegesTest` prueba que
   `logyx_api` no puede `RESET ROLE`/`SET ROLE` a un rol privilegiado, alterar tablas/políticas ni leer sin organización.
 
@@ -239,6 +257,7 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
 | INC | `001` ya hay activa, `002` transición inválida (`status`), `003` faltan notas (`resolutionNotes`), `004` cerrada, `005` envío cancelado |
 | OPS | `001` SLA no vencido (RN10), `002` no es transportista (`carrierOrgId`) |
+| RTM | `001` (429) más de `logyx.realtime.max-connections-per-user` streams abiertos del usuario |
 | TRP | `001` capacidad > vehículo (RN12, `capacityKg`), `002` salida no futura (`departureAt`), `003` viaje sin reservas, `004` peso > restante (`weightKg`), `005` transición de viaje inválida, `006` reserva ya resuelta, `007` viaje con envíos ya salidos, `008` sugerencia ya resuelta, `009` sugerencia vencida, `010` carga no compatible con el vehículo (`cargoType`), `011` carga de la sugerencia ya no disponible |
 | SHP (nuevo) | `003` solo se cancela un envío que aún no salió |
 `BusinessException` admite `field` (`badRequest/conflict(code, msg, field)`) para que los clientes marquen el campo:

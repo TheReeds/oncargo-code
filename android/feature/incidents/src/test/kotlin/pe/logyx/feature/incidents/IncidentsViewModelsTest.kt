@@ -3,6 +3,8 @@ package pe.logyx.feature.incidents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -117,41 +119,68 @@ class IncidentsViewModelsTest {
 
     @Test fun `la lista detecta incidencia activa y ordena por fecha`() {
         val old = incident("a", IncidentStatus.RESOLVED, false).copy(createdAt = "2026-10-01T10:00:00-05:00")
-        val vm = IncidentsListViewModel("s1", FakeIncidents(list = listOf(old, incident("b"))))
+        val vm = IncidentsListViewModel("s1", FakeIncidents(list = listOf(old, incident("b"))), FakeRealtime())
         val s = vm.state.value
         assertFalse(s.loading); assertTrue(s.hasActive); assertEquals(listOf("b", "a"), s.items.map { it.id })
     }
 
     @Test fun `la lista sin incidencias activas permite reportar`() {
-        val vm = IncidentsListViewModel("s1", FakeIncidents(list = listOf(incident("a", IncidentStatus.CLOSED, false))))
+        val vm = IncidentsListViewModel("s1", FakeIncidents(list = listOf(incident("a", IncidentStatus.CLOSED, false))), FakeRealtime())
         assertFalse(vm.state.value.hasActive)
     }
 
     @Test fun `el detalle carga, expone la organizacion y permite comentar solo si esta activa`() {
-        val vm = IncidentDetailViewModel("i1", FakeIncidents(), FakeAuth("org-p"))
+        val vm = IncidentDetailViewModel("i1", FakeIncidents(), FakeAuth("org-p"), FakeRealtime())
         assertEquals("org-p", vm.state.value.organizationId); assertTrue(vm.state.value.canComment)
-        val closed = IncidentDetailViewModel("i1", FakeIncidents(detail = Result.success(incident(status = IncidentStatus.RESOLVED, active = false))), FakeAuth())
+        val closed = IncidentDetailViewModel("i1", FakeIncidents(detail = Result.success(incident(status = IncidentStatus.RESOLVED, active = false))), FakeAuth(), FakeRealtime())
         assertFalse(closed.state.value.canComment)
     }
 
     @Test fun `comentar actualiza el hilo y limpia el borrador`() {
         val withComment = incident(comments = listOf(IncidentCommentView("c1", "org-p", "Ana", "Hola")))
-        val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.success(withComment) }), FakeAuth())
+        val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.success(withComment) }), FakeAuth(), FakeRealtime())
         vm.onDraft("Hola"); vm.send()
         assertEquals(1, vm.state.value.incident?.comments?.size); assertEquals("", vm.state.value.draft); assertFalse(vm.state.value.sending)
     }
 
     @Test fun `comentar con error conserva el borrador y avisa`() {
-        val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.failure(ApiException(0, null, "Sin conexión.")) }), FakeAuth())
+        val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.failure(ApiException(0, null, "Sin conexión.")) }), FakeAuth(), FakeRealtime())
         vm.onDraft("Hola"); vm.send()
         assertEquals("Hola", vm.state.value.draft); assertEquals("Sin conexión.", vm.state.value.message?.text)
     }
 
     @Test fun `el detalle con error muestra el mensaje y reintenta con refresh`() {
         val inc = FakeIncidents(detail = Result.failure(ApiException(404, null, "No encontramos la incidencia.")))
-        val vm = IncidentDetailViewModel("i1", inc, FakeAuth())
+        val vm = IncidentDetailViewModel("i1", inc, FakeAuth(), FakeRealtime())
         assertEquals("No encontramos la incidencia.", vm.state.value.error)
         inc.detail = Result.success(incident()); vm.refresh()
         assertNull(vm.state.value.error); assertNotNull(vm.state.value.incident)
+    }
+
+    @Test fun `detalle refresca con incident updated de su incidencia y no con otra`() = runTest(UnconfinedTestDispatcher()) {
+        val inc = FakeIncidents()
+        val rt = FakeRealtime()
+        val vm = IncidentDetailViewModel("i1", inc, FakeAuth(), rt)
+        val job = launch { vm.liveLoop(commentsPollMs = 3_600_000) }
+        inc.detail = Result.success(incident(status = IncidentStatus.IN_REVIEW))
+        rt.emit(RealtimeTypes.INCIDENT_UPDATED, "incidentId" to "otra", "shipmentId" to "s1")
+        assertEquals(IncidentStatus.OPEN, vm.state.value.incident?.status)
+        rt.emit(RealtimeTypes.INCIDENT_UPDATED, "incidentId" to "i1", "shipmentId" to "s1")
+        assertEquals(IncidentStatus.IN_REVIEW, vm.state.value.incident?.status)
+        job.cancel()
+    }
+
+    @Test fun `lista de incidencias refresca con incident reported del envio`() = runTest(UnconfinedTestDispatcher()) {
+        val inc = FakeIncidents()
+        val rt = FakeRealtime()
+        val vm = IncidentsListViewModel("s1", inc, rt)
+        val job = launch { vm.liveLoop() }
+        assertEquals(0, vm.state.value.items.size)
+        inc.list = listOf(incident("a"))
+        rt.emit(RealtimeTypes.INCIDENT_REPORTED, "incidentId" to "a", "shipmentId" to "otro")
+        assertEquals(0, vm.state.value.items.size)
+        rt.emit(RealtimeTypes.INCIDENT_REPORTED, "incidentId" to "a", "shipmentId" to "s1")
+        assertEquals(1, vm.state.value.items.size)
+        job.cancel()
     }
 }

@@ -8,13 +8,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
 import pe.logyx.core.data.NotificationsRepository
+import pe.logyx.core.data.RealtimeRepository
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.model.RealtimeEvent
+import pe.logyx.core.model.RealtimeTypes
 
 /** Contador de notificaciones sin leer, compartido entre el badge de la barra inferior y el centro de notificaciones. */
 class UnreadCounter(private val repo: NotificationsRepository) {
@@ -24,6 +27,15 @@ class UnreadCounter(private val repo: NotificationsRepository) {
     /** Consulta el backend; si falla (sin red, etc.) conserva el último valor. */
     suspend fun refresh() {
         repo.unreadCount().onSuccess { _count.value = it.coerceAtLeast(0) }
+    }
+
+    /**
+     * Reacciona a una señal de tiempo real: `notification.created` trae `unreadCount` (se usa directo, sin pedir nada);
+     * un resync o un tick de respaldo (`null`) consultan al backend.
+     */
+    suspend fun onSignal(event: RealtimeEvent?) {
+        val n = event?.takeIf { it.type == RealtimeTypes.NOTIFICATION_CREATED }?.long("unreadCount")
+        if (n != null) set(n.toInt()) else refresh()
     }
 
     fun set(n: Int) { _count.value = n.coerceAtLeast(0) }
@@ -36,24 +48,23 @@ class UnreadCounter(private val repo: NotificationsRepository) {
     fun clear() { _count.value = 0 }
 }
 
-const val UNREAD_POLL_MS = 30_000L
+/** Respaldo cuando el stream no está en vivo (con el stream en vivo no hay polling). */
+const val UNREAD_POLL_MS = 60_000L
 
 /**
- * Contador de no leídas para el badge de la barra inferior. Hace polling cada ~30 s solo con la app en primer plano
- * (y refresca al volver a ella). Con `enabled = false` (p. ej. conductor o sin sesión) no consulta nada.
+ * Contador de no leídas para el badge de la barra inferior. Se actualiza por tiempo real (`notification.created` trae `unreadCount`), solo con la app en primer plano;
+ * refresca al volver a ella y hace polling de respaldo (60 s) solo si el stream no está en vivo. Con `enabled = false` (p. ej. conductor o sin sesión) no consulta nada.
  */
 @Composable
 fun rememberUnreadCount(enabled: Boolean = true): State<Int> {
     val counter = koinInject<UnreadCounter>()
+    val realtime = koinInject<RealtimeRepository>()
     val owner = LocalLifecycleOwner.current
-    LaunchedEffect(enabled, owner, counter) {
+    LaunchedEffect(enabled, owner, counter, realtime) {
         if (enabled) {
             owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (true) {
-                    counter.refresh()
-                    // Tiempo real (no el reloj virtual de los tests de Compose, que convertiría esto en un bucle caliente).
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { delay(UNREAD_POLL_MS) }
-                }
+                counter.refresh()
+                realtime.refreshSignals(setOf(RealtimeTypes.NOTIFICATION_CREATED), UNREAD_POLL_MS).collect { counter.onSignal(it) }
             }
         }
     }

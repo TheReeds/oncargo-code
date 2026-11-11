@@ -16,6 +16,8 @@ const handle = defineMiddleware(async (ctx, next) => {
   ctx.locals.session = session;
 
   if (pathname.startsWith('/_actions')) return next();
+  // Stream en tiempo real (proxy SSE): sin sesión responde 401 (no redirige) y lo usan todos los roles, incluido el conductor.
+  if (pathname === '/eventos') return next();
 
   const isPublic = PUBLIC.includes(pathname);
   if (!session) {

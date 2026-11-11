@@ -49,7 +49,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxTheme
@@ -65,21 +64,27 @@ import pe.logyx.core.designsystem.components.Refreshable
 import pe.logyx.core.designsystem.components.SegmentedControl
 import pe.logyx.core.designsystem.components.SkeletonList
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
+import org.koin.compose.koinInject
+import pe.logyx.core.data.RealtimeRepository
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.NotificationType
 import pe.logyx.core.model.NotificationView
 
 /** Centro de notificaciones (pestaña, sin atrás). La navegación por `relatedType/relatedId` la cablea `:app` en [onOpen]. */
 @Composable
-fun NotificationsRoute(onOpen: (NotificationView) -> Unit, vm: NotificationsViewModel = koinViewModel()) {
+fun NotificationsRoute(
+    onOpen: (NotificationView) -> Unit,
+    vm: NotificationsViewModel = koinViewModel(),
+    realtime: RealtimeRepository = koinInject(),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val owner = LocalLifecycleOwner.current
-    // Refresca al volver a primer plano/entrar y cada ~30 s mientras la pantalla está visible.
-    LaunchedEffect(owner) {
+    // Refresca al entrar/volver a primer plano y con cada `notification.created` (respaldo 60 s solo sin stream en vivo).
+    LaunchedEffect(owner, realtime) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            while (true) {
-                vm.poll()
-                delay(UNREAD_POLL_MS)
-            }
+            vm.poll()
+            realtime.refreshSignals(setOf(RealtimeTypes.NOTIFICATION_CREATED), UNREAD_POLL_MS).collect { vm.poll() }
         }
     }
     NotificationsScreen(

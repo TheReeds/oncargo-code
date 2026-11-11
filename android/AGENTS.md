@@ -7,7 +7,7 @@ Contexto global en `../AGENTS.md`; contrato de API en `../docs/api/openapi.yaml`
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk      # el JDK por defecto de la máquina es 27
 cd android
-./gradlew assembleDebug testDebugUnitTest          # verificación obligatoria
+./gradlew assembleDebug testDebugUnitTest :core:network:test   # verificación obligatoria
 ./gradlew installDebug                             # emulador/dispositivo (API en http://10.0.2.2:8080)
 ```
 - `local.properties` (gitignored) debe tener `sdk.dir=/home/<user>/Android/Sdk`.
@@ -65,12 +65,12 @@ El tráfico HTTP en claro solo se permite en **debug** (`app/src/debug/res/xml/n
 :feature:requests     PYME: mis solicitudes, detalle con comparación de ofertas y aceptar/cancelar
 :feature:shipments    Envíos (PYME y transportista): lista, seguimiento con mapa + StopTimeline, asignar conductor
 :feature:driver       Modo conductor: viaje activo, siguiente parada, botón único; evidencia de entrega (foto/firma, cola de subida) y bloqueo RN11
-:feature:negotiation  Chat por solicitud (envío optimista, RN07 bajo el campo, polling 5 s) y lista de hilos (PYME)
+:feature:negotiation  Chat por solicitud (envío optimista, RN07 bajo el campo, tiempo real SSE con respaldo 30 s) y lista de hilos (PYME)
 :feature:incidents    Reportar incidencia (categoría + descripción + foto opcional), lista y detalle con comentarios
 :feature:reputation   Perfil público de organización (Trust Score) y calificar tras la entrega (`canReview`)
 :feature:documents    Documentos/evidencias del envío: miniaturas, visor a pantalla completa, PDF por intent externo
 :feature:trips        Fase 4. Transportista: Mis viajes, Publicar viaje, Detalle con reservas (confirmar/rechazar), Cargas de retorno (oferta con el `vehicleId` sugerido), Sugerencias Smart Load. PYME: pestaña "Viajes" (buscar con filtros, reservar espacio, Mis reservas con cancelar). Datos: `TripsRepository`/`SmartLoadsRepository`
-:feature:notifications Centro de notificaciones + `UnreadCounter`/`rememberUnreadCount` (badge, polling 30 s en primer plano)
+:feature:notifications Centro de notificaciones + `UnreadCounter`/`rememberUnreadCount` (badge por tiempo real `notification.created`, respaldo 60 s)
 ```
 Contra-ofertas: la PYME propone desde la comparación de ofertas (`:feature:requests`) y el transportista acepta/rechaza en "Mis ofertas" (`:feature:loads`).
 **Evidencia de entrega (RN06):** `EvidenceRepository` (`:core:data`) comprime a JPEG <= 2 MB, guarda en `filesDir/evidence` (cola persistente) y sube por `POST /shipments/{id}/documents`; "Entregado" se habilita con >= 1 `DELIVERY_PHOTO` subida. Captura con `TakePicture` (sin permiso CAMERA). Un único `FileProvider` vive en `:app` (`${applicationId}.fileprovider`, `res/xml/file_paths.xml` con los cache-path de driver/incidents/documents): no declares otro provider en un feature (choca al fusionar manifiestos).
@@ -137,6 +137,14 @@ Un 401 en cualquier llamada cierra sesión automáticamente (`dataModule`).
 - Cargas de retorno: se oferta con `LoadsRepository.placeBid(requestId, item.vehicleId, ...)`. Smart Load: aceptar solo avisa a las PYMEs, no oferta.
 - Navegación: el Home del transportista abre `CarrierTrips`, `ReturnLoads` y `SmartLoads` (no hay pestañas nuevas para no pasar de 6); la PYME tiene la pestaña `PymeTrips`. Avisos `TRIP`/`SMART_LOAD` navegan en `openNotification`.
 - Tests instrumentados con campos de texto: el botón puede quedar tapado por el teclado dentro de una hoja; usa `performSemanticsAction(SemanticsActions.OnClick)` en lugar de `performClick`.
+
+## Tiempo real (fase 6, SSE — ADR-0007)
+- **Cliente**: `RealtimeClient` (`:core:network`, Kotlin puro) abre `GET /api/v1/events/stream` con el token actual; `SseParser` es incremental (WHATWG). Reconecta con espera exponencial (1 s a 30 s) enviando `Last-Event-ID`; timeout de request infinito y de socket 60 s (el servidor manda `: ping` cada ~20 s). Tras una reconexión (o `stream.resync`) emite `stream.resync` sintético; `stream.ready` y `stream.expired` no llegan a las pantallas. Un 401 llama a `onUnauthorized` (cierra sesión). `status: StateFlow<RealtimeStatus>` (CONNECTING, LIVE, RECONNECTING, OFFLINE).
+- **Repositorio**: `RealtimeRepository.events` (`SharedFlow`, una sola conexión compartida con `WhileSubscribed(5 s)`: sin suscriptores no hay conexión) y `refreshSignals(types, fallbackMs, match)`: emite por cada evento de `types` que cumpla `match`, por cada `stream.resync` y, **solo si el stream no está LIVE**, un tick de respaldo cada `fallbackMs`.
+- **Solo en primer plano**: cada ViewModel expone `suspend fun liveLoop()` (colecta `refreshSignals` y hace un refresco **silencioso**: `load(initial = false, silent = true)`, sin spinner ni error si ya hay datos) y la pantalla lo lanza con `LiveEffect(viewModel) { viewModel.liveLoop() }` (`:core:designsystem`, `repeatOnLifecycle(STARTED)`). Al pasar a segundo plano se cancela y, 5 s después, se cierra la conexión. Filtra por el id mostrado (`requestId`, `shipmentId`, `incidentId`, `tripId`) en `match`.
+- **Pantallas y eventos**: badge (`rememberUnreadCount`) y Notificaciones: `notification.created` (`data.unreadCount` se usa directo para el badge; la lista se recarga; respaldo 60 s). Chat: `message.posted` del mismo `requestId` + `carrierOrgId` y `counter_offer.updated` (respaldo 30 s). Conductor: cualquier `shipment.*`/`incident.*` (`driver_assigned` puede traer un envío nuevo). Envíos (lista y seguimiento) e incidencias: `shipment.status_changed`/`stop_updated`/`driver_assigned` + `incident.*` del envío mostrado. Detalle de solicitud (PYME): `bid.placed`, `counter_offer.updated`, `request.matched`, `auction.updated` del `requestId`; lista de solicitudes igual sin filtro. Transportista (Home, feed, detalle de carga, Mis ofertas): `auction.updated`, `bid.accepted`, `bid.rejected`, `counter_offer.updated` (el feed solo recarga si sigue en la primera página). Detalle de incidencia: `incident.*` + refresco lento de 30 s (los comentarios no emiten evento). Viajes: `trip_booking.updated`/`trip.cancelled` (Mis viajes, detalle por `tripId`, Mis reservas) y `smart_load.*`.
+- Los eventos son **avisos**: nunca se pinta el payload (salvo `unreadCount`); se vuelve a pedir por REST. Una pantalla nueva en vivo: `liveLoop()` en su ViewModel + `LiveEffect` en el Route; en tests usa un `FakeRealtime` (`MutableSharedFlow` + `MutableStateFlow(LIVE)`; ver `feature/negotiation/src/test/.../FakeRealtime.kt`). En `androidTest`, `FakeKoinRule` registra `OfflineRealtime`.
+- `:core:network` es JVM puro: sus tests (`SseParserTest`, `RealtimeClientTest` con `ktor-client-mock`) corren con `./gradlew :core:network:test` (no con `testDebugUnitTest`).
 
 ## CI
 `.github/workflows/android.yml` corre `./gradlew assembleDebug testDebugUnitTest` (sin emulador) en cada cambio a `android/**` o `docs/api/**`. Los tests instrumentados siguen siendo locales.

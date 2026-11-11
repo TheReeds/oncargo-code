@@ -8,7 +8,7 @@ export function Sheet({ open, onOpenChange, title, description, children }: { op
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-ink-900/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Dialog.Content className={cn('fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-surface shadow-xl focus:outline-none')}>
           <div className="flex items-start justify-between gap-4 border-b border-steel-200 px-5 py-4">
             <div>

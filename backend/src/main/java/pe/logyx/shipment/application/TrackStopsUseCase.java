@@ -10,6 +10,7 @@ import pe.logyx.shared.audit.AuditService;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.tenancy.TenantContext;
 import pe.logyx.shipment.application.event.ShipmentStatusChanged;
+import pe.logyx.shipment.application.event.ShipmentStopUpdated;
 import pe.logyx.shipment.application.port.out.DeliveryEvidenceProvider;
 import pe.logyx.shipment.application.port.out.IncidentHoldProvider;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
@@ -39,6 +40,7 @@ public class TrackStopsUseCase {
     @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject Event<ShipmentStatusChanged> statusChanged;
+    @Inject Event<ShipmentStopUpdated> stopUpdated;
 
     @Transactional
     public ShipmentSummary arrive(UUID shipmentId, UUID stopId) {
@@ -46,6 +48,7 @@ public class TrackStopsUseCase {
         ShipmentStop stop = StopSequencePolicy.requireNext(stops.listByShipment(s.id()), stopId);
         stop.arrive(OffsetDateTime.now());
         stops.save(stop);
+        fireStopUpdated(s, stop);
         return queries.detail(s.id());
     }
 
@@ -67,11 +70,18 @@ public class TrackStopsUseCase {
             audit.record(tenant.profileId(), tenant.orgId(), "SHIPMENT_DELIVERED", "shipment", s.id(), null);
         }
         ShipmentSummary result = queries.detail(s.id());
+        fireStopUpdated(s, stop);
         if (progress.tripStarted() || progress.delivered()) {
             statusChanged.fire(new ShipmentStatusChanged(s.id(), s.requesterOrgId(), s.carrierOrgId(), s.status(),
                     result.routeLabel()));
         }
         return result;
+    }
+
+    /** Tiempo real (ADR-0007): la PYME y el transportista ven el avance sin recargar; el conductor, en sus otros dispositivos. */
+    private void fireStopUpdated(Shipment s, ShipmentStop stop) {
+        stopUpdated.fire(new ShipmentStopUpdated(s.id(), stop.id(), s.requesterOrgId(), s.carrierOrgId(),
+                tenant.profileId(), stop.status().name(), s.status().name()));
     }
 
     private Shipment driverShipment(UUID id) {

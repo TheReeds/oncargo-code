@@ -106,3 +106,29 @@ Campos que envía la API: `ruc`, `email`, `plate`, `amount`, `vehicleId` y los p
 - `StatusPill kind="trip" | "booking" | "smart"` (TripStatus, BookingStatus, SmartLoadStatus); sus claves chocan con las de incidencias/envíos, por eso requieren `kind`.
 - Precio de reserva: `estimateBookingPrice` y `formatTripRate` en `lib/format.ts` (misma regla que el backend).
 - Patrón: `features/trips/*`; la carga de retorno reutiliza `BidSheet` (prop `defaultVehicleId`; solo preselecciona si el vehículo está disponible).
+
+## Modo oscuro
+- `html[data-theme="dark"]` (en `styles/global.css`) **redefine los tokens** (`ink-*`, `steel-*`, `surface`, `petrol-*`, `emerald-*`, `amber-*`, `red-*`) más `chrome`, `on-solid`, `scrim`. Valores y contrastes: `docs/design/DESIGN.md`.
+- Escribe componentes solo con tokens: **nunca** hex, `bg-white`, `text-black`, `bg-black` ni `bg-ink-900/40`. Texto sobre un relleno sólido (`bg-petrol-700`, `bg-emerald-700`, `bg-red-600`, `bg-emerald-500`) = `text-on-solid` (no `text-white`: en oscuro esos rellenos son claros). Fondos oscuros fijos en ambos temas (sidebar, tooltip, hero) = `bg-chrome text-white`. Velo de overlays = `bg-scrim`. SVG: `style={{ fill: 'var(--color-surface)' }}`. Variante `dark:` disponible (`@custom-variant`), pero casi nunca hace falta.
+- Selector: `components/ui/theme-toggle.tsx` (Claro/Oscuro/Sistema, `aria-label="Tema"`), ya montado en el topbar de `AppShell` y en `Public.astro`. Lógica en `lib/theme.ts` (`useResolvedTheme()` para islas que dependen del tema: sonner, mapas).
+- Sin parpadeo: script `is:inline` en el `<head>` de `Base.astro` fija `data-theme` leyendo `localStorage['logyx-theme']` (light|dark|system) antes de pintar. La CSP de producción ya permite `script-src 'unsafe-inline'`; no la endurezcas sin hash.
+- Mapas MapLibre: estilo `positron` en claro, `https://tiles.openfreemap.org/styles/dark` en oscuro; al cambiar el tema `map.setStyle` y se re-agregan fuente/capa/marcadores (ver `TrackingMap.tsx`).
+- e2e: `tests/e2e/a11y-dark.spec.ts` (axe en oscuro). Revisa cada pantalla nueva en ambos temas en `/dev/ui`.
+- Catálogo: `ui/theme-toggle` (`ThemeToggle`, sin props obligatorias) en el encabezado de `/dev/ui`.
+
+## Tiempo real (SSE, ADR-0007)
+- **Regla:** no hagas `setInterval` para datos del servidor. Usa `useLiveRefresh` de `lib/realtime.ts`; los eventos son avisos (payload mínimo) y la isla vuelve a pedir sus datos por Astro Action.
+  ```tsx
+  useLiveRefresh({
+    types: ['bid.placed', 'auction.updated'],               // tipos de CHANGELOG.md (Fase 6)
+    match: (e) => e.data.requestId === requestId,           // filtra por lo que muestras
+    refresh: async () => { const { data } = await actions.requests.detail({ id: requestId }); if (data) setState(data); },
+    fallbackMs: 60_000,                                     // polling de respaldo, SOLO si el stream no está "live"
+  });
+  ```
+  También refresca al (re)conectar (`onResync`). `useRealtime(types, handler)` es la versión sin refresco (p. ej. `notification.created` → `setUnread(data.unreadCount)`). La conexión es una sola por pestaña (`/eventos`).
+- Estado con datos del SSR: la isla recibe los datos iniciales como props, los copia a `useState` y los reemplaza con el resultado de la action de lectura (crea la action en `features/<f>/actions.ts`).
+- Varias islas del mismo detalle: una isla sin UI (`RequestLiveSync`) pide los datos y los reparte por evento de ventana (`useRequestState`), ver `features/requests/components/RequestLive.tsx`.
+- Páginas solo-SSR (sin isla de datos): envuelve el contenido en `<div data-live-region="x">` y monta fuera `<LiveRegion client:load types={[...]} region="x" />` (`ui/live-region`); vuelve a pedir la página y reemplaza la región sin recargar (no actúa con un diálogo abierto ni escribiendo). Úsalo con listas simples; para pantallas con estado local (mapa, pestañas) usa `useLiveRefresh` + action.
+- `layout/LiveIndicator` ("En vivo" / "Reconectando…", `data-testid="live-indicator"`, `data-status`) ya está en el topbar de `AppShell`; no lo repitas. `negotiation/usePolling.ts` → `useNegotiationLive(fn, { types, match })` (suma `NEGOTIATION_EVENT` para refrescar tras una acción propia).
+- e2e: espera `[data-testid=live-indicator][data-status=live]`, marca `window.__noReload = true` y comprueba que sigue tras el evento (`tests/e2e/realtime.spec.ts`); timeouts ≤ 10 s, sin depender del respaldo.
