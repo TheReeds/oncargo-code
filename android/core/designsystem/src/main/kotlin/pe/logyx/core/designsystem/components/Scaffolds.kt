@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * Pantalla estándar: barra superior LOGYX, host de mensajes y fondo steel-100.
+ * Pantalla estándar: barra superior OnCargo, host de mensajes y fondo steel-100.
  * Pásale el [LogyxSnackbarState] de `rememberLogyxSnackbarState()` y usa `MessageEffect` con el mensaje del ViewModel.
  */
 @Composable

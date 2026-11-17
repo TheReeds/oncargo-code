@@ -32,7 +32,7 @@ export default function LiveIndicator({ className }: { className?: string }) {
         {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:animate-none" />}
         <span className={cn('relative inline-flex h-2 w-2 rounded-full', live ? 'bg-emerald-500' : status === 'connecting' ? 'bg-ink-400' : 'bg-amber-500')} />
       </span>
-      <span className={live || status === 'connecting' ? 'sr-only sm:not-sr-only' : ''}>{LABEL[status]}</span>
+      <span className="sr-only sm:not-sr-only">{LABEL[status]}</span>
     </span>
   );
 }

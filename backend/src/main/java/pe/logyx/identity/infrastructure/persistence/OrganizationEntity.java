@@ -32,6 +32,19 @@ public class OrganizationEntity extends PanacheEntityBase {
     @Column(name = "ruc_verification")
     public Organization.RucVerification rucVerification;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status")
+    public Organization.VerificationStatus verificationStatus;
+
+    @Column(name = "verification_note")
+    public String verificationNote;
+
+    @Column(name = "verification_updated_at")
+    public OffsetDateTime verificationUpdatedAt;
+
+    @Column(name = "verification_updated_by")
+    public UUID verificationUpdatedBy;
+
     public String city;
     public String phone;
 
@@ -39,19 +52,30 @@ public class OrganizationEntity extends PanacheEntityBase {
     public OffsetDateTime createdAt;
 
     Organization toDomain() {
-        return new Organization(id, type, legalName, ruc, rucVerification, city, phone, createdAt);
+        return new Organization(id, type, legalName, ruc, rucVerification,
+                new Organization.Verification(verificationStatus, verificationNote, verificationUpdatedAt,
+                        verificationUpdatedBy), city, phone, createdAt);
     }
 
     static OrganizationEntity from(Organization o) {
         OrganizationEntity e = new OrganizationEntity();
+        e.apply(o);
+        return e;
+    }
+
+    void apply(Organization o) {
+        OrganizationEntity e = this;
         e.id = o.id();
         e.type = o.type();
         e.legalName = o.legalName();
         e.ruc = o.ruc();
         e.rucVerification = o.rucVerification();
+        e.verificationStatus = o.verification().status();
+        e.verificationNote = o.verification().note();
+        e.verificationUpdatedAt = o.verification().updatedAt();
+        e.verificationUpdatedBy = o.verification().updatedBy();
         e.city = o.city();
         e.phone = o.phone();
         e.createdAt = o.createdAt();
-        return e;
     }
 }

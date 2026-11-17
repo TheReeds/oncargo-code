@@ -69,11 +69,13 @@ sobre los objetos de dominio.
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
 | `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
 | `realtime` | stream SSE `GET /api/v1/events/stream` alimentado por el outbox (ADR-0007) | `realtime_events` (V12) |
+| `routing` | rutas y km por carretera entre ciudades del catálogo, orden óptimo de paradas, desvíos, `GET /api/v1/routes` (ADR-0008) | sin tablas: dataset `resources/routing/routes.json` |
+| (varios) | huecos de flujo 2026-11-16: verificación de organizaciones, retiro de ofertas, cancelación/reasignación de envíos, estado final RF55, grupos de carga | columnas y políticas en V13 (sin tablas nuevas) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
 `reputation → shipment, documents`; `incident → shipment`; `marketplace → reputation` (Trust Score en ofertas);
 `operator → marketplace, shipment, incident, fleet, reputation`; `trip → fleet, marketplace, shipment, identity, reputation, catalog`;
-`dashboard → trip`; `notification` observa eventos de `trip`. `marketplace` y `shipment` no dependen de `trip`. `shipment` no depende de ellos: usa los puertos
+`dashboard → trip`; `pricing → routing` y `trip → routing` (km por carretera, `RoutePlanner`; trip los pasa a su dominio como `RoadDistances`); `notification` observa eventos de `trip`. `marketplace` y `shipment` no dependen de `trip`. `shipment` no depende de ellos: usa los puertos
 `IncidentHoldProvider` (RN11) y `DeliveryEvidenceProvider` (foto de entrega), implementados en
 `shipment/infrastructure/integration` (igual que `RequestInfoProvider`).
 
@@ -97,6 +99,10 @@ solo en esa transacción). No uses `AFTER_SUCCESS` para efectos que no deben per
 | `SmartLoadSuggested` | `SmartLoadService.generate*` (a demanda y job) | notification (al transportista) |
 | `SmartLoadAccepted` | `SmartLoadService.accept` | notification (a cada PYME agrupada, RF33) |
 | `ShipmentStopUpdated`, `DriverAssigned` | `TrackStopsUseCase.arrive/complete`, `AssignDriverUseCase` | realtime (solo) |
+| `ShipmentStatusChanged` (CANCELLED / DELIVERED por el operador, con `actorOrgId`/`reason`/`requestId`) | `ShipmentLifecycleUseCase` | notification, realtime, `marketplace.RequestLifecycleObserver` (solicitud → CANCELLED), `trip.BookingShipmentObserver` (reserva → CANCELLED + capacidad) |
+| `ShipmentReassigned` | `AssignDriverUseCase` (cambio), `ShipmentLifecycleUseCase.changeVehicle` | notification (a la PYME) |
+| `OrganizationVerificationChanged` | `OrganizationVerificationService` | notification |
+| `AuctionClosed`, `RequestCancelled`, `BidWithdrawn` | `CloseExpiredAuctionsUseCase`, `CancelRequestUseCase`, `PlaceBidUseCase.withdraw` | notification; `BidWithdrawn` y `BidAccepted` también `negotiation.CounterOfferExpiry` (F40) |
 | (todos los anteriores) + `NotificationsPublished` (síncrono, no outbox) | `NotificationPublisher` | realtime (`RealtimeProjector`) |
 Para un aviso nuevo: agrega el record (`implements OutboxEvent`) al módulo que publica, dispara el evento y un método
 `@Observes @Outboxed` en `NotificationObservers` (los textos van ahí, en español). El evento debe traer los datos que el aviso
@@ -124,12 +130,28 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 
 ### Mapa de reglas
 `PriceFloorPolicy` (RN03, pricing) · `TariffCalculator` (motor de costos, pricing) · `BidEligibilityPolicy`
-(RN02/RN03, marketplace) · `AuctionClosingPolicy` (RN04, marketplace) · `ShipmentRequest.ensureRequesterCanPublish`
-(RN01) · `StopSequencePolicy` (RN08, shipment) · `RucValidator` (identity) · `ContactInfoPolicy` (RN07, negotiation)
+(RN02/RN03, marketplace) · `AuctionClosingPolicy` (RN04, marketplace) · `Organization.ensureCanTransact`
+(RN01) · `StopSequencePolicy` (RN08, shipment) · `RucValidator` (identity)
 · `ThreadAccessPolicy` (chat) · `ReviewEligibilityPolicy` (RN06) y `TrustScoreCalculator` (RN09, reputation)
-· `ManualAssignmentPolicy` (RN10, marketplace) · `IncidentStatusPolicy` (RN11, incident) · `DeliveryEvidencePolicy`
+· `ManualAssignmentPolicy` (RN10, marketplace) · `VehicleCargoCompatibility` (RN02 por tipo de carga, fleet)
+· `ResourceSchedulePolicy` (F11, shipment) · `IncidentOutcomePolicy` (RF55, incident) · `Organization.ensureCanTransact`
++ `OrganizationGuard` (RN01, identity) · `ContactInfoPolicy` (RN07, ahora en `shared.domain`) · `IncidentStatusPolicy` (RN11, incident) · `DeliveryEvidencePolicy`
 (shipment) · `DocumentUploadPolicy` (documents) · `TripCapacityPolicy` (RN12), `TripPricingPolicy`, `TripStatusPolicy`,
-`ReturnLoadPolicy`, `SmartLoadPlanner`, `CityProximityPolicy`, `VehicleCargoRules` (trip). Ver `../docs/domain/business-rules.md`.
+`ReturnLoadPolicy`, `SmartLoadPlanner`, `CityProximityPolicy`, `VehicleCargoRules` (trip) · `StopOrderOptimizer`, `RouteCalculator`
+(routing: orden de paradas y desvíos). Ver `../docs/domain/business-rules.md`.
+
+### Módulo `routing` (ADR-0008)
+- **Datos:** `src/main/resources/routing/routes.json`, generado con `python3 -I ../scripts/routing/build_routes.py` (OSRM `driving`,
+  ruta más rápida; matriz **dirigida** de km/min + polylines con Douglas-Peucker a 60 m, precisión 5; atribución ODbL de OSM).
+  Al agregar o mover una ciudad de `City`, regenera el JSON: `ClasspathRouteDatasetTest` falla si no coinciden.
+  Sin dato para un par → `StraightLineEstimate` (línea recta × 1.35) con `estimated = true`.
+- **Uso desde otros módulos:** `routing.application.RoutePlanner` (`distanceKm`, `leg`, `route`, `shortestTour`, `planLoads`,
+  `detour`, `detourKm`, `geometry`, `attribution`). Puerto `application/port/out/RouteDataset`
+  (hoy `infrastructure/dataset/ClasspathRouteDataset`; un OSRM propio para direcciones arbitrarias sería otro adaptador).
+- **Algoritmos (dominio puro):** `StopOrderOptimizer` (Held-Karp exacto ≤ 13 nodos con partida y llegada fijas y precedencias
+  recojo → entrega; más nodos: vecino más cercano + reubicación/2-opt), `RouteCalculator` (recorridos, orden de recojos/entregas,
+  desvío por mejor inserción con partida y llegada fijas).
+- **API:** `RoutingResource` `GET /api/v1/routes?stops=A,B,C[&optimize=true]` (cualquier rol autenticado; sin datos de organización).
 
 ### Módulo `trip` (fase 4)
 - **Viajes** (`CarrierTrip`, `TripService`): el transportista publica ciudad origen/destino del corredor, salida futura, vehículo
@@ -148,12 +170,14 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   Cancelar una reserva confirmada cancela el envío con `shipment/application/CancelShipmentUseCase` (solo `PENDING`, si no
   `LOGYX-SHP-003`); la solicitud MATCHED queda como histórico (no se reabre).
 - **Retornos** (`ReturnLoadService` + `ReturnLoadPolicy`): sin tablas; cruza los envíos IN_TRANSIT/DELIVERED (≤ 3 días) del transportista
-  con `MarketplaceQueries.openRequests`. Proximidad en `CityProximityPolicy` (tabla de pares cercanos del corredor; hoy solo
-  Juliaca–Puno = 44 km; el resto = línea recta × 1.35). Radios: retorno 50 km, Smart origen 50 km, destino 80 km.
+  con `MarketplaceQueries.openRequests`. Proximidad en `CityProximityPolicy` con km **por carretera** (`RoadDistances` =
+  `routing.application.RoutePlanner::distanceKm`, ADR-0008; Juliaca–Puno = 43 km). Radios: retorno 50 km, Smart origen 50 km, destino 80 km.
 - **Smart Load** (`SmartLoadPlanner` puro + `SmartLoadService`): ver `docs/api/CHANGELOG.md`. A demanda corre bajo RLS del
   transportista; el job `TripScheduler` (`logyx.smartload.every`, 15 m; `%test` = `off`) corre sin usuario y recorre todos los
-  transportistas (`FleetService.availableVehicles`, `MarketplaceQueries.openRequestsForPlanning`). **Aceptar solo marca la sugerencia
-  y notifica a las PYMEs; no adjudica ni oferta** (la subasta inversa sigue mandando). Se persiste en `smart_load_suggestions` +
+  transportistas (`FleetService.availableVehicles`, `MarketplaceQueries.openRequestsForPlanning`). Compatibilidad y orden de la ruta con km por
+  carretera: primero los recojos (en orden de fecha) y luego las entregas, en la permutación de menos km (`Plan.routeKm`). **Aceptar oferta en lote**
+  (F12): una oferta por carga con el vehículo del plan vía `PlaceBidUseCase`, marcadas con `loadGroupId`; no adjudica (cada PYME
+  decide) y avisa a las PYMEs (RF33). Se persiste en `smart_load_suggestions` +
   `smart_load_items` (en vez de `uuid[]` + `jsonb` del modelo: la ruta se deriva de los ítems). `logyx.smartload.ttl` = PT4H.
 - Mantenimiento (`TripMaintenanceUseCase`, `logyx.trip.maintenance.every`, 5 m): cierra viajes que ya salieron, completa los de hace
   > 24 h y vence sugerencias.
@@ -212,11 +236,19 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
     filas ya dirigidas y filtra en memoria por destinatario. El proyector escribe dentro del despacho del outbox.
   - `DirectContractUseCase.create` (marketplace): al confirmar una reserva de viaje, el transportista debe escribir la solicitud
     (de la PYME, `requests_owner`) y la oferta (suya) a la vez; ninguna transacción de usuario puede con ambas bajo RLS.
+  - `shipment/application/ResourceScheduler` (F11): tras tomar un bloqueo consultivo por vehículo/conductor en la transacción
+    del usuario, lee los envíos activos ya confirmados de ese recurso (la PYME que adjudica no ve los otros envíos del
+    transportista). Solo ids, fechas y grupo de carga.
+  - `DemoDataSeeder.verifyExistingDemoOrganizations` (dev): marca verificadas las cuentas demo de una BD previa a V13.
+  - Consumidores `@Outboxed` nuevos (corren en la transacción de sistema del despacho): `RequestLifecycleObserver`,
+    `BookingShipmentObserver`, `CounterOfferExpiry`.
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
     la fila y se resta el peso de esa reserva.
 - Listados globales del operador (`GET /api/v1/operator/requests|shipments`, `OperatorService` → `MarketplaceQueries.allRequests` / `ShipmentQueries.allShipments`, paginados y filtrados por estado/ciudad/fechas): leen con las políticas `*_operator`, sin SystemTx. Viven en `OperatorResource` (un `@Path` más corto en otra clase daría 404: RESTEasy elige la clase por el prefijo más largo).
 - El operador **no** usa `SystemTx`: lee con las políticas `*_operator` (V2, V4–V7) y la asignación manual escribe
-  con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.).
+  con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.). V13 le suma UPDATE de
+  `organizations` (verificación; un trigger impide que otra organización toque esas columnas), `shipments`,
+  `shipment_stops`, `vehicles` y `drivers` (cancelar o dar por entregado al resolver una incidencia, RF55).
 - RLS por tabla nueva: `messages`/`counter_offers`/`documents`/`incidents`/`incident_comments` → las dos partes
   (`requester_org_id`, `carrier_org_id` denormalizados) + lectura del operador; `reviews`/`reputation_scores` →
   lectura pública (RF44); `notifications` → solo la propia organización. Historial, evidencia y calificaciones no
@@ -244,22 +276,23 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | GEN | `404` no encontrado, `403` regla de permiso de negocio, `500` |
 | AUTH | `001` credenciales, `002` email ya registrado, `401` sin token, `403` rol sin permiso, `429` demasiados intentos (login/registro) |
 | VAL | `001` Bean Validation (`field` = propiedad) |
-| ORG | `001` RUC inválido, `002` RUC duplicado |
+| ORG | `001` RUC inválido, `002` RUC duplicado, `003` (403) sin verificar por el operador (RN01), `004` (403) suspendida, `005` operadora no se verifica, `006` falta motivo (`reason`) |
 | FLT | `001` placa duplicada, `002` estado "en ruta" lo controla el envío |
 | PRC | `001` ciudad fuera del corredor, `002` origen = destino |
-| REQ | `002` cancelar solo publicadas |
-| AUC | `001` subasta no abierta, `002` subasta cerrada |
-| BID | `001` bajo el piso (RN03), `003` ya ofertó, `004` no admite aceptar |
-| CAP | `001` sin capacidad (RN02), `002` vehículo no disponible |
-| SHP | `001` reasignar conductor solo antes del recojo, `002` (404) el conductor no tiene envío activo |
+| REQ | `002` cancelar solo publicadas, `003` fecha de recojo pasada (`pickupDate`), `004` solo se republica una cancelada |
+| AUC | `001` subasta no abierta, `002` subasta cerrada, `003` solo se reabre una cerrada por tiempo |
+| BID | `001` bajo el piso (RN03), `003` ya ofertó (o retiró), `004` no admite aceptar, `005` no se puede retirar |
+| CAP | `001` sin capacidad (RN02), `002` vehículo no disponible, `003` tipo de vehículo no apto para la carga, `004` volumen, `005` vehículo comprometido en otro envío solapado (F11) |
+| SHP | `001` envío cerrado: no se reasigna (antes: "solo antes del recojo"), `002` (404) el conductor no tiene envío activo, `004` conductor con otro envío solapado (`driverId`), `006` falta motivo (`reason`), `007` mismo vehículo |
 | TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada, `004` envío cerrado, `005` incidencia activa (RN11), `006` entrega sin foto |
 | NEG | `001` datos de contacto (RN07, `body`/`message`), `002` hilo cerrado, `003` mismo monto, `004` contra-oferta pendiente, `005` oferta no negociable, `007` ya respondida |
-| DOC | `001` tipo no permitido, `002` muy grande, `003` vacío (`file`), `004` falta parada de entrega, `005` sin llegada (`stopId`), `006` envío cancelado, `500` fallo de almacenamiento |
+| DOC | `001` tipo no permitido, `002` muy grande, `003` vacío (`file`), `004` falta parada de entrega, `005` sin llegada (`stopId`), `006` envío cancelado, `007` (403) evidencia solo del conductor asignado, `008` evidencia cerrada (parada completada o envío entregado), `500` fallo de almacenamiento |
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
-| INC | `001` ya hay activa, `002` transición inválida (`status`), `003` faltan notas (`resolutionNotes`), `004` cerrada, `005` envío cancelado |
-| OPS | `001` SLA no vencido (RN10), `002` no es transportista (`carrierOrgId`) |
+| INC | `001` ya hay activa, `002` transición inválida (`status`), `003` faltan notas (`resolutionNotes`), `004` cerrada, `005` envío cancelado, `006` estado final del envío faltante o incoherente (`shipmentOutcome`, RF55) |
+| OPS | `001` SLA no vencido (RN10), `002` no es transportista (`carrierOrgId`), `003` transportista no verificado o suspendido |
 | RTM | `001` (429) más de `logyx.realtime.max-connections-per-user` streams abiertos del usuario |
-| TRP | `001` capacidad > vehículo (RN12, `capacityKg`), `002` salida no futura (`departureAt`), `003` viaje sin reservas, `004` peso > restante (`weightKg`), `005` transición de viaje inválida, `006` reserva ya resuelta, `007` viaje con envíos ya salidos, `008` sugerencia ya resuelta, `009` sugerencia vencida, `010` carga no compatible con el vehículo (`cargoType`), `011` carga de la sugerencia ya no disponible |
+| RTE | `001` ruta con menos de 2 paradas (`stops`), `002` más de 25 paradas (`stops`) |
+| TRP | `001` capacidad > vehículo (RN12, `capacityKg`), `002` salida no futura (`departureAt`), `003` viaje sin reservas, `004` peso > restante (`weightKg`), `005` transición de viaje inválida, `006` reserva ya resuelta, `007` viaje con envíos ya salidos, `008` sugerencia ya resuelta, `009` sugerencia vencida, `010` carga no compatible con el vehículo (`cargoType`), `011` carga de la sugerencia ya no disponible, `012` monto para una carga que no es del plan |
 | SHP (nuevo) | `003` solo se cancela un envío que aún no salió |
 `BusinessException` admite `field` (`badRequest/conflict(code, msg, field)`) para que los clientes marquen el campo:
 RUC inválido/duplicado → `ruc`, email repetido → `email`, placa repetida → `plate`, BID-001 → `amount`,

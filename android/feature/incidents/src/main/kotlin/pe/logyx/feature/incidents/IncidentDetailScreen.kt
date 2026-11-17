@@ -149,7 +149,7 @@ private val sample = IncidentView(
     status = IncidentStatus.IN_REVIEW, active = true, createdAt = "2026-11-05T14:00:00-05:00",
     comments = listOf(
         IncidentCommentView("c1", "org-p", "Ferretería Los Andes", "Sigue detenido.", "2026-11-05T14:10:00-05:00"),
-        IncidentCommentView("c2", "op", "LOGYX", "Estamos contactando al conductor.", "2026-11-05T14:20:00-05:00"),
+        IncidentCommentView("c2", "op", "OnCargo", "Estamos contactando al conductor.", "2026-11-05T14:20:00-05:00"),
     ),
 )
 

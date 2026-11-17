@@ -1,4 +1,4 @@
-# LOGYX Android — Sistema de diseño Compose (`:core:designsystem`)
+# OnCargo Android — Sistema de diseño Compose (`:core:designsystem`)
 
 Todo vive en `android/core/designsystem` (paquete `pe.logyx.core.designsystem`). **Los features solo usan estos componentes**:
 nunca `OutlinedTextField`, `AlertDialog`, `ModalBottomSheet`, `SnackbarHost`, `FilterChip`, `Button`/`OutlinedButton`, `NavigationBar` ni `TopAppBar` directos.
@@ -111,3 +111,8 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 ## Agregar un componente nuevo
 1. Archivo en `core/designsystem/.../components/`, solo con tokens del tema, `@Preview` claro (y oscuro si aplica).
 2. Entrada en `catalog/UiCatalog.kt`. 3. Strings en `res/values/strings.xml` (prefijo `ds_`). 4. Documentarlo aquí.
+
+## Marca (OnCargo)
+- El producto se llama **OnCargo** (antes LOGYX); el tema/paquetes conservan el nombre técnico `Logyx*`/`pe.logyx`. Ver `docs/brand.md`.
+- Logotipo: `pe.logyx.core.designsystem.R.drawable.oncargo_logo` (cambia solo a la variante oscura con `drawable-night-nodpi`) y `oncargo_logo_on_dark` para cabeceras siempre oscuras (login). Símbolo/ícono de app: `mipmap/ic_launcher*` (fondo `#081F46`).
+- Copy visible: "OnCargo" (p. ej. "Coordina todo por el chat de OnCargo").

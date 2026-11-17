@@ -46,12 +46,15 @@ public final class NegotiationDtos {
         }
     }
 
+    /** {@code proposedByCarrier}: la propuso el transportista (RF26); la responde la PYME. */
     public record CounterOfferView(UUID id, UUID bidId, UUID requestId, UUID carrierOrgId, UUID offeredByOrgId,
                                    BigDecimal previousAmount, BigDecimal amount, String message,
-                                   CounterOfferStatus status, OffsetDateTime createdAt, OffsetDateTime respondedAt) {
+                                   CounterOfferStatus status, OffsetDateTime createdAt, OffsetDateTime respondedAt,
+                                   boolean proposedByCarrier) {
         static CounterOfferView of(CounterOffer c) {
             return new CounterOfferView(c.id(), c.bidId(), c.requestId(), c.carrierOrgId(), c.offeredByOrgId(),
-                    c.previousAmount(), c.amount(), c.message(), c.status(), c.createdAt(), c.respondedAt());
+                    c.previousAmount(), c.amount(), c.message(), c.status(), c.createdAt(), c.respondedAt(),
+                    c.byCarrier());
         }
     }
 }

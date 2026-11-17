@@ -16,6 +16,9 @@ import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.TenantContext;
 import pe.logyx.shipment.application.ShipmentQueries;
+import pe.logyx.shipment.application.ShipmentLifecycleUseCase;
+import pe.logyx.incident.domain.IncidentStatusPolicy;
+import pe.logyx.incident.domain.model.IncidentShipmentOutcome;
 import pe.logyx.shipment.application.ShipmentSummary;
 import pe.logyx.shipment.domain.model.Shipment;
 
@@ -29,6 +32,7 @@ public class IncidentService {
     @Inject IncidentRepository incidents;
     @Inject IncidentQueries queries;
     @Inject ShipmentQueries shipments;
+    @Inject ShipmentLifecycleUseCase lifecycle;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject Event<IncidentReported> reported;
@@ -67,15 +71,35 @@ public class IncidentService {
         return c;
     }
 
-    /** Operador: mueve la incidencia (IN_REVIEW, RESOLVED, CLOSED). Al dejar de estar activa se libera el envío. */
     @Transactional
     public IncidentSummary changeStatus(UUID incidentId, IncidentStatus target, String resolutionNotes) {
+        return changeStatus(incidentId, target, resolutionNotes, null);
+    }
+
+    /**
+     * Operador: mueve la incidencia (IN_REVIEW, RESOLVED, CLOSED). Al dejar de estar activa (se libera el envío, RN11)
+     * exige motivo y el estado final del envío (RF55): RESUME (sigue), DELIVERED (se da por entregado: paradas
+     * cerradas y flota liberada) o CANCELLED (se cancela con el motivo; la solicitud queda cancelada).
+     */
+    @Transactional
+    public IncidentSummary changeStatus(UUID incidentId, IncidentStatus target, String resolutionNotes,
+                                        IncidentShipmentOutcome outcome) {
         Incident i = incidents.findById(incidentId).orElseThrow(() -> BusinessException.notFound("Incidencia"));
-        i.changeStatus(target, resolutionNotes, OffsetDateTime.now());
+        Shipment s = shipments.detail(i.shipmentId()).shipment();
+        boolean deactivates = IncidentStatusPolicy.deactivates(i.status(), target);
+        i.changeStatus(target, resolutionNotes, outcome, s.status(), OffsetDateTime.now());
         incidents.save(i);
-        audit.record(tenant.profileId(), tenant.orgId(), "INCIDENT_" + target, "incident", i.id(), null);
+        if (deactivates) {
+            if (outcome == IncidentShipmentOutcome.CANCELLED && s.status() != Shipment.Status.CANCELLED) {
+                lifecycle.cancelByOperator(s.id(), i.resolutionNotes());
+            } else if (outcome == IncidentShipmentOutcome.DELIVERED && s.status() == Shipment.Status.IN_TRANSIT) {
+                lifecycle.markDeliveredByOperator(s.id(), i.resolutionNotes());
+            }
+        }
+        audit.record(tenant.profileId(), tenant.orgId(), "INCIDENT_" + target, "incident", i.id(),
+                i.shipmentOutcome() == null ? null : "envio=" + i.shipmentOutcome());
         statusChanged.fire(new IncidentStatusChanged(i.id(), i.shipmentId(), i.requesterOrgId(), i.carrierOrgId(),
-                i.status(), i.resolutionNotes()));
+                i.status(), i.resolutionNotes(), deactivates ? outcome : null));
         return queries.summary(i, true);
     }
 }

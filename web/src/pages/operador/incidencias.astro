@@ -7,6 +7,6 @@ const s = Astro.locals.session!;
 const routes = await routesFor(s.token, s.orgType);
 ---
 <AppShell title="Incidencias" active="operador-incidencias" wide>
-  <PageHeader title="Incidencias" subtitle="Bandeja global. Las activas van primero y las más antiguas arriba: ámbar pasadas 12 h, rojo pasadas 24 h." />
+  <PageHeader title="Incidencias" subtitle="Bandeja global. Las activas van primero y las más antiguas arriba: ámbar pasadas 12 h, rojo pasadas 24 h." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Incidencias' }]} />
   <IncidentsList client:load variant="operator" routes={routes} />
 </AppShell>

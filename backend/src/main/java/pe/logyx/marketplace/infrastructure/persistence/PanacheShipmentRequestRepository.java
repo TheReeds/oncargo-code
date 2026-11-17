@@ -5,6 +5,7 @@ import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
 import pe.logyx.marketplace.application.MarketplaceFilter;
 import pe.logyx.marketplace.application.OperatorRequestFilter;
 import pe.logyx.marketplace.domain.model.Auction;
+import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
 import pe.logyx.shared.domain.PageRequest;
@@ -61,8 +62,11 @@ public class PanacheShipmentRequestRepository implements ShipmentRequestReposito
 
     @Override
     public List<ShipmentRequest> listPublishedWithoutBidsCreatedBefore(java.time.OffsetDateTime cutoff) {
-        return map(ShipmentRequestEntity.list("status = ?1 and createdAt <= ?2 and id not in "
-                + "(select b.requestId from BidEntity b) order by createdAt", ShipmentRequest.Status.PUBLISHED, cutoff));
+        // F07: también las que ya cerraron su subasta sin ofertas (asignables al instante, RN10 alineada con RN04).
+        return map(ShipmentRequestEntity.list("status = ?1 and id not in "
+                + "(select b.requestId from BidEntity b where b.status <> ?3) and (createdAt <= ?2 or id in "
+                + "(select a.requestId from AuctionEntity a where a.status = ?4)) order by createdAt",
+                ShipmentRequest.Status.PUBLISHED, cutoff, Bid.Status.WITHDRAWN, Auction.Status.CLOSED));
     }
 
     @Override

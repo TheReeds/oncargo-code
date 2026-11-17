@@ -51,9 +51,13 @@ public class IncidentEntity extends PanacheEntityBase {
     @Column(name = "resolved_at")
     public OffsetDateTime resolvedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shipment_outcome")
+    public pe.logyx.incident.domain.model.IncidentShipmentOutcome shipmentOutcome;
+
     Incident toDomain() {
         return new Incident(id, shipmentId, requesterOrgId, carrierOrgId, reportedByOrgId, reportedByProfileId,
-                category, description, status, resolutionNotes, createdAt, updatedAt, resolvedAt);
+                category, description, status, resolutionNotes, createdAt, updatedAt, resolvedAt, shipmentOutcome);
     }
 
     void apply(Incident i) {
@@ -70,5 +74,6 @@ public class IncidentEntity extends PanacheEntityBase {
         createdAt = i.createdAt();
         updatedAt = i.updatedAt();
         resolvedAt = i.resolvedAt();
+        shipmentOutcome = i.shipmentOutcome();
     }
 }

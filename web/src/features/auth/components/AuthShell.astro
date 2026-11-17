@@ -1,0 +1,75 @@
+---
+/**
+ * Marco de login y registro: panel de marca con vídeo a la izquierda (solo ≥ lg) y la tarjeta del formulario a la derecha.
+ * En móvil solo el formulario (el panel no se renderiza visible: sin vídeo ni póster descargados) y debajo una fila corta
+ * de confianza (el teclado no tapa el botón). Login = camión en la ruta; registro = almacén de la PYME.
+ */
+import BgVideo from '@/components/media/BgVideo.astro';
+import { Gavel, ShieldCheck, MapPinned, Bell, FilePlus2, BadgeCheck, Truck, Lock } from '@lucide/astro';
+interface Props { variant: 'login' | 'registro' }
+const { variant } = Astro.props;
+const login = variant === 'login';
+const vid = login ? { name: 'login-camion', label: 'vídeo del camión en ruta', pos: '38% center' } : { name: 'registro-almacen', label: 'vídeo del almacén', pos: '30% center' };
+const bullets = login
+  ? [
+      { icon: Gavel, t: 'Ofertas en vivo', d: 'Mira cómo llegan las ofertas y elige la mejor.' },
+      { icon: MapPinned, t: 'Seguimiento por parada', d: 'Estado de cada envío, del recojo a la entrega.' },
+      { icon: Bell, t: 'Avisos al instante', d: 'Te avisamos cuando hay una oferta, una parada o una incidencia.' },
+    ]
+  : [
+      { icon: FilePlus2, t: 'Registra tu empresa', d: 'Con tu RUC y los datos de contacto. Toma unos minutos.' },
+      { icon: BadgeCheck, t: 'Validamos tu RUC', d: 'Las empresas verificadas publican y ofertan con tu sello.' },
+      { icon: Truck, t: 'Empieza a operar', d: 'Publica tu primera solicitud o registra tu flota y ofrece.' },
+    ];
+---
+<div class:list={["mx-auto grid w-full max-w-6xl gap-8 px-4 py-6 sm:py-10 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:gap-12 lg:px-10 lg:py-12", login && "lg:items-center"]}>
+  <aside class="auth-aside relative isolate hidden overflow-hidden rounded-card bg-chrome p-8 text-white lg:block lg:self-start lg:sticky lg:top-24" aria-label="Por qué OnCargo">
+    <BgVideo desktop={vid.name} poster={vid.name} width={540} height={720} breakpoint={1024} position={vid.pos} class="bgv--panel" control label={vid.label} controlClass="bottom-4 right-4" />
+    <div class="relative">
+      <p class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-chrome/50 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white">
+        <span class="size-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+        {login ? 'Fletes entre Lima y la sierra sur' : 'Registro para empresas y transportistas'}
+      </p>
+      <p class="mt-5 text-balance text-2xl font-semibold leading-tight tracking-tight">
+        {login ? 'Cada carga, con su ruta, sus ofertas y su envío a la vista.' : 'Empieza a mover carga por el corredor en tres pasos.'}
+      </p>
+      <ul class="mt-7 space-y-5">
+        {bullets.map((b) => (
+          <li class="flex gap-3.5">
+            <span class="grid size-9 shrink-0 place-items-center rounded-input bg-chrome/60 text-emerald-500"><b.icon size={18} aria-hidden="true" /></span>
+            <div>
+              <p class="text-sm font-semibold">{b.t}</p>
+              <p class="mt-0.5 text-sm text-white/85">{b.d}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <svg class="mt-9 w-full text-white/80" viewBox="0 0 320 84" fill="none" role="img" aria-label="Ruta de ejemplo entre Lima, Arequipa y Juliaca">
+        <path d="M14 58C70 58 82 24 150 28s88 28 156 12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 5" stroke-linecap="round" />
+        <path d="M14 58C70 58 82 24 150 28" style="stroke:var(--color-emerald-500)" stroke-width="2.5" stroke-linecap="round" />
+        <circle cx="14" cy="58" r="5" style="fill:var(--color-chrome);stroke:var(--color-emerald-500)" stroke-width="2.5" />
+        <circle cx="150" cy="28" r="4" style="fill:var(--color-chrome)" stroke="currentColor" stroke-width="2" />
+        <rect x="300" y="34" width="12" height="12" rx="2" style="fill:var(--color-emerald-500)" />
+        <g font-size="11" font-family="var(--font-sans)" fill="currentColor" stroke="none">
+          <text x="2" y="78">Lima</text>
+          <text x="124" y="16">Arequipa</text>
+          <text x="268" y="66">Juliaca</text>
+        </g>
+      </svg>
+      <p class="mt-5 flex items-center gap-2 text-xs text-white/80"><Lock size={14} aria-hidden="true" /> Tus datos se tratan según la Ley 29733.</p>
+    </div>
+  </aside>
+
+  <div class="min-w-0">
+    <slot />
+    <ul class="mx-auto mt-8 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-ink-500 lg:hidden" aria-label="Garantías">
+      <li class="inline-flex items-center gap-1.5"><ShieldCheck size={14} class="text-emerald-700" aria-hidden="true" /> Empresas con RUC verificado</li>
+      <li class="inline-flex items-center gap-1.5"><Lock size={14} class="text-emerald-700" aria-hidden="true" /> Datos protegidos · Ley 29733</li>
+    </ul>
+  </div>
+</div>
+
+<style is:global>
+  .auth-aside { view-transition-name: auth-aside; }
+</style>

@@ -1,36 +1,64 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { safeNext } from '@/lib/safe-redirect';
 import { actions } from 'astro:actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Field } from '@/components/ui/field';
 import { Alert } from '@/components/ui/alert';
-import { toast } from '@/components/ui/toaster';
 
-export default function LoginForm({ next, expired }: { next?: string; expired?: boolean }) {
+type Errors = { email?: string; password?: string };
+
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const emailError = (v: string) => (!v ? 'Ingresa tu correo electrónico.' : !EMAIL_RE.test(v) ? 'Revisa el correo: debe tener el formato nombre@empresa.pe.' : undefined);
+
+/** Cuentas demo del perfil dev del backend. Solo se muestran en desarrollo (`demo`). */
+const DEMO = [
+  { label: 'PYME', email: 'pyme@logyx.pe' },
+  { label: 'Transportista', email: 'carrier@logyx.pe' },
+  { label: 'Operador', email: 'operator@logyx.pe' },
+  { label: 'Conductor', email: 'driver@logyx.pe' },
+];
+
+export default function LoginForm({ next, expired, demo }: { next?: string; expired?: boolean; demo?: boolean }) {
   const [error, setError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  /** Valida un campo solo cuando el usuario ya lo editó y salió de él (no al enfocar ni mientras escribe). */
+  function onBlurEmail(e: React.FocusEvent<HTMLInputElement>) {
+    const v = e.currentTarget.value.trim();
+    if (v) setErrors((p) => ({ ...p, email: emailError(v) }));
+  }
+  function clearOnFix(field: keyof Errors, ok: (v: string) => boolean) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      setError(null);
+      if (errors[field] && ok(e.currentTarget.value.trim())) setErrors((p) => ({ ...p, [field]: undefined }));
+    };
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
     setError(null);
     const f = new FormData(e.currentTarget);
     const email = String(f.get('email') ?? '').trim();
     const password = String(f.get('password') ?? '');
-    const local: typeof errors = {};
-    if (!email) local.email = 'Ingresa tu correo electrónico.';
-    else if (!/^\S+@\S+\.\S+$/.test(email)) local.email = 'Revisa el correo: debe tener el formato nombre@empresa.pe.';
-    if (!password) local.password = 'Ingresa tu contraseña.';
+    const local: Errors = { email: emailError(email), password: password ? undefined : 'Ingresa tu contraseña.' };
     setErrors(local);
-    if (Object.keys(local).length) return;
+    if (local.email || local.password) {
+      (local.email ? emailRef : passwordRef).current?.focus();
+      return;
+    }
 
     setBusy(true);
     let res;
     try {
       res = await actions.auth.login({ email, password });
     } catch {
-      toast.error('No pudimos conectar con LOGYX. Revisa tu conexión e inténtalo de nuevo.');
+      setError('No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.');
       setBusy(false);
       return;
     }
@@ -38,9 +66,19 @@ export default function LoginForm({ next, expired }: { next?: string; expired?: 
     if (error) {
       setError(error.message);
       setBusy(false);
+      // Deja la contraseña seleccionada: reintentar es escribir encima.
+      requestAnimationFrame(() => passwordRef.current?.select());
       return;
     }
-    window.location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : data.home;
+    window.location.href = safeNext(next, data.home, window.location.origin);
+  }
+
+  function fillDemo(email: string) {
+    if (emailRef.current) emailRef.current.value = email;
+    if (passwordRef.current) passwordRef.current.value = 'Logyx2026!';
+    setErrors({});
+    setError(null);
+    passwordRef.current?.focus();
   }
 
   return (
@@ -48,14 +86,55 @@ export default function LoginForm({ next, expired }: { next?: string; expired?: 
       {expired && <Alert tone="info">Tu sesión venció. Ingresa de nuevo para continuar.</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
       <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
-        <Input id="email" name="email" type="email" autoComplete="email" required placeholder="nombre@empresa.pe" aria-invalid={!!errors.email} />
+        <Input
+          ref={emailRef}
+          id="email"
+          name="email"
+          type="email"
+          // `username` es lo que reconocen los gestores de contraseñas aunque el campo sea un correo.
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          enterKeyHint="next"
+          required
+          placeholder="nombre@empresa.pe"
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'email-error' : undefined}
+          onBlur={onBlurEmail}
+          onChange={clearOnFix('email', (v) => !emailError(v))}
+        />
       </Field>
       <Field label="Contraseña" htmlFor="password" error={errors.password}>
-        <PasswordInput id="password" name="password" autoComplete="current-password" required aria-invalid={!!errors.password} />
+        <PasswordInput
+          ref={passwordRef}
+          id="password"
+          name="password"
+          autoComplete="current-password"
+          enterKeyHint="go"
+          required
+          capsLockWarning
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
+          onChange={clearOnFix('password', (v) => !!v)}
+        />
       </Field>
       <Button type="submit" size="lg" className="w-full" loading={busy}>
         {busy ? 'Ingresando…' : 'Ingresar'}
       </Button>
+      <p className="sr-only" role="status" aria-live="polite">{busy ? 'Ingresando a tu cuenta…' : ''}</p>
+
+      {demo && (
+        <fieldset className="rounded-input border border-dashed border-steel-200 bg-steel-100/60 p-3">
+          <legend className="px-1.5 text-xs font-medium text-ink-500">Cuentas demo · solo desarrollo</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {DEMO.map((d) => (
+              <button key={d.email} type="button" onClick={() => fillDemo(d.email)} title={d.email} className="rounded-full border border-steel-200 bg-surface px-2.5 py-1 text-xs font-medium text-ink-700 transition-colors hover:border-petrol-700 hover:text-petrol-700">
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
     </form>
   );
 }

@@ -3,6 +3,7 @@ package pe.logyx.trip.domain.model;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.ContactInfoPolicy;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -64,7 +65,9 @@ public final class TripBooking {
                                       String deliveryAddress, BigDecimal price, OffsetDateTime now) {
         return new TripBooking(UUID.randomUUID(), trip.id(), requesterOrgId, trip.carrierOrgId(), requestedBy,
                 trip.originCity(), trip.destinationCity(), trip.departureAt(), weightKg, cargoType,
-                cargoDescription.trim(), pickupAddress.trim(), deliveryAddress.trim(), price, BookingStatus.PENDING,
+                ContactInfoPolicy.clean(cargoDescription, "cargoDescription"),                        // RN07
+                ContactInfoPolicy.clean(pickupAddress, "pickupAddress"),
+                ContactInfoPolicy.clean(deliveryAddress, "deliveryAddress"), price, BookingStatus.PENDING,
                 null, null, null, now, null);
     }
 
@@ -91,8 +94,9 @@ public final class TripBooking {
 
     public void reject(String note, OffsetDateTime now) {
         ensurePending();
+        String clean = ContactInfoPolicy.clean(note, "reason");                       // RN07: lo lee la PYME
         this.status = BookingStatus.REJECTED;
-        this.decisionNote = note == null || note.isBlank() ? null : note.trim();
+        this.decisionNote = clean;
         this.decidedAt = now;
     }
 

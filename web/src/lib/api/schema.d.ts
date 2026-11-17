@@ -245,7 +245,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** La PYME propone un nuevo monto (≥ piso RN03; una contra-oferta pendiente por oferta) */
+        /** La PYME (RF27) o el transportista (RF26) proponen un nuevo monto (≥ piso RN03). Una pendiente por oferta; responder con otra reemplaza la de la otra parte (LOGYX-NEG-004 si ya hay una tuya) */
         post: {
             parameters: {
                 query?: never;
@@ -276,6 +276,58 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** F08: el transportista retira su oferta pendiente mientras la subasta está abierta (LOGYX-BID-005); no puede volver a ofertar en esa subasta */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBidView"];
+                    };
                 };
                 /** @description Not Authorized */
                 401: {
@@ -380,7 +432,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** El transportista acepta: el monto de su oferta pasa a ser el de la contra-oferta */
+        /** Quien recibió la contra-oferta la acepta: el monto de la oferta pasa a ser el de la contra-oferta (RF28; no adjudica) */
         post: {
             parameters: {
                 query?: never;
@@ -1080,7 +1132,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Operador: cambia el estado (IN_REVIEW, RESOLVED con notas, CLOSED) */
+        /** Operador: cambia el estado (IN_REVIEW, RESOLVED, CLOSED). Resolver o cerrar una activa exige motivo (LOGYX-INC-003) y el estado final del envío RESUME/DELIVERED/CANCELLED (RF55, LOGYX-INC-006) */
         post: {
             parameters: {
                 query?: never;
@@ -1387,6 +1439,254 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bandeja de verificación: organizaciones por estado (PENDING por omisión), las más antiguas primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Estado de verificación (PENDING, VERIFIED, REJECTED, SUSPENDED); ALL = todos. Por omisión PENDING. */
+                    status?: string;
+                    /** @description Tipo de organización (PYME o CARRIER). */
+                    type?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOrganizationReviewRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rechaza la verificación con motivo (LOGYX-ORG-006 sin motivo) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OrganizationDecision"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationReviewRow"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspende la organización con motivo: no puede publicar, ofertar ni reservar (LOGYX-ORG-004) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OrganizationDecision"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationReviewRow"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verifica la organización: sello "Verificado" y habilita publicar/ofertar (RN01). También reactiva una rechazada o suspendida */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyOrganization"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationReviewRow"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1960,6 +2260,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route */
+        get: {
+            parameters: {
+                query?: {
+                    optimize?: boolean;
+                    stops?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseRouteView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipment-requests": {
         parameters: {
             query?: never;
@@ -2339,7 +2692,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancel */
+        /** Cancela una solicitud publicada (motivo opcional); avisa a los transportistas que ofertaron */
         post: {
             parameters: {
                 query?: never;
@@ -2349,7 +2702,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CancelRequestBody"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -2359,6 +2716,139 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseRequestView"];
                     };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** F07: reabre la subasta que cerró por tiempo (LOGYX-AUC-003); admite nueva fecha de recojo */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RescheduleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseRequestView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/{id}/republish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** F07/F06: publica de nuevo una solicitud cancelada (misma carga, precio y subasta nuevos) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RescheduleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseRequestView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Not Authorized */
                 401: {
@@ -2647,6 +3137,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipments/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancela el envío con motivo: las partes antes del recojo (LOGYX-SHP-003), el operador también en tránsito. La solicitud queda cancelada y se avisa a la contraparte */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CancelShipment"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipments/{id}/documents": {
         parameters: {
             query?: never;
@@ -2757,7 +3310,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Assign */
+        /** Asigna o releva el conductor (motivo obligatorio si ya se recogió; sin envíos solapados, LOGYX-SHP-004) */
         put: {
             parameters: {
                 query?: never;
@@ -3116,6 +3669,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipments/{id}/vehicle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cambia el vehículo del envío (RN02: kg, tipo y m³; sin envíos solapados, LOGYX-CAP-005; motivo obligatorio si ya se recogió) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeVehicle"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/smart-loads": {
         parameters: {
             query?: never;
@@ -3228,7 +3844,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Accept */
+        /** RF32/F12: acepta el plan y oferta en lote (una oferta por carga con el vehículo del plan, al precio sugerido o al indicado). Todo o nada (LOGYX-TRP-011); no adjudica: decide cada PYME */
         post: {
             parameters: {
                 query?: never;
@@ -3238,7 +3854,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AcceptSmartLoadRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -3248,6 +3868,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseSmartLoadView"];
                     };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Not Authorized */
                 401: {
@@ -4125,6 +4752,10 @@ export interface components {
             acceptedBid?: components["schemas"]["BidView"];
             rejectedBidIds?: string[];
         };
+        AcceptSmartLoadRequest: {
+            items?: components["schemas"]["SmartLoadItemAmount"][];
+            notes?: string;
+        };
         AddIncidentComment: {
             body: string;
         };
@@ -4212,6 +4843,10 @@ export interface components {
             data?: components["schemas"]["OperatorShipmentRow"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListOrganizationReviewRow: {
+            data?: components["schemas"]["OrganizationReviewRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListRequestView: {
             data?: components["schemas"]["RequestView"][];
             meta?: components["schemas"]["Meta"];
@@ -4268,6 +4903,10 @@ export interface components {
             data?: components["schemas"]["OperatorMetricsView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseOrganizationReviewRow: {
+            data?: components["schemas"]["OrganizationReviewRow"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponsePublicOrganization: {
             data?: components["schemas"]["PublicOrganization"];
             meta?: components["schemas"]["Meta"];
@@ -4286,6 +4925,10 @@ export interface components {
         };
         ApiResponseReviewView: {
             data?: components["schemas"]["ReviewView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseRouteView: {
+            data?: components["schemas"]["RouteView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseShipmentReviewsView: {
@@ -4322,6 +4965,7 @@ export interface components {
         };
         AssignDriver: {
             driverId: components["schemas"]["UUID"];
+            reason?: string;
         };
         AssignmentCandidateView: {
             carrierOrgId?: components["schemas"]["UUID"];
@@ -4367,6 +5011,12 @@ export interface components {
         };
         /** @enum {string} */
         BookingStatus: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+        CancelRequestBody: {
+            reason?: string;
+        };
+        CancelShipment: {
+            reason: string;
+        };
         CargoItem: {
             code?: string;
             name?: string;
@@ -4376,6 +5026,11 @@ export interface components {
         ChangeIncidentStatus: {
             status: components["schemas"]["IncidentStatus"];
             resolutionNotes?: string;
+            shipmentOutcome?: components["schemas"]["IncidentShipmentOutcome"];
+        };
+        ChangeVehicle: {
+            vehicleId: components["schemas"]["UUID"];
+            reason?: string;
         };
         ChatThreadView: {
             requestId?: components["schemas"]["UUID"];
@@ -4415,6 +5070,7 @@ export interface components {
             status?: components["schemas"]["CounterOfferStatus"];
             createdAt?: components["schemas"]["OffsetDateTime"];
             respondedAt?: components["schemas"]["OffsetDateTime"];
+            proposedByCarrier?: boolean;
         };
         CreateRequest: {
             originCity: string;
@@ -4523,6 +5179,8 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
         };
         /** @enum {string} */
+        IncidentShipmentOutcome: "RESUME" | "DELIVERED" | "CANCELLED";
+        /** @enum {string} */
         IncidentStatus: "OPEN" | "IN_REVIEW" | "RESOLVED" | "CLOSED";
         IncidentView: {
             id?: components["schemas"]["UUID"];
@@ -4541,6 +5199,7 @@ export interface components {
             updatedAt?: components["schemas"]["OffsetDateTime"];
             resolvedAt?: components["schemas"]["OffsetDateTime"];
             comments?: components["schemas"]["IncidentCommentView"][];
+            shipmentOutcome?: components["schemas"]["IncidentShipmentOutcome"];
         };
         /**
          * Format: date-time
@@ -4601,9 +5260,9 @@ export interface components {
             nextCursor?: string;
         };
         /** @enum {string} */
-        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD";
+        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION";
         /** @enum {string} */
-        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED";
+        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED" | "AUCTION_CLOSED" | "REQUEST_CANCELLED" | "SHIPMENT_CANCELLED" | "BID_WITHDRAWN" | "ORGANIZATION_VERIFICATION";
         NotificationView: {
             id?: components["schemas"]["UUID"];
             type?: components["schemas"]["NotificationType"];
@@ -4689,6 +5348,23 @@ export interface components {
         };
         /** @enum {string} */
         OrgType: "PYME" | "CARRIER" | "OPERATOR";
+        OrganizationDecision: {
+            reason: string;
+        };
+        OrganizationReviewRow: {
+            id?: components["schemas"]["UUID"];
+            type?: components["schemas"]["OrgType"];
+            legalName?: string;
+            ruc?: string;
+            rucValid?: boolean;
+            city?: string;
+            phone?: string;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            verificationStatus?: components["schemas"]["VerificationStatus"];
+            verificationNote?: string;
+            verificationUpdatedAt?: components["schemas"]["OffsetDateTime"];
+            rucVerified?: boolean;
+        };
         PlaceBid: {
             vehicleId: components["schemas"]["UUID"];
             amount: number;
@@ -4708,6 +5384,8 @@ export interface components {
             ruc?: string;
             rucVerified?: boolean;
             city?: string;
+            rucValid?: boolean;
+            verificationStatus?: components["schemas"]["VerificationStatus"];
         };
         Quote: {
             distanceKm?: number;
@@ -4799,6 +5477,12 @@ export interface components {
             requesterRucVerified?: boolean;
             minVehicleType?: components["schemas"]["Type"];
             requesterTrustScore?: number;
+            compatibleVehicleTypes?: components["schemas"]["Type"][];
+            cancelReason?: string;
+            republishedFrom?: components["schemas"]["UUID"];
+        };
+        RescheduleRequest: {
+            pickupDate?: components["schemas"]["LocalDate"];
         };
         ReturnLoadHintView: {
             requestId?: components["schemas"]["UUID"];
@@ -4860,6 +5544,24 @@ export interface components {
         };
         /** @enum {string} */
         Role: "ADMIN" | "OPS" | "VIEWER" | "DRIVER";
+        RouteLegView: {
+            fromCity?: string;
+            toCity?: string;
+            distanceKm?: number;
+            durationMin?: number;
+            estimated?: boolean;
+        };
+        RouteView: {
+            stops?: string[];
+            distanceKm?: number;
+            durationMin?: number;
+            estimated?: boolean;
+            legs?: components["schemas"]["RouteLegView"][];
+            polyline?: string;
+            /** Format: int32 */
+            polylinePrecision?: number;
+            attribution?: string;
+        };
         ShipmentReviewsView: {
             canReview?: boolean;
             blockedCode?: string;
@@ -4884,6 +5586,12 @@ export interface components {
             deliveredAt?: components["schemas"]["OffsetDateTime"];
             stops?: components["schemas"]["StopView"][];
             hasActiveIncident?: boolean;
+            pickupDate?: components["schemas"]["LocalDate"];
+            vehicleId?: components["schemas"]["UUID"];
+            loadGroupId?: components["schemas"]["UUID"];
+            cancellationReason?: string;
+            cancelledAt?: components["schemas"]["OffsetDateTime"];
+            cancelledByOrgId?: components["schemas"]["UUID"];
         };
         SlaRequestView: {
             id?: components["schemas"]["UUID"];
@@ -4903,6 +5611,15 @@ export interface components {
             hoursWithoutBids?: number;
             auctionStatus?: components["schemas"]["Status4"];
             auctionClosesAt?: components["schemas"]["OffsetDateTime"];
+        };
+        SmartLoadBidView: {
+            requestId?: components["schemas"]["UUID"];
+            bidId?: components["schemas"]["UUID"];
+            amount?: number;
+        };
+        SmartLoadItemAmount: {
+            requestId: components["schemas"]["UUID"];
+            amount: number;
         };
         SmartLoadItemView: {
             requestId?: components["schemas"]["UUID"];
@@ -4938,6 +5655,7 @@ export interface components {
             decidedAt?: components["schemas"]["OffsetDateTime"];
             items?: components["schemas"]["SmartLoadItemView"][];
             route?: components["schemas"]["SmartLoadStopView"][];
+            bids?: components["schemas"]["SmartLoadBidView"][];
         };
         /** @enum {string} */
         Status: "AVAILABLE" | "IN_ROUTE" | "MAINTENANCE";
@@ -4946,7 +5664,7 @@ export interface components {
         /** @enum {string} */
         Status2: "PUBLISHED" | "MATCHED" | "CANCELLED";
         /** @enum {string} */
-        Status3: "PENDING" | "ACCEPTED" | "REJECTED";
+        Status3: "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
         /** @enum {string} */
         Status4: "OPEN" | "CLOSED" | "CANCELLED";
         /** @enum {string} */
@@ -5049,6 +5767,9 @@ export interface components {
             organizationType?: components["schemas"]["OrgType"];
             rucVerified?: boolean;
             organizationCity?: string;
+            rucValid?: boolean;
+            verificationStatus?: components["schemas"]["VerificationStatus"];
+            verificationNote?: string;
         };
         VehicleRequest: {
             plate: string;
@@ -5063,6 +5784,11 @@ export interface components {
             maxWeightKg?: number;
             maxVolumeM3?: number;
             status?: components["schemas"]["Status"];
+        };
+        /** @enum {string} */
+        VerificationStatus: "PENDING" | "VERIFIED" | "REJECTED" | "SUSPENDED";
+        VerifyOrganization: {
+            note?: string;
         };
     };
     responses: never;

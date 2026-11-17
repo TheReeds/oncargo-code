@@ -1,6 +1,7 @@
 package pe.logyx.reputation.domain.model;
 
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.ContactInfoPolicy;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,7 +27,7 @@ public record Review(UUID id, UUID shipmentId, UUID requesterOrgId, UUID carrier
         boolean byPyme = reviewerOrgId.equals(requesterOrgId);
         BigDecimal rating = BigDecimal.valueOf(punctuality + cargoCondition + communication)
                 .divide(BigDecimal.valueOf(3), 2, RoundingMode.HALF_UP);
-        String clean = comment == null || comment.isBlank() ? null : comment.trim();
+        String clean = ContactInfoPolicy.clean(comment, "comment");          // RN07: la reseña es pública (RF44)
         return new Review(UUID.randomUUID(), shipmentId, requesterOrgId, carrierOrgId, reviewerOrgId,
                 byPyme ? carrierOrgId : requesterOrgId, reviewerProfileId,
                 byPyme ? ReviewDirection.PYME_TO_CARRIER : ReviewDirection.CARRIER_TO_PYME,

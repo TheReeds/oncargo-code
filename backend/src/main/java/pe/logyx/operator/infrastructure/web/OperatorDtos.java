@@ -3,6 +3,9 @@ package pe.logyx.operator.infrastructure.web;
 import pe.logyx.incident.domain.model.IncidentStatus;
 import pe.logyx.incident.domain.model.IncidentCategory;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import pe.logyx.identity.domain.model.Organization;
+import pe.logyx.shared.tenancy.OrgType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import pe.logyx.catalog.domain.CargoType;
@@ -31,6 +34,24 @@ import java.util.UUID;
 
 public final class OperatorDtos {
     private OperatorDtos() {}
+
+    /** Verificar una organización (RN01): nota opcional (p. ej. "RUC activo y habido en SUNAT"). */
+    public record VerifyOrganization(@Size(max = 500) String note) {}
+
+    /** Rechazar o suspender una organización: motivo obligatorio (se le muestra a la organización). */
+    public record OrganizationDecision(@NotBlank(message = "Indica el motivo") @Size(max = 500) String reason) {}
+
+    /** Fila de la bandeja de verificación del operador (F05). */
+    public record OrganizationReviewRow(UUID id, OrgType type, String legalName, String ruc, boolean rucValid,
+                                        String city, String phone, OffsetDateTime createdAt,
+                                        Organization.VerificationStatus verificationStatus, String verificationNote,
+                                        OffsetDateTime verificationUpdatedAt, boolean rucVerified) {
+        static OrganizationReviewRow of(Organization o) {
+            var v = o.verification();
+            return new OrganizationReviewRow(o.id(), o.type(), o.legalName(), o.ruc(), o.rucValid(), o.city(),
+                    o.phone(), o.createdAt(), v.status(), v.note(), v.updatedAt(), o.rucVerified());
+        }
+    }
 
     /** RN10. {@code amount} opcional: por omisión el precio sugerido (nunca bajo el piso RN03). */
     public record ManualAssignment(@NotNull UUID carrierOrgId, @NotNull UUID vehicleId,

@@ -31,7 +31,27 @@ public final class Api {
         return base + c;
     }
 
+    /**
+     * Registra y deja la organización verificada (RN01): en test {@code logyx.verification.required=true}, así que
+     * sin esto no podría publicar ni ofertar. Para probar la bandeja del operador usa {@link #registerPending}.
+     */
     public static Session register(String type, String name) {
+        Session s = registerPending(type, name);
+        markVerified(s.orgId());
+        return s;
+    }
+
+    /** Marca verificada como dueño del esquema (SystemTx), igual que lo haría el operador. */
+    public static void markVerified(String orgId) {
+        var system = io.quarkus.arc.Arc.container().instance(pe.logyx.shared.tenancy.SystemTx.class).get();
+        var em = io.quarkus.arc.Arc.container().instance(jakarta.persistence.EntityManager.class).get();
+        system.run(() -> em.createNativeQuery("UPDATE organizations SET verification_status = 'VERIFIED', "
+                        + "verification_updated_at = now() WHERE id = ?1")
+                .setParameter(1, java.util.UUID.fromString(orgId)).executeUpdate());
+    }
+
+    /** Registro tal cual: la organización queda PENDING de verificación. */
+    public static Session registerPending(String type, String name) {
         String email = name.toLowerCase().replaceAll("[^a-z]", "") + SEQ.incrementAndGet() + "@test.pe";
         var body = Map.of(
                 "organizationType", type, "legalName", name, "ruc", newRuc(), "city", "Juliaca",
@@ -55,6 +75,43 @@ public final class Api {
     public static String vehicle(Session carrier, String plate, int maxKg) {
         return as(carrier).body(Map.of("plate", plate, "type", "TRUCK_MEDIUM", "maxWeightKg", maxKg))
                 .post("/api/v1/vehicles").then().statusCode(201).extract().path("data.id");
+    }
+
+    /** Vehículo de un tipo dado ({@code m3} null = sin volumen declarado). */
+    public static String vehicleOf(Session carrier, String type, int maxKg, Integer m3) {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("plate", plate(), "type", type, "maxWeightKg", maxKg));
+        if (m3 != null) body.put("maxVolumeM3", m3);
+        return as(carrier).body(body).post("/api/v1/vehicles").then().statusCode(201).extract().path("data.id");
+    }
+
+    /** Solicitud LIMA → JULIACA con tipo de carga, volumen opcional y recojo en {@code pickupInDays}. */
+    public static ValidatableResponse publishCargo(Session pyme, String cargoType, int weightKg, Integer m3,
+                                                   int pickupInDays) {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of(
+                "originCity", "LIMA", "originAddress", "Av. Argentina 1234, Callao",
+                "destinationCity", "JULIACA", "destinationAddress", "Jr. San Román 456",
+                "cargoType", cargoType, "cargoDescription", "Carga de prueba",
+                "weightKg", weightKg, "pickupDate", LocalDate.now().plusDays(pickupInDays).toString()));
+        if (m3 != null) body.put("volumeM3", m3);
+        return as(pyme).body(body).post("/api/v1/shipment-requests").then();
+    }
+
+    /** Oferta al monto entero inmediato superior al piso + {@code delta}; devuelve el id. */
+    public static String bid(Session carrier, String requestId, String vehicleId, int delta) {
+        float floor = as(carrier).get("/api/v1/shipment-requests/" + requestId).then().statusCode(200)
+                .extract().path("data.priceFloor");
+        return as(carrier).body(Map.of("vehicleId", vehicleId, "amount", (float) Math.ceil(floor) + delta))
+                .post("/api/v1/shipment-requests/" + requestId + "/bids").then().statusCode(201)
+                .extract().path("data.id");
+    }
+
+    /** Alta de conductor; devuelve {id, email}. */
+    public static String[] driver(Session carrier, String name) {
+        String email = "chofer" + System.nanoTime() + "@test.pe";
+        String id = as(carrier).body(Map.of("fullName", name, "email", email, "password", "Chofer1234",
+                "licenseNumber", "Q" + (10000000 + SEQ.incrementAndGet()))).post("/api/v1/drivers").then().statusCode(201)
+                .extract().path("data.id");
+        return new String[]{id, email};
     }
 
     public static ValidatableResponse publish(Session pyme, int weightKg) {

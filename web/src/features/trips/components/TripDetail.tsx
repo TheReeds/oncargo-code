@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { useLiveRefresh } from '@/lib/realtime';
 import { splitActionError } from '@/lib/action-error';
-import { Ban, Check, Lock, X } from 'lucide-react';
+import { Ban, Check, Lock, MapPin, X } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
@@ -15,7 +15,10 @@ import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { CapacityBar } from '@/components/domain/CapacityBar';
 import { EmptyState } from '@/components/domain/EmptyState';
-import { CARGO_LABELS, CITY_LABELS, formatDateTime, formatMoney, formatNumber, formatTripRate, formatTons, VEHICLE_LABELS } from '@/lib/format';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { DescriptionList } from '@/components/ui/description-list';
+import { cn } from '@/lib/utils';
+import { CARGO_LABELS, formatDateTime, formatMoney, formatNumber, formatTripRate, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { TripBookingView, TripView } from '../server';
 
 function RejectDialog({ booking, onClose }: { booking: TripBookingView | null; onClose: () => void }) {
@@ -81,22 +84,24 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
   }
 
   const used = trip.confirmedWeightKg ?? 0;
+  const income = bookings.filter((b) => b.status === 'CONFIRMED').reduce((n, b) => n + (b.price ?? 0), 0);
+  const pendingKg = pending.reduce((n, b) => n + (b.weightKg ?? 0), 0);
   const BookingCard = ({ b }: { b: TripBookingView }) => (
-    <li className="space-y-3 px-5 py-4" data-testid="booking-row">
+    <li className={cn('space-y-3 border-l-2 px-5 py-4', b.status === 'PENDING' ? 'border-amber-500 bg-amber-50/40' : 'border-transparent')} data-testid="booking-row">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink-900">{b.requesterName}</span><StatusPill kind="booking" status={b.status!} /></div>
           <div className="mt-0.5 text-sm text-ink-700">{CARGO_LABELS[b.cargoType!] ?? b.cargoType} · <span className="font-mono">{formatNumber(b.weightKg)} kg</span> · {b.cargoDescription}</div>
         </div>
-        <div className="text-right"><div className="money text-lg">{formatMoney(b.price)}</div><div className="text-xs text-ink-500">Pedida {formatDateTime(b.createdAt)}</div></div>
+        <div className="text-right"><div className="money text-xl">{formatMoney(b.price)}</div><div className="text-xs text-ink-500">Pedida {formatDateTime(b.createdAt)}</div></div>
       </div>
-      <dl className="grid gap-x-6 gap-y-1 text-xs text-ink-500 sm:grid-cols-2">
-        <div><dt className="inline font-medium text-ink-700">Recojo: </dt><dd className="inline">{b.pickupAddress}</dd></div>
-        <div><dt className="inline font-medium text-ink-700">Entrega: </dt><dd className="inline">{b.deliveryAddress}</dd></div>
-      </dl>
+      <ul className="grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2">
+        <li className="flex gap-1.5"><MapPin className="mt-0.5 size-3.5 shrink-0 text-petrol-700" aria-hidden="true" /><span><span className="font-medium text-ink-700">Recojo: </span><span className="text-ink-500">{b.pickupAddress}</span></span></li>
+        <li className="flex gap-1.5"><MapPin className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" /><span><span className="font-medium text-ink-700">Entrega: </span><span className="text-ink-500">{b.deliveryAddress}</span></span></li>
+      </ul>
       {b.decisionNote && <p className="text-xs text-ink-500">Nota: {b.decisionNote}</p>}
       {b.status === 'PENDING' && active && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-sm:[&>*]:flex-1">
           <Button size="sm" variant="money" loading={busy === `c-${b.id}`} disabled={!!busy} onClick={() => onConfirm(b)}><Check />Confirmar reserva<span className="sr-only"> de {b.requesterName}</span></Button>
           <Button size="sm" variant="destructive" disabled={!!busy} onClick={() => setRejecting(b)}><X />Rechazar reserva<span className="sr-only"> de {b.requesterName}</span></Button>
         </div>
@@ -107,6 +112,12 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
 
   return (
     <div className="space-y-6">
+      <KpiGrid cols={3}>
+        <div className="col-span-2 lg:col-span-1"><KpiTile label="Ingreso confirmado" value={formatMoney(income)} context={`${trip.confirmedBookings ?? 0} reserva${trip.confirmedBookings === 1 ? '' : 's'} confirmada${trip.confirmedBookings === 1 ? '' : 's'}`} tone="money" /></div>
+        <KpiTile label="Por confirmar" value={pending.length} context={pending.length ? `${formatTons(pendingKg)} esperan tu respuesta` : 'todo al día'} tone={pending.length ? 'warn' : 'default'} />
+        <KpiTile label="Libre" value={formatTons(trip.remainingKg)} context="por vender" tone={(trip.remainingKg ?? 0) > 0 ? 'money' : 'default'} />
+      </KpiGrid>
+
       <Card>
         <CardBody className="space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -119,16 +130,18 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
             )}
           </div>
           <RouteLine origin={trip.originCity!} destination={trip.destinationCity!} />
-          <div className="grid gap-5 border-t border-steel-200 pt-4 sm:grid-cols-3">
-            <div><div className="text-xs text-ink-500">Vehículo</div><div className="font-medium"><span className="font-mono">{trip.vehiclePlate}</span> · {VEHICLE_LABELS[trip.vehicleType!] ?? trip.vehicleType}</div></div>
-            <div><div className="text-xs text-ink-500">Tarifa</div><div className="money">{formatTripRate(trip.pricingMode, trip.rate)}</div></div>
+          <div className="grid gap-5 border-t border-steel-200 pt-4 lg:grid-cols-[1fr_1fr]">
+            <DescriptionList cols={1} items={[
+              { label: 'Vehículo', value: <><span className="font-mono">{trip.vehiclePlate}</span> · {VEHICLE_LABELS[trip.vehicleType!] ?? trip.vehicleType}</> },
+              { label: 'Tarifa', value: formatTripRate(trip.pricingMode, trip.rate), money: true },
+              { label: 'Notas para las PYMEs', value: trip.notes },
+            ]} />
             <div>
-              <div className="mb-1 text-xs text-ink-500">Ocupación confirmada</div>
+              <div className="mb-1 text-xs font-medium text-ink-500">Ocupación confirmada</div>
               <CapacityBar used={used} total={trip.capacityKg ?? 0} label="Ocupación confirmada del viaje" />
               <div className="mt-0.5 text-xs text-ink-500">Quedan <span className="font-mono">{formatTons(trip.remainingKg)}</span> libres</div>
             </div>
           </div>
-          {trip.notes && <p className="border-t border-steel-200 pt-3 text-sm text-ink-700">{trip.notes}</p>}
         </CardBody>
       </Card>
 

@@ -4,6 +4,7 @@ import Logo from './Logo.astro';
 import UserMenu from './UserMenu';
 import ThemeToggle from '@/components/ui/theme-toggle';
 import LiveIndicator from '@/components/layout/LiveIndicator';
+import CommandMenu from '@/components/layout/CommandMenu';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 import { me } from '@/features/auth/server';
 import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck } from '@lucide/astro';
@@ -13,35 +14,48 @@ const { title, active, wide = false } = Astro.props;
 const session = Astro.locals.session!;
 const user = await me(session.token);
 
-const NAV = {
+type NavItem = { id: string; href: string; label: string; icon: typeof LayoutDashboard };
+type NavGroup = { label?: string; items: NavItem[] };
+const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
   PYME: [
-    { id: 'panel', href: '/pyme', label: 'Panel', icon: LayoutDashboard },
-    { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
-    { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
-    { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
-    { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
-    { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
-    { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    { items: [{ id: 'panel', href: '/pyme', label: 'Panel', icon: LayoutDashboard }] },
+    { label: 'Cargas', items: [
+      { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
+      { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
+      { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
+      { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
+    ] },
+    { label: 'Seguimiento', items: [
+      { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
+      { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    ] },
   ],
   CARRIER: [
-    { id: 'panel', href: '/transportista', label: 'Tu actividad', icon: LayoutDashboard },
-    { id: 'marketplace', href: '/transportista/marketplace', label: 'Cargas disponibles', icon: Store },
-    { id: 'retornos', href: '/transportista/retornos', label: 'Cargas de retorno', icon: Undo2 },
-    { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
-    { id: 'viajes', href: '/transportista/viajes', label: 'Viajes', icon: CalendarClock },
-    { id: 'smart-load', href: '/transportista/smart-load', label: 'Smart Load', icon: Sparkles },
-    { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
-    { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
-    { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    { items: [{ id: 'panel', href: '/transportista', label: 'Tu actividad', icon: LayoutDashboard }] },
+    { label: 'Encontrar cargas', items: [
+      { id: 'marketplace', href: '/transportista/marketplace', label: 'Cargas disponibles', icon: Store },
+      { id: 'retornos', href: '/transportista/retornos', label: 'Cargas de retorno', icon: Undo2 },
+      { id: 'smart-load', href: '/transportista/smart-load', label: 'Smart Load', icon: Sparkles },
+    ] },
+    { label: 'Mi operación', items: [
+      { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
+      { id: 'viajes', href: '/transportista/viajes', label: 'Viajes', icon: CalendarClock },
+      { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
+      { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
+      { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    ] },
   ],
   OPERATOR: [
-    { id: 'operador', href: '/operador', label: 'Panel de operación', icon: Radar },
-    { id: 'operador-solicitudes', href: '/operador/solicitudes', label: 'Solicitudes', icon: FileText },
-    { id: 'operador-envios', href: '/operador/envios', label: 'Envíos', icon: Truck },
-    { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    { items: [{ id: 'operador', href: '/operador', label: 'Panel de operación', icon: Radar }] },
+    { label: 'Gestión', items: [
+      { id: 'operador-solicitudes', href: '/operador/solicitudes', label: 'Solicitudes', icon: FileText },
+      { id: 'operador-envios', href: '/operador/envios', label: 'Envíos', icon: Truck },
+      { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
+    ] },
   ],
-} as const;
-const items = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
+};
+const groups = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
+const commandItems = groups.flatMap((g) => g.items.map((it) => ({ label: it.label, href: it.href, group: g.label ?? 'Principal' })));
 const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador LOGYX' : 'Transportista';
 ---
 <Base title={title}>
@@ -52,30 +66,44 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
         <a href="/" aria-label="LOGYX inicio"><Logo dark /></a>
         <button id="menu-close" type="button" class="rounded-input p-1.5 text-white/70 hover:bg-white/10 hover:text-white lg:hidden" aria-label="Cerrar menú"><X size={18} /></button>
       </div>
-      <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-3">
-        {items.map((it) => (
-          <a href={it.href} aria-current={active === it.id ? 'page' : undefined}
-            class:list={['group relative flex items-center gap-3 rounded-input px-3 py-2.5 text-sm font-medium transition-colors', active === it.id ? 'bg-petrol-700 text-on-solid' : 'text-white/70 hover:bg-white/10 hover:text-white']}>
-            {active === it.id && <span class="absolute -left-3 top-2 h-6 w-1 rounded-r bg-emerald-500" aria-hidden="true"></span>}
-            <it.icon size={18} aria-hidden="true" /> {it.label}
-          </a>
+      <nav class="flex-1 overflow-y-auto px-3 py-2" aria-label="Secciones">
+        {groups.map((g) => (
+          <div class="mb-3">
+            {g.label && <p class="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/65">{g.label}</p>}
+            <ul class="space-y-0.5">
+              {g.items.map((it) => (
+                <li>
+                  <a href={it.href} aria-current={active === it.id ? 'page' : undefined}
+                    class:list={['group relative flex items-center gap-3 rounded-input px-3 py-2 text-sm font-medium transition-colors', active === it.id ? 'bg-petrol-700 text-on-solid' : 'text-white/70 hover:bg-white/10 hover:text-white']}>
+                    {active === it.id && <span class="absolute -left-3 top-2 h-5 w-1 rounded-r bg-emerald-500" aria-hidden="true"></span>}
+                    <it.icon size={17} aria-hidden="true" /> {it.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
       </nav>
-      <div class="border-t border-white/10 p-4 text-xs text-white/60">
-        <a href="/privacidad" class="rounded hover:text-white">Política de privacidad</a>
+      <div class="space-y-3 border-t border-white/10 p-4 text-xs text-white/60">
+        <div class="sm:hidden"><ThemeToggle client:load className="w-full justify-between" /></div>
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-white/80">{roleLabel}</span>
+          <a href="/privacidad" class="rounded hover:text-white">Privacidad</a>
+        </div>
       </div>
     </aside>
     <div id="scrim" class="fixed inset-0 z-20 hidden bg-scrim lg:hidden"></div>
 
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-steel-200 bg-surface/95 px-4 backdrop-blur lg:px-8">
+      <header id="app-topbar" class="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-steel-200 bg-surface/95 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-8">
         <button id="menu-btn" type="button" class="-ml-1 rounded-input p-2 text-ink-700 hover:bg-steel-100 lg:hidden" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><Menu size={20} /></button>
         <div class="flex min-w-0 flex-1 items-center gap-2">
           <span class="truncate text-sm font-semibold text-ink-900">{user?.organizationName ?? 'Mi empresa'}</span>
           {user?.rucVerified && <span class="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} aria-hidden="true" /> Empresa verificada</span>}
         </div>
+        <CommandMenu client:load items={commandItems} />
         <LiveIndicator client:load />
-        <ThemeToggle client:load />
+        <ThemeToggle client:load className="hidden sm:inline-flex" />
         <NotificationBell client:load />
         <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} verified={!!user?.rucVerified} />
       </header>
@@ -84,6 +112,15 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
       </main>
     </div>
   </div>
+  <style is:global>
+    /* Transiciones entre documentos (guía `cross-document-transitions`): solo el contenido hace fundido; sidebar y topbar permanecen. */
+    @media (prefers-reduced-motion: no-preference) {
+      @view-transition { navigation: auto; }
+      #sidebar { view-transition-name: lx-sidebar; }
+      #app-topbar { view-transition-name: lx-topbar; }
+      ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 140ms; }
+    }
+  </style>
   <script>
     const sb = document.getElementById('sidebar')!;
     const scrim = document.getElementById('scrim')!;

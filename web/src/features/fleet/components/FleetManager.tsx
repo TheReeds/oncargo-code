@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
-import { CheckCircle2, MoreHorizontal, Plus, Route, Truck, UserRound, Wrench } from 'lucide-react';
+import { CheckCircle2, MoreHorizontal, Plus, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +16,9 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { flash, toast } from '@/components/ui/toaster';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
+import { QuickFilters } from '@/components/ui/quick-filters';
 import { StatusPill } from '@/components/domain/StatusPill';
-import { KpiTile } from '@/components/domain/KpiTile';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { formatNumber, VEHICLE_LABELS } from '@/lib/format';
 import type { DriverView, VehicleView } from '@/lib/api/server';
@@ -124,7 +125,7 @@ function VehicleActions({ v }: { v: VehicleView }) {
   }
   return (
     <DropdownMenu>
-      <Tooltip content="Acciones"><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" loading={busy} aria-label={`Acciones de ${v.plate}`}><MoreHorizontal /></Button></DropdownMenuTrigger></Tooltip>
+      <Tooltip content="Cambiar estado"><DropdownMenuTrigger asChild><Button variant="outline" size="sm" loading={busy} aria-label={`Acciones de ${v.plate}`} className="@min-[720px]:border-transparent @min-[720px]:px-2"><MoreHorizontal /><span className="@min-[720px]:sr-only">Acciones</span></Button></DropdownMenuTrigger></Tooltip>
       <DropdownMenuContent>
         <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -138,16 +139,20 @@ function VehicleActions({ v }: { v: VehicleView }) {
 
 export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleView[]; drivers: DriverView[] }) {
   const [dialog, setDialog] = useState<'vehicle' | 'driver' | null>(null);
+  const [vf, setVf] = useState('');
   const count = (s: string) => vehicles.filter((v) => v.status === s).length;
   const close = () => setDialog(null);
+  const shown = vf ? vehicles.filter((v) => v.status === vf) : vehicles;
+  const maint = count('MAINTENANCE');
+  const onDuty = drivers.filter((d) => d.status === 'ON_DUTY').length;
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiTile label="Vehículos" value={vehicles.length} context="en tu flota" icon={Truck} />
-        <KpiTile label="Disponibles" value={count('AVAILABLE')} context="listos para ofertar" icon={CheckCircle2} />
-        <KpiTile label="En ruta" value={count('IN_ROUTE')} context="con un envío activo" icon={Route} />
-        <KpiTile label="Conductores" value={drivers.length} context="con acceso a la app" icon={UserRound} />
-      </div>
+      <KpiGrid>
+        <KpiTile label="Vehículos" value={vehicles.length} context="en tu flota" icon={Truck} tone="petrol" />
+        <KpiTile label="Disponibles" value={count('AVAILABLE')} context="listos para ofertar" icon={CheckCircle2} tone="money" />
+        <KpiTile label="En ruta" value={count('IN_ROUTE')} context={maint ? `${maint} en mantenimiento` : 'con un envío activo'} icon={Route} tone={maint ? 'warn' : 'default'} />
+        <KpiTile label="Conductores" value={drivers.length} context={onDuty ? `${onDuty} en servicio` : 'con acceso a la app'} icon={UserRound} />
+      </KpiGrid>
 
       <Card>
         <CardHeader>
@@ -157,21 +162,35 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
         {vehicles.length === 0 ? (
           <EmptyState title="Registra tu primer vehículo" description="Necesitas al menos un vehículo disponible para enviar ofertas." action={<Button onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>} />
         ) : (
-          <Table>
-            <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="hidden text-right sm:table-cell">Volumen</Th><Th>Estado</Th><Th className="w-12"><span className="sr-only">Acciones</span></Th></tr></thead>
-            <tbody>
-              {vehicles.map((v) => (
-                <Tr key={v.id}>
-                  <Td className="font-mono font-semibold">{v.plate}</Td>
-                  <Td>{VEHICLE_LABELS[v.type!]}</Td>
-                  <Td className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
-                  <Td className="hidden whitespace-nowrap text-right font-mono tabular-nums sm:table-cell">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
-                  <Td><StatusPill status={v.status!} /></Td>
-                  <Td className="text-right"><VehicleActions v={v} /></Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
+          <>
+            <div className="border-b border-steel-200 px-4 py-3 sm:px-5">
+              <QuickFilters label="Estado del vehículo" value={vf} onValueChange={setVf} options={[
+                { value: '', label: 'Todos', count: vehicles.length },
+                { value: 'AVAILABLE', label: 'Disponibles', count: count('AVAILABLE') },
+                { value: 'IN_ROUTE', label: 'En ruta', count: count('IN_ROUTE') },
+                { value: 'MAINTENANCE', label: 'Mantenimiento', count: maint },
+              ]} />
+            </div>
+            {shown.length === 0 ? (
+              <EmptyState compact icon={SearchX} title="Ningún vehículo con este estado" description="Cambia el filtro para ver el resto de tu flota." action={<Button size="sm" variant="outline" onClick={() => setVf('')}>Ver todos los vehículos</Button>} />
+            ) : (
+              <Table label="Vehículos de tu flota" stack>
+                <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="text-right">Volumen</Th><Th>Estado</Th><Th className="w-12"><span className="sr-only">Acciones</span></Th></tr></thead>
+                <tbody>
+                  {shown.map((v) => (
+                    <Tr key={v.id}>
+                      <Td primary className="font-mono text-[15px] font-semibold tracking-wide">{v.plate}</Td>
+                      <Td label="Tipo">{VEHICLE_LABELS[v.type!]}</Td>
+                      <Td label="Capacidad" className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
+                      <Td label="Volumen" className="whitespace-nowrap text-right font-mono tabular-nums">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
+                      <Td label="Estado"><StatusPill status={v.status!} /></Td>
+                      <Td actions className="text-right"><VehicleActions v={v} /></Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </>
         )}
       </Card>
 
@@ -183,15 +202,15 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
         {drivers.length === 0 ? (
           <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={<Button onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>} />
         ) : (
-          <Table>
-            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th className="hidden md:table-cell">Correo</Th><Th>Estado</Th></tr></thead>
+          <Table label="Conductores" stack>
+            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th>Correo</Th><Th>Estado</Th></tr></thead>
             <tbody>
               {drivers.map((d) => (
                 <Tr key={d.id}>
-                  <Td><div className="flex items-center gap-3"><Avatar name={d.fullName ?? '?'} /><div className="min-w-0"><div className="font-medium">{d.fullName}</div><div className="truncate text-xs text-ink-500 md:hidden">{d.email}</div></div></div></Td>
-                  <Td className="font-mono">{d.licenseNumber}</Td>
-                  <Td className="hidden text-ink-700 md:table-cell">{d.email}</Td>
-                  <Td><StatusPill status={d.status!} /></Td>
+                  <Td primary><div className="flex items-center gap-3"><Avatar name={d.fullName ?? '?'} /><div className="min-w-0 font-medium">{d.fullName}</div></div></Td>
+                  <Td label="Licencia" className="font-mono">{d.licenseNumber}</Td>
+                  <Td label="Correo" className="text-ink-700"><span className="min-w-0 truncate">{d.email}</span></Td>
+                  <Td label="Estado"><StatusPill status={d.status!} /></Td>
                 </Tr>
               ))}
             </tbody>

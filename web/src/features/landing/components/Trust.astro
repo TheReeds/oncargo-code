@@ -1,0 +1,51 @@
+---
+import { BadgeCheck, Star, Camera, MessagesSquare, Lock } from '@lucide/astro';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { TrustScore } from '@/components/domain/TrustScore';
+import { Avatar } from '@/components/ui/avatar';
+import SectionHeading from './SectionHeading.astro';
+
+const items = [
+  { icon: BadgeCheck, t: 'RUC verificado', d: 'Validamos el RUC (prefijo y dígito verificador) al registrarte. Solo las empresas verificadas publican y ofertan.' },
+  { icon: Star, t: 'Trust Score', d: 'Un puntaje de 0 a 100 según puntualidad, estado de la carga y comunicación. Solo se califica una entrega confirmada y con foto.' },
+  { icon: Camera, t: 'Entrega con evidencia', d: 'Cada entrega se cierra con una foto. Si surge una incidencia, el envío se congela hasta que el equipo de OnCargo la resuelve.' },
+  { icon: MessagesSquare, t: 'Acuerdos a la vista', d: 'El chat de negociación bloquea teléfonos, correos y enlaces: lo que se acuerda queda registrado en la plataforma.' },
+];
+---
+<section id="confianza" class="border-y border-steel-200 bg-surface" aria-labelledby="confianza-t">
+  <div class="mx-auto w-full max-w-6xl px-4 py-14 lg:px-10 lg:py-20">
+    <SectionHeading id="confianza-t" eyebrow="Confianza" title="Sabes con quién trabajas antes de aceptar una oferta" lead="Verificación, reputación y evidencia en cada tramo, para que contratar un flete sea una decisión informada." />
+    <div class="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+      <ul class="grid gap-4 sm:grid-cols-2">
+        {items.map((it) => (
+          <li class="rounded-card border border-steel-200 bg-steel-100/50 p-5">
+            <span class="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-700"><it.icon size={20} aria-hidden="true" /></span>
+            <h3 class="mt-4 font-semibold text-ink-900">{it.t}</h3>
+            <p class="mt-1.5 text-pretty text-sm text-ink-500">{it.d}</p>
+          </li>
+        ))}
+      </ul>
+
+      <div class="flex flex-col gap-4">
+        <figure class="rounded-card border border-steel-200 bg-surface p-5 shadow-sm" aria-label="Ejemplo ilustrativo de perfil de transportista">
+          <div class="flex items-center gap-3">
+            <Avatar name="Logística Altiplano" size="lg" />
+            <div class="min-w-0">
+              <p class="truncate font-semibold text-ink-900">Logística Altiplano S.A.C.</p>
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-500"><span>Transportista · Juliaca</span><VerifiedBadge /></div>
+            </div>
+          </div>
+          <div class="mt-5"><TrustScore variant="meter" score={86.4} reviews={38} /></div>
+          <figcaption class="mt-4 border-t border-steel-200 pt-3 text-xs text-ink-500">Ejemplo ilustrativo del perfil que ves antes de aceptar.</figcaption>
+        </figure>
+        <div class="flex items-start gap-3 rounded-card border border-steel-200 bg-petrol-50 p-5">
+          <Lock size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
+          <div>
+            <h3 class="font-semibold text-ink-900">Tus datos, protegidos</h3>
+            <p class="mt-1 text-pretty text-sm text-ink-700">Pedimos tu consentimiento al registrarte (Ley 29733), aislamos los datos de cada empresa y puedes ejercer tus derechos ARCO cuando quieras. <a href="/privacidad" class="font-medium text-petrol-700 underline underline-offset-2">Leer la política de privacidad</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

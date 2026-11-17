@@ -8,6 +8,8 @@ import { apiFor } from '@/lib/api/server';
 import { unwrap } from '@/lib/api/client';
 import { INCIDENT_CATEGORY_LABELS } from '@/lib/format';
 import { buttonVariants } from '@/components/ui/button';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { formatDateTime } from '@/lib/format';
 const s = Astro.locals.session!;
 const orgType = (s.orgType ?? 'PYME') as 'PYME' | 'CARRIER' | 'OPERATOR';
 let incident = null;
@@ -19,10 +21,12 @@ try {
   else throw e;
 }
 let route = null;
+let shipmentStatus: string | undefined;
 if (incident?.shipmentId) {
   try {
     const sh = await unwrap(apiFor(s.token).GET('/api/v1/shipments/{id}', { params: { path: { id: incident.shipmentId } } }));
     if (sh?.originCity && sh?.destinationCity) route = { origin: sh.originCity, destination: sh.destinationCity };
+    shipmentStatus = sh?.status;
   } catch { /* sin ruta */ }
 }
 const back = orgType === 'OPERATOR' ? '/operador/incidencias' : '/incidencias';
@@ -31,14 +35,19 @@ const active = orgType === 'OPERATOR' ? 'operador-incidencias' : 'incidencias';
 <AppShell title="Detalle de incidencia" active={active}>
   {incident ? (
     <>
-      <a href={back} class="mb-3 inline-block text-sm font-medium text-petrol-700 hover:underline">← Volver a incidencias</a>
-      <PageHeader title={INCIDENT_CATEGORY_LABELS[incident.category!] ?? 'Incidencia'} subtitle={`${incident.requesterName} · ${incident.carrierName}`} />
-      <IncidentDetail client:load initial={incident} orgType={orgType} route={route} />
+      <PageHeader title={INCIDENT_CATEGORY_LABELS[incident.category!] ?? 'Incidencia'} subtitle={`${incident.requesterName} · ${incident.carrierName}`}
+        breadcrumbs={[{ label: orgType === 'OPERATOR' ? 'Panel de operación' : 'Inicio', href: orgType === 'OPERATOR' ? '/operador' : orgType === 'CARRIER' ? '/transportista' : '/pyme' }, { label: 'Incidencias', href: back }, { label: `Incidencia ${incident.id!.slice(0, 8)}` }]}>
+        <Fragment slot="meta">
+          <StatusPill status={incident.status!} />
+          <span>Reportada {formatDateTime(incident.createdAt)}</span>
+        </Fragment>
+      </PageHeader>
+      <IncidentDetail client:load initial={incident} orgType={orgType} route={route} shipmentStatus={shipmentStatus} />
     </>
   ) : (
     <>
-      <PageHeader title="Incidencia" />
-      <div role="alert" class="rounded-card border border-red-600/30 bg-red-50 p-5 text-sm text-red-600">
+      <PageHeader title="Incidencia" breadcrumbs={[{ label: 'Incidencias', href: back }, { label: 'No disponible' }]} />
+      <div role="alert" class="rounded-card border border-red-600/30 bg-red-50 p-5 text-sm text-red-700">
         <p class="font-semibold">No pudimos mostrar la incidencia</p>
         <p class="mt-1">{failure}</p>
         <a href={back} class={`${buttonVariants({ variant: 'outline' })} mt-3`}>Volver a incidencias</a>

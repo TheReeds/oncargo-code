@@ -39,6 +39,7 @@ public class ManualAssignmentUseCase {
     @Inject FleetService fleet;
     @Inject OrganizationDirectory organizations;
     @Inject AcceptBidUseCase acceptance;
+    @Inject pe.logyx.identity.application.OrganizationGuard guard;
 
     @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H")
     Duration sla;
@@ -48,15 +49,19 @@ public class ManualAssignmentUseCase {
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
         Auction a = auctions.findByRequestForUpdate(r.id()).orElseThrow();
         long bidCount = bids.countByAuctions(List.of(a.id())).getOrDefault(a.id(), 0L);   // operador lee todas
-        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, OffsetDateTime.now(), sla);
+        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), sla);   // RN10 + F07
 
         if (organizations.byIds(List.of(cmd.carrierOrgId())).values().stream()
                 .noneMatch(o -> o.type() == OrgType.CARRIER)) {
             throw BusinessException.badRequest("LOGYX-OPS-002", "La organización indicada no es un transportista",
                     "carrierOrgId");
         }
+        if (!guard.canTransact(cmd.carrierOrgId())) {                                                     // RN01
+            throw BusinessException.conflict("LOGYX-OPS-003",
+                    "El transportista no está verificado o está suspendido", "carrierOrgId");
+        }
         Vehicle v = fleet.vehicleOfCarrier(cmd.carrierOrgId(), cmd.vehicleId());
-        BidEligibilityPolicy.ensureVehicleEligible(v.isAvailable(), v.maxWeightKg(), r.cargo().weightKg());   // RN02
+        BidEligibilityPolicy.ensureVehicleEligible(v, r.cargo());                                         // RN02
         BigDecimal amount = cmd.amount() == null ? r.pricing().suggestedPrice() : cmd.amount();
         BidEligibilityPolicy.ensureAboveFloor(amount, r.pricing().priceFloor());                             // RN03
 

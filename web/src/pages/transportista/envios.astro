@@ -1,15 +1,31 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import TrackingSplit from '@/features/shipments/components/TrackingSplit';
 import { listShipments } from '@/features/shipments/server';
 import { listDrivers } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
+import { UserRoundX, PackageOpen, Truck, PackageCheck } from 'lucide-react';
 const t = Astro.locals.session!.token;
 const [shipments, drivers, { cities }] = await Promise.all([listShipments(t), listDrivers(t), getCatalog()]);
 const id = Astro.url.searchParams.get('id');
+const open = shipments.filter((s) => s.status === 'PENDING' || s.status === 'IN_TRANSIT');
+const noDriver = open.filter((s) => !s.driverId).length;
+const pickup = shipments.filter((s) => s.status === 'PENDING').length;
+const inTransit = shipments.filter((s) => s.status === 'IN_TRANSIT').length;
+const month = new Date().toISOString().slice(0, 7);
+const delivered = shipments.filter((s) => s.status === 'DELIVERED' && (s.deliveredAt ?? '').startsWith(month)).length;
 ---
 <AppShell title="Envíos" active="envios" wide>
   <PageHeader title="Envíos" subtitle="Asigna un conductor a cada envío y revisa sus paradas" />
+  {shipments.length > 0 && (
+    <KpiGrid className="mb-5">
+      <KpiTile label="Sin conductor" value={noDriver} context={noDriver ? 'asigna uno para que salgan' : 'todos tienen conductor'} icon={UserRoundX} tone={noDriver ? 'warn' : 'default'} />
+      <KpiTile label="Por recoger" value={pickup} context="esperan al conductor" icon={PackageOpen} tone="petrol" />
+      <KpiTile label="En tránsito" value={inTransit} context="en ruta ahora" icon={Truck} tone="petrol" />
+      <KpiTile label="Entregados del mes" value={delivered} context="este mes" icon={PackageCheck} tone="money" />
+    </KpiGrid>
+  )}
   <TrackingSplit client:load shipments={shipments} cities={cities} drivers={drivers} initialId={id} perspective="CARRIER" />
 </AppShell>

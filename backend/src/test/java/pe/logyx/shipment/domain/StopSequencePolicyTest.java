@@ -18,7 +18,7 @@ class StopSequencePolicyTest {
 
     private final OffsetDateTime now = OffsetDateTime.now();
     private final Shipment shipment = Shipment.contract(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-            UUID.randomUUID(), UUID.randomUUID(), "ABC-123", new BigDecimal("1500"));
+            UUID.randomUUID(), UUID.randomUUID(), "ABC-123", new BigDecimal("1500"), null);
     private final ShipmentStop pickup = ShipmentStop.plan(shipment, 1, ShipmentStop.Type.PICKUP, City.LIMA, "Callao");
     private final ShipmentStop delivery = ShipmentStop.plan(shipment, 2, ShipmentStop.Type.DELIVERY, City.PUNO, "Centro");
     // Desordenadas a propósito: la política ordena por secuencia.

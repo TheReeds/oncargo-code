@@ -90,9 +90,17 @@ class IncidentAndOperatorFlowTest {
                 .statusCode(200).body("data.status", is("IN_REVIEW")).body("data.active", is(true));
         as(op).body(Map.of("status", "RESOLVED")).post("/api/v1/incidents/" + incidentId + "/status").then()
                 .statusCode(400).body("error.code", is("LOGYX-INC-003")).body("error.field", is("resolutionNotes"));
-        as(op).body(Map.of("status", "RESOLVED", "resolutionNotes", "Ruta alterna por Juliaca; nueva ETA 18:00"))
+        // RF55: sin estado final del envío, o con uno que no corresponde (pendiente no se "entrega"), no se resuelve
+        as(op).body(Map.of("status", "RESOLVED", "resolutionNotes", "Ruta alterna"))
+                .post("/api/v1/incidents/" + incidentId + "/status").then().statusCode(400)
+                .body("error.code", is("LOGYX-INC-006")).body("error.field", is("shipmentOutcome"));
+        as(op).body(Map.of("status", "RESOLVED", "resolutionNotes", "Ruta alterna", "shipmentOutcome", "RESUME_X"))
+                .post("/api/v1/incidents/" + incidentId + "/status").then().statusCode(400);
+        as(op).body(Map.of("status", "RESOLVED", "resolutionNotes", "Ruta alterna por Juliaca; nueva ETA 18:00",
+                        "shipmentOutcome", "RESUME"))
                 .post("/api/v1/incidents/" + incidentId + "/status").then().statusCode(200)
                 .body("data.status", is("RESOLVED")).body("data.active", is(false))
+                .body("data.shipmentOutcome", is("RESUME"))
                 .body("data.resolvedAt", notNullValue());
         as(op).body(Map.of("status", "OPEN")).post("/api/v1/incidents/" + incidentId + "/status").then()
                 .statusCode(409).body("error.code", is("LOGYX-INC-002"));

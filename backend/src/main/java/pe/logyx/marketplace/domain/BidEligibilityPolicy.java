@@ -1,5 +1,8 @@
 package pe.logyx.marketplace.domain;
 
+import pe.logyx.fleet.domain.VehicleCargoCompatibility;
+import pe.logyx.fleet.domain.model.Vehicle;
+import pe.logyx.marketplace.domain.model.ShipmentRequest;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.domain.Money;
 
@@ -10,8 +13,9 @@ import java.math.BigDecimal;
  * <ul>
  *   <li>RN03: monto ≥ piso de precio de la solicitud (calculado por
  *       {@code pricing.domain.PriceFloorPolicy} al publicar). Error en {@code amount}.</li>
- *   <li>RN02: el vehículo es propio (lo resuelve fleet), está disponible y
- *       tiene capacidad para el peso. Errores en {@code vehicleId}.</li>
+ *   <li>RN02: el vehículo es propio (lo resuelve fleet), está disponible, tiene capacidad para el peso, su tipo
+ *       es apto para el tipo de carga y le cabe el volumen declarado (matriz
+ *       {@code fleet.domain.VehicleCargoCompatibility}). Errores en {@code vehicleId}.</li>
  * </ul>
  */
 public final class BidEligibilityPolicy {
@@ -24,6 +28,11 @@ public final class BidEligibilityPolicy {
                     "La oferta no puede ser menor al precio mínimo de " + Money.soles(priceFloor) + " (RN03)",
                     "amount");
         }
+    }
+
+    /** RN02 completa: disponibilidad, kg, tipo de carga (LOGYX-CAP-003) y volumen (LOGYX-CAP-004). */
+    public static void ensureVehicleEligible(Vehicle v, ShipmentRequest.Cargo cargo) {
+        VehicleCargoCompatibility.ensureSuitable(v, cargo.cargoType(), cargo.weightKg(), cargo.volumeM3());
     }
 
     public static void ensureVehicleEligible(boolean vehicleAvailable, BigDecimal vehicleMaxWeightKg,

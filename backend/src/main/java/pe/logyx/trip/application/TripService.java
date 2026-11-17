@@ -36,6 +36,7 @@ public class TripService {
     @Inject BookingSweeper sweeper;
     @Inject TripSummaries summaries;
     @Inject OrganizationDirectory organizations;
+    @Inject pe.logyx.identity.application.OrganizationGuard guard;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject Event<TripCancelled> cancelled;
@@ -44,6 +45,7 @@ public class TripService {
     public TripSummary publish(PublishTripCommand cmd) {
         City origin = City.require(cmd.originCity());
         City destination = City.require(cmd.destinationCity());
+        guard.ensureCanTransact(tenant.orgId());                                   // RN01 (transportista verificado)
         Vehicle vehicle = fleet.ownVehicle(cmd.vehicleId());                       // 404 si no es suyo
         CarrierTrip trip = CarrierTrip.publish(tenant.orgId(), vehicle, origin, destination, cmd.departureAt(),
                 cmd.capacityKg(), cmd.pricingMode(), cmd.rate(), cmd.notes(), OffsetDateTime.now());   // RN12

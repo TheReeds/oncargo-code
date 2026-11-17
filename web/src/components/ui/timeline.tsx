@@ -19,7 +19,7 @@ export function Timeline({ items, orientation = 'horizontal', label, className }
         return (
           <li key={s.id} className={cn('relative flex flex-1 gap-3', h && 'sm:flex-col sm:gap-2')} aria-current={here ? 'step' : undefined}>
             {i < items.length - 1 && <span aria-hidden="true" className={cn('absolute left-3 top-7 h-[calc(100%-0.5rem)] w-0.5', h && 'sm:left-7 sm:top-3 sm:h-0.5 sm:w-[calc(100%-1.75rem)]', done ? 'bg-emerald-500' : 'bg-steel-200')} />}
-            <span className={cn('relative z-[1] grid size-6 shrink-0 place-items-center rounded-full border-2', done ? 'border-emerald-500 bg-emerald-500 text-on-solid' : here ? 'border-petrol-700 bg-petrol-50 text-petrol-700 ring-4 ring-petrol-50' : 'border-ink-400 bg-white text-ink-500')}>
+            <span className={cn('relative z-[1] grid size-6 shrink-0 place-items-center rounded-full border-2', done ? 'border-emerald-500 bg-emerald-500 text-on-solid' : here ? 'border-petrol-700 bg-petrol-50 text-petrol-700 ring-4 ring-petrol-50' : 'border-ink-400 bg-surface text-ink-500')}>
               {done ? <Check className="size-3.5" aria-hidden="true" /> : (s.icon ?? <MapPin className="size-3" aria-hidden="true" />)}
             </span>
             <div className="min-w-0 pr-3 text-sm">

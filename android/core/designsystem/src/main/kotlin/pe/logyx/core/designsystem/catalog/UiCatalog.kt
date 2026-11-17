@@ -88,7 +88,7 @@ import pe.logyx.core.model.VehicleType
 fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val snackbar = rememberLogyxSnackbarState()
     val scope = rememberCoroutineScope()
-    LogyxScreen("Catálogo UI", modifier, subtitle = "Sistema de diseño LOGYX", onBack = onBack, snackbar = snackbar) { padding ->
+    LogyxScreen("Catálogo UI", modifier, subtitle = "Sistema de diseño OnCargo", onBack = onBack, snackbar = snackbar) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
@@ -294,7 +294,7 @@ private fun Phase3() {
     ChatBubble("¿La carga requiere refrigeración?", mine = false, time = "10:02", sender = "Sur Andino")
     ChatBubble("Sí, entre 2 y 4 °C.", mine = true, time = "10:03")
     ChatBubble("Contraoferta enviada", mine = false, time = "10:10", system = true, price = 1700.0)
-    ChatComposer(draft, { draft = it }, {}, error = if (draft.length > 3) "El mensaje contiene datos de contacto. Coordina todo por el chat de LOGYX." else null)
+    ChatComposer(draft, { draft = it }, {}, error = if (draft.length > 3) "El mensaje contiene datos de contacto. Coordina todo por el chat de OnCargo." else null)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         EvidenceTile("Foto 1", Modifier.weight(1f), status = TileStatus.Uploaded)
         EvidenceTile("Foto 2", Modifier.weight(1f), status = TileStatus.Uploading, progress = 0.4f)

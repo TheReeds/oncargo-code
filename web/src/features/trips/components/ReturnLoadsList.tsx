@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, Undo2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/domain/EmptyState';
+import { QuickFilters } from '@/components/ui/quick-filters';
 import { RouteLine } from '@/components/domain/RouteLine';
 import BidSheet from '@/features/marketplace/components/BidSheet';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons } from '@/lib/format';
@@ -21,6 +22,8 @@ function asRequest(r: ReturnLoadView): RequestView {
 
 export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoadView[]; vehicles: VehicleView[] }) {
   const [active, setActive] = useState<ReturnLoadView | null>(null);
+  const [sort, setSort] = useState('match');
+  const sorted = useMemo(() => [...loads].sort((a, b) => sort === 'price' ? (b.suggestedPrice ?? 0) - (a.suggestedPrice ?? 0) : sort === 'date' ? (a.pickupDate ?? '').localeCompare(b.pickupDate ?? '') : (b.matchScore ?? 0) - (a.matchScore ?? 0)), [loads, sort]);
 
   if (loads.length === 0) {
     return (
@@ -32,11 +35,15 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
 
   return (
     <>
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="text-sm text-ink-500"><span className="font-mono font-semibold text-ink-900">{loads.length}</span> {loads.length === 1 ? 'carga' : 'cargas'} · ordenar por</span>
+        <QuickFilters label="Ordenar cargas de retorno" value={sort} onValueChange={setSort} options={[{ value: 'match', label: 'Mejor compatibilidad' }, { value: 'price', label: 'Mayor precio' }, { value: 'date', label: 'Recojo más próximo' }]} />
+      </div>
       <ul className="grid gap-4 lg:grid-cols-2" aria-label="Cargas de retorno sugeridas">
-        {loads.map((r) => (
+        {sorted.map((r) => (
           <li key={r.requestId}>
             <Card className="flex h-full flex-col gap-4 p-5" data-testid="return-load">
-              <div className="flex items-start justify-between gap-3">
+              <div className="w-full">
                 <RouteLine origin={r.originCity!} destination={r.destinationCity!} originSub={`Recojo ${formatDate(r.pickupDate)}`} />
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -56,7 +63,7 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
                 {r.alreadyBid ? (
                   <Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ya ofertaste</Badge>
                 ) : (
-                  <Button variant="money" onClick={() => setActive(r)}><Undo2 />Ofertar<span className="sr-only"> por la carga de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
+                  <Button variant="money" className="max-sm:w-full" onClick={() => setActive(r)}><Undo2 />Ofertar<span className="sr-only"> por la carga de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
                 )}
               </div>
             </Card>

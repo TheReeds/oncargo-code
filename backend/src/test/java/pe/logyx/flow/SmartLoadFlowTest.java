@@ -70,12 +70,27 @@ class SmartLoadFlowTest {
         as(other).post("/api/v1/smart-loads/" + id + "/accept").then().statusCode(404);
         as(pyme1).get("/api/v1/smart-loads").then().statusCode(403);
 
-        // Aceptar: marca, no adjudica; avisa a las PYMEs agrupadas
-        as(carrier).post("/api/v1/smart-loads/" + id + "/accept").then().statusCode(200)
-                .body("data.status", is("ACCEPTED")).body("data.decidedAt", notNullValue());
+        // Aceptar (F12, RF32): oferta en lote con el vehículo del plan; no adjudica; avisa a las PYMEs (RF33)
+        as(carrier).body(Map.of("items", java.util.List.of(Map.of("requestId", UUID.randomUUID().toString(), "amount", 5000))))
+                .post("/api/v1/smart-loads/" + id + "/accept").then().statusCode(400).body("error.code", is("LOGYX-TRP-012"));
+        var acc = as(carrier).post("/api/v1/smart-loads/" + id + "/accept").then().statusCode(200)
+                .body("data.status", is("ACCEPTED")).body("data.decidedAt", notNullValue())
+                .body("data.bids", hasSize(2)).body("data.bids.requestId", hasItems(r1, r2)).extract();
+        String bid1 = acc.path("data.bids.find { it.requestId == '" + r1 + "' }.bidId");
+        String bid2 = acc.path("data.bids.find { it.requestId == '" + r2 + "' }.bidId");
+        as(pyme1).get("/api/v1/shipment-requests/" + r1 + "/bids").then()
+                .body("data.find { it.id == '" + bid1 + "' }.vehicleId", is(vehicle));
+        // Cada PYME adjudica por su cuenta; los dos envíos comparten el vehículo del plan sin chocar (F11)
+        String s1 = as(pyme1).post("/api/v1/bids/" + bid1 + "/accept").then().statusCode(200).extract().path("data.shipmentId");
+        String s2 = as(pyme2).post("/api/v1/bids/" + bid2 + "/accept").then().statusCode(200).extract().path("data.shipmentId");
+        as(pyme1).get("/api/v1/shipments/" + s1).then().body("data.loadGroupId", is(id));
+        // ...y el mismo conductor lleva ambos (misma unidad, mismo plan)
+        String[] d = driver(carrier, "Chofer Smart");
+        as(carrier).body(Map.of("driverId", d[0])).put("/api/v1/shipments/" + s1 + "/driver").then().statusCode(200);
+        as(carrier).body(Map.of("driverId", d[0])).put("/api/v1/shipments/" + s2 + "/driver").then().statusCode(200);
         as(carrier).post("/api/v1/smart-loads/" + id + "/accept").then().statusCode(409).body("error.code", is("LOGYX-TRP-008"));
         as(carrier).post("/api/v1/smart-loads/" + id + "/reject").then().statusCode(409).body("error.code", is("LOGYX-TRP-008"));
-        as(pyme1).get("/api/v1/shipment-requests/" + r1).then().body("data.status", is("PUBLISHED"));
+        as(pyme1).get("/api/v1/shipment-requests/" + r1).then().body("data.status", is("MATCHED"));
         as(pyme1).get("/api/v1/notifications").then().body("data.type", hasItem("SMART_LOAD_ACCEPTED"))
                 .body("data.find { it.type == 'SMART_LOAD_ACCEPTED' }.relatedType", is("REQUEST"))
                 .body("data.find { it.type == 'SMART_LOAD_ACCEPTED' }.relatedId", is(r1))

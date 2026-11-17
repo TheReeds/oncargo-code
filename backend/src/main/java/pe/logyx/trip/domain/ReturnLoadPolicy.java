@@ -11,12 +11,12 @@ import java.util.*;
 
 /**
  * Cargas de retorno (RF61–RF63). Para cada envío del transportista en curso o recién entregado ("tramo"), busca
- * solicitudes publicadas que salgan de la ciudad de destino del tramo (o de una cercana, ver {@link CityProximityPolicy}),
+ * solicitudes publicadas que salgan de la ciudad de destino del tramo (o de una cercana por carretera, ver {@link CityProximityPolicy}),
  * con fecha de recojo compatible y que quepan en el vehículo del tramo.
  *
  * <p>Fecha compatible: {@code disponibleDesde ≤ recojo ≤ disponibleDesde + 7 días}. {@code disponibleDesde} es la fecha de
  * entrega (envío entregado, solo si fue hace ≤ 3 días) o hoy (en tránsito: sugerencia anticipada).
- * <p>Puntaje 0–100: {@code 100 − 0.6·km − 4·díasDeEspera}, acotado. Si una solicitud encaja con varios tramos se queda con
+ * <p>Puntaje 0–100: {@code 100 − 0.6·km − 4·díasDeEspera}, acotado (km por carretera del destino del tramo al origen). Si una solicitud encaja con varios tramos se queda con
  * el de mejor puntaje. Orden: puntaje desc, recojo asc, id.
  */
 public final class ReturnLoadPolicy {
@@ -37,12 +37,12 @@ public final class ReturnLoadPolicy {
 
     public record Match(Leg leg, Candidate candidate, double distanceKm, int waitDays, int score) {}
 
-    public static List<Match> match(List<Leg> legs, List<Candidate> candidates, LocalDate today) {
+    public static List<Match> match(List<Leg> legs, List<Candidate> candidates, LocalDate today, CityProximityPolicy proximity) {
         Map<UUID, Match> best = new HashMap<>();
         for (Leg leg : legs) {
             if (!relevant(leg, today)) continue;
             for (Candidate c : candidates) {
-                Match m = evaluate(leg, c);
+                Match m = evaluate(leg, c, proximity);
                 if (m == null) continue;
                 best.merge(c.requestId(), m, (a, b) -> b.score() > a.score() ? b : a);
             }
@@ -60,9 +60,9 @@ public final class ReturnLoadPolicy {
         return !leg.delivered() || !leg.availableFrom().isBefore(today.minusDays(DELIVERED_RECENCY_DAYS));
     }
 
-    static Match evaluate(Leg leg, Candidate c) {
+    static Match evaluate(Leg leg, Candidate c, CityProximityPolicy proximity) {
         if (c.destination() == leg.destination()) return null;                       // no es un retorno
-        double km = CityProximityPolicy.distanceKm(leg.destination(), c.origin());
+        double km = proximity.distanceKm(leg.destination(), c.origin());
         if (km > CityProximityPolicy.RETURN_RADIUS_KM) return null;
         if (c.weightKg().compareTo(leg.vehicleCapacityKg()) > 0) return null;       // no cabe
         if (!VehicleCargoRules.canCarry(leg.vehicleType(), c.cargoType())) return null;

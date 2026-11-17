@@ -270,7 +270,7 @@ private fun ChatPreview() {
                     ChatEntry("3", "La PYME propone S/ 1,700.00", mine = false, system = true, proposedPrice = 1700.0, createdAt = "2026-11-10T09:10:00-05:00"),
                     ChatEntry("local-1", "Gracias", mine = true, state = BubbleState.Failed),
                 ),
-                composerError = "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de LOGYX.",
+                composerError = "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de OnCargo.",
             ),
             "Cargo Sur", {}, {}, {}, {}, {}, {}, {}, {},
         )

@@ -2,63 +2,42 @@
 import LiveRegion from '@/components/ui/live-region';
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
-import { Gavel, Clock, CircleCheck } from 'lucide-react';
-import { KpiTile } from '@/components/domain/KpiTile';
+import { Gavel, Clock, CircleCheck, CircleX } from 'lucide-react';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Table, Td, Th, Tr } from '@/components/ui/table';
-import { StatusPill } from '@/components/domain/StatusPill';
-import { EmptyState } from '@/components/domain/EmptyState';
-import { Countdown } from '@/components/domain/Countdown';
 import { listMyBids } from '@/features/marketplace/server';
-import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
-import NegotiateCell from '@/features/negotiation/components/NegotiateCell';
-import { diffPct } from '@/features/requests/components/BidComparison';
-const rows = (await listMyBids(Astro.locals.session!.token)).filter((r) => r.myBid).sort((a, b) => (b.myBid!.createdAt ?? '').localeCompare(a.myBid!.createdAt ?? ''));
+import MyBidsTable from '@/features/marketplace/components/MyBidsTable';
+import { formatMoney } from '@/lib/format';
+let rows: Awaited<ReturnType<typeof listMyBids>> = [];
+let loadError: string | null = null;
+try {
+  rows = (await listMyBids(Astro.locals.session!.token)).filter((r) => r.myBid).sort((a, b) => (b.myBid!.createdAt ?? '').localeCompare(a.myBid!.createdAt ?? ''));
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus ofertas.';
+}
 const openRequestId = Astro.url.searchParams.get('solicitud');
-const pending = rows.filter((r) => r.myBid!.status === 'PENDING').length;
-const accepted = rows.filter((r) => r.myBid!.status === 'ACCEPTED').length;
+const by = (s: string) => rows.filter((r) => r.myBid!.status === s);
+const pending = by('PENDING').length;
+const accepted = by('ACCEPTED');
+const rejected = by('REJECTED').length;
+const won = accepted.reduce((n, r) => n + (r.myBid!.amount ?? 0), 0);
 ---
 <AppShell title="Mis ofertas" active="ofertas">
-  <PageHeader title="Mis ofertas" subtitle="Sigue el estado de cada oferta y cuánto falta para que cierre su subasta." />
+  <PageHeader title="Mis ofertas" subtitle="Sigue el estado de cada oferta, cuánto falta para que cierre su subasta y responde las contra-ofertas.">
+    <a slot="actions" href="/transportista/marketplace" class={buttonVariants({ variant: 'money' })}><Gavel size={16} /> Buscar cargas para ofertar</a>
+  </PageHeader>
   <LiveRegion client:load types={['bid.accepted', 'bid.rejected', 'bid.placed', 'counter_offer.updated']} region="ofertas" />
   <div data-live-region="ofertas">
-  {rows.length > 0 && (
-    <div class="mb-6 grid gap-4 sm:grid-cols-3">
-      <KpiTile label="Ofertas enviadas" value={rows.length} context="en total" icon={Gavel} />
-      <KpiTile label="Pendientes" value={pending} context="esperando respuesta de la PYME" icon={Clock} />
-      <KpiTile label="Aceptadas" value={accepted} context={accepted ? "ya son envíos tuyos" : "aún ninguna"} icon={CircleCheck} />
-    </div>
-  )}
-  <Card>
-    {rows.length === 0 ? (
-      <>
-      <EmptyState title="Todavía no has enviado ofertas" description="Revisa las cargas disponibles y oferta por las compatibles con tu flota." />
-      <div class="-mt-6 pb-10 text-center"><a href="/transportista/marketplace" class={buttonVariants()}>Ver cargas disponibles</a></div>
-      </>
-    ) : (
-      <Table>
-        <thead><tr><Th>Ruta</Th><Th>Carga</Th><Th>Recojo</Th><Th className="text-right">Mi oferta</Th><Th className="text-right">vs. sugerido</Th><Th>Vehículo</Th><Th>Estado</Th><Th>Subasta</Th><Th><span class="sr-only">Negociar</span></Th></tr></thead>
-        <tbody>
-          {rows.map((r) => {
-            const d = diffPct(r.myBid!.amount ?? 0, r.suggestedPrice);
-            return (
-              <Tr>
-                <Td><div class="font-medium">{CITY_LABELS[r.originCity!]} → {CITY_LABELS[r.destinationCity!]}</div><div class="text-xs text-ink-500">Enviada {formatDateTime(r.myBid!.createdAt)}</div></Td>
-                <Td>{CARGO_LABELS[r.cargoType!]} · <span class="font-mono">{formatTons(r.weightKg)}</span></Td>
-                <Td className="whitespace-nowrap">{formatDate(r.pickupDate)}</Td>
-                <Td className="text-right"><span class="money text-base">{formatMoney(r.myBid!.amount)}</span></Td>
-                <Td className={`whitespace-nowrap text-right font-mono tabular-nums ${d != null && d <= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(1)}%`}</Td>
-                <Td className="whitespace-nowrap">{r.myBid!.vehiclePlate ? <><div class="font-mono">{r.myBid!.vehiclePlate}</div><div class="text-xs text-ink-500">{r.myBid!.vehicleType ? VEHICLE_LABELS[r.myBid!.vehicleType] : ""}</div></> : <span class="text-ink-500">—</span>}</Td>
-                <Td><StatusPill status={r.myBid!.status!} kind="bid" /></Td>
-                <Td className="whitespace-nowrap">{r.auction?.status === 'OPEN' ? <div><span class="font-mono text-xs">{r.auction.bidCount}/{r.auction.maxBids}</span> <Countdown client:load closesAt={r.auction.closesAt} /></div> : <span class="text-ink-500">Cerrada</span>}</Td>
-                <Td className="whitespace-nowrap text-right"><NegotiateCell client:load requestId={r.id!} route={`${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`} bid={{ id: r.myBid!.id!, amount: r.myBid!.amount, status: r.myBid!.status }} closed={r.status === 'CANCELLED' || (r.status === 'MATCHED' && r.myBid!.status !== 'ACCEPTED')} autoOpen={openRequestId === r.id} /></Td>
-              </Tr>
-            );
-          })}
-        </tbody>
-      </Table>
+    {loadError && <Alert tone="error" title="No pudimos cargar tus ofertas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+    {rows.length > 0 && (
+      <KpiGrid className="mb-5">
+        <KpiTile label="Ofertas enviadas" value={rows.length} context="en total" icon={Gavel} />
+        <KpiTile label="Pendientes" value={pending} context={pending ? 'esperan respuesta de la PYME' : 'ninguna por ahora'} icon={Clock} tone="warn" />
+        <KpiTile label="Aceptadas" value={accepted.length} context={accepted.length ? `${formatMoney(won)} adjudicados` : 'aún ninguna'} icon={CircleCheck} tone="money" href={accepted.length ? '/transportista/envios' : undefined} />
+        <KpiTile label="Rechazadas" value={rejected} context={rejected ? 'otra oferta fue elegida' : 'ninguna por ahora'} icon={CircleX} tone={rejected ? 'alert' : 'default'} />
+      </KpiGrid>
     )}
-  </Card>
+    {!loadError && <MyBidsTable client:load rows={rows} openRequestId={openRequestId} />}
   </div>
 </AppShell>

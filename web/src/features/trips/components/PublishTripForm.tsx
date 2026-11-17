@@ -15,6 +15,8 @@ import { flash } from '@/components/ui/toaster';
 import type { CityItem, VehicleView } from '@/lib/api/server';
 import { formatMoney, formatNumber, VEHICLE_LABELS } from '@/lib/format';
 import { Info } from 'lucide-react';
+import { CapacityBar } from '@/components/domain/CapacityBar';
+import { DescriptionList } from '@/components/ui/description-list';
 
 /** campo de la API → clave de error local */
 const FIELD_MAP: Record<string, string> = { originCity: 'origin', destinationCity: 'dest', departureAt: 'date', vehicleId: 'vehicle', capacityKg: 'capacity', rate: 'rate', pricingMode: 'rate' };
@@ -157,7 +159,16 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
             ) : (
               <p className="flex gap-2 text-ink-500"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Ingresa la capacidad y la tarifa para ver cuánto ganarías con el viaje lleno.</p>
             )}
-            {origin && dest && <p className="border-t border-steel-200 pt-3 text-xs text-ink-500">Ruta {cityOptions.find((c) => c.value === origin)?.label} → {cityOptions.find((c) => c.value === dest)?.label}</p>}
+            {(origin || dest || vehicle || date) && (
+              <div className="border-t border-steel-200 pt-3">
+                <DescriptionList cols={1} className="gap-y-3" items={[
+                  { label: 'Ruta', value: origin && dest ? `${cityOptions.find((c) => c.value === origin)?.label} → ${cityOptions.find((c) => c.value === dest)?.label}` : null },
+                  { label: 'Salida', value: date ? `${date}${time ? ` · ${time}` : ''}` : null, mono: true },
+                  { label: 'Vehículo', value: vehicle ? <><span className="font-mono">{vehicle.plate}</span> · {VEHICLE_LABELS[vehicle.type!] ?? vehicle.type}</> : null },
+                ]} />
+              </div>
+            )}
+            {maxCap > 0 && cap > 0 && <div className="border-t border-steel-200 pt-3"><div className="mb-1 text-xs text-ink-500">Parte del vehículo que ofreces</div><CapacityBar used={Math.min(cap, maxCap)} total={maxCap} label="Capacidad ofrecida frente a la capacidad del vehículo" /></div>}
             <p className="border-t border-steel-200 pt-3 text-xs text-ink-500">Las reservas llegan como pendientes. Tú decides cuáles confirmar; al confirmar se genera el envío.</p>
           </CardBody>
         </Card>

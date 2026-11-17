@@ -112,7 +112,7 @@ class ChatViewModelTest {
     }
 
     @Test fun `RN07 no agrega burbuja, devuelve el texto al campo y muestra el error bajo el campo`() = runTest {
-        val text = "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de LOGYX."
+        val text = "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de OnCargo."
         val repo = FakeNegotiation().apply { sendImmediate = Result.failure(ApiException(422, "LOGYX-NEG-001", text, field = "body")) }
         val vm = vm(repo)
         vm.onDraft("llámame al 999 888 777"); vm.send()

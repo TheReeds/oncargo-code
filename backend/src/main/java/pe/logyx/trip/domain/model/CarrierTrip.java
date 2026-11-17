@@ -3,6 +3,7 @@ package pe.logyx.trip.domain.model;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.ContactInfoPolicy;
 import pe.logyx.trip.domain.TripCapacityPolicy;
 import pe.logyx.trip.domain.TripPricingPolicy;
 import pe.logyx.trip.domain.TripStatusPolicy;
@@ -65,7 +66,7 @@ public final class CarrierTrip {
         TripCapacityPolicy.ensurePublishable(capacityKg, vehicle.maxWeightKg());                       // RN12
         return new CarrierTrip(UUID.randomUUID(), carrierOrgId, vehicle.id(), vehicle.type(), vehicle.plate(), origin,
                 destination, departureAt, capacityKg, BigDecimal.ZERO, mode, rate,
-                notes == null || notes.isBlank() ? null : notes.trim(), TripStatus.OPEN, now);
+                ContactInfoPolicy.clean(notes, "notes"), TripStatus.OPEN, now);                       // RN07
     }
 
     public boolean isOwnedBy(UUID orgId) { return carrierOrgId.equals(orgId); }

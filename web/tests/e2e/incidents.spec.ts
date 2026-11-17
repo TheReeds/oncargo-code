@@ -78,6 +78,10 @@ test.describe('Incidencias', () => {
     await op.getByRole('button', { name: 'Resolver incidencia' }).click();
     await expect(op.locator('main').getByText('Escribe las notas de resolución')).toBeVisible();
     await op.getByLabel('Notas de resolución').fill('Se repuso la mercadería dañada.');
+    // RF55: el estado final del envío es obligatorio al resolver
+    await op.getByRole('button', { name: 'Resolver incidencia' }).click();
+    await expect(op.locator('main').getByText('Elige qué pasa con el envío.')).toBeVisible();
+    await pick(op, op.getByRole('combobox', { name: 'Qué pasa con el envío' }), 'El envío continúa');
     await op.screenshot({ path: `${SHOTS}/incidencias-operador-gestion.png`, fullPage: true });
     await op.getByRole('button', { name: 'Resolver incidencia' }).click();
     await op.getByRole('alertdialog').getByRole('button', { name: 'Resolver incidencia' }).click();
@@ -104,7 +108,7 @@ test.describe('Incidencias', () => {
     await page.getByLabel('Agregar comentario').fill('Llegaremos en dos horas.');
     await page.getByRole('button', { name: 'Enviar comentario' }).click();
     await expect(page.locator('main').getByText('Llegaremos en dos horas.')).toBeVisible();
-    await api.call('POST', `/incidents/${inc.id}/status`, await api.operatorToken(), { status: 'CLOSED' });
+    await api.call('POST', `/incidents/${inc.id}/status`, await api.operatorToken(), { status: 'CLOSED', resolutionNotes: 'Cierre de prueba.', shipmentOutcome: 'RESUME' });
     await goto(page, `/incidencias/${inc.id}`);
     await expect(page.locator('main').getByText('ya no admite comentarios')).toBeVisible();
   });

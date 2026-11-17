@@ -16,11 +16,16 @@ import java.util.UUID;
 @Authenticated
 public class OrganizationResource {
 
-    /** Perfil público verificado de una organización (sin datos personales). */
+    /**
+     * Perfil público de una organización (sin datos personales). {@code rucVerified} = sello "Verificado" que otorga
+     * el operador (RF08); {@code rucValid} = el RUC pasó el dígito verificador.
+     */
     public record PublicOrganization(UUID id, OrgType type, String legalName, String ruc,
-                                     boolean rucVerified, String city) {
+                                     boolean rucVerified, String city, boolean rucValid,
+                                     Organization.VerificationStatus verificationStatus) {
         static PublicOrganization of(Organization o) {
-            return new PublicOrganization(o.id(), o.type(), o.legalName(), o.ruc(), o.rucVerified(), o.city());
+            return new PublicOrganization(o.id(), o.type(), o.legalName(), o.ruc(), o.rucVerified(), o.city(),
+                    o.rucValid(), o.verificationStatus());
         }
     }
 

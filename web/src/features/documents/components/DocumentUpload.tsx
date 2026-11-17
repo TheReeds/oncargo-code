@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -48,7 +48,7 @@ export function DocumentUpload({ shipmentId, cancelled, onUploaded }: { shipment
 
   return (
     <Card>
-      <CardHeader><CardTitle>Subir un documento</CardTitle></CardHeader>
+      <CardHeader><div><CardTitle>Subir un documento</CardTitle><CardDescription>PDF, JPG o PNG de hasta 10 MB. La otra parte lo verá en este envío.</CardDescription></div></CardHeader>
       <CardBody>
         {cancelled ? (
           <Alert tone="info" title="Este envío fue cancelado">Ya no se pueden subir documentos. Los que ya existían siguen disponibles para consulta.</Alert>

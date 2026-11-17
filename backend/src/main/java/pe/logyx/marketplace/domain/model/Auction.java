@@ -12,7 +12,7 @@ public final class Auction {
     private final UUID id;
     private final UUID requestId;
     private final OffsetDateTime opensAt;
-    private final OffsetDateTime closesAt;
+    private OffsetDateTime closesAt;
     private final int maxBids;
     private Status status;
     private CloseReason closeReason;
@@ -50,6 +50,20 @@ public final class Auction {
     public void closeIfOpen(CloseReason reason, OffsetDateTime now) {
         if (isOpen()) close(reason, now);
     }
+
+    /** F07: la PYME reabre una subasta que cerró por tiempo (con o sin ofertas) por {@code duration} más. */
+    public void reopen(OffsetDateTime now, java.time.Duration duration) {
+        if (status != Status.CLOSED || closeReason != CloseReason.TIMEOUT) {
+            throw pe.logyx.shared.domain.BusinessException.conflict("LOGYX-AUC-003",
+                    "Solo se reabre una subasta que cerró por tiempo");
+        }
+        status = Status.OPEN;
+        closeReason = null;
+        closedAt = null;
+        closesAt = now.plus(duration);
+    }
+
+    public boolean closedByTimeout() { return status == Status.CLOSED && closeReason == CloseReason.TIMEOUT; }
 
     public UUID id() { return id; }
     public UUID requestId() { return requestId; }

@@ -43,7 +43,7 @@ import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.R
 
 /**
- * Barra superior de LOGYX: título grande alineado a la izquierda, atrás en círculo tonal,
+ * Barra superior de OnCargo: título grande alineado a la izquierda, atrás en círculo tonal,
  * subtítulo opcional (p. ej. ruta o estado) y acciones.
  */
 @Composable

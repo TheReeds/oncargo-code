@@ -23,6 +23,12 @@ public class PanacheTripBookingRepository implements TripBookingRepository {
     }
 
     @Override
+    public Optional<TripBooking> findByShipment(UUID shipmentId) {
+        return TripBookingEntity.<TripBookingEntity>find("shipmentId", shipmentId).firstResultOptional()
+                .map(TripBookingEntity::toDomain);
+    }
+
+    @Override
     public List<TripBooking> listActiveByTrip(UUID tripId) {
         return map(TripBookingEntity.list("tripId = ?1 and status in ?2 order by createdAt asc, id", tripId,
                 List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)));

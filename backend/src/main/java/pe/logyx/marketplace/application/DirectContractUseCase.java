@@ -58,12 +58,13 @@ public class DirectContractUseCase {
 
             Bid b = new Bid(UUID.randomUUID(), a.id(), r.id(), cmd.requesterOrgId(), cmd.carrierOrgId(),
                     cmd.vehicleId(), cmd.vehicleType(), cmd.vehiclePlate(), cmd.agreedPrice(),
-                    "Reserva en viaje publicado", Bid.Status.ACCEPTED, now, false);
+                    "Reserva en viaje publicado", Bid.Status.ACCEPTED, now, false, cmd.loadGroupId());
             bids.save(b);
 
             UUID shipmentId = shipments.createFromAcceptedBid(new CreateShipmentCommand(
                     r.id(), b.id(), cmd.requesterOrgId(), cmd.carrierOrgId(), cmd.vehicleId(), cmd.agreedPrice(),
-                    cmd.originCity(), cmd.originAddress(), cmd.destinationCity(), cmd.destinationAddress()));
+                    cmd.originCity(), cmd.originAddress(), cmd.destinationCity(), cmd.destinationAddress(),
+                    cmd.loadGroupId()));
             return new Contract(r.id(), shipmentId);
         });
     }

@@ -34,7 +34,7 @@ export const incidents = {
   }),
   changeStatus: defineAction({
     accept: 'json',
-    input: z.object({ id: z.uuid(), status: STATUS, resolutionNotes: z.string().optional() }),
-    handler: ({ id, status, resolutionNotes }, ctx) => run(() => changeStatus(requireToken(ctx), id, status, resolutionNotes?.trim())),
+    input: z.object({ id: z.uuid(), status: STATUS, resolutionNotes: z.string().optional(), shipmentOutcome: z.enum(['RESUME', 'DELIVERED', 'CANCELLED']).optional() }),
+    handler: ({ id, status, resolutionNotes, shipmentOutcome }, ctx) => run(() => changeStatus(requireToken(ctx), id, status, resolutionNotes?.trim(), shipmentOutcome)),
   }),
 };

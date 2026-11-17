@@ -15,4 +15,9 @@ public interface OrganizationRepository {
     List<UUID> findIdsByType(OrgType type);
     long countByType(OrgType type);
     void insert(Organization organization);
+    /** Actualiza la fila existente (verificación). */
+    void update(Organization organization);
+    /** Bandeja del operador: filtra por estado de verificación y tipo (null = todos), las más antiguas primero. */
+    pe.logyx.shared.domain.Paged<Organization> search(Organization.VerificationStatus status, OrgType type,
+                                                      pe.logyx.shared.domain.PageRequest page);
 }

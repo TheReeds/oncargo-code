@@ -80,6 +80,7 @@ public class DemoDataSeeder {
     public static final String OPERATOR_EMAIL = "operator@logyx.pe";
 
     @Inject AuthService auth;
+    @Inject pe.logyx.identity.application.OrganizationVerificationService verification;
     @Inject UserAccounts accounts;
     @Inject FleetService fleet;
     @Inject PublishRequestUseCase publish;
@@ -100,15 +101,50 @@ public class DemoDataSeeder {
     @Inject CurrentIdentityAssociation identity;
     @Inject JWTParser jwtParser;
 
-    void onStart(@Observes StartupEvent event) {
+    void onStart(@Observes @jakarta.annotation.Priority(1) StartupEvent event) {
+        resetStaleTransactionCache();
         // SystemTx: arranque sin usuario; busca la cuenta demo en todas las organizaciones.
         if (systemTx.call(() -> accounts.byEmail(PYME_EMAIL).isPresent())) {
             Log.info("Datos demo ya presentes; no se vuelven a crear");
+            verifyExistingDemoOrganizations();
             return;
         }
         seed();
         Log.infof("Datos demo creados: %s, %s, %s, %s, %s (contraseña %s)",
                 PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL, PASSWORD);
+    }
+
+    /**
+     * Bases dev creadas antes de V13: las organizaciones demo quedaron PENDING al migrar. Se dejan verificadas (como
+     * en un seed nuevo) para no perder el sello en la demo. Idempotente; solo toca las cuentas demo.
+     */
+    private void verifyExistingDemoOrganizations() {
+        // SystemTx: arranque sin usuario; corrige el estado de verificación de las cuentas demo.
+        int n = systemTx.call(() -> em.createNativeQuery("UPDATE organizations SET verification_status = 'VERIFIED', "
+                        + "verification_note = 'Cuenta demo: RUC revisado por LOGYX', verification_updated_at = now() "
+                        + "WHERE verification_status = 'PENDING' AND id IN (SELECT organization_id FROM profiles "
+                        + "WHERE email IN (?1, ?2, ?3))")
+                .setParameter(1, PYME_EMAIL).setParameter(2, CARRIER_EMAIL).setParameter(3, CARRIER2_EMAIL)
+                .executeUpdate());
+        if (n > 0) Log.infof("Organizaciones demo verificadas: %d", n);
+    }
+
+    /**
+     * Solo dev: tras un reinicio en caliente que no cerró limpio, {@code QuarkusTransactionImpl} (cargado por el
+     * classloader base, que sobrevive a los reinicios) puede quedar con el {@code UserTransaction} de la aplicación
+     * anterior en su caché estática; sus eventos {@code @Initialized(TransactionScoped)} llegan entonces a beans
+     * viejos y el arranque falla. Se vacía la caché para que la resuelva el contenedor actual.
+     */
+    private static void resetStaleTransactionCache() {
+        try {
+            Class<?> impl = Class.forName("io.quarkus.narayana.jta.QuarkusTransactionImpl", true,
+                    io.quarkus.narayana.jta.QuarkusTransaction.class.getClassLoader());
+            var field = impl.getDeclaredField("cachedUserTransaction");
+            field.setAccessible(true);
+            field.set(null, null);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            Log.debugf("No se pudo vaciar la caché de UserTransaction: %s", e.toString());
+        }
     }
 
     private void seed() {
@@ -123,6 +159,15 @@ public class DemoDataSeeder {
         // Operador LOGYX: no hay registro público, lo crea la plataforma
         AuthResult operator = auth.provisionOperator("LOGYX Operaciones SAC", "20604567891", "Lucía Ramos Torres",
                 OPERATOR_EMAIL, PASSWORD);
+
+        // RN01: el operador verifica las tres organizaciones demo (sello "Verificado"); las que se registren después
+        // quedan PENDING hasta que el operador las revise en su bandeja.
+        as(operator, () -> {
+            for (AuthResult org : List.of(pyme, carrier, carrier2)) {
+                verification.verify(org.user().organization().id(), "Cuenta demo: RUC revisado por LOGYX");
+            }
+            return null;
+        });
 
         // ---------- Flotas
         record Fleet(UUID medium, UUID large, UUID reefer, UUID driver) {}

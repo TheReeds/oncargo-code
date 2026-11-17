@@ -22,7 +22,7 @@ export const rejectBooking = (token: string, id: string, reason?: string) =>
 export const listReturnLoads = (token: string) => unwrap(apiFor(token).GET('/api/v1/return-loads'));
 export const listSmartLoads = (token: string) => unwrap(apiFor(token).GET('/api/v1/smart-loads', { params: { query: {} } }));
 export const generateSmartLoads = (token: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/generate'));
-export const acceptSmartLoad = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/accept', { params: { path: { id } } }));
+export const acceptSmartLoad = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/accept', { params: { path: { id } }, body: {} }));
 export const rejectSmartLoad = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/reject', { params: { path: { id } } }));
 
 // ── PYME ──────────────────────────────────────────────────────────────

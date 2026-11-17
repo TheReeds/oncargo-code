@@ -15,6 +15,10 @@ import pe.logyx.operator.application.OperatorService;
 import pe.logyx.operator.infrastructure.web.OperatorDtos.*;
 import pe.logyx.shared.api.ApiResponse;
 import pe.logyx.shared.tenancy.Roles;
+import jakarta.validation.constraints.NotNull;
+import pe.logyx.identity.domain.model.Organization;
+import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.tenancy.OrgType;
 
 import java.util.List;
 import java.util.UUID;
@@ -89,6 +93,59 @@ public class OperatorResource {
     @Operation(summary = "Vehículos disponibles con capacidad para la solicitud (para asignar manualmente)")
     public ApiResponse<List<AssignmentCandidateView>> candidates(@PathParam("id") UUID requestId) {
         return ApiResponse.of(service.candidates(requestId).stream().map(AssignmentCandidateView::of).toList());
+    }
+
+    // ----- Verificación de organizaciones (RN01, RF08, F05)
+    @GET
+    @Path("/organizations")
+    @Operation(summary = "Bandeja de verificación: organizaciones por estado (PENDING por omisión), las más antiguas primero")
+    public ApiResponse<List<OrganizationReviewRow>> organizations(
+            @Parameter(description = "Estado de verificación (PENDING, VERIFIED, REJECTED, SUSPENDED); ALL = todos. "
+                    + "Por omisión PENDING.") @QueryParam("status") String status,
+            @Parameter(description = "Tipo de organización (PYME o CARRIER).") @QueryParam("type") String type,
+            @Parameter(description = "Página 0-based (por omisión 0).") @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20).") @QueryParam("size") Integer size) {
+        return ApiResponse.of(service.organizations(parseVerification(status), parseOrgType(type),
+                PageRequest.of(page, size)).map(OrganizationReviewRow::of));
+    }
+
+    @POST
+    @Path("/organizations/{id}/verify")
+    @Operation(summary = "Verifica la organización: sello \"Verificado\" y habilita publicar/ofertar (RN01). "
+            + "También reactiva una rechazada o suspendida")
+    public ApiResponse<OrganizationReviewRow> verifyOrganization(@PathParam("id") UUID id, @Valid VerifyOrganization req) {
+        return ApiResponse.of(OrganizationReviewRow.of(service.verifyOrganization(id, req == null ? null : req.note())));
+    }
+
+    @POST
+    @Path("/organizations/{id}/reject")
+    @Operation(summary = "Rechaza la verificación con motivo (LOGYX-ORG-006 sin motivo)")
+    public ApiResponse<OrganizationReviewRow> rejectOrganization(@PathParam("id") UUID id,
+                                                                 @Valid @NotNull OrganizationDecision req) {
+        return ApiResponse.of(OrganizationReviewRow.of(service.rejectOrganization(id, req.reason())));
+    }
+
+    @POST
+    @Path("/organizations/{id}/suspend")
+    @Operation(summary = "Suspende la organización con motivo: no puede publicar, ofertar ni reservar (LOGYX-ORG-004)")
+    public ApiResponse<OrganizationReviewRow> suspendOrganization(@PathParam("id") UUID id,
+                                                                  @Valid @NotNull OrganizationDecision req) {
+        return ApiResponse.of(OrganizationReviewRow.of(service.suspendOrganization(id, req.reason())));
+    }
+
+    private static Organization.VerificationStatus parseVerification(String raw) {
+        if (raw == null || raw.isBlank()) return Organization.VerificationStatus.PENDING;
+        if (raw.trim().equalsIgnoreCase("ALL")) return null;
+        return java.util.Arrays.stream(Organization.VerificationStatus.values())
+                .filter(v -> v.name().equalsIgnoreCase(raw.trim())).findFirst()
+                .orElseThrow(() -> BusinessException.badRequest("LOGYX-VAL-001", "Estado inválido: " + raw, "status"));
+    }
+
+    private static OrgType parseOrgType(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return java.util.Arrays.stream(new OrgType[]{OrgType.PYME, OrgType.CARRIER})
+                .filter(v -> v.name().equalsIgnoreCase(raw.trim())).findFirst()
+                .orElseThrow(() -> BusinessException.badRequest("LOGYX-VAL-001", "Tipo inválido: " + raw, "type"));
     }
 
     @POST

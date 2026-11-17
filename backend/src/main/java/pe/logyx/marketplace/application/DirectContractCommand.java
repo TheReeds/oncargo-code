@@ -13,4 +13,6 @@ public record DirectContractCommand(UUID requesterOrgId, UUID createdBy, UUID ca
                                     Vehicle.Type vehicleType, String vehiclePlate,
                                     City originCity, String originAddress, City destinationCity,
                                     String destinationAddress, CargoType cargoType, String cargoDescription,
-                                    BigDecimal weightKg, LocalDate pickupDate, BigDecimal agreedPrice) {}
+                                    BigDecimal weightKg, LocalDate pickupDate, BigDecimal agreedPrice,
+                                    /** Viaje publicado: agrupa los envíos de sus reservas en el mismo vehículo. */
+                                    UUID loadGroupId) {}

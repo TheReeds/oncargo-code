@@ -1,6 +1,6 @@
 package pe.logyx.negotiation.domain.model;
 
-import pe.logyx.negotiation.domain.ContactInfoPolicy;
+import pe.logyx.shared.domain.ContactInfoPolicy;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="auth_brand">LOGYX</string>
+    <string name="auth_brand">OnCargo</string>
     <string name="auth_tagline">Fletes entre Lima y la Sierra Sur</string>
     <string name="auth_login_title">Inicia sesión</string>
     <string name="auth_login_subtitle">Ingresa con tu cuenta para ver tus cargas, ofertas y envíos.</string>
@@ -35,5 +35,5 @@
     <string name="auth_avatar_description">Iniciales de %1$s</string>
     <string name="auth_logout_action">Cerrar sesión</string>
     <string name="auth_logout_title">¿Cerrar tu sesión?</string>
-    <string name="auth_logout_message">Tendrás que volver a ingresar tu correo y contraseña para usar LOGYX.</string>
+    <string name="auth_logout_message">Tendrás que volver a ingresar tu correo y contraseña para usar OnCargo.</string>
 </resources>

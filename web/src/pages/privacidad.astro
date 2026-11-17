@@ -1,26 +1,65 @@
 ---
 import Public from '@/layouts/Public.astro';
+import { Mail, ShieldCheck, Database, Share2, Scale } from '@lucide/astro';
 const sections = [
-  ['1. Responsable del tratamiento', 'LOGYX es la plataforma que conecta a empresas (PYMEs) con transportistas del corredor Lima–Sierra Sur. LOGYX es responsable del banco de datos personales que se genera a partir de tu registro y uso de la plataforma.'],
-  ['2. Datos que recopilamos', 'Datos de la empresa (razón social, RUC, ciudad, teléfono), datos del usuario (nombre, correo electrónico), datos de conductores y vehículos registrados por los transportistas (nombre, licencia, placa) y datos operativos de cada envío (rutas, paradas, horas).'],
-  ['3. Finalidades', 'Crear y gestionar tu cuenta, publicar solicitudes y ofertas, generar y dar seguimiento a los envíos, verificar la identidad de las empresas mediante su RUC, y mejorar la seguridad y calidad del servicio.'],
-  ['4. Compartición de datos', 'Cuando una oferta es aceptada, la PYME y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos tus datos personales a terceros.'],
-  ['5. Tus derechos (ARCO)', 'Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a privacidad@logyx.pe. Atenderemos tu solicitud en los plazos que establece la Ley 29733 y su reglamento.'],
-  ['6. Seguridad y conservación', 'Aplicamos medidas técnicas y organizativas para proteger tu información, incluido el aislamiento de datos por organización. Conservamos los datos mientras mantengas tu cuenta y durante los plazos legales aplicables.'],
+  { id: 'responsable', h: 'Responsable del tratamiento', p: 'OnCargo (nombre comercial de la plataforma conocida antes como LOGYX) conecta a empresas (PYMEs) con transportistas del corredor Lima–Sierra Sur. El responsable del tratamiento del banco de datos personales que se genera a partir de tu registro y uso de la plataforma sigue siendo el mismo de siempre: solo cambió el nombre comercial.' },
+  { id: 'datos', h: 'Datos que recopilamos', p: 'Datos de la empresa (razón social, RUC, ciudad, teléfono), datos del usuario (nombre, correo electrónico), datos de conductores y vehículos registrados por los transportistas (nombre, licencia, placa) y datos operativos de cada envío (rutas, paradas, horas).' },
+  { id: 'finalidades', h: 'Finalidades', p: 'Crear y gestionar tu cuenta, publicar solicitudes y ofertas, generar y dar seguimiento a los envíos, verificar la identidad de las empresas mediante su RUC, y mejorar la seguridad y calidad del servicio.' },
+  { id: 'comparticion', h: 'Compartición de datos', p: 'Cuando una oferta es aceptada, la PYME y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos tus datos personales a terceros.' },
+  { id: 'derechos', h: 'Tus derechos (ARCO)', p: 'Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a privacidad@logyx.pe. Atenderemos tu solicitud en los plazos que establece la Ley 29733 y su reglamento.' },
+  { id: 'seguridad', h: 'Seguridad y conservación', p: 'Aplicamos medidas técnicas y organizativas para proteger tu información, incluido el aislamiento de datos por organización. Conservamos los datos mientras mantengas tu cuenta y durante los plazos legales aplicables.' },
+];
+const summary = [
+  { icon: Database, t: 'Qué guardamos', d: 'Datos de tu empresa, tu usuario y la operación de cada envío.' },
+  { icon: Share2, t: 'Con quién se comparte', d: 'Solo con la otra parte de un envío aceptado. No vendemos datos.' },
+  { icon: Scale, t: 'Tus derechos', d: 'Acceso, rectificación, cancelación y oposición (ARCO).' },
 ];
 ---
-<Public title="Política de privacidad">
-  <article class="mx-auto w-full max-w-[68ch] px-4 py-10 sm:py-14">
-    <h1 class="text-3xl font-semibold tracking-tight text-ink-900">Política de privacidad</h1>
-    <p class="mt-2 text-sm text-ink-500">Versión borrador · Ley N.° 29733, Ley de Protección de Datos Personales (Perú)</p>
-    <div class="mt-8 space-y-8 text-[15px] leading-7 text-ink-700">
-      {sections.map(([h, p]) => (
-        <section>
-          <h2 class="mb-2 text-lg font-semibold text-ink-900">{h}</h2>
-          <p>{p}</p>
-        </section>
-      ))}
-    </div>
-    <p class="mt-10 rounded-input border border-amber-500/40 bg-amber-50 p-3 text-sm leading-6 text-amber-700">Este texto es un borrador para el MVP y debe ser revisado por asesoría legal antes de su publicación.</p>
-  </article>
+<Public title="Política de privacidad" description="Cómo OnCargo trata tus datos personales conforme a la Ley N.° 29733: qué datos recopilamos, para qué, con quién se comparten y cómo ejercer tus derechos ARCO.">
+  <div class="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 sm:py-14 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-14 lg:px-10">
+    <aside class="print:hidden lg:sticky lg:top-24 lg:self-start" aria-label="En esta página">
+      <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">En esta página</p>
+      <nav class="mt-3" aria-label="Contenido de la política">
+        <ol class="space-y-0.5 border-l border-steel-200 text-sm">
+          {sections.map((s, i) => (
+            <li><a href={`#${s.id}`} class="-ml-px flex gap-2 border-l-2 border-transparent py-1.5 pl-3 text-ink-700 transition-colors hover:border-petrol-700 hover:text-petrol-700"><span class="font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</span>{s.h}</a></li>
+          ))}
+        </ol>
+      </nav>
+    </aside>
+
+    <article class="min-w-0 max-w-[68ch]">
+      <p class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"><ShieldCheck size={13} aria-hidden="true" /> Ley N.° 29733 · Protección de Datos Personales (Perú)</p>
+      <h1 class="mt-4 text-balance text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">Política de privacidad</h1>
+      <p class="mt-2 text-sm text-ink-500">Versión borrador para el MVP</p>
+
+      <ul class="mt-8 grid gap-3 sm:grid-cols-3" aria-label="En resumen">
+        {summary.map((s) => (
+          <li class="rounded-card border border-steel-200 bg-surface p-4">
+            <span class="grid size-8 place-items-center rounded-full bg-petrol-50 text-petrol-700"><s.icon size={16} aria-hidden="true" /></span>
+            <p class="mt-3 text-sm font-semibold text-ink-900">{s.t}</p>
+            <p class="mt-1 text-xs text-ink-500">{s.d}</p>
+          </li>
+        ))}
+      </ul>
+
+      <div class="mt-10 space-y-9 text-[15px] leading-7 text-ink-700">
+        {sections.map((s, i) => (
+          <section id={s.id} class="scroll-mt-24" aria-labelledby={`${s.id}-t`}>
+            <h2 id={`${s.id}-t`} class="mb-2 flex items-baseline gap-3 text-lg font-semibold text-ink-900"><span class="font-mono text-sm text-ink-500" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{s.h}</h2>
+            <p class="text-pretty">{s.p}</p>
+          </section>
+        ))}
+      </div>
+
+      <div class="mt-10 flex items-start gap-3 rounded-card border border-steel-200 bg-petrol-50 p-5">
+        <Mail size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
+        <div class="text-sm">
+          <p class="font-semibold text-ink-900">¿Quieres ejercer tus derechos?</p>
+          <p class="mt-1 text-ink-700">Escribe a <a href="mailto:privacidad@logyx.pe" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@logyx.pe</a> indicando tu nombre, tu RUC y qué derecho quieres ejercer.</p>
+        </div>
+      </div>
+      <p class="mt-6 rounded-input border border-amber-500/40 bg-amber-50 p-3 text-sm leading-6 text-amber-700">Este texto es un borrador para el MVP y debe ser revisado por asesoría legal antes de su publicación.</p>
+    </article>
+  </div>
 </Public>

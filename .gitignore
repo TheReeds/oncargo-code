@@ -23,3 +23,6 @@ android/.idea/
 
 # Python
 __pycache__/
+
+# Videos fuente (la web usa las versiones optimizadas en web/public/media)
+media/*.mp4

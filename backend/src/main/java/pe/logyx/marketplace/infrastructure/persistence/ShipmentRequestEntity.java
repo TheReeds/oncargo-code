@@ -72,12 +72,18 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
+    @Column(name = "cancel_reason")
+    public String cancelReason;
+
+    @Column(name = "republished_from")
+    public UUID republishedFrom;
+
     ShipmentRequest toDomain() {
         return new ShipmentRequest(id, requesterOrgId, createdBy,
                 new ShipmentRequest.Cargo(originCity, originAddress, destinationCity, destinationAddress,
                         cargoType, cargoDescription, weightKg, volumeM3, pickupDate),
                 new ShipmentRequest.Pricing(distanceKm, suggestedPrice, priceFloor),
-                status, assignedCarrierOrgId, createdAt);
+                status, assignedCarrierOrgId, createdAt, cancelReason, republishedFrom);
     }
 
     void apply(ShipmentRequest r) {
@@ -101,5 +107,7 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
         status = r.status();
         assignedCarrierOrgId = r.assignedCarrierOrgId();
         createdAt = r.createdAt();
+        cancelReason = r.cancelReason();
+        republishedFrom = r.republishedFrom();
     }
 }

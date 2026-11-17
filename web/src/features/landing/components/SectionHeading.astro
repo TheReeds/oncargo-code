@@ -1,0 +1,12 @@
+---
+/** Encabezado de sección de la landing: marcador + etiqueta, título y bajada. */
+interface Props { id: string; eyebrow: string; title: string; lead?: string; class?: string; invert?: boolean }
+const { id, eyebrow, title, lead, class: cls, invert = false } = Astro.props;
+---
+<div class:list={['max-w-2xl', cls]}>
+  <p class:list={['flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em]', invert ? 'text-white/70' : 'text-petrol-700']}>
+    <span class="size-2 bg-emerald-500" aria-hidden="true"></span>{eyebrow}
+  </p>
+  <h2 id={id} class:list={['mt-3 text-balance text-2xl font-semibold tracking-tight sm:text-[32px] sm:leading-[1.15]', invert ? 'text-white' : 'text-ink-900']}>{title}</h2>
+  {lead && <p class:list={['mt-3 text-pretty text-base', invert ? 'text-white/70' : 'text-ink-500']}>{lead}</p>}
+</div>

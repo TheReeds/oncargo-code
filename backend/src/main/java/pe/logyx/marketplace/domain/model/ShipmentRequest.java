@@ -3,6 +3,7 @@ package pe.logyx.marketplace.domain.model;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.domain.ContactInfoPolicy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,14 +26,25 @@ public final class ShipmentRequest {
     private final UUID id;
     private final UUID requesterOrgId;
     private final UUID createdBy;
-    private final Cargo cargo;
+    /** Cambia solo la fecha de recojo al reabrir la subasta (F07). */
+    private Cargo cargo;
     private final Pricing pricing;
     private Status status;
     private UUID assignedCarrierOrgId;
     private final OffsetDateTime createdAt;
+    /** Motivo de cancelación (PYME, o el del envío cancelado tras adjudicar). */
+    private String cancelReason;
+    /** Solicitud cancelada de la que se republicó esta (F07, F06). */
+    private final UUID republishedFrom;
 
     public ShipmentRequest(UUID id, UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
                            Status status, UUID assignedCarrierOrgId, OffsetDateTime createdAt) {
+        this(id, requesterOrgId, createdBy, cargo, pricing, status, assignedCarrierOrgId, createdAt, null, null);
+    }
+
+    public ShipmentRequest(UUID id, UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
+                           Status status, UUID assignedCarrierOrgId, OffsetDateTime createdAt, String cancelReason,
+                           UUID republishedFrom) {
         this.id = id;
         this.requesterOrgId = requesterOrgId;
         this.createdBy = createdBy;
@@ -41,21 +53,23 @@ public final class ShipmentRequest {
         this.status = status;
         this.assignedCarrierOrgId = assignedCarrierOrgId;
         this.createdAt = createdAt;
-    }
-
-    /** RN01: solo PYMEs con RUC verificado publican. */
-    public static void ensureRequesterCanPublish(boolean requesterRucVerified) {
-        if (!requesterRucVerified) {
-            throw BusinessException.forbidden("Su organización debe tener el RUC verificado para publicar (RN01)");
-        }
+        this.cancelReason = cancelReason;
+        this.republishedFrom = republishedFrom;
     }
 
     public static ShipmentRequest publish(UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing) {
-        Cargo clean = new Cargo(cargo.originCity(), cargo.originAddress().trim(), cargo.destinationCity(),
-                cargo.destinationAddress().trim(), cargo.cargoType(), cargo.cargoDescription().trim(),
+        return publish(requesterOrgId, createdBy, cargo, pricing, null);
+    }
+
+    /** RN07: direcciones y descripción las ven los transportistas; no admiten datos de contacto. */
+    public static ShipmentRequest publish(UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
+                                          UUID republishedFrom) {
+        Cargo clean = new Cargo(cargo.originCity(), ContactInfoPolicy.clean(cargo.originAddress(), "originAddress"),
+                cargo.destinationCity(), ContactInfoPolicy.clean(cargo.destinationAddress(), "destinationAddress"),
+                cargo.cargoType(), ContactInfoPolicy.clean(cargo.cargoDescription(), "cargoDescription"),
                 cargo.weightKg(), cargo.volumeM3(), cargo.pickupDate());
         return new ShipmentRequest(UUID.randomUUID(), requesterOrgId, createdBy, clean, pricing,
-                Status.PUBLISHED, null, OffsetDateTime.now());
+                Status.PUBLISHED, null, OffsetDateTime.now(), null, republishedFrom);
     }
 
     public boolean isPublished() { return status == Status.PUBLISHED; }
@@ -78,11 +92,40 @@ public final class ShipmentRequest {
     }
 
     public void cancel() {
+        cancel(null);
+    }
+
+    /** La PYME cancela antes de adjudicar; el motivo (opcional) lo ven los transportistas que ofertaron (RN07). */
+    public void cancel(String reason) {
         if (status != Status.PUBLISHED) {
             throw BusinessException.conflict("LOGYX-REQ-002", "Solo se puede cancelar una solicitud publicada");
         }
+        cancelReason = ContactInfoPolicy.clean(reason, "reason");
         status = Status.CANCELLED;
     }
+
+    /** El envío adjudicado se canceló (F06): la solicitud queda cancelada con ese motivo. Idempotente. */
+    public boolean cancelAfterAward(String reason) {
+        if (status != Status.MATCHED) return false;
+        status = Status.CANCELLED;
+        cancelReason = reason;
+        return true;
+    }
+
+    /** Reabrir la subasta (F07) admite mover la fecha de recojo; no puede ser pasada. */
+    public void reschedule(LocalDate pickupDate, LocalDate today) {
+        ensureOpenForBids();
+        LocalDate date = pickupDate == null ? cargo.pickupDate() : pickupDate;
+        if (date.isBefore(today)) {
+            throw BusinessException.badRequest("LOGYX-REQ-003",
+                    "La fecha de recojo ya pasó: indica una nueva fecha", "pickupDate");
+        }
+        cargo = new Cargo(cargo.originCity(), cargo.originAddress(), cargo.destinationCity(),
+                cargo.destinationAddress(), cargo.cargoType(), cargo.cargoDescription(), cargo.weightKg(),
+                cargo.volumeM3(), date);
+    }
+
+    public boolean isCancelled() { return status == Status.CANCELLED; }
 
     public UUID id() { return id; }
     public UUID requesterOrgId() { return requesterOrgId; }
@@ -92,4 +135,6 @@ public final class ShipmentRequest {
     public Status status() { return status; }
     public UUID assignedCarrierOrgId() { return assignedCarrierOrgId; }
     public OffsetDateTime createdAt() { return createdAt; }
+    public String cancelReason() { return cancelReason; }
+    public UUID republishedFrom() { return republishedFrom; }
 }

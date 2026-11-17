@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import pe.logyx.fleet.application.FleetService;
+import pe.logyx.fleet.domain.VehicleCargoCompatibility;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.identity.application.OrganizationDirectory;
 import pe.logyx.identity.domain.model.Organization;
@@ -49,6 +50,8 @@ public class OperatorService {
     @Inject FleetService fleet;
     @Inject OrganizationDirectory organizations;
     @Inject ReputationQueries reputation;
+    @Inject pe.logyx.identity.application.OrganizationVerificationService verification;
+    @Inject pe.logyx.identity.application.OrganizationGuard guard;
 
     @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H")
     Duration sla;
@@ -91,7 +94,10 @@ public class OperatorService {
         return shipments.allShipments(filter, page);
     }
 
-    /** Vehículos que pueden tomar la solicitud (disponibles y con capacidad, RN02), mejor Trust Score primero. */
+    /**
+     * Vehículos que pueden tomar la solicitud (RN02: disponibles, con capacidad, tipo apto para la carga y volumen; de
+     * transportistas verificados, RN01), mejor Trust Score primero.
+     */
     @Transactional
     public List<AssignmentCandidate> candidates(UUID requestId) {
         ShipmentRequest r = marketplace.requestForParticipant(requestId);
@@ -99,13 +105,29 @@ public class OperatorService {
         var ids = vehicles.stream().map(Vehicle::organizationId).collect(Collectors.toSet());
         Map<UUID, Organization> carriers = organizations.byIds(ids);
         Map<UUID, BigDecimal> trust = reputation.trustScores(ids);
+        var c = r.cargo();
         return vehicles.stream()
                 .filter(v -> carriers.containsKey(v.organizationId())
-                        && carriers.get(v.organizationId()).type() == OrgType.CARRIER)
+                        && carriers.get(v.organizationId()).type() == OrgType.CARRIER
+                        && guard.canTransact(carriers.get(v.organizationId())))                       // RN01
+                .filter(v -> VehicleCargoCompatibility.canCarry(v.type(), c.cargoType())             // RN02 (F29)
+                        && VehicleCargoCompatibility.volumeFits(v.maxVolumeM3(), c.volumeM3()))
                 .map(v -> new AssignmentCandidate(carriers.get(v.organizationId()), trust.get(v.organizationId()), v))
                 .sorted((a, b) -> b.carrierTrustScore().compareTo(a.carrierTrustScore()))
                 .toList();
     }
+
+    // ----- Verificación de organizaciones (RN01, F05): ver OrganizationVerificationService
+
+    public Paged<Organization> organizations(Organization.VerificationStatus status, OrgType type, PageRequest page) {
+        return verification.search(status, type, page);
+    }
+
+    public Organization verifyOrganization(UUID id, String note) { return verification.verify(id, note); }
+
+    public Organization rejectOrganization(UUID id, String reason) { return verification.reject(id, reason); }
+
+    public Organization suspendOrganization(UUID id, String reason) { return verification.suspend(id, reason); }
 
     /** RN10: ver {@link ManualAssignmentUseCase}. */
     public AcceptOutcome assign(UUID requestId, ManualAssignmentCommand cmd) {

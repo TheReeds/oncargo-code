@@ -64,6 +64,40 @@ class RowLevelSecurityTest {
     }
 
     @Test
+    void soloElOperadorCambiaLaVerificacionDeUnaOrganizacion() {
+        Session pyme = registerPending("PYME", "RLS Verif Pyme");
+        Session other = registerPending("PYME", "RLS Verif Otra");
+        Session op = operator();
+        String self = "UPDATE organizations SET verification_status = 'VERIFIED' WHERE id = '" + pyme.orgId() + "'";
+        // La propia organización puede editar su fila (orgs_update_own) pero no las columnas de verificación (trigger V13)
+        assertThrows(Exception.class, () -> executeAs(pyme, "PYME", self));
+        assertEquals(1, executeAs(pyme, "PYME", "UPDATE organizations SET city = 'Puno' WHERE id = '" + pyme.orgId() + "'"));
+        // Otra organización ni siquiera ve la fila para actualizarla
+        assertEquals(0, executeAs(other, "PYME", "UPDATE organizations SET city = 'Lima' WHERE id = '" + pyme.orgId() + "'"));
+        // El operador sí (orgs_operator_update)
+        assertEquals(1, executeAs(op, "OPERATOR", self));
+        assertEquals(1L, countAsOwner("SELECT count(*) FROM organizations WHERE id = '" + pyme.orgId()
+                + "' AND verification_status = 'VERIFIED'"));
+    }
+
+    @Test
+    void soloElOperadorActualizaEnviosYFlotaAjenos() {
+        Flows.Awarded a = Flows.awarded("RLS Lifecycle");
+        Session stranger = register("CARRIER", "RLS Lifecycle Ajeno");
+        Session op = operator();
+        String cancel = "UPDATE shipments SET status = 'CANCELLED' WHERE id = '" + a.shipmentId() + "'";
+        assertEquals(0, executeAs(stranger, "CARRIER", cancel));
+        assertEquals(0, executeAs(stranger, "CARRIER", "UPDATE vehicles SET status = 'MAINTENANCE' WHERE organization_id = '"
+                + a.carrier().orgId() + "'"));
+        assertEquals(1, executeAs(op, "OPERATOR", "UPDATE shipments SET cancel_reason = 'x' WHERE id = '" + a.shipmentId() + "'"));
+        // HTTP: un tercero no cancela ni cambia el vehículo (404, no ve el envío)
+        Api.as(stranger).body(Map.of("reason", "x")).post("/api/v1/shipments/" + a.shipmentId() + "/cancel")
+                .then().statusCode(404);
+        Api.as(stranger).body(Map.of("vehicleId", vehicle(stranger, plate(), 5000)))
+                .put("/api/v1/shipments/" + a.shipmentId() + "/vehicle").then().statusCode(404);
+    }
+
+    @Test
     void transportistaNoVeFlotaNiOfertasDeOtro() {
         Session a = register("CARRIER", "RLS Carrier A");
         Session b = register("CARRIER", "RLS Carrier B");

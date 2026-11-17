@@ -22,6 +22,11 @@ import pe.logyx.shared.domain.Money;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shipment.application.event.ShipmentStatusChanged;
+import pe.logyx.shipment.application.event.ShipmentReassigned;
+import pe.logyx.identity.application.event.OrganizationVerificationChanged;
+import pe.logyx.marketplace.application.event.AuctionClosed;
+import pe.logyx.marketplace.application.event.BidWithdrawn;
+import pe.logyx.marketplace.application.event.RequestCancelled;
 import pe.logyx.shipment.domain.model.Shipment;
 import pe.logyx.trip.application.event.*;
 
@@ -68,10 +73,21 @@ public class NotificationObservers {
     }
 
     void onCounterOffer(@Observes @Outboxed CounterOfferUpdated e) {
-        Notification n = switch (e.status()) {
-            case PENDING -> Notification.to(e.carrierOrgId(), NotificationType.COUNTER_OFFER, "Nueva contra-oferta",
-                    "La PYME propone " + Money.soles(e.amount()) + " por tu oferta. Acéptala o recházala.",
+        Notification n = e.byCarrier() ? switch (e.status()) {        // RF26: la propuso el transportista
+            case PENDING -> Notification.to(e.requesterOrgId(), NotificationType.COUNTER_OFFER, "Nueva contra-oferta",
+                    "El transportista propone " + Money.soles(e.amount()) + " por su oferta. Acéptala o recházala.",
                     NotificationTarget.COUNTER_OFFER, e.counterOfferId());
+            case ACCEPTED -> Notification.to(e.carrierOrgId(), NotificationType.COUNTER_OFFER, "Contra-oferta aceptada",
+                    "La PYME aceptó " + Money.soles(e.amount()) + ". Tu oferta queda en ese monto; la PYME decide si te "
+                            + "adjudica.", NotificationTarget.BID, e.bidId());
+            case REJECTED -> Notification.to(e.carrierOrgId(), NotificationType.COUNTER_OFFER, "Contra-oferta rechazada",
+                    "La PYME rechazó tu contra-oferta de " + Money.soles(e.amount()) + ".",
+                    NotificationTarget.BID, e.bidId());
+            case EXPIRED -> null;
+        } : switch (e.status()) {
+            case PENDING -> Notification.to(e.carrierOrgId(), NotificationType.COUNTER_OFFER, "Nueva contra-oferta",
+                    "La PYME propone " + Money.soles(e.amount()) + " por tu oferta. Acéptala, recházala o responde con "
+                            + "otro monto.", NotificationTarget.COUNTER_OFFER, e.counterOfferId());
             case ACCEPTED -> Notification.to(e.requesterOrgId(), NotificationType.COUNTER_OFFER, "Contra-oferta aceptada",
                     "El transportista aceptó " + Money.soles(e.amount()) + ". Ya puedes aceptar la oferta.",
                     NotificationTarget.BID, e.bidId());
@@ -83,6 +99,67 @@ public class NotificationObservers {
         if (n != null) publisher.publish(List.of(n));
     }
 
+    // ----- V13: verificación (RN01), subastas sin ofertas (F07), cancelaciones (F06, F16), retiro de oferta (F08)
+
+    void onVerification(@Observes @Outboxed OrganizationVerificationChanged e) {
+        String note = e.note() == null ? "" : " Motivo: " + e.note();
+        Notification n = switch (e.status()) {
+            case VERIFIED -> Notification.to(e.organizationId(), NotificationType.ORGANIZATION_VERIFICATION,
+                    "Tu empresa está verificada", "LOGYX verificó tu organización: ya tienes el sello «Verificado» y "
+                            + "puedes publicar y ofertar.", NotificationTarget.ORGANIZATION, e.organizationId());
+            case REJECTED -> Notification.to(e.organizationId(), NotificationType.ORGANIZATION_VERIFICATION,
+                    "Verificación rechazada", "LOGYX no pudo verificar tu organización." + note,
+                    NotificationTarget.ORGANIZATION, e.organizationId());
+            case SUSPENDED -> Notification.to(e.organizationId(), NotificationType.ORGANIZATION_VERIFICATION,
+                    "Organización suspendida", "LOGYX suspendió tu organización: no puedes publicar, ofertar ni "
+                            + "reservar." + note, NotificationTarget.ORGANIZATION, e.organizationId());
+            case PENDING -> null;
+        };
+        if (n != null) publisher.publish(List.of(n));
+    }
+
+    void onAuctionClosed(@Observes @Outboxed AuctionClosed e) {
+        List<Notification> out = new ArrayList<>();
+        if (e.bidCount() == 0) {
+            out.add(Notification.to(e.requesterOrgId(), NotificationType.AUCTION_CLOSED, "Tu subasta cerró sin ofertas",
+                    "Nadie ofertó por tu carga " + e.route() + ". Puedes reabrir la subasta (y cambiar la fecha de "
+                            + "recojo) o esperar: el operador LOGYX puede asignarte un transportista.",
+                    NotificationTarget.REQUEST, e.requestId()));
+            operators().forEach(op -> out.add(Notification.to(op, NotificationType.AUCTION_CLOSED,
+                    "Solicitud sin ofertas", "La subasta de la carga " + e.route() + " cerró sin ofertas: ya puedes "
+                            + "asignarla manualmente (RN10).", NotificationTarget.REQUEST, e.requestId())));
+        } else {
+            out.add(Notification.to(e.requesterOrgId(), NotificationType.AUCTION_CLOSED, "Tu subasta cerró",
+                    "La subasta de tu carga " + e.route() + " cerró con " + e.bidCount()
+                            + (e.bidCount() == 1 ? " oferta" : " ofertas") + ". Compara y acepta la que prefieras.",
+                    NotificationTarget.REQUEST, e.requestId()));
+        }
+        publisher.publish(out);
+    }
+
+    void onRequestCancelled(@Observes @Outboxed RequestCancelled e) {
+        String why = e.reason() == null ? "." : ": " + e.reason() + ".";
+        publisher.publish(e.carrierOrgIds().stream().map(c -> Notification.to(c, NotificationType.REQUEST_CANCELLED,
+                "Solicitud cancelada", "La PYME canceló la carga " + e.route() + why + " Tu oferta quedó sin efecto.",
+                NotificationTarget.REQUEST, e.requestId())).toList());
+    }
+
+    void onBidWithdrawn(@Observes @Outboxed BidWithdrawn e) {
+        publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.BID_WITHDRAWN,
+                "Oferta retirada", e.carrierName() + " retiró su oferta por tu carga " + e.route() + ".",
+                NotificationTarget.REQUEST, e.requestId())));
+    }
+
+    void onShipmentReassigned(@Observes @Outboxed ShipmentReassigned e) {
+        boolean vehicle = "VEHICLE".equals(e.what());
+        String why = e.reason() == null ? "" : " Motivo: " + e.reason();
+        publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.SHIPMENT_STATUS_CHANGE,
+                vehicle ? "Cambio de vehículo" : "Cambio de conductor",
+                (vehicle ? "Tu carga " + e.route() + " ahora va en el vehículo " + e.vehiclePlate()
+                        : "Tu carga " + e.route() + " ahora la lleva " + e.driverName()) + "." + why,
+                NotificationTarget.SHIPMENT, e.shipmentId())));
+    }
+
     void onMessage(@Observes @Outboxed MessagePosted e) {
         publisher.publish(List.of(Notification.to(e.recipientOrgId(), NotificationType.NEW_MESSAGE,
                 "Nuevo mensaje de " + e.senderName(), e.preview(), NotificationTarget.REQUEST, e.requestId())));
@@ -90,7 +167,18 @@ public class NotificationObservers {
 
     void onShipmentStatus(@Observes @Outboxed ShipmentStatusChanged e) {
         List<Notification> out = new ArrayList<>();
-        if (e.status() == Shipment.Status.IN_TRANSIT) {
+        if (e.status() == Shipment.Status.CANCELLED) {
+            String why = e.reason() == null ? "." : ": " + e.reason() + ".";
+            String body = "Se canceló el envío " + e.route() + why;
+            if (!e.requesterOrgId().equals(e.actorOrgId())) {
+                out.add(Notification.to(e.requesterOrgId(), NotificationType.SHIPMENT_CANCELLED, "Envío cancelado",
+                        body + " Puedes republicar tu carga.", NotificationTarget.SHIPMENT, e.shipmentId()));
+            }
+            if (!e.carrierOrgId().equals(e.actorOrgId())) {
+                out.add(Notification.to(e.carrierOrgId(), NotificationType.SHIPMENT_CANCELLED, "Envío cancelado",
+                        body, NotificationTarget.SHIPMENT, e.shipmentId()));
+            }
+        } else if (e.status() == Shipment.Status.IN_TRANSIT) {
             out.add(Notification.to(e.requesterOrgId(), NotificationType.SHIPMENT_STATUS_CHANGE, "Tu carga está en camino",
                     "El conductor recogió la carga " + e.route() + ".", NotificationTarget.SHIPMENT, e.shipmentId()));
         } else if (e.status() == Shipment.Status.DELIVERED) {
@@ -119,8 +207,14 @@ public class NotificationObservers {
     void onIncidentStatus(@Observes @Outboxed IncidentStatusChanged e) {
         if (e.status().isActive()) return;   // IN_REVIEW no se notifica
         String title = e.status() == IncidentStatus.RESOLVED ? "Incidencia resuelta" : "Incidencia cerrada";
-        String body = (e.resolutionNotes() == null ? "El operador cerró la incidencia." : e.resolutionNotes())
-                + " El envío puede continuar.";
+        String effect = e.shipmentOutcome() == null ? "" : switch (e.shipmentOutcome()) {        // RF55
+            case RESUME -> " El envío puede continuar.";
+            case DELIVERED -> " El envío se dio por entregado.";
+            case CANCELLED -> " El envío quedó cancelado.";
+        };
+        String notes = e.resolutionNotes() == null ? "El operador cerró la incidencia."
+                : "Resolución del operador: «" + e.resolutionNotes() + "».";
+        String body = notes + effect;
         publisher.publish(List.of(
                 Notification.to(e.requesterOrgId(), NotificationType.INCIDENT_RESOLVED, title, body, NotificationTarget.INCIDENT,
                         e.incidentId()),
@@ -181,9 +275,9 @@ public class NotificationObservers {
 
     void onSmartLoadAccepted(@Observes @Outboxed SmartLoadAccepted e) {
         publisher.publish(e.items().stream().map(i -> Notification.to(i.requesterOrgId(),
-                NotificationType.SMART_LOAD_ACCEPTED, "Tu carga fue agrupada",
-                e.carrierName() + " incluyó tu carga " + i.route() + " en un plan de carga combinada con otras cargas. "
-                        + "Es posible que reciba tu carga con una oferta.",
+                NotificationType.SMART_LOAD_ACCEPTED, "Oferta consolidada por tu carga",
+                e.carrierName() + " ofertó por tu carga " + i.route() + " dentro de un plan de carga consolidada: "
+                        + "viajaría junto con otras cargas compatibles en el mismo vehículo. Tú decides si la aceptas.",
                 NotificationTarget.REQUEST, i.requestId())).toList());
     }
 

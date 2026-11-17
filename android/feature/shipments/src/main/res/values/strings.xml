@@ -36,7 +36,7 @@
     <string name="shipments_sheet_license_format">Licencia %1$s</string>
     <string name="shipments_sheet_license_missing">Sin licencia registrada</string>
     <string name="shipments_sheet_empty_title">No tienes conductores disponibles</string>
-    <string name="shipments_sheet_empty_message">Registra un conductor en la web de LOGYX y vuelve a intentarlo.</string>
+    <string name="shipments_sheet_empty_message">Registra un conductor en la web de OnCargo y vuelve a intentarlo.</string>
     <string name="shipments_sheet_continue">Asignar a %1$s</string>
     <string name="shipments_sheet_continue_none">Elige un conductor para continuar</string>
     <string name="shipments_driver_selected">Seleccionado</string>
@@ -51,7 +51,7 @@
     <string name="shipments_msg_assigned">Conductor asignado</string>
     <string name="shipments_driver_assigned">Conductor asignado</string>
     <string name="shipments_incident_banner_title">Envío detenido</string>
-    <string name="shipments_incident_banner">Hay una incidencia activa. El conductor no puede avanzar hasta que LOGYX la resuelva.</string>
+    <string name="shipments_incident_banner">Hay una incidencia activa. El conductor no puede avanzar hasta que OnCargo la resuelva.</string>
     <string name="shipments_incident_view">Ver incidencia</string>
     <string name="shipments_review_action">Calificar entrega</string>
     <string name="shipments_review_view">Ver calificaciones</string>

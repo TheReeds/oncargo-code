@@ -15,7 +15,8 @@ import java.util.UUID;
 public interface RequestInfoProvider {
 
     record RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
-                       BigDecimal weightKg) {}
+                       BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
+                       java.time.LocalDate pickupDate, BigDecimal distanceKm) {}
 
     Map<UUID, RequestInfo> byIds(Collection<UUID> requestIds);
 }

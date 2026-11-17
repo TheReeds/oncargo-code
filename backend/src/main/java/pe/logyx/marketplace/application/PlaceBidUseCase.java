@@ -6,7 +6,9 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
+import pe.logyx.identity.application.OrganizationGuard;
 import pe.logyx.marketplace.application.event.BidPlaced;
+import pe.logyx.marketplace.application.event.BidWithdrawn;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.BidRepository;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
@@ -15,14 +17,20 @@ import pe.logyx.marketplace.domain.BidEligibilityPolicy;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.shared.audit.AuditService;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shared.tenancy.TenantContext;
+import pe.logyx.shipment.application.ResourceScheduler;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
-/** El transportista oferta en una subasta abierta (RN02, RN03, RN04). */
+/**
+ * El transportista oferta en una subasta abierta (RN01 verificado, RN02 vehículo apto, RN03 piso, RN04 cierre) o
+ * retira su oferta mientras la subasta sigue abierta (F08).
+ */
 @ApplicationScoped
 public class PlaceBidUseCase {
 
@@ -30,13 +38,19 @@ public class PlaceBidUseCase {
     @Inject AuctionRepository auctions;
     @Inject BidRepository bids;
     @Inject FleetService fleet;
+    @Inject OrganizationGuard guard;
+    @Inject ResourceScheduler schedule;
     @Inject RequestSummaries summaries;
+    @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject SystemTx system;
     @Inject Event<BidPlaced> bidPlaced;
+    @Inject Event<BidWithdrawn> bidWithdrawn;
 
     @Transactional
     public BidSummary placeBid(UUID requestId, PlaceBidCommand cmd) {
+        UUID me = tenant.orgId();
+        guard.ensureCanTransact(me);                                                             // RN01
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
         r.ensureOpenForBids();
         Auction a = auctions.findByRequestForUpdate(r.id()).orElseThrow();
@@ -44,15 +58,19 @@ public class PlaceBidUseCase {
         if (!a.acceptsBids(now)) {
             throw BusinessException.conflict("LOGYX-AUC-002", "La subasta ya cerró");
         }
-        UUID me = tenant.orgId();
-        if (bids.existsForCarrier(a.id(), me)) {
-            throw BusinessException.conflict("LOGYX-BID-003", "Ya enviaste una oferta para esta solicitud");
-        }
+        bids.findForCarrier(a.id(), me).ifPresent(existing -> {
+            throw BusinessException.conflict("LOGYX-BID-003", existing.status() == Bid.Status.WITHDRAWN
+                    ? "Retiraste tu oferta en esta subasta: no puedes volver a ofertar"
+                    : "Ya enviaste una oferta para esta solicitud");
+        });
         BidEligibilityPolicy.ensureAboveFloor(cmd.amount(), r.pricing().priceFloor());          // RN03
         Vehicle v = fleet.ownVehicle(cmd.vehicleId());                                           // RN02: propio
-        BidEligibilityPolicy.ensureVehicleEligible(v.isAvailable(), v.maxWeightKg(), r.cargo().weightKg());
+        BidEligibilityPolicy.ensureVehicleEligible(v, r.cargo());                                // RN02: kg, tipo, m³
+        var c = r.cargo();
+        schedule.ensureVehicleFree(v.id(), schedule.window(c.pickupDate(), r.pricing().distanceKm()),
+                cmd.loadGroupId(), null);                                                         // F11
 
-        Bid b = Bid.place(a, r, me, v, cmd.amount(), cmd.notes());
+        Bid b = Bid.place(a, r, me, v, cmd.amount(), cmd.notes(), cmd.loadGroupId());            // RN07 en notas
         bids.save(b);
 
         // RN04: cierre por número máximo de ofertas. Bajo RLS el transportista solo
@@ -66,10 +84,31 @@ public class PlaceBidUseCase {
             a.close(Auction.CloseReason.MAX_BIDS, now);
             auctions.save(a);
         }
-        BidSummary summary = summaries.bids(java.util.List.of(b)).getFirst();
+        BidSummary summary = summaries.bids(List.of(b)).getFirst();
         // Notificación a la PYME (módulo notification) tras el commit
         bidPlaced.fire(new BidPlaced(b.id(), r.id(), r.requesterOrgId(), me, summary.carrierName(), b.amount(),
                 r.routeLabel(), (int) total, closed));
+        return summary;
+    }
+
+    /** F08: retira la oferta propia (pendiente) mientras la subasta acepta ofertas; no se puede volver a ofertar. */
+    @Transactional
+    public BidSummary withdraw(UUID bidId) {
+        UUID me = tenant.orgId();
+        Bid b = bids.findById(bidId).filter(x -> me.equals(x.carrierOrgId()))
+                .orElseThrow(() -> BusinessException.notFound("Oferta"));
+        ShipmentRequest r = requests.findById(b.requestId()).orElseThrow(() -> BusinessException.notFound("Solicitud"));
+        Auction a = auctions.findByRequestForUpdate(r.id()).orElseThrow();
+        b.withdraw(a, OffsetDateTime.now());
+        if (!r.isPublished()) {
+            throw BusinessException.conflict("LOGYX-BID-005", "La solicitud ya no admite cambios en las ofertas");
+        }
+        bids.save(b);
+        long total = system.call(() -> bids.countByAuctionExcludingCarrier(a.id(), me));
+        audit.record(tenant.profileId(), me, "BID_WITHDRAWN", "bid", b.id(), "solicitud=" + r.id());
+        BidSummary summary = summaries.bids(List.of(b)).getFirst();
+        bidWithdrawn.fire(new BidWithdrawn(b.id(), r.id(), r.requesterOrgId(), me, summary.carrierName(),
+                r.routeLabel(), (int) total));
         return summary;
     }
 }

@@ -16,6 +16,9 @@ import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.tenancy.TenantContext;
 import pe.logyx.shipment.application.CreateShipmentCommand;
 import pe.logyx.shipment.application.CreateShipmentUseCase;
+import pe.logyx.shipment.application.ResourceScheduler;
+import pe.logyx.fleet.domain.VehicleCargoCompatibility;
+import pe.logyx.identity.application.OrganizationGuard;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -33,9 +36,12 @@ public class AcceptBidUseCase {
     @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject Event<BidAccepted> bidAccepted;
+    @Inject OrganizationGuard guard;
+    @Inject ResourceScheduler schedule;
 
     @Transactional
     public AcceptOutcome accept(UUID bidId) {
+        guard.ensureCanTransact(tenant.orgId());                                                 // RN01 / suspensión
         Bid bid = bids.findForRequester(bidId, tenant.orgId()).orElseThrow(() -> BusinessException.notFound("Oferta"));
         ShipmentRequest r = requests.findOwned(bid.requestId(), tenant.orgId())
                 .orElseThrow(() -> BusinessException.notFound("Solicitud"));
@@ -51,6 +57,12 @@ public class AcceptBidUseCase {
      */
     @Transactional(Transactional.TxType.MANDATORY)
     public AcceptOutcome award(ShipmentRequest r, Bid bid, String auditAction) {
+        var cargo = r.cargo();
+        // RN02 también al aceptar (ofertas hechas antes de la matriz por tipo de carga, F09) y F11: el vehículo no
+        // puede haber quedado comprometido en otro envío solapado (p. ej. ganó dos subastas a la vez).
+        VehicleCargoCompatibility.ensureTypeAndVolume(bid.vehicleType(), null, cargo.cargoType(), null);
+        schedule.ensureVehicleFree(bid.vehicleId(), schedule.window(cargo.pickupDate(), r.pricing().distanceKm()),
+                bid.loadGroupId(), null);
         Auction a = auctions.findByRequest(r.id()).orElseThrow();
         a.closeIfOpen(Auction.CloseReason.ACCEPTED, OffsetDateTime.now());
         auctions.save(a);
@@ -67,7 +79,7 @@ public class AcceptBidUseCase {
         var c = r.cargo();
         UUID shipmentId = shipments.createFromAcceptedBid(new CreateShipmentCommand(
                 r.id(), bid.id(), r.requesterOrgId(), bid.carrierOrgId(), bid.vehicleId(), bid.amount(),
-                c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress()));
+                c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress(), bid.loadGroupId()));
         audit.record(tenant.profileId(), tenant.orgId(), auditAction, "bid", bid.id(),
                 "monto=" + bid.amount() + " envio=" + shipmentId);
         bidAccepted.fire(new BidAccepted(bid.id(), r.id(), shipmentId, r.requesterOrgId(), bid.carrierOrgId(),

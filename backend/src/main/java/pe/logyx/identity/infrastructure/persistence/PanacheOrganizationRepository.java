@@ -5,6 +5,10 @@ import pe.logyx.identity.application.port.out.OrganizationRepository;
 import pe.logyx.identity.domain.model.Organization;
 import pe.logyx.shared.tenancy.OrgType;
 
+import pe.logyx.shared.domain.PageRequest;
+import pe.logyx.shared.domain.Paged;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -43,5 +47,24 @@ public class PanacheOrganizationRepository implements OrganizationRepository {
     @Override
     public void insert(Organization organization) {
         OrganizationEntity.from(organization).persist();
+    }
+
+    @Override
+    public void update(Organization organization) {
+        OrganizationEntity e = OrganizationEntity.findById(organization.id());
+        if (e == null) throw new IllegalStateException("Organización inexistente: " + organization.id());
+        e.apply(organization);
+    }
+
+    @Override
+    public Paged<Organization> search(Organization.VerificationStatus status, OrgType type, PageRequest page) {
+        StringBuilder where = new StringBuilder("type <> ?1");
+        List<Object> params = new ArrayList<>(List.of(OrgType.OPERATOR));
+        if (status != null) { params.add(status); where.append(" and verificationStatus = ?").append(params.size()); }
+        if (type != null) { params.add(type); where.append(" and type = ?").append(params.size()); }
+        var q = OrganizationEntity.<OrganizationEntity>find(where + " order by createdAt, id", params.toArray())
+                .page(page.page(), page.size());
+        long total = OrganizationEntity.count(where.toString(), params.toArray());
+        return new Paged<>(q.list().stream().map(OrganizationEntity::toDomain).toList(), page, total);
     }
 }

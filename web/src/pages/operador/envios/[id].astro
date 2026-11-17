@@ -1,14 +1,20 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
+import { DescriptionList } from '@/components/ui/description-list';
+import { buttonVariants } from '@/components/ui/button';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
+import { Badge } from '@/components/ui/badge';
 import { StopTimeline } from '@/features/shipments/components/StopTimeline';
+import DocumentsPanel from '@/features/documents/components/DocumentsPanel';
+import ShipmentIncidents from '@/features/incidents/components/ShipmentIncidents';
 import { getShipment } from '@/features/operator/server';
 import { ApiError } from '@/lib/api/client';
-import { formatDateTime, formatMoney, formatTons } from '@/lib/format';
+import { CITY_LABELS, formatDateTime, formatMoney, formatTons } from '@/lib/format';
+import { TriangleAlert } from '@lucide/astro';
 
 const { id } = Astro.params;
 let s;
@@ -18,36 +24,53 @@ try {
   if (e instanceof ApiError && [400, 403, 404].includes(e.status)) return Astro.redirect('/operador');
   throw e;
 }
-const facts: [string, string, boolean?][] = [
-  ['PYME', s.requesterName ?? '—'],
-  ['Transportista', s.carrierName ?? '—'],
-  ['Vehículo', s.vehiclePlate ?? '—', true],
-  ['Conductor', s.driverName ?? 'Sin asignar'],
-  ['Peso', formatTons(s.weightKg), true],
-];
+const route = `${CITY_LABELS[s.originCity ?? ''] ?? s.originCity} → ${CITY_LABELS[s.destinationCity ?? ''] ?? s.destinationCity}`;
+const stops = s.stops ?? [];
+const done = stops.filter((x) => x.status === 'COMPLETED').length;
 ---
 <AppShell title="Detalle de envío" active="operador-envios" wide>
-  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Envío</span></nav>
-  <PageHeader title={`Envío ${s.id!.slice(0, 8)}`} subtitle={`Creado ${formatDateTime(s.createdAt)} · solo lectura`}>
-    <div slot="actions" class="flex flex-wrap items-center gap-3"><StatusPill status={s.status!} /></div>
+  <PageHeader title={route} subtitle={`Envío creado ${formatDateTime(s.createdAt)}${s.deliveredAt ? ` · entregado ${formatDateTime(s.deliveredAt)}` : ''}. Vista de consulta.`}
+    breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Envíos', href: '/operador/envios' }, { label: route }]}>
+    <Fragment slot="meta">
+      <StatusPill status={s.status!} />
+      {s.hasActiveIncident && <Badge tone="red"><TriangleAlert size={12} aria-hidden="true" />Con incidencia activa</Badge>}
+      <span class="font-mono text-xs">ID {s.id!.slice(0, 8)}</span>
+    </Fragment>
+    {s.requestId && <a slot="actions" href={`/operador/solicitudes/${s.requestId}`} class={buttonVariants({ variant: 'outline' })}>Ver solicitud de origen</a>}
   </PageHeader>
-  {s.hasActiveIncident && <Alert tone="warning" title="Este envío tiene una incidencia activa" className="mb-4">El conductor no puede avanzar las paradas hasta que se resuelva. Revísala en <a class="font-medium underline" href="/operador/incidencias">Incidencias</a>.</Alert>}
-  <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
-    <Card>
-      <CardHeader><CardTitle>Ruta y paradas</CardTitle></CardHeader>
-      <CardBody className="space-y-5">
-        <RouteLine origin={s.originCity!} destination={s.destinationCity!} />
-        <p class="text-sm text-ink-700">{s.cargoDescription}</p>
-        <StopTimeline stops={s.stops ?? []} />
-      </CardBody>
-    </Card>
-    <Card>
+
+  {s.hasActiveIncident && (
+    <Alert tone="warning" title="Envío detenido por una incidencia" className="mb-4">
+      El conductor no puede avanzar las paradas hasta que se resuelva o se cierre (RN11). Gestiónala en <a class="font-medium underline" href="/operador/incidencias">Incidencias</a>.
+    </Alert>
+  )}
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div class="flex min-w-0 flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <div><CardTitle>Ruta y paradas</CardTitle><CardDescription>{stops.length ? `${done} de ${stops.length} paradas completadas` : 'Recojo y entrega del envío'}</CardDescription></div>
+        </CardHeader>
+        <CardBody className="space-y-5">
+          <RouteLine origin={s.originCity!} destination={s.destinationCity!} />
+          <p class="rounded-input bg-steel-100 px-3 py-2.5 text-sm text-ink-700">{s.cargoDescription}</p>
+          <StopTimeline stops={stops} />
+        </CardBody>
+      </Card>
+      <ShipmentIncidents client:load shipmentId={s.id!} />
+      <DocumentsPanel client:load shipmentId={s.id!} perspective="OPERATOR" status={s.status!} hasActiveIncident={s.hasActiveIncident ?? false} />
+    </div>
+    <Card className="self-start">
       <CardHeader><CardTitle>Resumen</CardTitle></CardHeader>
-      <CardBody>
-        <ul class="space-y-2.5 text-sm">
-          {facts.map(([k, v, mono]) => <li class="flex items-baseline justify-between gap-3"><span class="text-ink-500">{k}</span><span class:list={['text-right font-medium text-ink-900', mono && 'font-mono']}>{v}</span></li>)}
-          <li class="flex items-baseline justify-between gap-3 border-t border-steel-200 pt-2.5"><span class="text-ink-500">Precio acordado</span><span class="money text-base">{formatMoney(s.agreedPrice)}</span></li>
-        </ul>
+      <CardBody className="space-y-5">
+        <DescriptionList cols={1} items={[
+          { label: 'PYME', value: s.requesterName },
+          { label: 'Transportista', value: s.carrierName },
+          { label: 'Vehículo', value: s.vehiclePlate, mono: true },
+          { label: 'Conductor', value: s.driverName ?? 'Sin asignar' },
+          { label: 'Peso', value: formatTons(s.weightKg), mono: true },
+        ]} />
+        <div class="flex items-baseline justify-between gap-3 border-t border-steel-200 pt-4"><span class="text-sm text-ink-500">Precio acordado</span><span class="money text-lg">{formatMoney(s.agreedPrice)}</span></div>
       </CardBody>
     </Card>
   </div>

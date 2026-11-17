@@ -1,12 +1,29 @@
 ---
-const { dark = false } = Astro.props;
+/**
+ * Logotipo de OnCargo. Dos imágenes (texto oscuro para tema claro, texto blanco para tema oscuro) alternadas por CSS
+ * según `html[data-theme]`, que el script de `Base.astro` fija antes del primer pintado: sin parpadeo.
+ *  - `dark`: fondo oscuro fijo en ambos temas (sidebar de AppShell, hero, pie de vídeo) → siempre la variante blanca.
+ *  - `size`: altura (`sm` 24 px · `md` 32 px · `lg` 40 px).
+ *  - `symbol`: solo el símbolo (para espacios estrechos).
+ */
+interface Props { dark?: boolean; size?: 'sm' | 'md' | 'lg'; symbol?: boolean; class?: string }
+const { dark = false, size = 'md', symbol = false, class: cls } = Astro.props;
+const h = { sm: 24, md: 32, lg: 40 }[size];
+const w = Math.round(h * (1469 / 380));
 ---
-<span class:list={['inline-flex items-center gap-2 font-semibold tracking-tight', dark ? 'text-white' : 'text-ink-900']}>
-  <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
-    <rect width="32" height="32" rx="8" style="fill:var(--color-petrol-700)" />
-    <path d="M9 9v11h8" style="stroke:var(--color-on-solid)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-    <path d="M17 23l6-6 0 0" stroke="#10B981" stroke-width="3" stroke-linecap="round" fill="none" />
-    <circle cx="23" cy="11" r="2.5" fill="#10B981" />
-  </svg>
-  <span class="text-lg">LOGYX</span>
-</span>
+{symbol ? (
+  <img src="/brand/oncargo-simbolo-64.webp" srcset="/brand/oncargo-simbolo-64.webp 1x, /brand/oncargo-simbolo-128.webp 2x" width={h} height={h} alt="OnCargo" decoding="async" class:list={['inline-block', cls]} style={`height:${h}px;width:${h}px`} />
+) : (
+  <span class:list={['oncargo-logo inline-flex shrink-0 items-center', dark && 'oncargo-logo--dark', cls]} style={`height:${h}px`}>
+    <img class="oncargo-logo__light" src="/brand/oncargo-claro-248.webp" srcset="/brand/oncargo-claro-248.webp 1x, /brand/oncargo-claro-496.webp 2x" width={w} height={h} alt="OnCargo" decoding="async" style={`height:${h}px;width:auto`} />
+    <img class="oncargo-logo__dark" src="/brand/oncargo-oscuro-248.webp" srcset="/brand/oncargo-oscuro-248.webp 1x, /brand/oncargo-oscuro-496.webp 2x" width={w} height={h} alt="OnCargo" decoding="async" style={`height:${h}px;width:auto`} />
+  </span>
+)}
+
+<style is:global>
+  .oncargo-logo__dark { display: none; }
+  html[data-theme='dark'] .oncargo-logo__light { display: none; }
+  html[data-theme='dark'] .oncargo-logo__dark { display: block; }
+  .oncargo-logo--dark .oncargo-logo__light { display: none; }
+  .oncargo-logo--dark .oncargo-logo__dark { display: block; }
+</style>

@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import org.jboss.resteasy.reactive.ResponseStatus;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import pe.logyx.marketplace.application.*;
 import pe.logyx.marketplace.infrastructure.web.MarketplaceDtos.*;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -26,6 +27,7 @@ public class MarketplaceResource {
     @Inject AcceptBidUseCase acceptBid;
     @Inject CancelRequestUseCase cancelRequest;
     @Inject MarketplaceQueries queries;
+    @Inject AuctionRecoveryUseCase recovery;
 
     // ----- PYME
     @POST
@@ -58,8 +60,35 @@ public class MarketplaceResource {
     @POST
     @Path("/shipment-requests/{id}/cancel")
     @RolesAllowed(Roles.PYME)
-    public ApiResponse<RequestView> cancel(@PathParam("id") UUID id) {
-        return ApiResponse.of(RequestView.of(cancelRequest.cancel(id)));
+    @Operation(summary = "Cancela una solicitud publicada (motivo opcional); avisa a los transportistas que ofertaron")
+    public ApiResponse<RequestView> cancel(@PathParam("id") UUID id, @Valid CancelRequestBody req) {
+        return ApiResponse.of(RequestView.of(cancelRequest.cancel(id, req == null ? null : req.reason())));
+    }
+
+    @POST
+    @Path("/shipment-requests/{id}/reopen")
+    @RolesAllowed(Roles.PYME)
+    @Operation(summary = "F07: reabre la subasta que cerró por tiempo (LOGYX-AUC-003); admite nueva fecha de recojo")
+    public ApiResponse<RequestView> reopen(@PathParam("id") UUID id, @Valid RescheduleRequest req) {
+        return ApiResponse.of(RequestView.of(recovery.reopen(id, req == null ? null : req.pickupDate())));
+    }
+
+    @POST
+    @Path("/shipment-requests/{id}/republish")
+    @RolesAllowed(Roles.PYME)
+    @ResponseStatus(201)
+    @Operation(summary = "F07/F06: publica de nuevo una solicitud cancelada (misma carga, precio y subasta nuevos)")
+    public ApiResponse<RequestView> republish(@PathParam("id") UUID id, @Valid RescheduleRequest req) {
+        return ApiResponse.of(RequestView.of(recovery.republish(id, req == null ? null : req.pickupDate())));
+    }
+
+    @POST
+    @Path("/bids/{id}/withdraw")
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "F08: el transportista retira su oferta pendiente mientras la subasta está abierta "
+            + "(LOGYX-BID-005); no puede volver a ofertar en esa subasta")
+    public ApiResponse<BidView> withdraw(@PathParam("id") UUID id) {
+        return ApiResponse.of(BidView.of(placeBid.withdraw(id)));
     }
 
     @POST

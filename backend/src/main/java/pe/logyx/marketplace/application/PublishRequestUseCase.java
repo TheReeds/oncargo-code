@@ -5,7 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import pe.logyx.catalog.domain.City;
-import pe.logyx.identity.application.OrganizationDirectory;
+import pe.logyx.identity.application.OrganizationGuard;
 import pe.logyx.identity.domain.model.Organization;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
@@ -26,7 +26,7 @@ public class PublishRequestUseCase {
 
     @Inject ShipmentRequestRepository requests;
     @Inject AuctionRepository auctions;
-    @Inject OrganizationDirectory organizations;
+    @Inject OrganizationGuard guard;
     @Inject PricingService pricing;
     @Inject RequestSummaries summaries;
     @Inject AuditService audit;
@@ -37,8 +37,13 @@ public class PublishRequestUseCase {
 
     @Transactional
     public RequestSummary publish(PublishRequestCommand cmd) {
-        Organization org = organizations.get(tenant.orgId());
-        ShipmentRequest.ensureRequesterCanPublish(org.rucVerified());   // RN01
+        return publish(cmd, null);
+    }
+
+    /** {@code republishedFrom}: solicitud cancelada de la que sale esta (F07), o null. */
+    @Transactional
+    public RequestSummary publish(PublishRequestCommand cmd, java.util.UUID republishedFrom) {
+        Organization org = guard.ensureCanTransact(tenant.orgId());                        // RN01 (verificada)
         City origin = City.require(cmd.originCity());
         City destination = City.require(cmd.destinationCity());
         PriceQuote quote = pricing.quote(origin, destination, cmd.weightKg(), cmd.cargoType());
@@ -46,13 +51,15 @@ public class PublishRequestUseCase {
         ShipmentRequest r = ShipmentRequest.publish(org.id(), tenant.profileId(),
                 new ShipmentRequest.Cargo(origin, cmd.originAddress(), destination, cmd.destinationAddress(),
                         cmd.cargoType(), cmd.cargoDescription(), cmd.weightKg(), cmd.volumeM3(), cmd.pickupDate()),
-                new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()));
+                new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()),
+                republishedFrom);
         requests.save(r);
 
         Auction a = new AuctionClosingPolicy(auctionDuration, maxBids).open(r.id(), OffsetDateTime.now());
         auctions.save(a);
 
-        audit.record(tenant.profileId(), org.id(), "REQUEST_PUBLISHED", "shipment_request", r.id(), null);
+        audit.record(tenant.profileId(), org.id(), republishedFrom == null ? "REQUEST_PUBLISHED" : "REQUEST_REPUBLISHED",
+                "shipment_request", r.id(), republishedFrom == null ? null : "desde=" + republishedFrom);
         return summaries.of(r, false);
     }
 }

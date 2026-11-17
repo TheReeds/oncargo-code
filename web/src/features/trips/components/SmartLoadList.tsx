@@ -13,6 +13,7 @@ import { Countdown } from '@/components/domain/Countdown';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { CapacityBar } from '@/components/domain/CapacityBar';
 import { EmptyState } from '@/components/domain/EmptyState';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { CITY_LABELS, formatDate, formatMoney, formatNumber, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { SmartLoadView } from '../server';
 
@@ -60,15 +61,26 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
     window.location.reload();
   }
 
+  const pendingItems = items.filter((s) => s.status === 'PENDING');
+  const potential = pendingItems.reduce((n, s) => n + (s.combinedIncome ?? 0), 0);
+  const avgOcc = pendingItems.length ? pendingItems.reduce((n, s) => n + (s.occupancyPct ?? 0), 0) / pendingItems.length : 0;
+
   return (
     <div className="space-y-4">
+      <KpiGrid cols={3}>
+        <div className="col-span-2 lg:col-span-1"><KpiTile label="Ingreso potencial" value={formatMoney(potential)} context={pendingItems.length ? 'si aceptas todas las pendientes' : 'sin sugerencias pendientes'} tone="money" /></div>
+        <KpiTile label="Pendientes" value={pendingItems.length} context="por revisar" tone={pendingItems.length ? 'warn' : 'default'} />
+        <KpiTile label="Ocupación media" value={formatNumber(avgOcc, 0)} unit="%" context="del vehículo con la combinación" tone="petrol" />
+      </KpiGrid>
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 max-w-full max-sm:w-full">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList aria-label="Estado de las sugerencias">
+          <TabsList aria-label="Estado de las sugerencias" className="max-w-full">
             {TABS.map((t) => <TabsTrigger key={t.id} value={t.id} aria-controls={undefined}>{t.label} <span className="ml-1 font-mono text-xs">{count(t.id)}</span></TabsTrigger>)}
           </TabsList>
         </Tabs>
-        <Button variant="outline" loading={busy === 'generate'} disabled={!!busy} onClick={generate}><Sparkles />{busy === 'generate' ? 'Generando…' : 'Generar sugerencias'}</Button>
+        </div>
+        <Button variant="outline" className="max-sm:w-full" loading={busy === 'generate'} disabled={!!busy} onClick={generate}><Sparkles />{busy === 'generate' ? 'Generando…' : 'Generar sugerencias'}</Button>
       </div>
 
       {shown.length === 0 ? (
@@ -79,7 +91,7 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
           />
         </Card>
       ) : (
-        <ul className="grid gap-4 xl:grid-cols-2" aria-label="Sugerencias Smart Load">
+        <ul className="grid grid-cols-1 gap-4 xl:grid-cols-2 [&>li]:min-w-0" aria-label="Sugerencias Smart Load">
           {shown.map((s) => {
             const pending = s.status === 'PENDING';
             const route = s.route ?? [];

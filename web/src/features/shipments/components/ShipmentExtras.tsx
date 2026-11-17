@@ -18,9 +18,9 @@ export default function ShipmentExtras({ shipment, perspective }: { shipment: Sh
       )}
       <Tabs defaultValue="documentos">
         <TabsList aria-label="Información del envío">
-          <TabsTrigger value="documentos"><FileText className="mr-1.5 inline size-4 align-text-bottom" aria-hidden="true" />Documentos</TabsTrigger>
-          <TabsTrigger value="calificacion"><Star className="mr-1.5 inline size-4 align-text-bottom" aria-hidden="true" />Calificación</TabsTrigger>
-          <TabsTrigger value="incidencias"><TriangleAlert className="mr-1.5 inline size-4 align-text-bottom" aria-hidden="true" />Incidencias</TabsTrigger>
+          <TabsTrigger value="documentos"><FileText className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Documentos</TabsTrigger>
+          <TabsTrigger value="calificacion"><Star className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Calificación</TabsTrigger>
+          <TabsTrigger value="incidencias"><TriangleAlert className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Incidencias</TabsTrigger>
         </TabsList>
         <TabsContent value="documentos"><DocumentsPanel {...props} /></TabsContent>
         <TabsContent value="calificacion"><ReviewPanel {...props} /></TabsContent>

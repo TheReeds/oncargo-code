@@ -33,7 +33,11 @@ public class TenantSessionBinder {
 
     void onTransactionBegin(@Observes @Initialized(TransactionScoped.class) Object event) {
         if (SystemTx.isActive() || !Arc.container().requestContext().isActive()) return;
-        TenantContext ctx = Arc.container().instance(TenantContext.class).get();
+        // Sin contexto de petición resoluble (arranque, jobs, un reinicio en caliente de dev a medio cerrar) no hay
+        // usuario: no se fija organización (fail-closed: RLS no devuelve filas).
+        var handle = Arc.container().instance(TenantContext.class);
+        TenantContext ctx = handle == null ? null : handle.get();
+        if (ctx == null) return;
         var org = ctx.currentOrgId();
         if (org.isEmpty()) return;
 

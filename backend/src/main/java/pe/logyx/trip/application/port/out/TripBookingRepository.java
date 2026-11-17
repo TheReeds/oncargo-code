@@ -17,6 +17,8 @@ public interface TripBookingRepository {
     List<TripBooking> listByRequester(UUID requesterOrgId);
     long countPendingByCarrier(UUID carrierOrgId);
     long countActiveByRequester(UUID requesterOrgId);
+    /** La reserva que generó ese envío, si existe. */
+    Optional<TripBooking> findByShipment(UUID shipmentId);
     /** Inserta o actualiza. */
     void save(TripBooking booking);
 }

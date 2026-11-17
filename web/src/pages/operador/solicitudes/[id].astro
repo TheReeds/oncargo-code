@@ -1,71 +1,99 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert } from '@/components/ui/alert';
+import { DescriptionList } from '@/components/ui/description-list';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { Countdown } from '@/components/domain/Countdown';
-import { getRequest } from '@/features/operator/server';
+import { Badge } from '@/components/ui/badge';
+import AssignFromDetail from '@/features/operator/components/AssignFromDetail';
+import { getRequest, getSlaAlerts } from '@/features/operator/server';
 import { ApiError } from '@/lib/api/client';
-import { CARGO_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
+import { CARGO_LABELS, CITY_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
 
 const { id } = Astro.params;
+const token = Astro.locals.session!.token;
 let r;
 try {
-  r = await getRequest(Astro.locals.session!.token, id!);
+  r = await getRequest(token, id!);
 } catch (e) {
   if (e instanceof ApiError && [400, 403, 404].includes(e.status)) return Astro.redirect('/operador');
   throw e;
 }
 const a = r.auction;
-const rows: [string, string][] = [
-  ['Tipo de carga', CARGO_LABELS[r.cargoType!] ?? r.cargoType ?? '—'],
-  ['Peso', formatTons(r.weightKg)],
-  ['Recojo', formatDate(r.pickupDate)],
-  ['Vehículo mínimo', r.minVehicleType ? (VEHICLE_LABELS[r.minVehicleType] ?? r.minVehicleType) : '—'],
-];
+// RN10: si el SLA venció (sin ofertas), el operador puede asignar desde aquí
+const alerts = r.status === 'PUBLISHED' ? await getSlaAlerts(token).catch(() => null) : null;
+const sla = alerts?.requestsWithoutBids?.find((x) => x.id === r.id) ?? null;
+const slaHours = alerts?.slaHours ?? 24;
+const route = `${CITY_LABELS[r.originCity ?? ''] ?? r.originCity} → ${CITY_LABELS[r.destinationCity ?? ''] ?? r.destinationCity}`;
+const auctionLabel = a?.status === 'CLOSED' ? 'Cerrada' : a?.status === 'CANCELLED' ? 'Cancelada' : 'Abierta';
 ---
 <AppShell title="Detalle de solicitud" active="operador-solicitudes" wide>
-  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Solicitud</span></nav>
-  <PageHeader title={`Solicitud ${r.id!.slice(0, 8)}`} subtitle={`Creada ${formatDateTime(r.createdAt)} · solo lectura`}>
-    <div slot="actions" class="flex flex-wrap items-center gap-3"><VerifiedBadge verified={r.requesterRucVerified} /><StatusPill status={r.status!} /></div>
+  <PageHeader title={route} subtitle={`Solicitud creada ${formatDateTime(r.createdAt)} por ${r.requesterName}. Vista de consulta.`}
+    breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Solicitudes', href: '/operador/solicitudes' }, { label: route }]}>
+    <Fragment slot="meta">
+      <StatusPill status={r.status!} />
+      <VerifiedBadge verified={r.requesterRucVerified} />
+      <span class="font-mono text-xs">ID {r.id!.slice(0, 8)}</span>
+    </Fragment>
+    {sla && <Fragment slot="actions"><AssignFromDetail client:load request={sla} /></Fragment>}
   </PageHeader>
-  <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
-    <div class="space-y-6">
+
+  {sla && (
+    <Alert tone="warning" title="Sin ofertas pasado el SLA" className="mb-4">
+      Lleva <span class="font-mono font-semibold">{sla.hoursWithoutBids} h</span> publicada sin ninguna oferta (SLA de {slaHours} h). Puedes asignarla manualmente a un transportista con vehículo disponible (RN10).
+    </Alert>
+  )}
+  {!sla && r.status === 'PUBLISHED' && (
+    <Alert tone="info" title="Asignación manual no disponible todavía" className="mb-4">
+      El operador puede asignar una solicitud cuando pasen {slaHours} h sin ofertas (RN10). Mientras tanto, los transportistas siguen ofertando.
+    </Alert>
+  )}
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div class="min-w-0 space-y-6">
       <Card>
-        <CardHeader><CardTitle>Ruta y carga</CardTitle></CardHeader>
+        <CardHeader><div><CardTitle>Ruta y carga</CardTitle><CardDescription>Lo que se transporta y entre qué puntos.</CardDescription></div></CardHeader>
         <CardBody className="space-y-5">
           <RouteLine origin={r.originCity!} destination={r.destinationCity!} km={r.distanceKm} originSub={r.originAddress} destinationSub={r.destinationAddress} />
-          <p class="text-sm text-ink-700">{r.cargoDescription}</p>
-          <ul class="grid gap-3 border-t border-steel-200 pt-4 sm:grid-cols-4">
-            {rows.map(([k, v]) => <li><div class="text-xs text-ink-500">{k}</div><div class="text-sm font-medium text-ink-900">{v}</div></li>)}
-          </ul>
+          <p class="rounded-input bg-steel-100 px-3 py-2.5 text-sm text-ink-700">{r.cargoDescription}</p>
+          <DescriptionList cols={2} items={[
+            { label: 'Tipo de carga', value: CARGO_LABELS[r.cargoType!] ?? r.cargoType },
+            { label: 'Peso', value: formatTons(r.weightKg), mono: true },
+            { label: 'Fecha de recojo', value: formatDate(r.pickupDate) },
+            { label: 'Vehículo mínimo', value: r.minVehicleType ? (VEHICLE_LABELS[r.minVehicleType] ?? r.minVehicleType) : null, hint: 'Orientativo: bloquea la capacidad en kg' },
+          ]} />
         </CardBody>
       </Card>
       <Card>
         <CardHeader><CardTitle>Solicitante</CardTitle></CardHeader>
         <CardBody className="flex flex-wrap items-center gap-3 text-sm">
           <span class="font-medium text-ink-900">{r.requesterName}</span>
+          <VerifiedBadge verified={r.requesterRucVerified} />
           <TrustScore score={r.requesterTrustScore} />
+          <a href={`/organizaciones/${r.requesterOrgId}`} class="ml-auto font-medium text-petrol-700 hover:underline">Ver perfil y reseñas</a>
         </CardBody>
       </Card>
     </div>
-    <div class="space-y-6">
+    <div class="min-w-0 space-y-6">
       <Card>
         <CardHeader><CardTitle>Precio</CardTitle></CardHeader>
         <CardBody className="grid grid-cols-2 gap-3 text-sm">
-          <div><div class="text-xs text-ink-500">Sugerido</div><div class="money text-base">{formatMoney(r.suggestedPrice)}</div></div>
-          <div><div class="text-xs text-ink-500">Piso (monto mínimo)</div><div class="font-mono font-semibold tabular-nums">{formatMoney(r.priceFloor)}</div></div>
+          <div><div class="text-xs text-ink-500">Sugerido</div><div class="money text-lg">{formatMoney(r.suggestedPrice)}</div></div>
+          <div><div class="text-xs text-ink-500">Piso (monto mínimo)</div><div class="font-mono text-lg font-semibold tabular-nums text-ink-900">{formatMoney(r.priceFloor)}</div></div>
         </CardBody>
       </Card>
       {a && (
         <Card>
-          <CardHeader><CardTitle>Subasta</CardTitle></CardHeader>
-          <CardBody className="space-y-2 text-sm">
-            <div class="flex items-center justify-between"><span class="text-ink-500">Ofertas</span><span class="font-mono tabular-nums">{a.bidCount ?? 0} / {a.maxBids}</span></div>
-            <div class="flex items-center justify-between"><span class="text-ink-500">{a.status === 'OPEN' ? 'Cierra en' : 'Estado'}</span>{a.status === 'OPEN' ? <Countdown client:load closesAt={a.closesAt} /> : <span>{a.status === 'CLOSED' ? 'Cerrada' : 'Cancelada'}</span>}</div>
+          <CardHeader><CardTitle>Subasta</CardTitle><Badge tone={a.status === 'OPEN' ? 'petrol' : 'neutral'}>{auctionLabel}</Badge></CardHeader>
+          <CardBody className="space-y-3 text-sm">
+            <div class="flex items-center justify-between"><span class="text-ink-500">Ofertas recibidas</span><span class:list={['font-mono font-semibold tabular-nums', !(a.bidCount ?? 0) && a.status === 'OPEN' ? 'text-amber-700' : 'text-ink-900']}>{a.bidCount ?? 0} / {a.maxBids}</span></div>
+            <div class="flex items-center justify-between"><span class="text-ink-500">{a.status === 'OPEN' ? 'Cierra en' : 'Estado'}</span>{a.status === 'OPEN' ? <Countdown client:load closesAt={a.closesAt} /> : <span class="text-ink-900">{auctionLabel}</span>}</div>
+            {a.status === 'OPEN' && <p class="border-t border-steel-200 pt-3 text-xs text-ink-500">Cierra a los 20 min o con 5 ofertas (RN04).</p>}
           </CardBody>
         </Card>
       )}

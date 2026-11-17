@@ -7,7 +7,9 @@ import { StarRating } from '@/components/ui/star-rating';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { EmptyState } from '@/components/domain/EmptyState';
-import { buttonVariants } from '@/components/ui/button';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { Star, MessageSquareText, ShieldCheck } from 'lucide-react';
+import { ChevronRight, MapPin, Info } from '@lucide/astro';
 import { ReviewCard } from '@/features/reputation/components/ReviewCard';
 import OrgReviewsPager from '@/features/reputation/components/OrgReviewsPager';
 import { getReputation, listOrgReviews } from '@/features/reputation/server';
@@ -34,50 +36,53 @@ const typeLabel = isCarrier ? 'Transportista' : 'PYME';
 const cargoDim = isCarrier ? 'Estado de la carga' : 'Exactitud de la carga declarada';
 const dims = rep ? [['Puntualidad', rep.averagePunctuality], [cargoDim, rep.averageCargoCondition], ['Comunicación', rep.averageCommunication]] as const : [];
 const hasReviews = (rep?.totalReviews ?? 0) > 0;
+const total = rep?.totalReviews ?? 0;
 const cityLabel = rep ? (CITY_LABELS[(rep.city ?? '').toUpperCase()] ?? rep.city) : '';
 ---
 <AppShell title={rep ? `${rep.legalName} · Reputación` : 'Organización no encontrada'} active="">
-  <nav aria-label="Ruta de navegación" class="mb-4 text-sm text-ink-500">
-    <ol class="flex flex-wrap items-center gap-1.5">
-      <li><a href={home} class="rounded hover:text-petrol-700 hover:underline">Inicio</a></li>
-      <li aria-hidden="true">/</li>
-      <li>Organizaciones</li>
-      <li aria-hidden="true">/</li>
-      <li aria-current="page" class="font-medium text-ink-700">{rep?.legalName ?? 'No encontrada'}</li>
+  <nav aria-label="Ruta de navegación" class="mb-3">
+    <ol class="flex flex-wrap items-center gap-1 text-[13px] text-ink-500">
+      <li class="flex items-center gap-1"><a href={home} class="rounded hover:text-petrol-700 hover:underline">Inicio</a></li>
+      <li class="flex items-center gap-1"><ChevronRight size={13} class="text-ink-400" aria-hidden="true" /><span>Organizaciones</span></li>
+      <li class="flex items-center gap-1"><ChevronRight size={13} class="text-ink-400" aria-hidden="true" /><span aria-current="page" class="font-medium text-ink-700">{rep?.legalName ?? 'No encontrada'}</span></li>
     </ol>
   </nav>
 
   {!rep && (
     <Card>
-      <EmptyState title="No encontramos esta organización" description="El enlace puede estar incompleto o la organización ya no existe." />
-      <div class="flex justify-center pb-8"><a href={home} class={buttonVariants({ variant: 'outline' })}>Volver al inicio</a></div>
+      <EmptyState title="No encontramos esta organización" description="El enlace puede estar incompleto o la organización ya no existe." actionHref={home} actionLabel="Volver al inicio" />
     </Card>
   )}
 
   {rep && (
     <div class="space-y-6">
-      <Card>
+      <Card className="overflow-hidden">
         <CardBody className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex min-w-0 items-center gap-4">
-            <Avatar name={rep.legalName ?? '?'} size="lg" className="size-16 text-xl" />
+            <Avatar name={rep.legalName ?? '?'} size="lg" className="size-16 shrink-0 text-xl" />
             <div class="min-w-0">
-              <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-ink-900 sm:text-3xl">{rep.legalName}</h1>
-              <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-500">
+              <h1 class="text-2xl font-semibold leading-tight tracking-tight text-ink-900 sm:text-3xl">{rep.legalName}</h1>
+              <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-ink-500">
                 <Badge tone="petrol">{typeLabel}</Badge>
-                {cityLabel && <span>{cityLabel}</span>}
                 <VerifiedBadge verified={rep.rucVerified} />
+                {cityLabel && <span class="inline-flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{cityLabel}</span>}
               </div>
             </div>
           </div>
-          <div class="w-full lg:w-72">
-            <div class="flex items-baseline justify-between"><span class="text-xs font-medium text-ink-500">Trust Score</span><span class="font-mono text-3xl font-semibold tabular-nums text-ink-900">{rep.trustScore?.toFixed(1)}<span class="text-base text-ink-500">/100</span></span></div>
-            <TrustScore variant="meter" score={rep.trustScore} reviews={rep.totalReviews} className="mt-1 [&>div:first-child]:hidden" />
+          <div class="w-full shrink-0 rounded-card bg-steel-100 p-4 lg:w-80">
+            <TrustScore variant="meter" score={rep.trustScore} reviews={rep.totalReviews} />
           </div>
         </CardBody>
       </Card>
 
+      <KpiGrid cols={3}>
+        <KpiTile label="Verificación" value={rep.rucVerified ? 'RUC verificado' : 'Sin verificar'} icon={ShieldCheck} tone={rep.rucVerified ? 'money' : 'default'} context={rep.rucVerified ? 'Empresa con RUC validado' : 'RUC aún sin validar'} />
+        <KpiTile label="Calificación promedio" value={hasReviews ? (rep.averageRating?.toFixed(1) ?? '—') : '—'} unit={hasReviews ? '/5' : undefined} icon={Star} tone={hasReviews ? 'warn' : 'default'} context="Puntualidad, carga y comunicación" />
+        <KpiTile label="Reseñas recibidas" value={total} icon={MessageSquareText} context={hasReviews ? 'De envíos entregados' : 'Aún sin reseñas'} className="col-span-2 lg:col-span-1" />
+      </KpiGrid>
+
       <div class="grid gap-6 lg:grid-cols-3">
-        <div class="space-y-6 lg:col-span-1">
+        <div class="min-w-0 space-y-6 lg:col-span-1">
           <Card>
             <CardHeader><CardTitle>Promedio por dimensión</CardTitle></CardHeader>
             <CardBody className="space-y-4">
@@ -85,21 +90,21 @@ const cityLabel = rep ? (CITY_LABELS[(rep.city ?? '').toUpperCase()] ?? rep.city
                 <span class="font-mono text-3xl font-semibold tabular-nums text-ink-900">{hasReviews ? rep.averageRating?.toFixed(1) : '—'}</span>
                 <div>
                   <StarRating readOnly value={hasReviews ? rep.averageRating : null} label="Calificación promedio" size="md" />
-                  <p class="text-xs text-ink-500">{rep.totalReviews} {rep.totalReviews === 1 ? 'reseña' : 'reseñas'}</p>
+                  <p class="text-xs text-ink-500">{total} {total === 1 ? 'reseña' : 'reseñas'}</p>
                 </div>
               </div>
               <ul class="space-y-3">
                 {dims.map(([label, v]) => (
                   <li>
                     <div class="flex items-center justify-between text-sm"><span class="text-ink-700">{label}</span><span class="font-mono tabular-nums text-ink-900">{hasReviews && v != null ? v.toFixed(1) : '—'}</span></div>
-                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-steel-200" role="presentation"><div class="h-full rounded-full bg-amber-500" style={`width:${hasReviews && v != null ? Math.round((v / 5) * 100) : 0}%`}></div></div>
+                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-steel-200" role="meter" aria-label={`${label}, sobre 5`} aria-valuemin={0} aria-valuemax={5} aria-valuenow={hasReviews && v != null ? Number(v.toFixed(1)) : 0}><div class="h-full rounded-full bg-amber-500" style={`width:${hasReviews && v != null ? Math.round((v / 5) * 100) : 0}%`}></div></div>
                   </li>
                 ))}
               </ul>
             </CardBody>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Cómo se calcula el Trust Score</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Info size={15} class="text-ink-500" aria-hidden="true" />Cómo se calcula el Trust Score</CardTitle></CardHeader>
             <CardBody className="space-y-2 text-sm text-ink-700">
               <p>Sin calificaciones, toda organización parte en <strong class="font-mono">{rep.priorMean ?? 75}</strong> puntos.</p>
               <p>Cada calificación (1 a 5) se convierte a una escala de 0 a 100 y se promedia con {rep.priorWeight ?? 5} calificaciones de referencia de {rep.priorMean ?? 75} puntos. Así, una sola nota no dispara ni hunde el puntaje, y pesa más a medida que se acumulan las reseñas.</p>
@@ -108,15 +113,18 @@ const cityLabel = rep ? (CITY_LABELS[(rep.city ?? '').toUpperCase()] ?? rep.city
           </Card>
         </div>
 
-        <section class="lg:col-span-2" aria-labelledby="resenas">
-          <h2 id="resenas" class="mb-3 text-xl font-semibold text-ink-900">Reseñas recibidas</h2>
+        <section class="min-w-0 lg:col-span-2" aria-labelledby="resenas">
+          <div class="mb-3 flex items-baseline justify-between gap-3">
+            <h2 id="resenas" class="text-xl font-semibold text-ink-900">Reseñas recibidas</h2>
+            {hasReviews && <span class="text-sm text-ink-500"><span class="font-mono font-semibold text-ink-900">{total}</span> en total</span>}
+          </div>
           {reviews && reviews.items.length > 0 ? (
             <div class="space-y-4">
               <ul class="space-y-3">{reviews.items.map((r) => <ReviewCard review={r} />)}</ul>
               <OrgReviewsPager client:load page={page} size={reviews.size} total={reviews.total} />
             </div>
           ) : (
-            <Card><EmptyState title="Aún no tiene reseñas" description="Cuando otras organizaciones califiquen sus envíos, las verás aquí. Mientras tanto, su Trust Score se mantiene en 75." /></Card>
+            <Card><EmptyState icon={MessageSquareText} title="Aún sin reseñas" description="Cuando otras organizaciones califiquen sus envíos, las verás aquí. Mientras tanto, su Trust Score se mantiene en 75." /></Card>
           )}
         </section>
       </div>

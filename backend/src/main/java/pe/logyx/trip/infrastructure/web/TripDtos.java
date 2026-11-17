@@ -1,5 +1,6 @@
 package pe.logyx.trip.infrastructure.web;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
@@ -151,6 +152,15 @@ public final class TripDtos {
 
     public record SmartLoadStopView(SmartLoadPlanner.StopType type, City city, UUID requestId) {}
 
+    /** Oferta creada al aceptar el plan (F12). */
+    public record SmartLoadBidView(UUID requestId, UUID bidId, BigDecimal amount) {}
+
+    /** Monto propio para una carga del plan (por omisión, su precio sugerido). */
+    public record SmartLoadItemAmount(@NotNull UUID requestId, @NotNull @DecimalMin("1") BigDecimal amount) {}
+
+    /** Aceptar el plan = ofertar en lote. Cuerpo opcional: montos por carga y nota común (RN07). */
+    public record AcceptSmartLoadRequest(List<@Valid SmartLoadItemAmount> items, @Size(max = 300) String notes) {}
+
     public record SmartLoadView(UUID id, UUID vehicleId, Vehicle.Type vehicleType, String vehiclePlate,
                                 BigDecimal capacityKg, BigDecimal totalWeightKg,
                                 /** Suma de los precios sugeridos de las solicitudes. */
@@ -160,7 +170,17 @@ public final class TripDtos {
                                 SmartLoadStatus status, OffsetDateTime createdAt, OffsetDateTime expiresAt,
                                 OffsetDateTime decidedAt, List<SmartLoadItemView> items,
                                 /** Plan de ruta: recojos por orden y luego entregas. */
-                                List<SmartLoadStopView> route) {
+                                List<SmartLoadStopView> route,
+                                /** Solo en la respuesta de aceptar: las ofertas creadas en lote (F12). */
+                                List<SmartLoadBidView> bids) {
+
+        static SmartLoadView of(SmartLoadService.Acceptance a) {
+            SmartLoadView v = of(a.suggestion());
+            return new SmartLoadView(v.id(), v.vehicleId(), v.vehicleType(), v.vehiclePlate(), v.capacityKg(),
+                    v.totalWeightKg(), v.combinedIncome(), v.occupancyPct(), v.status(), v.createdAt(), v.expiresAt(),
+                    v.decidedAt(), v.items(), v.route(), a.bids().stream()
+                    .map(b -> new SmartLoadBidView(b.requestId(), b.bidId(), b.amount())).toList());
+        }
 
         static SmartLoadView of(SmartLoadSuggestion s) {
             return new SmartLoadView(s.id(), s.vehicleId(), s.vehicleType(), s.vehiclePlate(), s.capacityKg(),
@@ -169,7 +189,8 @@ public final class TripDtos {
                     s.items().stream().map(i -> new SmartLoadItemView(i.requestId(), i.originCity(),
                             i.destinationCity(), i.weightKg(), i.income(), i.pickupDate(), i.pickupOrder(),
                             i.deliveryOrder())).toList(),
-                    s.routePlan().stream().map(p -> new SmartLoadStopView(p.type(), p.city(), p.requestId())).toList());
+                    s.routePlan().stream().map(p -> new SmartLoadStopView(p.type(), p.city(), p.requestId())).toList(),
+                    null);
         }
     }
 }

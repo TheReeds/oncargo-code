@@ -1,11 +1,33 @@
 ---
-interface Props { title: string; subtitle?: string }
-const { title, subtitle } = Astro.props;
+import { ChevronRight } from '@lucide/astro';
+/**
+ * Encabezado de página. Retrocompatible: `title` + `subtitle` + slot `actions`.
+ *  - `breadcrumbs`: migas de pan (el último es la página actual, sin href). Úsalas en detalles: [{ label: 'Solicitudes', href: '/pyme/solicitudes' }, { label: 'Lima → Juliaca' }].
+ *  - slot `meta`: pills/datos bajo el título (estado, ID, fecha); slot `actions`: botones a la derecha (en móvil ocupan el ancho).
+ */
+interface Crumb { label: string; href?: string }
+interface Props { title: string; subtitle?: string; breadcrumbs?: Crumb[] }
+const { title, subtitle, breadcrumbs } = Astro.props;
 ---
-<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-  <div class="min-w-0">
-    <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-ink-900 sm:text-3xl">{title}</h1>
-    {subtitle && <p class="mt-1 max-w-2xl text-sm text-ink-500">{subtitle}</p>}
+<div class="mb-5 sm:mb-6">
+  {breadcrumbs && breadcrumbs.length > 0 && (
+    <nav aria-label="Ruta de navegación" class="mb-2">
+      <ol class="flex flex-wrap items-center gap-1 text-[13px] text-ink-500">
+        {breadcrumbs.map((c, i) => (
+          <li class="flex items-center gap-1">
+            {i > 0 && <ChevronRight size={13} class="text-ink-400" aria-hidden="true" />}
+            {c.href ? <a href={c.href} class="rounded hover:text-petrol-700 hover:underline">{c.label}</a> : <span aria-current="page" class="font-medium text-ink-700">{c.label}</span>}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )}
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="min-w-0">
+      <h1 class="text-2xl font-semibold leading-tight tracking-tight text-ink-900 sm:text-[28px]">{title}</h1>
+      {subtitle && <p class="mt-1 max-w-2xl text-sm text-ink-500">{subtitle}</p>}
+      {Astro.slots.has('meta') && <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-ink-500"><slot name="meta" /></div>}
+    </div>
+    <div class="flex flex-wrap items-center gap-2 [&>*]:max-sm:flex-1"><slot name="actions" /></div>
   </div>
-  <div class="flex flex-wrap items-center gap-2 [&>*]:max-sm:flex-1"><slot name="actions" /></div>
 </div>

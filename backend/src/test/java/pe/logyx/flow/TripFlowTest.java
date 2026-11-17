@@ -325,7 +325,7 @@ class TripFlowTest {
                 .body("data[0].distanceKm", num(0)).body("data[0].matchScore", is(96))
                 .body("data[0].shipmentId", is(delivered.shipmentId())).body("data[0].vehicleId", notNullValue())
                 .body("data[0].alreadyBid", is(false)).body("data[0].suggestedPrice", notNullValue())
-                .body("data[1].requestId", is(puno)).body("data[1].distanceKm", num(44))
+                .body("data[1].requestId", is(puno)).body("data[1].distanceKm", num(42.9))   // Juliaca → Puno por carretera (ADR-0008)
                 .extract();
         String vehicleId = res.path("data[0].vehicleId");
 

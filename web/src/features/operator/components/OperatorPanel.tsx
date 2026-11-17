@@ -57,8 +57,8 @@ export default function OperatorPanel({ metrics: m0, alerts: a0, loadedAt }: { m
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-ink-500" role="status">
-        <span>{stale ? 'No pudimos actualizar. Reintentaremos en unos segundos.' : `Actualizado ${formatRelative(new Date(updatedAt).toISOString(), now)}`}</span>
+      <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-ink-500">
+        <span className={stale ? 'font-medium text-amber-700' : undefined}>{stale ? 'No pudimos actualizar. Reintentaremos en unos segundos.' : `Actualizado ${formatRelative(new Date(updatedAt).toISOString(), now)}`}</span>
         <Button size="sm" variant="outline" onClick={refresh} loading={refreshing}><RefreshCw aria-hidden="true" /> Actualizar</Button>
       </div>
 
@@ -68,7 +68,7 @@ export default function OperatorPanel({ metrics: m0, alerts: a0, loadedAt }: { m
         </Alert>
       )}
 
-      <MetricsGrid m={metrics} slaHours={alerts.slaHours ?? 24} />
+      <MetricsGrid m={metrics} slaHours={alerts.slaHours ?? 24} expiring={alerts.expiringAuctions?.length ?? 0} />
       <SlaAlerts alerts={alerts} onAssign={setTarget} />
       <AssignSheet request={target} onClose={() => setTarget(null)} onAssigned={assigned} />
     </div>

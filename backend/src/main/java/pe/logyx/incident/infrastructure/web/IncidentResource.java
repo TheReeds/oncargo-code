@@ -81,9 +81,10 @@ public class IncidentResource {
     @POST
     @Path("/incidents/{id}/status")
     @RolesAllowed(Roles.OPERATOR)
-    @Operation(summary = "Operador: cambia el estado (IN_REVIEW, RESOLVED con notas, CLOSED)")
+    @Operation(summary = "Operador: cambia el estado (IN_REVIEW, RESOLVED, CLOSED). Resolver o cerrar una activa exige "
+            + "motivo (LOGYX-INC-003) y el estado final del envío RESUME/DELIVERED/CANCELLED (RF55, LOGYX-INC-006)")
     public ApiResponse<IncidentView> changeStatus(@PathParam("id") UUID id, @Valid ChangeIncidentStatus req) {
-        IncidentSummary s = service.changeStatus(id, req.status(), req.resolutionNotes());
+        IncidentSummary s = service.changeStatus(id, req.status(), req.resolutionNotes(), req.shipmentOutcome());
         return ApiResponse.of(IncidentView.of(s));
     }
 

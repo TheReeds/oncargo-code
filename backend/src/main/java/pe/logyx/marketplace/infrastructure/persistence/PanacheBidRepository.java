@@ -48,13 +48,20 @@ public class PanacheBidRepository implements BidRepository {
     }
 
     @Override
+    public Optional<Bid> findForCarrier(UUID auctionId, UUID carrierOrgId) {
+        return BidEntity.<BidEntity>find("auctionId = ?1 and carrierOrgId = ?2", auctionId, carrierOrgId)
+                .firstResultOptional().map(BidEntity::toDomain);
+    }
+
+    @Override
     public boolean existsForCarrier(UUID auctionId, UUID carrierOrgId) {
         return BidEntity.count("auctionId = ?1 and carrierOrgId = ?2", auctionId, carrierOrgId) > 0;
     }
 
     @Override
     public long countByAuctionExcludingCarrier(UUID auctionId, UUID carrierOrgId) {
-        return BidEntity.count("auctionId = ?1 and carrierOrgId <> ?2", auctionId, carrierOrgId);
+        return BidEntity.count("auctionId = ?1 and carrierOrgId <> ?2 and status <> ?3", auctionId, carrierOrgId,
+                Bid.Status.WITHDRAWN);
     }
 
     @Override
@@ -62,8 +69,9 @@ public class PanacheBidRepository implements BidRepository {
         if (auctionIds.isEmpty()) return Map.of();
         return BidEntity.getEntityManager()
                 .createQuery("select b.auctionId, count(b) from BidEntity b where b.auctionId in :ids "
-                        + "group by b.auctionId", Object[].class)
+                        + "and b.status <> :withdrawn group by b.auctionId", Object[].class)
                 .setParameter("ids", auctionIds)
+                .setParameter("withdrawn", Bid.Status.WITHDRAWN)
                 .getResultList().stream()
                 .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
     }

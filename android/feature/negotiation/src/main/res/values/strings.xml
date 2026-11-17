@@ -3,7 +3,7 @@
     <string name="negotiation_chat_title">Chat</string>
     <string name="negotiation_chat_older">Ver mensajes anteriores</string>
     <string name="negotiation_chat_empty_title">Aún no hay mensajes</string>
-    <string name="negotiation_chat_empty_message">Escribe el primero. Coordina todo por el chat de LOGYX.</string>
+    <string name="negotiation_chat_empty_message">Escribe el primero. Coordina todo por el chat de OnCargo.</string>
     <string name="negotiation_chat_closed">Esta conversación ya está cerrada. Puedes leer los mensajes, pero no enviar nuevos.</string>
     <string name="negotiation_chat_discard">Descartar</string>
 

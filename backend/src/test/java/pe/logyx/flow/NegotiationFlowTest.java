@@ -96,8 +96,8 @@ class NegotiationFlowTest {
                 .body("error.code", is("LOGYX-NEG-003"));
         as(b.pyme()).body(Map.of("amount", b.above(50), "message", "llama al 951 222 333")).post(co).then()
                 .statusCode(400).body("error.code", is("LOGYX-NEG-001")).body("error.field", is("message"));
-        // el transportista no propone
-        as(b.carrier()).body(Map.of("amount", b.above(50))).post(co).then().statusCode(403);
+        // un transportista ajeno no propone sobre esta oferta (RLS: no la ve)
+        as(intruder).body(Map.of("amount", b.above(50))).post(co).then().statusCode(404);
 
         float proposed = b.above(100);
         String coId = as(b.pyme()).body(Map.of("amount", proposed, "message", "¿Lo dejamos en este monto?"))

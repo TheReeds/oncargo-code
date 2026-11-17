@@ -63,24 +63,26 @@ public class NegotiationResource {
 
     @POST
     @Path("/bids/{id}/counter-offers")
-    @RolesAllowed(Roles.PYME)
+    @RolesAllowed({Roles.PYME, Roles.CARRIER})
     @ResponseStatus(201)
-    @Operation(summary = "La PYME propone un nuevo monto (≥ piso RN03; una contra-oferta pendiente por oferta)")
+    @Operation(summary = "La PYME (RF27) o el transportista (RF26) proponen un nuevo monto (≥ piso RN03). Una "
+            + "pendiente por oferta; responder con otra reemplaza la de la otra parte (LOGYX-NEG-004 si ya hay una tuya)")
     public ApiResponse<CounterOfferView> propose(@PathParam("id") UUID bidId, @Valid ProposeCounterOffer req) {
         return ApiResponse.of(CounterOfferView.of(service.propose(bidId, req.amount(), req.message())));
     }
 
     @POST
     @Path("/counter-offers/{id}/accept")
-    @RolesAllowed(Roles.CARRIER)
-    @Operation(summary = "El transportista acepta: el monto de su oferta pasa a ser el de la contra-oferta")
+    @RolesAllowed({Roles.PYME, Roles.CARRIER})
+    @Operation(summary = "Quien recibió la contra-oferta la acepta: el monto de la oferta pasa a ser el de la "
+            + "contra-oferta (RF28; no adjudica)")
     public ApiResponse<CounterOfferView> accept(@PathParam("id") UUID id) {
         return ApiResponse.of(CounterOfferView.of(service.accept(id)));
     }
 
     @POST
     @Path("/counter-offers/{id}/reject")
-    @RolesAllowed(Roles.CARRIER)
+    @RolesAllowed({Roles.PYME, Roles.CARRIER})
     public ApiResponse<CounterOfferView> reject(@PathParam("id") UUID id) {
         return ApiResponse.of(CounterOfferView.of(service.reject(id)));
     }

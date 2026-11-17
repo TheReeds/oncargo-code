@@ -24,7 +24,7 @@ public class CreateShipmentUseCase {
     public UUID createFromAcceptedBid(CreateShipmentCommand cmd) {
         String plate = fleet.plateForContract(cmd.vehicleId());
         Shipment s = Shipment.contract(cmd.requestId(), cmd.bidId(), cmd.requesterOrgId(), cmd.carrierOrgId(),
-                cmd.vehicleId(), plate, cmd.agreedPrice());
+                cmd.vehicleId(), plate, cmd.agreedPrice(), cmd.loadGroupId());
         shipments.save(s);
         stops.save(ShipmentStop.plan(s, 1, ShipmentStop.Type.PICKUP, cmd.originCity(), cmd.originAddress()));
         stops.save(ShipmentStop.plan(s, 2, ShipmentStop.Type.DELIVERY, cmd.destinationCity(), cmd.destinationAddress()));

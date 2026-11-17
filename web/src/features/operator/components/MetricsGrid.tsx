@@ -1,23 +1,40 @@
-import { FileText, TriangleAlert, Truck, ShieldAlert, PackageCheck, Handshake, Building2, Warehouse } from 'lucide-react';
-import { KpiTile } from '@/components/domain/KpiTile';
+import { FileText, TriangleAlert, Truck, ShieldAlert, PackageCheck, Clock, Building2, Warehouse } from 'lucide-react';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { formatNumber } from '@/lib/format';
 import type { OperatorMetrics } from '../server';
 
 const plural = (n: number, one: string, many: string) => `${formatNumber(n)} ${n === 1 ? one : many}`;
 
-/** KPIs globales de la operación: dos filas de cuatro. */
-export function MetricsGrid({ m, slaHours }: { m: OperatorMetrics; slaHours: number }) {
+/** KPIs de la operación en dos grupos: lo que pide acción ahora (con tono) y el tamaño de la plataforma. */
+export function MetricsGrid({ m, slaHours, expiring }: { m: OperatorMetrics; slaHours: number; expiring: number }) {
   const n = (v?: number) => v ?? 0;
+  const risk = n(m.requestsAtRisk);
+  const incidents = n(m.activeIncidents);
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <KpiTile label="Solicitudes abiertas" value={formatNumber(n(m.openRequests))} context={`${plural(n(m.matchedRequests), 'adjudicada', 'adjudicadas')} · ${plural(n(m.cancelledRequests), 'cancelada', 'canceladas')}`} icon={FileText} />
-      <KpiTile label="En riesgo (SLA)" value={formatNumber(n(m.requestsAtRisk))} context={n(m.requestsAtRisk) ? (slaHours ? `Sin ofertas hace más de ${slaHours} h` : 'Sin ofertas · asígnalas ahora') : 'Ninguna solicitud en riesgo'} icon={TriangleAlert} href="#sin-ofertas" />
-      <KpiTile label="Envíos en tránsito" value={formatNumber(n(m.shipmentsInTransit))} context={`${plural(n(m.shipmentsPending), 'por recoger', 'por recoger')}`} icon={Truck} />
-      <KpiTile label="Incidencias activas" value={formatNumber(n(m.activeIncidents))} context={n(m.activeIncidents) ? 'Revisa y resuelve cada una' : 'Sin incidencias abiertas'} icon={ShieldAlert} href="/operador/incidencias" />
-      <KpiTile label="Envíos entregados" value={formatNumber(n(m.shipmentsDelivered))} context="Acumulado de la plataforma" icon={PackageCheck} />
-      <KpiTile label="Solicitudes adjudicadas" value={formatNumber(n(m.matchedRequests))} context="Con transportista y envío generado" icon={Handshake} />
-      <KpiTile label="PYMEs registradas" value={formatNumber(n(m.pymes))} context="Cuentas que publican cargas" icon={Building2} />
-      <KpiTile label="Transportistas registrados" value={formatNumber(n(m.carriers))} context="Cuentas que ofertan" icon={Warehouse} />
+    <div className="space-y-5">
+      <section aria-labelledby="op-k-action">
+        <h2 id="op-k-action" className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-500">Requiere acción</h2>
+        <KpiGrid>
+          <KpiTile label="En riesgo (SLA)" value={formatNumber(risk)} tone={risk ? 'alert' : 'default'} icon={TriangleAlert} href="#sin-ofertas"
+            context={risk ? (slaHours ? `Sin ofertas hace más de ${slaHours} h` : 'Sin ofertas · asígnalas ahora') : 'Ninguna solicitud en riesgo'} />
+          <KpiTile label="Incidencias activas" value={formatNumber(incidents)} tone={incidents ? 'alert' : 'default'} icon={ShieldAlert} href="/operador/incidencias"
+            context={incidents ? 'Congelan el avance del envío' : 'Sin incidencias abiertas'} />
+          <KpiTile label="Subastas por vencer" value={formatNumber(expiring)} tone={expiring ? 'warn' : 'default'} icon={Clock} href="#por-vencer"
+            context={expiring ? 'Cierran en minutos' : 'Ninguna cierra pronto'} />
+          <KpiTile label="Envíos en tránsito" value={formatNumber(n(m.shipmentsInTransit))} tone="petrol" icon={Truck} href="/operador/envios?estado=IN_TRANSIT"
+            context={plural(n(m.shipmentsPending), 'por recoger', 'por recoger')} />
+        </KpiGrid>
+      </section>
+      <section aria-labelledby="op-k-platform">
+        <h2 id="op-k-platform" className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-500">Plataforma</h2>
+        <KpiGrid>
+          <KpiTile label="Solicitudes abiertas" value={formatNumber(n(m.openRequests))} icon={FileText} href="/operador/solicitudes"
+            context={`${plural(n(m.matchedRequests), 'adjudicada', 'adjudicadas')} · ${plural(n(m.cancelledRequests), 'cancelada', 'canceladas')}`} />
+          <KpiTile label="Envíos entregados" value={formatNumber(n(m.shipmentsDelivered))} tone="money" icon={PackageCheck} href="/operador/envios?estado=DELIVERED" context="Acumulado de la plataforma" />
+          <KpiTile label="PYMEs registradas" value={formatNumber(n(m.pymes))} icon={Building2} context="Cuentas que publican cargas" />
+          <KpiTile label="Transportistas registrados" value={formatNumber(n(m.carriers))} icon={Warehouse} context="Cuentas que ofertan" />
+        </KpiGrid>
+      </section>
     </div>
   );
 }

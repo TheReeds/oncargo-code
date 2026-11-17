@@ -18,6 +18,13 @@ public interface ShipmentRepository {
     List<Shipment> listByRequester(UUID requesterOrgId);
     /** Pendientes o en tránsito, más antiguos primero. */
     List<Shipment> listActiveByDriver(UUID driverId);
+    /** Pendientes o en tránsito con ese vehículo. */
+    List<Shipment> listActiveByVehicle(UUID vehicleId);
+    /**
+     * Bloqueo consultivo de transacción ({@code pg_advisory_xact_lock}) sobre un recurso (vehículo o conductor):
+     * serializa las asignaciones concurrentes del mismo recurso hasta el commit (F11).
+     */
+    void lockResource(String key);
     /** Envíos de la organización (como transportista o como solicitante) en alguno de los estados. */
     long countByStatus(UUID orgId, boolean asCarrier, Collection<Shipment.Status> statuses);
     /** Envíos entregados desde {@code since} (inclusive). */

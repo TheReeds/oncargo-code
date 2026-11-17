@@ -1,0 +1,62 @@
+---
+import { Building2, Truck, Check, ArrowRight } from '@lucide/astro';
+import { buttonVariants } from '@/components/ui/button';
+import SectionHeading from './SectionHeading.astro';
+
+const roles = [
+  {
+    icon: Building2,
+    who: 'Para empresas',
+    title: 'Publica tu carga y compara ofertas',
+    desc: 'Pensado para PYMEs que envían mercadería entre Lima y la sierra sur y quieren precio claro, sin cotizar por teléfono.',
+    points: [
+      'Cotización estimada con desglose antes de publicar',
+      'Hasta 5 ofertas por solicitud, con precio, vehículo y Trust Score',
+      'Seguimiento por parada con foto de evidencia en la entrega',
+      'Calificas al transportista cuando recibes tu carga',
+    ],
+    cta: 'Crear cuenta de empresa',
+    href: '/registro',
+    variant: 'default' as const,
+    accent: 'bg-petrol-700',
+  },
+  {
+    icon: Truck,
+    who: 'Para transportistas',
+    title: 'Encuentra cargas que encajan con tu flota',
+    desc: 'Para empresas de transporte que quieren llenar sus camiones, también en el viaje de regreso.',
+    points: [
+      'Cargas filtradas por ruta, fecha y capacidad de tus vehículos',
+      'Ofertas con tu vehículo y precio, por encima del piso de la subasta',
+      'Cargas de retorno y Smart Load para no viajar vacío',
+      'Tu reputación crece con cada entrega y abre más cargas',
+    ],
+    cta: 'Registrarme para ofertar',
+    href: '/registro?tipo=transportista',
+    variant: 'money' as const,
+    accent: 'bg-emerald-500',
+  },
+];
+---
+<section id="para-quien" class="mx-auto w-full max-w-6xl px-4 py-14 lg:px-10 lg:py-20" aria-labelledby="para-quien-t">
+  <SectionHeading id="para-quien-t" eyebrow="Para quién" title="Dos lados del mismo envío, un solo lugar para coordinarlo" lead="Cada rol ve lo que necesita: la empresa decide, el transportista oferta y el conductor ejecuta." />
+  <div class="mt-10 grid gap-5 lg:grid-cols-2">
+    {roles.map((r) => (
+      <article class="group relative flex flex-col overflow-hidden rounded-card border border-steel-200 bg-surface p-6 transition-shadow hover:shadow-md sm:p-8">
+        <span class:list={['absolute inset-x-0 top-0 h-1', r.accent]} aria-hidden="true"></span>
+        <div class="flex items-center gap-3">
+          <span class="grid size-11 place-items-center rounded-input bg-petrol-50 text-petrol-700"><r.icon size={22} aria-hidden="true" /></span>
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">{r.who}</p>
+        </div>
+        <h3 class="mt-5 text-balance text-xl font-semibold tracking-tight text-ink-900">{r.title}</h3>
+        <p class="mt-2 text-sm text-ink-500">{r.desc}</p>
+        <ul class="mt-5 space-y-2.5 text-sm text-ink-700">
+          {r.points.map((p) => (
+            <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check size={12} stroke-width={3} aria-hidden="true" /></span>{p}</li>
+          ))}
+        </ul>
+        <div class="mt-auto pt-7"><a href={r.href} class={buttonVariants({ variant: r.variant, size: 'lg' }) + ' w-full sm:w-auto'}>{r.cta} <ArrowRight size={16} aria-hidden="true" /></a></div>
+      </article>
+    ))}
+  </div>
+</section>

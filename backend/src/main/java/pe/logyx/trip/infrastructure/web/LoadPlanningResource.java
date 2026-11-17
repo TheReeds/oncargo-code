@@ -2,7 +2,10 @@ package pe.logyx.trip.infrastructure.web;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import pe.logyx.trip.infrastructure.web.TripDtos.AcceptSmartLoadRequest;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import pe.logyx.shared.api.ApiResponse;
@@ -60,8 +63,13 @@ public class LoadPlanningResource {
     @POST
     @Path("/smart-loads/{id}/accept")
     @RolesAllowed(Roles.CARRIER)
-    public ApiResponse<SmartLoadView> accept(@PathParam("id") UUID id) {
-        return ApiResponse.of(SmartLoadView.of(smartLoads.accept(id)));
+    @Operation(summary = "RF32/F12: acepta el plan y oferta en lote (una oferta por carga con el vehículo del plan, al "
+            + "precio sugerido o al indicado). Todo o nada (LOGYX-TRP-011); no adjudica: decide cada PYME")
+    public ApiResponse<SmartLoadView> accept(@PathParam("id") UUID id, @Valid AcceptSmartLoadRequest req) {
+        java.util.Map<UUID, java.math.BigDecimal> amounts = new java.util.HashMap<>();
+        if (req != null && req.items() != null) req.items().forEach(i -> amounts.put(i.requestId(), i.amount()));
+        var a = smartLoads.accept(id, amounts, req == null ? null : req.notes());
+        return ApiResponse.of(SmartLoadView.of(a));
     }
 
     @POST

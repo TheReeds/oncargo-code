@@ -1,4 +1,6 @@
-# LOGYX — Sistema de diseño
+# OnCargo (antes LOGYX) — Sistema de diseño
+
+> **Marca:** el producto se llama **OnCargo** desde nov 2026. Los identificadores técnicos (paquetes `pe.logyx`, códigos `LOGYX-XXX`, nombres de BD, cuentas demo `@logyx.pe`, `localStorage logyx-theme`) conservan el prefijo histórico.
 
 Dirección: **70% Modern Industrial Tech + 30% Friendly Mobility.**
 Combinamos la *presentación comercial* de un marketplace (Uber Freight), la *organización densa* de un
@@ -51,6 +53,25 @@ Fondos tintados oscuros: `emerald-50 #0F2A26`, `amber-50 #2A2210`, `red-50 #2D15
 Ambas SIL OFL. Números tabulares (`font-variant-numeric: tabular-nums`) en tablas y precios.
 **Iconos:** Lucide (web) / Material Symbols Rounded (Android). **Radio:** 10px tarjetas, 8px inputs, pill en chips.
 **Mapas:** MapLibre + OpenFreeMap estilo *positron* (claro, discreto) o *dark* en modo oscuro. Rutas en `petrol-700`, origen ○, destino ■.
+
+## Marca, logo y vídeo (web pública)
+**Logo.** Fuente: `media/logos/` (sin versionar). Derivados optimizados en `web/public/brand/` (WebP recortado al contenido, 248 px y 496 px para 1x/2x) y `web/public/` (`favicon.ico` 16/32/48, `favicon-16|32.png`, `apple-touch-icon.png` 180, `icon-192|512.png`, `site.webmanifest`, `brand/og-oncargo.png` 1200×630 para redes).
+- Componente único: `components/layout/Logo.astro` (props `dark`, `size` sm|md|lg, `symbol`, `class`). Pinta **dos imágenes** (texto oscuro / texto blanco) y CSS alterna por `html[data-theme]` (lo fija el script anti-parpadeo de `Base.astro`): sin parpadeo ni JS. `dark` = fondo oscuro fijo en ambos temas (sidebar, hero) → siempre la variante blanca.
+- Uso: altura mínima 24 px; espacio libre alrededor ≥ ½ de la altura; no recolorear, no estirar, no ponerlo sobre fotos sin velo. Cabecera pública 32 px, sidebar de la app según `AppShell`. Símbolo solo en espacios estrechos.
+- Colores de marca (del logo): azul noche del texto ≈ `ink-900`/`chrome`, cian del pin `#00BFE9` (solo en el logo; la UI sigue con petrol/emerald).
+- `<title>` = `<Página> · OnCargo`; meta description única por página (≤ 160 caracteres); OG/Twitter y `theme-color` en `Base.astro` (prop `ogImage`).
+
+**Vídeo de fondo** (solo páginas públicas; nunca en dashboards). Componente `components/media/BgVideo.astro`; patrón completo en `references/web.md` de la skill.
+| Sitio | Vídeo | Por qué |
+|---|---|---|
+| Hero de la landing | `fondo-mapa-peru` (mapa del corredor con la ruta Lima → Juliaca dibujándose) | Es el producto en una imagen, muy oscuro y de poco movimiento: garantiza contraste del titular y de las tarjetas |
+| Login | `gemini_…6ec508b2` (camión de noche con ruta digital) | Transmite seguimiento; el encuadre vertical centrado en el camión cabe en el panel de 380 px |
+| Registro | `gemini_…3a7ec79a` (almacén, operario con tableta) | Habla a la PYME que registra su empresa |
+| Cierre de la landing | `gemini_…570a7486` (cabina, carretera andina) | Cierra con la perspectiva del conductor y del transportista |
+Ninguno trae marca de agua visible (revisadas las 4 esquinas en fotogramas a tamaño completo). Los Gemini traen audio: **siempre se eliminan** (`-an`).
+- **Reglas:** sin audio; `muted loop playsinline`; póster = candidato a LCP (`<picture>` AVIF/WebP, `fetchpriority="high"` solo en el hero); el vídeo no se descarga hasta que la página cargó y el bloque está a la vista; pausa con `prefers-reduced-motion`, `Save-Data`, red 2g, fuera de pantalla y pestaña oculta; botón Pausar/Reproducir accesible (WCAG 2.2.2) que gana a la preferencia automática; en móvil, login/registro/cierre muestran solo póster o nada.
+- **Contraste:** el texto sobre vídeo siempre lleva el velo `.bgv__scrim` (degradado con `chrome` ≥ 58 % bajo el texto; variantes `bgv--hero`, `bgv--flat`, `bgv--panel`), texto blanco/`white/85` mínimo y tarjetas con `bg-chrome/50`. Verifica en ambos temas: el vídeo es igual en claro y oscuro.
+- **Assets** (`web/public/media/`, sin audio, WebM VP9 + MP4 H.264 `+faststart`, GOP 120): `hero-corredor` (1920×1080) y `hero-corredor-movil` (540×720), `login-camion` y `registro-almacen` (540×720), `cierre-cabina` (1280×720), más póster `.avif`/`.webp` de cada uno. Re-generar con ffmpeg `-threads 4`, uno a la vez (máquina de 15 GB): `-c:v libvpx-vp9 -b:v 0 -crf 30..32 -row-mt 1` y `-c:v libx264 -preset slow -crf 24 -movflags +faststart`.
 
 ## Patrones (componentes con nombre — úsalos igual en web y móvil)
 - **RouteLine** — `Lima ──── 1,010 km ────▶ Juliaca` con fechas debajo de cada ciudad.

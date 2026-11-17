@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, Plus, MoreHorizontal, Download, Trash2, Pencil, Gavel, PackageCheck } from 'lucide-react';
+import { SearchX, Truck, Plus, MoreHorizontal, Download, Trash2, Pencil, Gavel, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -25,7 +25,11 @@ import { toast } from '@/components/ui/toaster';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
-import { KpiTile } from '@/components/domain/KpiTile';
+import { KpiTile, KpiGrid } from '@/components/domain/KpiTile';
+import { DescriptionList } from '@/components/ui/description-list';
+import { QuickFilters } from '@/components/ui/quick-filters';
+import { CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
@@ -72,7 +76,7 @@ function Section({ id, title, note, children }: { id: string; title: string; not
   );
 }
 
-const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['reputacion', 'Reputación y archivos'], ['formatos', 'Formatos']];
+const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 'Botones'], ['formularios', 'Formularios'], ['fechas', 'Fechas'], ['feedback', 'Feedback'], ['overlays', 'Overlays'], ['datos', 'Datos'], ['dominio', 'Dominio'], ['composicion', 'Composición'], ['paneles', 'Paneles de datos'], ['reputacion', 'Reputación y archivos'], ['formatos', 'Formatos']];
 
 export default function UiCatalog() {
   const theme = useResolvedTheme();
@@ -91,6 +95,8 @@ export default function UiCatalog() {
   const [plan, setPlan] = useState('a');
   const [stars, setStars] = useState(0);
   const [dropFile, setDropFile] = useState<File | null>(null);
+  const [quick, setQuick] = useState('');
+  const [dir, setDir] = useState<'asc' | 'desc' | null>('asc');
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
@@ -295,6 +301,42 @@ export default function UiCatalog() {
               </AuthCard>
             </CardBody>
           </Card>
+        </Section>
+
+        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
+          <KpiGrid>
+            <KpiTile label="Solicitudes activas" value={10} context="3 con subasta abierta" icon={Truck} href="#paneles" tone="petrol" />
+            <KpiTile label="Ahorro vs sugerido" value="S/ 1,240" context="en 4 envíos" icon={Gavel} tone="money" delta={{ value: '+8%', direction: 'up', good: true }} />
+            <KpiTile label="Subastas por cerrar" value={2} context="menos de 5 min" icon={PackageCheck} tone="warn" />
+            <KpiTile label="Incidencias abiertas" value={1} context="requiere atención" tone="alert" loading />
+          </KpiGrid>
+          <Card>
+            <CardHeader><div><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Redimensiona la ventana: bajo 720 px del contenedor las filas pasan a tarjetas.</CardDescription></div><QuickFilters label="Estado" value={quick} onValueChange={setQuick} options={[{ value: '', label: 'Todas', count: 13 }, { value: 'PUBLISHED', label: 'Publicadas', count: 10 }, { value: 'MATCHED', label: 'Adjudicadas', count: 3 }]} /></CardHeader>
+            <Table label="Solicitudes recientes" stack sticky>
+              <thead><tr><Th>Ruta</Th><Th sort={dir} onSort={() => setDir(dir === 'asc' ? 'desc' : 'asc')}>Recojo</Th><Th>Estado</Th><Th className="text-right">Sugerido</Th><Th><span className="sr-only">Acciones</span></Th></tr></thead>
+              <tbody>
+                {[['LIMA', 'JULIACA', 1133, '28 nov', 'PUBLISHED', 1850], ['AREQUIPA', 'PUNO', 235, '29 nov', 'MATCHED', 913.11]].map(([o, d, km, f, st, pr]) => (
+                  <Tr key={String(o)}>
+                    <Td primary><RouteLine size="sm" origin={String(o)} destination={String(d)} km={Number(km)} /></Td>
+                    <Td label="Recojo">{f}</Td>
+                    <Td label="Estado"><StatusPill status={String(st)} /></Td>
+                    <Td label="Sugerido" className="text-right"><span className="money">{formatMoney(Number(pr))}</span></Td>
+                    <Td actions className="text-right"><Button size="sm" variant="outline">Ver detalle</Button></Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+            <CardFooter><span className="text-ink-500">2 de 13 solicitudes</span><Button size="sm" variant="ghost">Ver todas</Button></CardFooter>
+          </Card>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Detalle de carga</CardTitle></CardHeader><CardBody>
+              <DescriptionList items={[{ label: 'Peso', value: '2.5 t', mono: true }, { label: 'Distancia', value: '1,133 km', mono: true }, { label: 'Precio sugerido', value: 'S/ 1,850.00', money: true }, { label: 'Recojo', value: '28 nov · 08:00', hint: 'Av. Argentina 1234, Callao' }, { label: 'Notas', value: 'Carga frágil, no apilar', span: true }]} />
+            </CardBody></Card>
+            <Card><CardHeader><CardTitle>Estados de carga</CardTitle></CardHeader>
+              <EmptyState compact icon={SearchX} title="No hay cargas con estos filtros" description="Prueba con otra ciudad o amplía el rango de fechas." action={<Button size="sm" variant="outline">Limpiar filtros</Button>} />
+              <SkeletonList rows={2} />
+            </Card>
+          </div>
         </Section>
 
         <Section id="reputacion" title="Reputación y archivos" note="StarRating: entrada accesible (radiogroup, flechas) o solo lectura con decimales. TrustScore: chip en listas, meter en detalle. FileDropzone: arrastrar y soltar con validación de tipo y tamaño.">

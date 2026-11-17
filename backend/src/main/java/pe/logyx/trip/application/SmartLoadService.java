@@ -11,6 +11,9 @@ import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.identity.application.OrganizationDirectory;
 import pe.logyx.marketplace.application.MarketplaceQueries;
+import pe.logyx.marketplace.application.PlaceBidCommand;
+import pe.logyx.marketplace.application.PlaceBidUseCase;
+import java.math.BigDecimal;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 import pe.logyx.shared.audit.AuditService;
 import pe.logyx.shared.domain.BusinessException;
@@ -18,6 +21,8 @@ import pe.logyx.shared.tenancy.TenantContext;
 import pe.logyx.trip.application.event.SmartLoadAccepted;
 import pe.logyx.trip.application.event.SmartLoadSuggested;
 import pe.logyx.trip.application.port.out.SmartLoadRepository;
+import pe.logyx.routing.application.RoutePlanner;
+import pe.logyx.trip.domain.CityProximityPolicy;
 import pe.logyx.trip.domain.SmartLoadPlanner;
 import pe.logyx.trip.domain.model.SmartLoadStatus;
 import pe.logyx.trip.domain.model.SmartLoadSuggestion;
@@ -45,6 +50,8 @@ public class SmartLoadService {
     @Inject SmartLoadRepository suggestions;
     @Inject FleetService fleet;
     @Inject MarketplaceQueries marketplace;
+    @Inject RoutePlanner routes;
+    @Inject PlaceBidUseCase bidding;
     @Inject OrganizationDirectory organizations;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
@@ -81,28 +88,66 @@ public class SmartLoadService {
         return suggestions.listByCarrier(tenant.orgId(), status);
     }
 
-    /**
-     * Aceptar marca la sugerencia y avisa a las PYMEs agrupadas (RF33). No adjudica ni crea ofertas: el transportista
-     * debe ofertar en cada solicitud desde el marketplace (la subasta inversa sigue mandando).
-     */
+    /** Una oferta creada al aceptar el plan. */
+    public record PlacedBid(UUID requestId, UUID bidId, BigDecimal amount) {}
+
+    /** La sugerencia aceptada y las ofertas que generó. */
+    public record Acceptance(SmartLoadSuggestion suggestion, List<PlacedBid> bids) {}
+
     @Transactional
     public SmartLoadSuggestion accept(UUID id) {
+        return accept(id, Map.of(), null).suggestion();
+    }
+
+    /**
+     * RF32 / F12: aceptar el plan <b>oferta en lote</b>: una oferta por cada carga, con el vehículo del plan, al monto
+     * indicado o al precio sugerido (≥ piso RN03), marcadas con el id del plan ({@code loadGroupId}) para que los
+     * envíos resultantes compartan el vehículo sin chocar (F11). Pasan por el mismo caso de uso que una oferta
+     * normal (RN01, RN02, RN03, RN04, RN07). Es todo o nada: si una carga ya no admite ofertas (cerrada, adjudicada o
+     * ya ofertada), no se crea ninguna (LOGYX-TRP-011). Adjudicar sigue siendo decisión de cada PYME (subasta
+     * inversa); las PYMEs reciben la oferta y el aviso de que su carga viaja consolidada (RF33).
+     */
+    @Transactional
+    public Acceptance accept(UUID id, Map<UUID, BigDecimal> amounts, String notes) {
         SmartLoadSuggestion s = own(id);
         OffsetDateTime now = OffsetDateTime.now();
         s.accept(now);
         var ids = s.items().stream().map(SmartLoadSuggestion.Item::requestId).toList();
-        long stillOpen = marketplace.requestsByIds(ids).stream()
-                .filter(r -> r.status() == ShipmentRequest.Status.PUBLISHED).count();
-        if (stillOpen < ids.size()) {
-            throw BusinessException.conflict("LOGYX-TRP-011", "Alguna de las cargas de la sugerencia ya no está disponible");
+        if (amounts.keySet().stream().anyMatch(k -> !ids.contains(k))) {
+            throw BusinessException.badRequest("LOGYX-TRP-012", "El monto indicado no corresponde a una carga del plan",
+                    "items");
+        }
+        var requests = marketplace.requestsByIds(ids);
+        long stillOpen = requests.stream().filter(r -> r.status() == ShipmentRequest.Status.PUBLISHED).count();
+        boolean alreadyBid = ids.stream().anyMatch(r -> marketplace.bidOfCarrier(r, s.carrierOrgId()).isPresent());
+        if (stillOpen < ids.size() || alreadyBid) {
+            throw BusinessException.conflict("LOGYX-TRP-011", "Alguna de las cargas de la sugerencia ya no está disponible "
+                    + "o ya tiene tu oferta");
+        }
+        List<PlacedBid> placed = new ArrayList<>();
+        for (SmartLoadSuggestion.Item i : s.items()) {
+            BigDecimal amount = amounts.getOrDefault(i.requestId(), i.income());
+            String note = notes == null || notes.isBlank()
+                    ? "Carga consolidada (Smart Load) en " + s.vehiclePlate() : notes;
+            try {
+                var bid = bidding.placeBid(i.requestId(), new PlaceBidCommand(s.vehicleId(), amount, note, s.id())).bid();
+                placed.add(new PlacedBid(i.requestId(), bid.id(), bid.amount()));
+            } catch (BusinessException e) {
+                if (e.code().startsWith("LOGYX-AUC") || e.code().equals("LOGYX-BID-003")) {
+                    throw BusinessException.conflict("LOGYX-TRP-011", "Alguna de las cargas de la sugerencia ya no "
+                            + "está disponible: " + e.getMessage());
+                }
+                throw e;
+            }
         }
         suggestions.save(s);
-        audit.record(tenant.profileId(), tenant.orgId(), "SMART_LOAD_ACCEPTED", "smart_load_suggestion", s.id(), null);
+        audit.record(tenant.profileId(), tenant.orgId(), "SMART_LOAD_ACCEPTED", "smart_load_suggestion", s.id(),
+                "ofertas=" + placed.size());
         String carrierName = organizations.get(s.carrierOrgId()).legalName();
         accepted.fire(new SmartLoadAccepted(s.id(), s.carrierOrgId(), carrierName, s.items().stream()
                 .map(i -> new SmartLoadAccepted.Item(i.requestId(), i.requesterOrgId(),
                         i.originCity().label + " → " + i.destinationCity().label)).toList()));
-        return s;
+        return new Acceptance(s, placed);
     }
 
     @Transactional
@@ -140,7 +185,9 @@ public class SmartLoadService {
         if (slots.isEmpty() || loads.size() < 2) return List.of();
 
         List<SmartLoadSuggestion> created = new ArrayList<>();
-        for (SmartLoadPlanner.Plan plan : SmartLoadPlanner.plan(slots, loads)) {
+        // Proximidad y orden de paradas con km por carretera (ADR-0008).
+        CityProximityPolicy proximity = new CityProximityPolicy(routes::distanceKm);
+        for (SmartLoadPlanner.Plan plan : SmartLoadPlanner.plan(slots, loads, proximity)) {
             SmartLoadSuggestion s = SmartLoadSuggestion.from(carrierOrgId, plan, now, ttl);
             suggestions.save(s);
             created.add(s);

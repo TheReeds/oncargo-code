@@ -10,9 +10,10 @@ import { StopTimeline } from '@/features/shipments/components/StopTimeline';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { activeShipment } from '@/features/driver/server';
-import { formatMoney, formatTons } from '@/lib/format';
+import { DescriptionList } from '@/components/ui/description-list';
+import { formatTons, CITY_LABELS } from '@/lib/format';
 import { ApiError } from '@/lib/api/client';
-import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut } from '@lucide/astro';
+import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut, Navigation, TriangleAlert, Truck } from '@lucide/astro';
 
 const session = Astro.locals.session!;
 const user = await me(session.token);
@@ -24,67 +25,96 @@ const first = name.split(/\s+/)[0];
 const tasks = [
   { icon: Route, t: 'Ver tu viaje activo', d: 'Ruta, paradas y horarios del envío que te asignaron.' },
   { icon: MapPinCheck, t: 'Registrar llegada a cada parada', d: 'Avisa cuando llegas al recojo y a la entrega.' },
-  { icon: PackageCheck, t: 'Confirmar la entrega', d: 'Cierra el envío al dejar la carga en destino.' },
+  { icon: PackageCheck, t: 'Confirmar la entrega', d: 'Sube la foto de entrega y cierra el envío al dejar la carga en destino.' },
 ];
+const stops = [...(active?.stops ?? [])].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+const doneCount = stops.filter((s) => s.status === 'COMPLETED').length;
+const next = stops.find((s) => s.status !== 'COMPLETED') ?? null;
+const nextLabel = next ? `${next.type === 'PICKUP' ? 'Recojo' : 'Entrega'} · ${CITY_LABELS[next.city ?? ''] ?? next.city}` : null;
 ---
 <Public title="Conductores">
   <LiveRegion client:load types={['shipment.status_changed', 'shipment.stop_updated', 'shipment.driver_assigned', 'incident.reported', 'incident.updated']} region="conductor" />
-  <div data-live-region="conductor" class="mx-auto w-full max-w-md px-4 py-8 sm:py-14">
+  <div data-live-region="conductor" class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-12">
     <div class="flex items-center gap-4">
       <Avatar name={name} size="lg" />
       <div class="min-w-0">
         <p class="text-sm text-ink-500">Conductor{user?.organizationName ? ` · ${user.organizationName}` : ''}</p>
-        <h1 class="truncate text-2xl font-semibold tracking-tight text-ink-900">Hola, {first}</h1>
+        <h1 class="truncate text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">Hola, {first}</h1>
       </div>
     </div>
 
-    {active ? (
-      <section aria-labelledby="viaje" class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
-        <div class="flex items-center justify-between gap-2">
-          <h2 id="viaje" class="text-base font-semibold text-ink-900">Tu viaje activo</h2>
-          <StatusPill status={active.status!} />
-        </div>
-        <div class="mt-4"><RouteLine origin={active.originCity!} destination={active.destinationCity!} /></div>
-        <dl class="mt-4 grid grid-cols-2 gap-3 border-t border-steel-200 pt-4 text-sm">
-          <div class="col-span-2"><dt class="text-xs text-ink-500">Carga</dt><dd class="font-medium">{active.cargoDescription}</dd></div>
-          <div><dt class="text-xs text-ink-500">Peso</dt><dd class="font-mono font-medium">{formatTons(active.weightKg)}</dd></div>
-          <div><dt class="text-xs text-ink-500">Vehículo</dt><dd class="font-mono font-medium">{active.vehiclePlate ?? '—'}</dd></div>
-          <div class="col-span-2"><dt class="text-xs text-ink-500">Solicitante</dt><dd class="font-medium">{active.requesterName ?? '—'}</dd></div>
-        </dl>
-        <h3 class="mb-3 mt-5 text-sm font-semibold text-ink-900">Paradas</h3>
-        <StopTimeline stops={active.stops ?? []} orientation="vertical" />
-        <p class="mt-4 text-xs text-ink-500">Registra tus llegadas y la entrega desde la app móvil.</p>
-      </section>
-    ) : (
-      <section class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
-        <h2 class="text-base font-semibold text-ink-900">{activeError ? 'No pudimos cargar tu viaje' : 'No tienes un viaje activo'}</h2>
-        <p class="mt-1 text-sm text-ink-700">{activeError ? 'Recarga la página para intentarlo de nuevo.' : 'Cuando tu transportista te asigne un envío, lo verás aquí.'}</p>
-      </section>
-    )}
-
-    <div class="mt-6">
-      <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre LOGYX en tu celular para trabajar.</Alert>
-    </div>
-
-    <section aria-labelledby="en-app" class="mt-6 rounded-card border border-steel-200 bg-surface p-5">
-      <h2 id="en-app" class="flex items-center gap-2 text-base font-semibold text-ink-900"><Smartphone size={18} class="text-petrol-700" aria-hidden="true" /> Qué haces en la app</h2>
-      <ul class="mt-4 space-y-4">
-        {tasks.map((t) => (
-          <li class="flex gap-3">
-            <span class="grid size-11 shrink-0 place-items-center rounded-input bg-petrol-50 text-petrol-700"><t.icon size={22} aria-hidden="true" /></span>
-            <div>
-              <p class="font-medium text-ink-900">{t.t}</p>
-              <p class="text-sm text-ink-700">{t.d}</p>
+    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div class="min-w-0 space-y-4">
+        {active ? (
+          <section aria-labelledby="viaje" class="overflow-hidden rounded-card border border-steel-200 bg-surface">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-steel-200 px-5 py-3.5">
+              <h2 id="viaje" class="flex items-center gap-2 text-[15px] font-semibold text-ink-900"><Truck size={16} class="text-petrol-700" aria-hidden="true" /> Tu viaje activo</h2>
+              <StatusPill status={active.status!} />
             </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+            <div class="space-y-5 p-5">
+              {active.hasActiveIncident && (
+                <div class="flex items-start gap-2.5 rounded-input border border-red-600/25 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                  <TriangleAlert size={18} class="mt-0.5 shrink-0" aria-hidden="true" />
+                  <p><span class="font-semibold">Viaje detenido por una incidencia.</span> No podrás registrar nuevas paradas hasta que el operador de LOGYX la resuelva.</p>
+                </div>
+              )}
+              <RouteLine origin={active.originCity!} destination={active.destinationCity!} />
+              {nextLabel && (
+                <div class="flex items-center gap-3 rounded-input bg-petrol-50 px-3.5 py-3">
+                  <span class="grid size-9 shrink-0 place-items-center rounded-full bg-petrol-700 text-on-solid"><Navigation size={17} aria-hidden="true" /></span>
+                  <div class="min-w-0">
+                    <p class="text-xs font-medium text-petrol-700">Siguiente parada · {doneCount + 1} de {stops.length}</p>
+                    <p class="truncate text-sm font-semibold text-ink-900">{nextLabel}</p>
+                    {next?.address && <p class="truncate text-xs text-ink-700">{next.address}</p>}
+                  </div>
+                </div>
+              )}
+              <DescriptionList cols={2} items={[
+                { label: 'Carga', value: active.cargoDescription, span: true },
+                { label: 'Peso', value: formatTons(active.weightKg), mono: true },
+                { label: 'Vehículo', value: active.vehiclePlate, mono: true },
+                { label: 'Solicitante', value: active.requesterName, span: true },
+              ]} />
+            </div>
+            <div class="border-t border-steel-200 p-5">
+              <h3 class="mb-3 text-sm font-semibold text-ink-900">Paradas <span class="font-normal text-ink-500">· {doneCount} de {stops.length} completadas</span></h3>
+              <StopTimeline stops={active.stops ?? []} orientation="vertical" />
+            </div>
+            <p class="border-t border-steel-200 bg-steel-100/50 px-5 py-3 text-xs text-ink-500">Registra tus llegadas y la entrega desde la app móvil.</p>
+          </section>
+        ) : (
+          <section class="rounded-card border border-steel-200 bg-surface p-6 text-center">
+            <span class="mx-auto grid size-12 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Truck size={22} aria-hidden="true" /></span>
+            <h2 class="mt-3 text-base font-semibold text-ink-900">{activeError ? 'No pudimos cargar tu viaje' : 'No tienes un viaje activo'}</h2>
+            <p class="mx-auto mt-1 max-w-sm text-sm text-ink-700">{activeError ? 'Recarga la página para intentarlo de nuevo.' : 'Cuando tu transportista te asigne un envío, lo verás aquí y en la app, con su ruta y sus paradas.'}</p>
+          </section>
+        )}
+      </div>
 
-    <form method="post" action="/logout" class="mt-6">
-      <button type="submit" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'h-14 w-full text-base')}>
-        <LogOut size={18} aria-hidden="true" /> Cerrar sesión
-      </button>
-    </form>
+      <div class="min-w-0 space-y-4">
+        <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre LOGYX en tu celular para trabajar.</Alert>
+
+        <section aria-labelledby="en-app" class="rounded-card border border-steel-200 bg-surface p-5">
+          <h2 id="en-app" class="flex items-center gap-2 text-[15px] font-semibold text-ink-900"><Smartphone size={18} class="text-petrol-700" aria-hidden="true" /> Qué haces en la app</h2>
+          <ul class="mt-4 space-y-4">
+            {tasks.map((t) => (
+              <li class="flex gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-input bg-petrol-50 text-petrol-700"><t.icon size={20} aria-hidden="true" /></span>
+                <div>
+                  <p class="text-sm font-medium text-ink-900">{t.t}</p>
+                  <p class="text-sm text-ink-700">{t.d}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <form method="post" action="/logout">
+          <button type="submit" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'h-12 w-full text-base')}>
+            <LogOut size={18} aria-hidden="true" /> Cerrar sesión
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </Public>

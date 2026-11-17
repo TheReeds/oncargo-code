@@ -4,39 +4,108 @@ import Logo from '@/components/layout/Logo.astro';
 import ThemeToggle from '@/components/ui/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
 import { homeFor } from '@/lib/session';
-interface Props { title: string; description?: string }
-const { title, description } = Astro.props;
+import { ShieldCheck, Mail } from '@lucide/astro';
+interface Props { title: string; description?: string; /** `compact` en login y registro: pie de una línea. */ footer?: 'full' | 'compact' }
+const { title, description, footer = 'full' } = Astro.props;
 const path = Astro.url.pathname;
 const session = Astro.locals.session;
+const nav = [
+  { href: '/#como-funciona', label: 'Cómo funciona' },
+  { href: '/#para-quien', label: 'Para quién' },
+  { href: '/#confianza', label: 'Confianza' },
+  { href: '/#preguntas', label: 'Preguntas' },
+];
+const cols = [
+  { h: 'Producto', links: [
+    { href: '/#como-funciona', label: 'Cómo funciona la subasta' },
+    { href: '/#retornos', label: 'Retornos y Smart Load' },
+    { href: '/#corredor', label: 'Corredor Lima – Sierra Sur' },
+    { href: '/#preguntas', label: 'Preguntas frecuentes' },
+  ] },
+  { h: 'Cuenta', links: session
+    ? [{ href: homeFor(session), label: 'Ir a mi panel' }]
+    : [
+        { href: '/login', label: 'Ingresar' },
+        { href: '/registro', label: 'Crear cuenta de empresa' },
+        { href: '/registro?tipo=transportista', label: 'Registrarme como transportista' },
+      ] },
+  { h: 'Legal', links: [
+    { href: '/privacidad', label: 'Política de privacidad' },
+    { href: 'mailto:privacidad@logyx.pe', label: 'Derechos ARCO · privacidad@logyx.pe' },
+  ] },
+];
 ---
 <Base title={title} description={description}>
   <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-surface focus:text-ink-900 focus:px-3 focus:py-2">Saltar al contenido</a>
   <div class="flex min-h-screen flex-col">
-    <header class="sticky top-0 z-20 border-b border-steel-200/70 bg-steel-100/90 backdrop-blur">
-      <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 lg:px-10">
-        <a href="/" aria-label="LOGYX inicio" class="rounded-input"><Logo /></a>
+    <header class="site-header sticky top-0 z-20 border-b border-steel-200/70 bg-steel-100/90 backdrop-blur">
+      <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 lg:px-10">
+        <a href="/" aria-label="OnCargo, inicio" class="shrink-0 rounded-input"><Logo /></a>
+        <nav class="hidden items-center gap-1 lg:flex" aria-label="Secciones">
+          {nav.map((n) => <a href={n.href} class="rounded-input px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-surface hover:text-ink-900">{n.label}</a>)}
+        </nav>
         <nav class="flex items-center gap-1.5 sm:gap-2" aria-label="Acceso">
-          <ThemeToggle client:load />
+          <div class="hidden sm:block"><ThemeToggle client:load /></div>
           {session ? (
             <a href={homeFor(session)} class={buttonVariants({ variant: 'outline' })}>Ir a mi panel</a>
           ) : (
             <>
-              <a href="/login" aria-current={path === '/login' ? 'page' : undefined} class={buttonVariants({ variant: 'ghost' })}>Ingresar</a>
-              <a href="/registro" aria-current={path === '/registro' ? 'page' : undefined} class={buttonVariants({ variant: 'default' })}>Crear cuenta</a>
+              <a href="/login" aria-current={path === '/login' ? 'page' : undefined} class={buttonVariants({ variant: 'ghost' }) + ' px-2.5 sm:px-4'}>Ingresar</a>
+              <a href="/registro" aria-current={path === '/registro' ? 'page' : undefined} class={buttonVariants({ variant: 'default' }) + ' px-3 sm:px-4'}>Crear cuenta</a>
             </>
           )}
         </nav>
       </div>
     </header>
     <main id="contenido" class="flex-1"><slot /></main>
-    <footer class="border-t border-steel-200 bg-surface">
-      <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-ink-500 sm:flex-row lg:px-10">
-        <span>© 2026 LOGYX · Fletes entre Lima y la sierra sur</span>
-        <nav class="flex gap-4" aria-label="Información legal">
-          <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/privacidad">Política de privacidad</a>
-          <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/registro?tipo=transportista">Quiero ofertar como transportista</a>
-        </nav>
-      </div>
-    </footer>
+    {footer === 'compact' ? (
+      <footer class="border-t border-steel-200 bg-surface">
+        <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-ink-500 sm:flex-row lg:px-10">
+          <span>© 2026 OnCargo · Fletes entre Lima y la sierra sur</span>
+          <div class="sm:hidden"><ThemeToggle client:load /></div>
+          <nav class="flex gap-4" aria-label="Información legal">
+            <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/privacidad">Política de privacidad</a>
+            <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/">Inicio</a>
+          </nav>
+        </div>
+      </footer>
+    ) : (
+      <footer class="border-t border-steel-200 bg-surface">
+        <div class="mx-auto w-full max-w-6xl px-4 pb-6 pt-12 lg:px-10">
+          <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <Logo />
+              <p class="mt-3 max-w-xs text-sm text-ink-500">Fletes B2B para PYMEs y transportistas del corredor Lima – Arequipa – Cusco – Puno.</p>
+              <p class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"><ShieldCheck size={13} aria-hidden="true" /> Datos protegidos · Ley N.° 29733</p>
+            </div>
+            {cols.map((c) => (
+              <nav aria-label={c.h}>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-ink-500">{c.h}</h2>
+                <ul class="mt-3 space-y-2 text-sm">
+                  {c.links.map((l) => <li><a href={l.href} class="rounded text-ink-700 underline-offset-2 hover:text-petrol-700 hover:underline">{l.label}</a></li>)}
+                </ul>
+              </nav>
+            ))}
+          </div>
+          <div class="mt-10 flex flex-col items-center justify-between gap-2 border-t border-steel-200 pt-5 text-xs text-ink-500 sm:flex-row">
+            <span>© 2026 OnCargo · Todos los derechos reservados</span>
+            <div class="sm:hidden"><ThemeToggle client:load /></div>
+            <a href="mailto:privacidad@logyx.pe" class="inline-flex items-center gap-1.5 rounded underline-offset-2 hover:text-ink-900 hover:underline"><Mail size={13} aria-hidden="true" /> privacidad@logyx.pe</a>
+          </div>
+        </div>
+      </footer>
+    )}
   </div>
 </Base>
+
+<style is:global>
+  /* Páginas públicas: enlaces ancla suaves (con el header fijo) y transición entre páginas públicas. */
+  html { scroll-padding-top: 5rem; }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+    /* Navegación entre páginas públicas (landing, login, registro, privacidad): fundido corto; el header no parpadea. */
+    @view-transition { navigation: auto; }
+    .site-header { view-transition-name: site-header; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.16s; }
+  }
+</style>

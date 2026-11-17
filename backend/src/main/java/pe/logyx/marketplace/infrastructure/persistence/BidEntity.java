@@ -50,9 +50,12 @@ public class BidEntity extends PanacheEntityBase {
     @Column(name = "assigned_by_operator")
     public boolean assignedByOperator;
 
+    @Column(name = "load_group_id")
+    public UUID loadGroupId;
+
     Bid toDomain() {
         return new Bid(id, auctionId, requestId, requesterOrgId, carrierOrgId, vehicleId, vehicleType,
-                vehiclePlate, amount, notes, status, createdAt, assignedByOperator);
+                vehiclePlate, amount, notes, status, createdAt, assignedByOperator, loadGroupId);
     }
 
     void apply(Bid b) {
@@ -69,5 +72,6 @@ public class BidEntity extends PanacheEntityBase {
         status = b.status();
         createdAt = b.createdAt();
         assignedByOperator = b.assignedByOperator();
+        loadGroupId = b.loadGroupId();
     }
 }

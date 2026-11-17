@@ -55,9 +55,12 @@ public class DocumentService {
         if (cmd.stopId() != null) {
             ShipmentStop st = sum.stop(cmd.stopId());
             stop = new DocumentUploadPolicy.StopInfo(st.type() == ShipmentStop.Type.DELIVERY,
-                    st.status() != ShipmentStop.Status.PENDING);
+                    st.status() == ShipmentStop.Status.ARRIVED, st.status() == ShipmentStop.Status.COMPLETED);
         }
-        DocumentUploadPolicy.ensureCanAttach(cmd.type(), me.equals(s.carrierOrgId()), stop);
+        // detail() ya garantizó que un conductor solo ve su envío: si es DRIVER, es el conductor asignado (F14).
+        boolean assignedDriver = tenant.isDriver() && me.equals(s.carrierOrgId());
+        DocumentUploadPolicy.ensureCanAttach(cmd.type(), assignedDriver, stop,
+                s.status() == Shipment.Status.DELIVERED);
         FileFormat format = DocumentUploadPolicy.ensureValidFile(cmd.type(), cmd.sizeBytes(), maxBytes, header(cmd));
 
         UUID id = UUID.randomUUID();

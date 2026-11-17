@@ -10,6 +10,7 @@ import pe.logyx.marketplace.application.PlaceBidCommand;
 import pe.logyx.marketplace.application.PublishRequestCommand;
 import pe.logyx.marketplace.application.RequestSummary;
 import pe.logyx.marketplace.domain.VehicleRequirementPolicy;
+import pe.logyx.fleet.domain.VehicleCargoCompatibility;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
@@ -40,6 +41,12 @@ public final class MarketplaceDtos {
         }
     }
 
+    /** Cancelar una solicitud publicada: motivo opcional (lo ven los transportistas que ofertaron; RN07). */
+    public record CancelRequestBody(@Size(max = 500) String reason) {}
+
+    /** Reabrir la subasta (F07) o republicar la solicitud cancelada: nueva fecha de recojo opcional. */
+    public record RescheduleRequest(@FutureOrPresent(message = "La fecha de recojo no puede ser pasada") LocalDate pickupDate) {}
+
     public record AuctionView(UUID id, Auction.Status status, OffsetDateTime closesAt, int maxBids,
                               long bidCount, Auction.CloseReason closeReason) {}
 
@@ -58,7 +65,13 @@ public final class MarketplaceDtos {
                               /** Vehículo mínimo sugerido según peso y tipo de carga (VehicleRequirementPolicy). */
                               Vehicle.Type minVehicleType,
                               /** Trust Score 0–100 de la PYME solicitante (RN09; 75 sin calificaciones). */
-                              BigDecimal requesterTrustScore) {
+                              BigDecimal requesterTrustScore,
+                              /** RN02: tipos de vehículo que pueden llevar esta carga (matriz VehicleCargoCompatibility). */
+                              List<Vehicle.Type> compatibleVehicleTypes,
+                              /** Motivo de cancelación (de la PYME o del envío adjudicado que se canceló). */
+                              String cancelReason,
+                              /** Solicitud cancelada de la que se republicó esta (F07). */
+                              UUID republishedFrom) {
 
         static RequestView of(RequestSummary s) {
             ShipmentRequest r = s.request();
@@ -72,7 +85,8 @@ public final class MarketplaceDtos {
                     c.cargoType(), c.cargoDescription(), c.weightKg(), c.volumeM3(), c.pickupDate(),
                     p.distanceKm(), p.suggestedPrice(), p.priceFloor(), r.status(), r.createdAt(), av,
                     s.myBid() == null ? null : BidView.of(s.myBid()), s.requesterRucVerified(),
-                    VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()), s.requesterTrustScore());
+                    VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()), s.requesterTrustScore(),
+                    VehicleCargoCompatibility.allowedFor(c.cargoType()), r.cancelReason(), r.republishedFrom());
         }
 
         static List<RequestView> of(List<RequestSummary> list) {

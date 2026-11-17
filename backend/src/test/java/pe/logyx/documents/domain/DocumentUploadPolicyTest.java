@@ -38,13 +38,17 @@ class DocumentUploadPolicyTest {
     }
 
     @Test
-    void evidenciaSoloDelTransportistaEnLaEntregaYTrasLaLlegada() {
-        StopInfo arrivedDelivery = new StopInfo(true, true);
-        assertEquals("LOGYX-GEN-403", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, false, arrivedDelivery)));
-        assertEquals("LOGYX-DOC-004", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.SIGNATURE, true, null)));
-        assertEquals("LOGYX-DOC-004", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.SIGNATURE, true, new StopInfo(false, true))));
-        assertEquals("LOGYX-DOC-005", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, true, new StopInfo(true, false))));
-        assertDoesNotThrow(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, true, arrivedDelivery));
-        assertDoesNotThrow(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.REMISSION_GUIDE, false, null));
+    void evidenciaSoloDelConductorAsignadoEntreLlegadaYCierre() {
+        StopInfo arrivedDelivery = new StopInfo(true, true, false);
+        // F14: ni la PYME ni la oficina del transportista (solo el conductor asignado)
+        assertEquals("LOGYX-DOC-007", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, false, arrivedDelivery, false)));
+        assertEquals("LOGYX-DOC-004", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.SIGNATURE, true, null, false)));
+        assertEquals("LOGYX-DOC-004", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.SIGNATURE, true, new StopInfo(false, true, false), false)));
+        assertEquals("LOGYX-DOC-005", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, true, new StopInfo(true, false, false), false)));
+        // F14: completada la parada o cerrado el envío, la evidencia es inmutable
+        assertEquals("LOGYX-DOC-008", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, true, new StopInfo(true, true, true), false)));
+        assertEquals("LOGYX-DOC-008", code(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.SIGNATURE, true, arrivedDelivery, true)));
+        assertDoesNotThrow(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.DELIVERY_PHOTO, true, arrivedDelivery, false));
+        assertDoesNotThrow(() -> DocumentUploadPolicy.ensureCanAttach(DocumentType.REMISSION_GUIDE, false, null, true));
     }
 }

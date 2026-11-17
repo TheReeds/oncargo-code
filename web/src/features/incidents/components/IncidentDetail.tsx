@@ -2,7 +2,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
 import { MessageSquare, TriangleAlert, CircleCheck, Lock } from 'lucide-react';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DescriptionList } from '@/components/ui/description-list';
+import DocumentsPanel from '@/features/documents/components/DocumentsPanel';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
@@ -14,14 +16,15 @@ import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { splitActionError } from '@/lib/action-error';
 import { INCIDENT_CATEGORY_LABELS, formatDateTime } from '@/lib/format';
-import { ageTone, formatOpenTime, hoursOpen } from '../lib';
+import { OUTCOME_BY_SHIPMENT, OUTCOME_LABEL, ageTone, formatOpenTime, hoursOpen } from '../lib';
+import { Select } from '@/components/ui/select';
 import type { IncidentView } from '../server';
 
 const MAX = 2000;
 type Route = { origin: string; destination: string } | null;
 
 /** Detalle de una incidencia: datos, hilo de comentarios y, para el operador, el panel de gestión. */
-export default function IncidentDetail({ initial, orgType, route }: { initial: IncidentView; orgType: 'PYME' | 'CARRIER' | 'OPERATOR'; route: Route }) {
+export default function IncidentDetail({ initial, orgType, route, shipmentStatus }: { initial: IncidentView; orgType: 'PYME' | 'CARRIER' | 'OPERATOR'; route: Route; shipmentStatus?: string }) {
   const [inc, setInc] = useState(initial);
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -29,6 +32,10 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
   const [notes, setNotes] = useState(initial.resolutionNotes ?? '');
   const [notesError, setNotesError] = useState<string | null>(null);
   const [changing, setChanging] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState('');
+  const [outcomeError, setOutcomeError] = useState<string | null>(null);
+  const outcomes = (shipmentStatus && OUTCOME_BY_SHIPMENT[shipmentStatus]) || ['RESUME', 'DELIVERED', 'CANCELLED'];
+  const savedOutcome = (inc as { shipmentOutcome?: string }).shipmentOutcome;
   // Estado y comentarios en vivo (incident.updated de esta incidencia).
   const reloadIncident = useCallback(async () => {
     const { data } = await actions.incidents.get({ id: initial.id! });
@@ -37,7 +44,7 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
   useLiveRefresh({ types: ['incident.updated', 'incident.reported'], match: (e) => e.data.incidentId === initial.id, refresh: reloadIncident, fallbackMs: 60_000 });
   const operator = orgType === 'OPERATOR';
   const closed = inc.status === 'CLOSED';
-  const shipmentHref = orgType === 'PYME' ? `/pyme/envios?id=${inc.shipmentId}` : orgType === 'CARRIER' ? `/transportista/envios?id=${inc.shipmentId}` : null;
+  const shipmentHref = orgType === 'PYME' ? `/pyme/envios?id=${inc.shipmentId}` : orgType === 'CARRIER' ? `/transportista/envios?id=${inc.shipmentId}` : `/operador/envios/${inc.shipmentId}`;
   const h = hoursOpen(inc);
 
   const items: TimelineItem[] = useMemo(() => {
@@ -64,19 +71,29 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
 
   async function change(status: 'IN_REVIEW' | 'RESOLVED' | 'CLOSED') {
     setNotesError(null);
-    if (status === 'RESOLVED' && !notes.trim()) { setNotesError('Escribe las notas de resolución para resolver la incidencia.'); return; }
+    setOutcomeError(null);
+    // RF55: resolver, o cerrar sin haber resuelto, exige notas y el estado final del envío.
+    const needsOutcome = status === 'RESOLVED' || (status === 'CLOSED' && inc.status !== 'RESOLVED');
+    if (needsOutcome) {
+      let bad = false;
+      if (!notes.trim()) { setNotesError(status === 'RESOLVED' ? 'Escribe las notas de resolución para resolver la incidencia.' : 'Escribe las notas de resolución para cerrar la incidencia.'); bad = true; }
+      if (!outcome) { setOutcomeError('Elige qué pasa con el envío.'); bad = true; }
+      if (bad) return;
+    }
+    const effect = needsOutcome ? ({ RESUME: ' El envío continuará su ruta.', DELIVERED: ' El envío se dará por entregado y se cerrarán sus paradas.', CANCELLED: ' Se cancelarán el envío y la solicitud, y se liberará la flota. No se puede deshacer.' } as Record<string, string>)[outcome] : '';
+    const cancelling = needsOutcome && outcome === 'CANCELLED';
     const texts = {
       IN_REVIEW: { title: '¿Pasar la incidencia a revisión?', description: 'Las partes verán que LOGYX ya la está atendiendo. El envío sigue detenido.', confirmLabel: 'Pasar a revisión', tone: undefined },
-      RESOLVED: { title: '¿Resolver la incidencia?', description: 'Se liberará el envío y se avisará a ambas partes con tus notas de resolución.', confirmLabel: 'Resolver incidencia', tone: undefined },
-      CLOSED: { title: '¿Cerrar la incidencia?', description: 'Se liberará el envío y ya no se podrá comentar. No se puede deshacer.', confirmLabel: 'Cerrar incidencia', tone: 'destructive' as const },
+      RESOLVED: { title: '¿Resolver la incidencia?', description: `Se avisará a ambas partes con tus notas de resolución.${effect}`, confirmLabel: 'Resolver incidencia', tone: cancelling ? ('destructive' as const) : undefined },
+      CLOSED: { title: '¿Cerrar la incidencia?', description: `Ya no se podrá comentar. No se puede deshacer.${effect}`, confirmLabel: 'Cerrar incidencia', tone: 'destructive' as const },
     }[status];
     if (!(await confirm(texts))) return;
     setChanging(status);
-    const { data, error } = await actions.incidents.changeStatus({ id: inc.id!, status, resolutionNotes: notes });
+    const { data, error } = await actions.incidents.changeStatus({ id: inc.id!, status, resolutionNotes: notes, shipmentOutcome: needsOutcome ? (outcome as 'RESUME' | 'DELIVERED' | 'CANCELLED') : undefined });
     setChanging(null);
     if (error) {
       const { message, field } = splitActionError(error);
-      if (field === 'resolutionNotes') setNotesError(message); else toast.error(message);
+      if (field === 'resolutionNotes') setNotesError(message); else if (field === 'shipmentOutcome') setOutcomeError(message); else toast.error(message);
       return;
     }
     setInc(data);
@@ -87,25 +104,26 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="space-y-6">
         {inc.active && (
-          <Alert tone="error" title="El envío está detenido">
+          <Alert tone="error" title="El envío está detenido" action={<Button size="sm" variant="outline" asChild><a href={shipmentHref}>Ver envío</a></Button>}>
             Mientras esta incidencia siga activa, el conductor no puede avanzar las paradas (RN11). Se libera cuando el operador la resuelve o la cierra.
           </Alert>
         )}
         <Card>
-          <CardHeader><CardTitle>Descripción</CardTitle><StatusPill status={inc.status!} /></CardHeader>
+          <CardHeader><div><CardTitle>Descripción</CardTitle><CardDescription>Reportada {formatDateTime(inc.createdAt)}</CardDescription></div><StatusPill status={inc.status!} /></CardHeader>
           <CardBody className="space-y-4">
             <p className="whitespace-pre-wrap text-sm text-ink-900">{inc.description}</p>
             {inc.resolutionNotes && (
               <div className="rounded-input border border-emerald-500/40 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
                 <p className="font-semibold">Notas de resolución</p>
                 <p className="mt-0.5 whitespace-pre-wrap">{inc.resolutionNotes}</p>
+                {savedOutcome && OUTCOME_LABEL[savedOutcome] && <p className="mt-2 border-t border-emerald-500/30 pt-2 text-xs"><span className="font-semibold">Estado final del envío:</span> {OUTCOME_LABEL[savedOutcome].label}</p>}
               </div>
             )}
           </CardBody>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Historial y comentarios</CardTitle></CardHeader>
+          <CardHeader><div><CardTitle>Historial y comentarios</CardTitle><CardDescription>{operator ? 'Lo que escribas lo verán la PYME y el transportista.' : 'Lo que escribas lo verán la otra parte y el operador de LOGYX.'}</CardDescription></div></CardHeader>
           <CardBody className="space-y-6">
             <Timeline items={items} orientation="vertical" label="Historial de la incidencia" />
             {closed ? (
@@ -120,6 +138,7 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
             )}
           </CardBody>
         </Card>
+        <DocumentsPanel shipmentId={inc.shipmentId!} perspective={orgType} status="" readOnly title="Evidencias y documentos del envío" />
       </div>
 
       <div className="space-y-6">
@@ -127,28 +146,33 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
           <CardHeader><CardTitle>Datos</CardTitle></CardHeader>
           <CardBody className="space-y-4 text-sm">
             {route && <RouteLine size="sm" origin={route.origin} destination={route.destination} />}
-            <ul className="space-y-3">
-              <Item k="Categoría" v={INCIDENT_CATEGORY_LABELS[inc.category!]} />
-              <Item k="PYME" v={inc.requesterName} />
-              <Item k="Transportista" v={inc.carrierName} />
-              <Item k="Reportada" v={formatDateTime(inc.createdAt)} />
-              <Item k={inc.active ? 'Tiempo abierta' : 'Duración'} v={<span className={`font-mono tabular-nums ${ageTone(h, inc.active)}`}>{formatOpenTime(h)}</span>} />
-              <Item k="Envío" v={shipmentHref ? <a className="font-medium text-petrol-700 hover:underline" href={shipmentHref}>Ver envío en seguimiento</a> : <span className="font-mono text-xs">{inc.shipmentId?.slice(0, 8)}</span>} />
-            </ul>
+            <DescriptionList cols={1} items={[
+              { label: 'Categoría', value: INCIDENT_CATEGORY_LABELS[inc.category!] },
+              { label: 'PYME', value: inc.requesterName },
+              { label: 'Transportista', value: inc.carrierName },
+              { label: 'Reportada', value: formatDateTime(inc.createdAt) },
+              { label: inc.active ? 'Tiempo abierta' : 'Duración', value: <span className={ageTone(h, inc.active)}>{formatOpenTime(h)}</span>, mono: true },
+              { label: 'Envío', value: <a className="font-medium text-petrol-700 hover:underline" href={shipmentHref}>{operator ? 'Ver detalle del envío' : 'Ver envío en seguimiento'}</a> },
+            ]} />
           </CardBody>
         </Card>
 
         {operator && (
           <Card>
-            <CardHeader><CardTitle>Gestionar incidencia</CardTitle></CardHeader>
+            <CardHeader><div><CardTitle>Gestionar incidencia</CardTitle><CardDescription>Solo el operador cambia el estado.</CardDescription></div><StatusPill status={inc.status!} /></CardHeader>
             <CardBody className="space-y-4">
               {closed ? (
                 <p className="text-sm text-ink-500">La incidencia está cerrada. No hay más acciones disponibles.</p>
               ) : (
                 <>
-                  <Field label="Notas de resolución" htmlFor="inc-notes" error={notesError} required={inc.status !== 'RESOLVED'} hint={`Obligatorias para resolver. Las verán ambas partes. ${notes.length}/${MAX}`}>
+                  <Field label="Notas de resolución" htmlFor="inc-notes" error={notesError} required={inc.status !== 'RESOLVED'} hint={`Obligatorias para resolver o cerrar. Las verán ambas partes. ${notes.length}/${MAX}`}>
                     <Textarea id="inc-notes" value={notes} maxLength={MAX} rows={4} onChange={(e) => setNotes(e.target.value)} aria-invalid={!!notesError} placeholder="Qué se hizo para resolver el problema." disabled={inc.status === 'RESOLVED'} />
                   </Field>
+                  {inc.status !== 'RESOLVED' && (
+                    <Field label="Qué pasa con el envío" htmlFor="inc-outcome" error={outcomeError} required hint={outcome ? OUTCOME_LABEL[outcome].hint : 'Obligatorio al resolver o cerrar la incidencia.'}>
+                      <Select id="inc-outcome" value={outcome} onValueChange={(v) => { setOutcome(v); setOutcomeError(null); }} options={outcomes.map((o) => ({ value: o, label: OUTCOME_LABEL[o].label }))} placeholder="Elige el estado final" invalid={!!outcomeError} />
+                    </Field>
+                  )}
                   <div className="flex flex-col gap-2">
                     {inc.status === 'OPEN' && <Button variant="outline" onClick={() => change('IN_REVIEW')} loading={changing === 'IN_REVIEW'} disabled={!!changing}>Pasar a revisión</Button>}
                     {(inc.status === 'OPEN' || inc.status === 'IN_REVIEW') && <Button variant="money" onClick={() => change('RESOLVED')} loading={changing === 'RESOLVED'} disabled={!!changing}>Resolver incidencia</Button>}
@@ -162,14 +186,5 @@ export default function IncidentDetail({ initial, orgType, route }: { initial: I
         )}
       </div>
     </div>
-  );
-}
-
-function Item({ k, v }: { k: string; v: React.ReactNode }) {
-  return (
-    <li className="flex items-baseline justify-between gap-4">
-      <span className="text-ink-500">{k}</span>
-      <span className="text-right font-medium text-ink-900">{v ?? '—'}</span>
-    </li>
   );
 }

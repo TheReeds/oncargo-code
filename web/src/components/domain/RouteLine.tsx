@@ -12,7 +12,7 @@ export function RouteLine({ origin, destination, km, originSub, destinationSub, 
       <div className="flex min-w-16 flex-1 items-center gap-1.5 text-ink-400" aria-hidden="true">
         <span className="size-2 rounded-full border-2 border-petrol-700" />
         <span className="h-px flex-1 bg-ink-400/60" />
-        {km != null && <span className="font-mono text-[11px] text-ink-500">{formatKm(km)}</span>}
+        {km != null && <span className="whitespace-nowrap font-mono text-[11px] text-ink-500">{formatKm(km)}</span>}
         <span className="h-px flex-1 bg-ink-400/60" />
         <span className="size-2 bg-petrol-700" />
       </div>

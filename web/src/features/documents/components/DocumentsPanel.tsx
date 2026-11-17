@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
-import { Camera, Download, Eye, FileSignature, FileText, ReceiptText, ClipboardList, File as FileIcon } from 'lucide-react';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Camera, Download, Eye, FileSignature, FileText, FolderOpen, ReceiptText, ClipboardList, File as FileIcon } from 'lucide-react';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { QuickFilters } from '@/components/ui/quick-filters';
+import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { DOCUMENT_TYPE_LABELS, formatDateTime, formatFileSize } from '@/lib/format';
 import type { DocumentView } from '../server';
@@ -13,7 +14,7 @@ import { DocumentUpload } from './DocumentUpload';
 import { DocumentViewer } from './DocumentViewer';
 import { docUrl, isEvidence, isImage } from './documentUtils';
 
-type Props = { shipmentId: string; perspective: 'PYME' | 'CARRIER'; status: string; hasActiveIncident?: boolean };
+type Props = { shipmentId: string; perspective: 'PYME' | 'CARRIER' | 'OPERATOR'; status: string; hasActiveIncident?: boolean; /** Sin subida (detalle de incidencia, operador). */ readOnly?: boolean; title?: string };
 const TYPE_ICON: Record<string, typeof FileText> = { DELIVERY_PHOTO: Camera, SIGNATURE: FileSignature, REMISSION_GUIDE: ClipboardList, SERVICE_ORDER: FileText, RECEIPT: ReceiptText, OTHER: FileIcon };
 const ORDER = ['DELIVERY_PHOTO', 'SIGNATURE', 'REMISSION_GUIDE', 'SERVICE_ORDER', 'RECEIPT', 'OTHER'];
 
@@ -29,7 +30,7 @@ function Thumb({ doc, onOpen, className = 'size-14' }: { doc: DocumentView; onOp
   return <span aria-hidden="true" className={`${className} flex shrink-0 items-center justify-center rounded-input bg-petrol-50 text-petrol-700`}><Icon className="size-6" /></span>;
 }
 
-export default function DocumentsPanel({ shipmentId, perspective, status }: Props) {
+export default function DocumentsPanel({ shipmentId, perspective, status, readOnly: ro, title = 'Documentos del envío' }: Props) {
   const [docs, setDocs] = useState<DocumentView[] | null>(null);
   const [orgId, setOrgId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,8 @@ export default function DocumentsPanel({ shipmentId, perspective, status }: Prop
   if (!docs) return <div className="space-y-3" aria-busy="true" aria-label="Cargando documentos"><Skeleton className="h-28 w-full" /><Skeleton className="h-20 w-full" /></div>;
 
   const hasPhoto = docs.some((d) => d.type === 'DELIVERY_PHOTO');
-  const who = (d: DocumentView) => (d.uploadedByOrgId === orgId ? 'Tú' : perspective === 'PYME' ? 'El transportista' : 'La PYME');
+  const readOnly = ro || perspective === 'OPERATOR';
+  const who = (d: DocumentView) => (perspective === 'OPERATOR' ? null : d.uploadedByOrgId === orgId ? 'Tú' : perspective === 'PYME' ? 'El transportista' : 'La PYME');
 
   return (
     <div className="space-y-4">
@@ -89,32 +91,32 @@ export default function DocumentsPanel({ shipmentId, perspective, status }: Prop
 
       <Card>
         <CardHeader>
-          <CardTitle>Documentos del envío</CardTitle>
-          <span className="font-mono text-xs tabular-nums text-ink-500">{docs.length} {docs.length === 1 ? 'archivo' : 'archivos'}</span>
+          <div><CardTitle>{title}</CardTitle><CardDescription>Guías de remisión, órdenes de servicio y comprobantes.</CardDescription></div>
+          <Badge tone="neutral"><span className="font-mono tabular-nums">{docs.length}</span> {docs.length === 1 ? 'archivo' : 'archivos'}</Badge>
         </CardHeader>
         {docs.length === 0 ? (
-          <EmptyState title="Aún no hay documentos" description="Sube la guía de remisión, la orden de servicio o un comprobante para que ambas partes los tengan a mano." />
+          <EmptyState icon={FolderOpen} title="Aún no hay documentos" description={readOnly ? 'Las partes todavía no subieron guías, órdenes ni comprobantes de este envío.' : 'Sube la guía de remisión, la orden de servicio o un comprobante para que ambas partes los tengan a mano.'} />
         ) : (
           <>
-            <Tabs value={filter} onValueChange={setFilter} className="px-5 pt-1">
-              <TabsList aria-label="Filtrar por tipo de documento">
-                <TabsTrigger value="ALL" aria-controls={undefined}>Todos ({docs.length})</TabsTrigger>
-                {ORDER.filter((t) => counts[t]).map((t) => <TabsTrigger key={t} value={t} aria-controls={undefined}>{DOCUMENT_TYPE_LABELS[t]} ({counts[t]})</TabsTrigger>)}
-              </TabsList>
-            </Tabs>
+            <div className="border-b border-steel-200 px-5 py-3">
+              <QuickFilters label="Tipo de documento" value={filter} onValueChange={setFilter} options={[{ value: 'ALL', label: 'Todos', count: docs.length }, ...ORDER.filter((t) => counts[t]).map((t) => ({ value: t, label: DOCUMENT_TYPE_LABELS[t], count: counts[t] }))]} />
+            </div>
             <ul className="divide-y divide-steel-200">
               {visible.map((d) => {
                 const img = isImage(d);
                 return (
                   <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3" data-testid="document-row">
                     <Thumb doc={d} onOpen={() => open(images, d)} />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-40 flex-1">
                       <p className="truncate text-sm font-medium text-ink-900">{d.fileName}</p>
-                      <p className="text-xs text-ink-500">
-                        {DOCUMENT_TYPE_LABELS[d.type ?? ''] ?? 'Documento'} · <span className="font-mono tabular-nums">{formatFileSize(d.sizeBytes)}</span> · {who(d)} · {formatDateTime(d.createdAt)}
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
+                        <Badge tone={isEvidence(d) ? 'emerald' : 'petrol'}>{DOCUMENT_TYPE_LABELS[d.type ?? ''] ?? 'Documento'}</Badge>
+                        <span className="font-mono tabular-nums">{formatFileSize(d.sizeBytes)}</span>
+                        {who(d) && <span>· {who(d)}</span>}
+                        <span>· {formatDateTime(d.createdAt)}</span>
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       {img ? (
                         <Button variant="outline" size="sm" onClick={() => open(images, d)}><Eye aria-hidden="true" />Ver<span className="sr-only"> {d.fileName}</span></Button>
                       ) : (
@@ -129,10 +131,9 @@ export default function DocumentsPanel({ shipmentId, perspective, status }: Prop
             {visible.length === 0 && <p className="px-5 py-6 text-center text-sm text-ink-500">No hay documentos de este tipo.</p>}
           </>
         )}
-        {docs.length > 0 && <div className="h-2" />}
       </Card>
 
-      <DocumentUpload shipmentId={shipmentId} cancelled={status === 'CANCELLED'} onUploaded={load} />
+      {!readOnly && <DocumentUpload shipmentId={shipmentId} cancelled={status === 'CANCELLED'} onUploaded={load} />}
       <DocumentViewer images={viewerList} index={viewing} onIndexChange={setViewing} onClose={() => setViewing(null)} />
     </div>
   );

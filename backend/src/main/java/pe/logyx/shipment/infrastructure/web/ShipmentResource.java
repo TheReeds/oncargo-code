@@ -11,6 +11,11 @@ import pe.logyx.shared.tenancy.Roles;
 import pe.logyx.shipment.application.AssignDriverUseCase;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.TrackStopsUseCase;
+import pe.logyx.shipment.application.ShipmentLifecycleUseCase;
+import jakarta.validation.constraints.NotNull;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import pe.logyx.shipment.infrastructure.web.ShipmentDtos.CancelShipment;
+import pe.logyx.shipment.infrastructure.web.ShipmentDtos.ChangeVehicle;
 import pe.logyx.shipment.infrastructure.web.ShipmentDtos.AssignDriver;
 import pe.logyx.shipment.infrastructure.web.ShipmentDtos.ShipmentView;
 
@@ -23,6 +28,7 @@ public class ShipmentResource {
     @Inject ShipmentQueries queries;
     @Inject AssignDriverUseCase assignDriver;
     @Inject TrackStopsUseCase tracking;
+    @Inject ShipmentLifecycleUseCase lifecycle;
 
     @GET
     @Path("/shipments")
@@ -46,8 +52,28 @@ public class ShipmentResource {
     @PUT
     @Path("/shipments/{id}/driver")
     @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "Asigna o releva el conductor (motivo obligatorio si ya se recogió; sin envíos solapados, "
+            + "LOGYX-SHP-004)")
     public ApiResponse<ShipmentView> assign(@PathParam("id") UUID id, @Valid AssignDriver req) {
-        return ApiResponse.of(ShipmentView.of(assignDriver.assign(id, req.driverId())));
+        return ApiResponse.of(ShipmentView.of(assignDriver.assign(id, req.driverId(), req.reason())));
+    }
+
+    @PUT
+    @Path("/shipments/{id}/vehicle")
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "Cambia el vehículo del envío (RN02: kg, tipo y m³; sin envíos solapados, LOGYX-CAP-005; "
+            + "motivo obligatorio si ya se recogió)")
+    public ApiResponse<ShipmentView> changeVehicle(@PathParam("id") UUID id, @Valid ChangeVehicle req) {
+        return ApiResponse.of(ShipmentView.of(lifecycle.changeVehicle(id, req.vehicleId(), req.reason())));
+    }
+
+    @POST
+    @Path("/shipments/{id}/cancel")
+    @RolesAllowed({Roles.PYME, Roles.CARRIER, Roles.OPERATOR})
+    @Operation(summary = "Cancela el envío con motivo: las partes antes del recojo (LOGYX-SHP-003), el operador también "
+            + "en tránsito. La solicitud queda cancelada y se avisa a la contraparte")
+    public ApiResponse<ShipmentView> cancel(@PathParam("id") UUID id, @Valid @NotNull CancelShipment req) {
+        return ApiResponse.of(ShipmentView.of(lifecycle.cancel(id, req.reason())));
     }
 
     // ----- App del conductor

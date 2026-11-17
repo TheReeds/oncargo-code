@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static pe.logyx.trip.domain.Roads.PROXIMITY;
 
 class ReturnLoadPolicyTest {
 
@@ -31,7 +32,7 @@ class ReturnLoadPolicyTest {
     void mismaCiudadYCompatibleEsRetornoConMaximoPuntaje() {
         Leg l = leg(City.JULIACA, true, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         Candidate c = cand(City.JULIACA, City.LIMA, "12000", TODAY, CargoType.BULK);
-        var m = ReturnLoadPolicy.match(List.of(l), List.of(c), TODAY);
+        var m = ReturnLoadPolicy.match(List.of(l), List.of(c), TODAY, PROXIMITY);
         assertEquals(1, m.size());
         assertEquals(0, m.get(0).distanceKm());
         assertEquals(100, m.get(0).score());
@@ -42,10 +43,10 @@ class ReturnLoadPolicyTest {
         Leg l = leg(City.JULIACA, true, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         Candidate same = cand(City.JULIACA, City.LIMA, "1000", TODAY, CargoType.GENERAL);
         Candidate near = cand(City.PUNO, City.TACNA, "1000", TODAY, CargoType.GENERAL);
-        var m = ReturnLoadPolicy.match(List.of(l), List.of(near, same), TODAY);
+        var m = ReturnLoadPolicy.match(List.of(l), List.of(near, same), TODAY, PROXIMITY);
         assertEquals(2, m.size());
         assertEquals(same.requestId(), m.get(0).candidate().requestId(), "la misma ciudad primero");
-        assertEquals(44.0, m.get(1).distanceKm());
+        assertEquals(42.9, m.get(1).distanceKm()); // Juliaca → Puno por carretera (ADR-0008)
         assertTrue(m.get(1).score() < m.get(0).score());
     }
 
@@ -53,51 +54,51 @@ class ReturnLoadPolicyTest {
     void ciudadLejanaNoEs() {
         Leg l = leg(City.JULIACA, true, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         assertTrue(ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.AREQUIPA, City.LIMA, "1000", TODAY, CargoType.GENERAL)), TODAY).isEmpty());
+                List.of(cand(City.AREQUIPA, City.LIMA, "1000", TODAY, CargoType.GENERAL)), TODAY, PROXIMITY).isEmpty());
     }
 
     @Test
     void noCabeEnElVehiculoNoSeSugiere() {
         Leg l = leg(City.JULIACA, true, TODAY, "8000", Vehicle.Type.TRUCK_MEDIUM);
         assertTrue(ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.JULIACA, City.LIMA, "12000", TODAY, CargoType.BULK)), TODAY).isEmpty());
+                List.of(cand(City.JULIACA, City.LIMA, "12000", TODAY, CargoType.BULK)), TODAY, PROXIMITY).isEmpty());
     }
 
     @Test
     void fechaFueraDeLaVentanaOAnteriorALaDisponibilidadNoSirve() {
         Leg l = leg(City.JULIACA, true, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         assertEquals(1, ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.plusDays(7), CargoType.GENERAL)), TODAY).size());
+                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.plusDays(7), CargoType.GENERAL)), TODAY, PROXIMITY).size());
         assertTrue(ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.plusDays(8), CargoType.GENERAL)), TODAY).isEmpty());
+                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.plusDays(8), CargoType.GENERAL)), TODAY, PROXIMITY).isEmpty());
         assertTrue(ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.minusDays(1), CargoType.GENERAL)), TODAY).isEmpty());
+                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY.minusDays(1), CargoType.GENERAL)), TODAY, PROXIMITY).isEmpty());
     }
 
     @Test
     void entregadoHaceMasDeTresDiasYaNoGeneraRetorno() {
         Leg old = leg(City.JULIACA, true, TODAY.minusDays(4), "20000", Vehicle.Type.TRUCK_LARGE);
         assertTrue(ReturnLoadPolicy.match(List.of(old),
-                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.GENERAL)), TODAY).isEmpty());
+                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.GENERAL)), TODAY, PROXIMITY).isEmpty());
         Leg recent = leg(City.JULIACA, true, TODAY.minusDays(3), "20000", Vehicle.Type.TRUCK_LARGE);
         assertEquals(1, ReturnLoadPolicy.match(List.of(recent),
-                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.GENERAL)), TODAY).size());
+                List.of(cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.GENERAL)), TODAY, PROXIMITY).size());
     }
 
     @Test
     void noEsRetornoSiVaAlMismoDestinoDelTramo() {
         Leg l = leg(City.JULIACA, false, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         assertTrue(ReturnLoadPolicy.match(List.of(l),
-                List.of(cand(City.PUNO, City.JULIACA, "100", TODAY, CargoType.GENERAL)), TODAY).isEmpty());
+                List.of(cand(City.PUNO, City.JULIACA, "100", TODAY, CargoType.GENERAL)), TODAY, PROXIMITY).isEmpty());
     }
 
     @Test
     void perecederoSoloEnRefrigerado() {
         Candidate lacteos = cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.PERISHABLE);
         assertTrue(ReturnLoadPolicy.match(
-                List.of(leg(City.JULIACA, false, TODAY, "20000", Vehicle.Type.TRUCK_LARGE)), List.of(lacteos), TODAY).isEmpty());
+                List.of(leg(City.JULIACA, false, TODAY, "20000", Vehicle.Type.TRUCK_LARGE)), List.of(lacteos), TODAY, PROXIMITY).isEmpty());
         assertEquals(1, ReturnLoadPolicy.match(
-                List.of(leg(City.JULIACA, false, TODAY, "6000", Vehicle.Type.REFRIGERATED)), List.of(lacteos), TODAY).size());
+                List.of(leg(City.JULIACA, false, TODAY, "6000", Vehicle.Type.REFRIGERATED)), List.of(lacteos), TODAY, PROXIMITY).size());
     }
 
     @Test
@@ -105,7 +106,7 @@ class ReturnLoadPolicyTest {
         Leg exact = leg(City.JULIACA, false, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         Leg near = leg(City.PUNO, false, TODAY, "20000", Vehicle.Type.TRUCK_LARGE);
         Candidate c = cand(City.JULIACA, City.LIMA, "100", TODAY, CargoType.GENERAL);
-        var m = ReturnLoadPolicy.match(List.of(near, exact), List.of(c), TODAY);
+        var m = ReturnLoadPolicy.match(List.of(near, exact), List.of(c), TODAY, PROXIMITY);
         assertEquals(1, m.size());
         assertEquals(exact.shipmentId(), m.get(0).leg().shipmentId());
     }

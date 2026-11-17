@@ -3,7 +3,7 @@ import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
 import OperatorListing from '@/features/operator/components/OperatorListing';
-import { listRequests, type OperatorListQuery } from '@/features/operator/server';
+import { getMetrics, listRequests, type OperatorListQuery } from '@/features/operator/server';
 import { getCatalog } from '@/features/catalog/server';
 const t = Astro.locals.session!.token;
 const q = Astro.url.searchParams;
@@ -13,7 +13,10 @@ const pageNo = Math.max(1, Number(get('pagina')) || 1);
 const { cities } = await getCatalog();
 let result = { items: [] as Awaited<ReturnType<typeof listRequests>>['items'], meta: { page: 0, size: 20, total: 0 } };
 let loadError: string | null = null;
+let counts: Record<string, number> | undefined;
 try {
+  const m = await getMetrics(t).catch(() => null);
+  if (m) counts = { '': (m.openRequests ?? 0) + (m.matchedRequests ?? 0) + (m.cancelledRequests ?? 0), PUBLISHED: m.openRequests ?? 0, MATCHED: m.matchedRequests ?? 0, CANCELLED: m.cancelledRequests ?? 0 };
   const query: OperatorListQuery = {
     status: filters.status || undefined, originCity: filters.origin || undefined, destinationCity: filters.dest || undefined,
     fromDate: filters.from || undefined, toDate: (filters.to || filters.from) || undefined, page: pageNo - 1, size: 20,
@@ -24,8 +27,7 @@ try {
 }
 ---
 <AppShell title="Solicitudes" active="operador-solicitudes" wide>
-  <nav class="mb-3 text-sm text-ink-500" aria-label="Migas"><a class="rounded-sm hover:text-petrol-700 hover:underline" href="/operador">Panel de operación</a> <span aria-hidden="true">/</span> <span class="text-ink-900" aria-current="page">Solicitudes</span></nav>
-  <PageHeader title="Solicitudes" subtitle="Todas las cargas publicadas en la plataforma, de la más reciente a la más antigua" />
+  <PageHeader title="Solicitudes" subtitle="Todas las cargas publicadas en la plataforma, de la más reciente a la más antigua." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Solicitudes' }]} />
   {loadError && <Alert tone="error" title="No pudimos cargar el listado" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
-  <OperatorListing client:load kind="requests" rows={result.items} cities={cities} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} />
+  <OperatorListing client:load kind="requests" rows={result.items} cities={cities} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} counts={counts} />
 </AppShell>

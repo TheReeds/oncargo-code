@@ -6,7 +6,7 @@
     <string name="requests_filter_matched">Adjudicadas</string>
     <string name="requests_filter_cancelled">Canceladas</string>
     <string name="requests_empty_title">Aún no tienes solicitudes</string>
-    <string name="requests_empty_message">Publica tu primera carga desde la web de LOGYX. Aquí podrás comparar ofertas y seguir tu envío.</string>
+    <string name="requests_empty_message">Publica tu primera carga desde la web de OnCargo. Aquí podrás comparar ofertas y seguir tu envío.</string>
     <string name="requests_empty_filtered_title">Sin solicitudes en este filtro</string>
     <string name="requests_empty_filtered_message">Prueba con otro estado para ver el resto de tus solicitudes.</string>
     <string name="requests_filter_description">Filtrar solicitudes por estado</string>

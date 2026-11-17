@@ -53,6 +53,19 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     }
 
     @Override
+    public List<Shipment> listActiveByVehicle(UUID vehicleId) {
+        return map(ShipmentEntity.list("vehicleId = ?1 and status in ?2 order by createdAt",
+                vehicleId, List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT)));
+    }
+
+    @Override
+    public void lockResource(String key) {
+        ShipmentEntity.getEntityManager()
+                .createNativeQuery("SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(?1, 0))) l")
+                .setParameter(1, key).getSingleResult();
+    }
+
+    @Override
     public long countByStatus(UUID orgId, boolean asCarrier, Collection<Shipment.Status> statuses) {
         return ShipmentEntity.count((asCarrier ? "carrierOrgId" : "requesterOrgId") + " = ?1 and status in ?2",
                 orgId, statuses);

@@ -19,6 +19,9 @@ public interface BidRepository {
     List<Bid> listByCarrier(UUID carrierOrgId);
     List<Bid> listByRequestsAndCarrier(Collection<UUID> requestIds, UUID carrierOrgId);
     boolean existsForCarrier(UUID auctionId, UUID carrierOrgId);
+    /** La oferta del transportista en la subasta (cualquier estado, incluida la retirada). */
+    Optional<Bid> findForCarrier(UUID auctionId, UUID carrierOrgId);
+    /** Sin contar las retiradas (F08). */
     long countByAuctionExcludingCarrier(UUID auctionId, UUID carrierOrgId);
     Map<UUID, Long> countByAuctions(Collection<UUID> auctionIds);
     /** Ofertas pendientes sobre solicitudes publicadas de la PYME (por revisar). */

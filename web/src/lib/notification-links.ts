@@ -20,6 +20,8 @@ export function notificationHref(n: NotifLike, orgType: NotifOrg): string {
       return '/transportista/smart-load';
     case 'INCIDENT':
       return id ? `/incidencias/${id}` : orgType === 'OPERATOR' ? '/operador/incidencias' : '/incidencias';
+    case 'ORGANIZATION':
+      return id ? `/organizaciones/${id}` : '/notificaciones';
     case 'BID':
     case 'COUNTER_OFFER':
       return carrier ? '/transportista/ofertas' : '/pyme/solicitudes';
@@ -44,6 +46,11 @@ export const NOTIFICATION_META: Record<string, { label: string; icon: ComponentT
   TRIP_CANCELLED: { label: 'Viaje cancelado', icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
   SMART_LOAD_SUGGESTED: { label: 'Sugerencia Smart Load', icon: Sparkles, tone: 'bg-emerald-50 text-emerald-700' },
   SMART_LOAD_ACCEPTED: { label: 'Cargas agrupadas', icon: Route, tone: 'bg-petrol-50 text-petrol-700' },
+  AUCTION_CLOSED: { label: 'Subasta cerrada', icon: Gavel, tone: 'bg-amber-50 text-amber-700' },
+  REQUEST_CANCELLED: { label: 'Solicitud cancelada', icon: CircleX, tone: 'bg-steel-100 text-ink-700' },
+  SHIPMENT_CANCELLED: { label: 'Envío cancelado', icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
+  BID_WITHDRAWN: { label: 'Oferta retirada', icon: CircleX, tone: 'bg-steel-100 text-ink-700' },
+  ORGANIZATION_VERIFICATION: { label: 'Verificación de empresa', icon: CircleCheck, tone: 'bg-petrol-50 text-petrol-700' },
   NEW_REVIEW: { label: 'Nueva calificación', icon: Star, tone: 'bg-amber-50 text-amber-700' },
 };
 export const notificationMeta = (type?: string) => NOTIFICATION_META[type ?? ''] ?? { label: 'Aviso', icon: Bell, tone: 'bg-steel-100 text-ink-700' };

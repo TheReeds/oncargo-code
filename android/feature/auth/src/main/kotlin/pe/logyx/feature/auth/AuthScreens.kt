@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -132,7 +135,14 @@ fun LoginScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.auth_brand), style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                    // Logotipo para fondo oscuro: la cabecera es siempre oscura, también en tema claro.
+                    Image(
+                        painter = painterResource(pe.logyx.core.designsystem.R.drawable.oncargo_logo_on_dark),
+                        contentDescription = stringResource(R.string.auth_brand),
+                        modifier = Modifier.height(36.dp),
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.CenterStart,
+                    )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         stringResource(R.string.auth_tagline),

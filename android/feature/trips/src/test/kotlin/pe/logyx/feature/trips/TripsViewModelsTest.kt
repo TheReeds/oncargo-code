@@ -236,8 +236,8 @@ class TripsViewModelsTest {
     }
 
     @Test fun `mis viajes - error de red muestra mensaje`() = runTest {
-        val vm = CarrierTripsViewModel(FakeTrips().apply { myTrips = Result.failure(apiError("NETWORK", "No pudimos conectar con LOGYX.", status = 0)) }, FakeRealtime())
-        assertEquals("No pudimos conectar con LOGYX.", vm.state.value.error)
+        val vm = CarrierTripsViewModel(FakeTrips().apply { myTrips = Result.failure(apiError("NETWORK", "No pudimos conectar con OnCargo.", status = 0)) }, FakeRealtime())
+        assertEquals("No pudimos conectar con OnCargo.", vm.state.value.error)
     }
 
     // ───────────── Detalle y reservas del transportista ─────────────

@@ -32,7 +32,9 @@ class ContractAdditionsFlowTest {
         Session pyme = register("PYME", "Ferreteria Cusco SAC");
         Session carrier = register("CARRIER", "Carga Andina SAC");
         String plate = plate();
-        String veh = vehicle(carrier, plate, 9000);
+        // RN02 (matriz vehículo-carga): un perecible solo va en refrigerado
+        String veh = Api.as(carrier).body(Map.of("plate", plate, "type", "REFRIGERATED", "maxWeightKg", 9000))
+                .post("/api/v1/vehicles").then().statusCode(201).extract().path("data.id");
         String id = publishRoute(pyme, "LIMA", "JULIACA", "PERISHABLE", 2000, 3);
 
         as(carrier).get("/api/v1/shipment-requests/" + id).then().statusCode(200)
@@ -43,12 +45,12 @@ class ContractAdditionsFlowTest {
         // La respuesta del POST ya trae tipo y placa
         as(carrier).body(Map.of("vehicleId", veh, "amount", price + 50))
                 .post("/api/v1/shipment-requests/" + id + "/bids").then().statusCode(201)
-                .body("data.vehicleType", is("TRUCK_MEDIUM"))
+                .body("data.vehicleType", is("REFRIGERATED"))
                 .body("data.vehiclePlate", is(plate));
 
         // La PYME no lee la flota (RLS) pero ve tipo y placa en la oferta
         as(pyme).get("/api/v1/shipment-requests/" + id + "/bids").then().statusCode(200)
-                .body("data[0].vehicleType", is("TRUCK_MEDIUM"))
+                .body("data[0].vehicleType", is("REFRIGERATED"))
                 .body("data[0].vehiclePlate", is(plate));
         as(pyme).get("/api/v1/vehicles").then().statusCode(403);
     }

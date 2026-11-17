@@ -63,6 +63,14 @@ public final class ShipmentStop {
 
     public boolean isCompleted() { return status == Status.COMPLETED; }
 
+    /** El operador cierra la parada al dar por entregado el envío (RF55): registra llegada y cierre ahora. */
+    public void forceComplete(OffsetDateTime now) {
+        if (status == Status.COMPLETED) return;
+        if (arrivedAt == null) arrivedAt = now;
+        status = Status.COMPLETED;
+        completedAt = now;
+    }
+
     public UUID id() { return id; }
     public UUID shipmentId() { return shipmentId; }
     public UUID requesterOrgId() { return requesterOrgId; }

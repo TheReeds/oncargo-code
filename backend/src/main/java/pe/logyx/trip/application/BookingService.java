@@ -42,6 +42,7 @@ public class BookingService {
     @Inject CarrierTripRepository trips;
     @Inject TripBookingRepository bookings;
     @Inject OrganizationDirectory organizations;
+    @Inject pe.logyx.identity.application.OrganizationGuard guard;
     @Inject DirectContractUseCase contracts;
     @Inject CancelShipmentUseCase shipments;
     @Inject BookingSweeper sweeper;
@@ -58,8 +59,7 @@ public class BookingService {
 
     @Transactional
     public BookingSummary book(UUID tripId, BookTripCommand cmd) {
-        Organization org = organizations.get(tenant.orgId());
-        ShipmentRequest.ensureRequesterCanPublish(org.rucVerified());                          // RN01 (misma exigencia)
+        Organization org = guard.ensureCanTransact(tenant.orgId());                            // RN01 (misma exigencia)
         CarrierTrip trip = trips.findById(tripId).orElseThrow(() -> BusinessException.notFound("Viaje"));
         OffsetDateTime now = OffsetDateTime.now();
         trip.ensureAcceptsBookings(now);
@@ -121,7 +121,7 @@ public class BookingService {
         var contract = contracts.create(new DirectContractCommand(b.requesterOrgId(), b.requestedBy(),
                 b.carrierOrgId(), trip.vehicleId(), trip.vehicleType(), trip.vehiclePlate(), b.originCity(),
                 b.pickupAddress(), b.destinationCity(), b.deliveryAddress(), b.cargoType(), b.cargoDescription(),
-                b.weightKg(), trip.departureAt().atZoneSameInstant(LIMA).toLocalDate(), b.price()));
+                b.weightKg(), trip.departureAt().atZoneSameInstant(LIMA).toLocalDate(), b.price(), trip.id()));
         trip.confirmBooking(b.weightKg());
         b.confirm(contract.requestId(), contract.shipmentId(), now);
         trips.save(trip);

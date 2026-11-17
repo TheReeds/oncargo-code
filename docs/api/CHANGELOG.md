@@ -5,6 +5,137 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-16 — Rutas y distancias por carretera (ADR-0008)
+
+`scripts/check-contract.sh`: **compatible** (path y schemas nuevos). Sin migración.
+
+- **Nuevo `GET /api/v1/routes?stops=LIMA,AREQUIPA,PUNO[&optimize=true]`** (cualquier usuario autenticado) →
+  `RouteView { stops[], distanceKm, durationMin, estimated, legs[RouteLegView{fromCity, toCity, distanceKm, durationMin,
+  estimated}], polyline, polylinePrecision, attribution }`. La `polyline` usa el algoritmo de Google con precisión 5
+  (`polylinePrecision`) y la decodifica `web/src/lib/routing`. `attribution` (© OpenStreetMap, ODbL) **debe mostrarse**
+  junto al mapa. Con `optimize=true` se reordenan las paradas intermedias para el menor recorrido; la primera y la
+  última no se mueven. `durationMin` es la del perfil de auto (orientativa para camión). `estimated=true` indica un
+  tramo sin dato vial, calculado como línea recta × 1.35.
+  Errores: `400 LOGYX-RTE-001` (menos de 2 paradas, `field=stops`), `400 LOGYX-RTE-002` (más de 25 paradas,
+  `field=stops`), `400 LOGYX-PRC-001` (ciudad fuera del corredor).
+- ⚠️ **Cambio de comportamiento: la distancia es por carretera.** `distanceKm` de `POST /pricing/calculate` y, en
+  consecuencia, `suggestedPrice` y `priceFloor` (RN03) de las **solicitudes nuevas** salen de la ruta más rápida
+  precalculada con OSRM sobre OpenStreetMap, no de la línea recta × 1.35. Diferencias típicas: Lima → Cusco +42 %,
+  Cusco → Abancay +55 %, Lima → Ica −17 % (tabla en ADR-0008). Las solicitudes ya publicadas conservan sus valores.
+  Cargas de retorno: `distanceKm` y `matchScore` también usan km por carretera (Juliaca → Puno 42.9 en vez de 44).
+  Smart Load: misma proximidad por carretera, y el orden de `route` (primero los recojos, luego las entregas) es el
+  de **menos km**, con los recojos en orden de fecha.
+
+## 2026-11-16 — Huecos P1 de la revisión de flujos (V13)
+
+Origen: `docs/reviews/2026-11-16-flow-gaps.md` (F04–F14). `scripts/check-contract.sh`: **compatible** en esquema
+(solo paths, schemas, campos y valores de enum nuevos). Hay **cambios de comportamiento** ⚠️, justificados abajo: cierran
+reglas del SRS que el backend no hacía cumplir. Migración `V13__flow_gaps.sql`.
+Los enums anidados `Status2` (solicitud) y `Status3` (oferta) quedan fijados por configuración
+(`mp.openapi.schema.*`): agregar `WITHDRAWN` a la oferta los renumeraba.
+
+### ⚠️ Cambios de comportamiento (justificación)
+1. **RN01 / RF08 (F04)** — `rucVerified` ya no significa "pasó el dígito verificador" sino **"verificada por el
+   operador LOGYX"** (sello "Verificado"). Antes RN01 no bloqueaba a nadie, porque un RUC inválido ya se rechazaba al
+   registrarse. Las organizaciones nuevas quedan `PENDING`, y en prod/test (`logyx.verification.required=true`) no
+   pueden publicar solicitudes, ofertar, reservar viajes ni publicar viajes: **403 `LOGYX-ORG-003`**. Una organización
+   suspendida no puede hacerlo nunca, ni en dev: **403 `LOGYX-ORG-004`** (también al aceptar una oferta). V13 deja
+   `PENDING` a las organizaciones existentes que no son operadoras, porque el sello anterior no verificaba nada. En dev
+   la verificación es opcional (`LOGYX_VERIFICATION_REQUIRED`, por omisión `false`) y las cuentas demo quedan verificadas.
+2. **RF55 (F13) y F27** — `POST /incidents/{id}/status` a `RESOLVED`, o a `CLOSED` desde `OPEN`/`IN_REVIEW`, exige
+   `resolutionNotes` (`LOGYX-INC-003`, antes solo RESOLVED) y **`shipmentOutcome`** (`LOGYX-INC-006`). Sin el estado
+   final del envío no había forma de dar por perdida una carga.
+3. **F14 / RN06** — `DELIVERY_PHOTO` y `SIGNATURE` solo las sube el **conductor asignado** (403 `LOGYX-DOC-007`, antes
+   también la oficina del transportista; la PYME recibía `LOGYX-GEN-403`), y solo entre la llegada y el cierre de la
+   parada de entrega. Con la parada completada o el envío entregado se responde **409 `LOGYX-DOC-008`**. Así la evidencia
+   que habilita calificar ya no se puede fabricar después.
+4. **RN07 (F10)** — Los textos libres visibles a la contraparte o al público rechazan teléfonos, emails, URLs y
+   `@usuario` con **400 `LOGYX-NEG-001`** (mismo código del chat, `field` = campo): ver la lista abajo.
+5. **RN02 (F09)** — Ofertar (y la asignación manual) valida el **tipo de vehículo contra el tipo de carga**
+   (`LOGYX-CAP-003`) y el **volumen** (`LOGYX-CAP-004`), además de los kg. Aceptar una oferta revalida el tipo.
+   La matriz está en `docs/domain/business-rules.md`. Los viajes la usan también (`LOGYX-TRP-010`), y es más estricta
+   que la regla anterior: por ejemplo, la cisterna ya no lleva carga general y la carga sobredimensionada solo va en
+   plataforma.
+6. **F11** — Un vehículo o un conductor no pueden estar en dos envíos activos que se solapen: **409 `LOGYX-CAP-005`**
+   (vehículo; al ofertar, aceptar, asignar manualmente o cambiar de vehículo) y **409 `LOGYX-SHP-004`** (conductor). La
+   excepción son los envíos del mismo viaje o del mismo plan Smart Load (`loadGroupId`).
+7. **Reasignar conductor en ruta (F06)** — Antes era `LOGYX-SHP-001`. Ahora se permite con `reason` obligatorio
+   (`LOGYX-SHP-006`). `LOGYX-SHP-001` queda solo para envíos cerrados.
+8. **Smart Load (F12, RF32)** — `POST /smart-loads/{id}/accept` ahora **oferta en lote**: crea una oferta por carga
+   con el vehículo del plan. El aviso a las PYMEs cambia de "Tu carga fue agrupada" a "Oferta consolidada por tu carga".
+9. **RN10 (F07)** — El operador puede asignar manualmente en cuanto la subasta **cierra sin ofertas**, sin esperar
+   24 h. Las ofertas retiradas no cuentan.
+
+### Paths nuevos
+| Método y path | Rol | Qué hace |
+|---|---|---|
+| `GET /operator/organizations?status=&type=&page=&size=` | OPERATOR | Bandeja de verificación (`OrganizationReviewRow[]`, paginada; `status` por omisión `PENDING`, `ALL` = todos; `type` `PYME`/`CARRIER`) |
+| `POST /operator/organizations/{id}/verify` | OPERATOR | Body opcional `{note}`. Verifica (o reactiva una rechazada o suspendida) |
+| `POST /operator/organizations/{id}/reject` | OPERATOR | `{reason}` obligatorio. Rechaza (`LOGYX-ORG-005` si es operadora) |
+| `POST /operator/organizations/{id}/suspend` | OPERATOR | `{reason}` obligatorio. Suspende |
+| `POST /bids/{id}/withdraw` | CARRIER | Retira la oferta propia `PENDING` con la subasta abierta (`LOGYX-BID-005`). No puede volver a ofertar (`LOGYX-BID-003`) |
+| `POST /shipment-requests/{id}/reopen` | PYME | Body opcional `{pickupDate}`. Reabre una subasta cerrada por tiempo (`LOGYX-AUC-003`); `LOGYX-REQ-003` si la fecha ya pasó |
+| `POST /shipment-requests/{id}/republish` | PYME | 201. Body opcional `{pickupDate}`. Nueva solicitud a partir de una `CANCELLED` (`LOGYX-REQ-004`) |
+| `POST /shipments/{id}/cancel` | PYME, CARRIER, OPERATOR | `{reason}` obligatorio. Las partes cancelan antes del recojo (`LOGYX-SHP-003`); el operador también en tránsito. Con una incidencia activa, las partes reciben `LOGYX-TRK-005` |
+| `PUT /shipments/{id}/vehicle` | CARRIER | `{vehicleId, reason?}`. Cambia el vehículo (RN02 `CAP-001..004`, `CAP-005`, `SHP-006` en ruta, `SHP-007` mismo vehículo) |
+
+### Endpoints ampliados
+- `POST /bids/{id}/counter-offers` también para **CARRIER** (RF26). Hay una sola pendiente por oferta: responder con
+  otra reemplaza la de la otra parte, que queda `REJECTED`. Si ya hay una pendiente tuya: `LOGYX-NEG-004`.
+  `POST /counter-offers/{id}/accept|reject` también para **PYME** (responde quien la recibió; si no, 403).
+  Las pendientes pasan a `EXPIRED` al adjudicar la solicitud o retirar la oferta (F40).
+- `PUT /shipments/{id}/driver`: `reason` opcional, obligatorio en ruta.
+- `POST /shipment-requests/{id}/cancel`: body opcional `{reason}`. Se avisa a los transportistas que ofertaron (F16).
+- `POST /incidents/{id}/status`: `shipmentOutcome` (`RESUME|DELIVERED|CANCELLED`). Las combinaciones válidas
+  dependen del estado del envío:
+  - `PENDING`: `RESUME` o `CANCELLED`.
+  - `IN_TRANSIT`: los tres.
+  - `DELIVERED`: solo `DELIVERED`.
+  - `CANCELLED`: solo `CANCELLED`.
+
+  `CANCELLED` cancela el envío y la solicitud y libera la flota. `DELIVERED` cierra las paradas.
+- `POST /smart-loads/{id}/accept`: body opcional `{items:[{requestId, amount}], notes}`. Es todo o nada
+  (`LOGYX-TRP-011`); `LOGYX-TRP-012` si el `requestId` no pertenece al plan.
+
+### Campos nuevos
+- `UserInfo`: `rucValid`, `verificationStatus` (`PENDING|VERIFIED|REJECTED|SUSPENDED`) y `verificationNote`.
+  `PublicOrganization`: `rucValid` y `verificationStatus`.
+- `RequestView`: `compatibleVehicleTypes` (matriz RN02), `cancelReason` y `republishedFrom`.
+- `ShipmentView`: `pickupDate`, `vehicleId`, `loadGroupId`, `cancellationReason`, `cancelledAt` y `cancelledByOrgId`.
+- `CounterOfferView.proposedByCarrier`, `IncidentView.shipmentOutcome`.
+- `SmartLoadView.bids` (`SmartLoadBidView[]`): solo viene en la respuesta de aceptar.
+- Enums: `Status3` (oferta) suma `WITHDRAWN`. `NotificationType` suma `AUCTION_CLOSED`, `REQUEST_CANCELLED`,
+  `SHIPMENT_CANCELLED`, `BID_WITHDRAWN` y `ORGANIZATION_VERIFICATION`. `NotificationTarget`/`relatedType` suma
+  `ORGANIZATION`. `IncidentShipmentOutcome` y `VerificationStatus` son nuevos.
+
+### RN07: campos que validan (`field` del error)
+`cargoDescription`, `originAddress`, `destinationAddress` (solicitud), `notes` (oferta, viaje),
+`cargoDescription`/`pickupAddress`/`deliveryAddress` (reserva), `reason` (rechazo de reserva, cancelación de solicitud o
+envío, reasignación), `description` (incidencia), `body` (comentario de incidencia de las partes), `comment` (reseña),
+`legalName` (registro).
+
+### Avisos nuevos (outbox → notificación + `notification.created`)
+| Evento | Destinatario | Tipo |
+|---|---|---|
+| Subasta cerrada por tiempo | PYME. Si cerró sin ofertas, también los operadores | `AUCTION_CLOSED` |
+| Solicitud cancelada | Transportistas con oferta pendiente | `REQUEST_CANCELLED` |
+| Envío cancelado (motivo en el cuerpo) | La contraparte; ambas partes si cancela el operador | `SHIPMENT_CANCELLED` |
+| Cambio de vehículo o de conductor | PYME | `SHIPMENT_STATUS_CHANGE` |
+| Oferta retirada | PYME | `BID_WITHDRAWN` |
+| Verificación decidida | La organización | `ORGANIZATION_VERIFICATION` (`relatedType=ORGANIZATION`) |
+| Contra-oferta del transportista o respuesta de la PYME | La otra parte | `COUNTER_OFFER` |
+
+Tiempo real: la cancelación emite `shipment.status_changed` con `status=CANCELLED` a las partes y al conductor. Los avisos
+nuevos llegan por `notification.created`. No hay tipos SSE nuevos.
+
+### Códigos nuevos
+`LOGYX-ORG-003` (403, sin verificar), `ORG-004` (403, suspendida), `ORG-005` (operadora), `ORG-006` (falta el motivo),
+`BID-005` (no se puede retirar), `CAP-003` (tipo de vehículo), `CAP-004` (volumen), `CAP-005` (vehículo comprometido),
+`SHP-004` (conductor comprometido), `SHP-006` (falta el motivo), `SHP-007` (mismo vehículo), `AUC-003` (no se puede
+reabrir), `REQ-003` (fecha pasada), `REQ-004` (solo se republica una cancelada), `INC-006` (estado final del envío),
+`DOC-007` (no es el conductor asignado), `DOC-008` (evidencia cerrada), `OPS-003` (transportista no verificado o
+suspendido), `TRP-012` (monto fuera del plan).
+
 ## 2026-11-11 — Listados globales del operador y orden de "mis viajes"
 
 **Aditivo** (`scripts/check-contract.sh` compatible).

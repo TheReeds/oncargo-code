@@ -1,13 +1,16 @@
 ---
 import Public from '@/layouts/Public.astro';
 import LoginForm from '@/features/auth/components/LoginForm';
+import AuthShell from '@/features/auth/components/AuthShell.astro';
 import { AuthCard } from '@/components/ui/auth-card';
 const next = Astro.url.searchParams.get('next') ?? undefined;
 const expired = Astro.url.searchParams.has('expired');
 ---
-<Public title="Ingresar">
-  <AuthCard title="Ingresa a tu cuenta" subtitle="Gestiona tus cargas, ofertas y envíos.">
-    <LoginForm client:load next={next} expired={expired} />
-    <Fragment slot="footer">¿Aún no tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/registro">Crea una cuenta</a></Fragment>
-  </AuthCard>
+<Public title="Ingresar" description="Ingresa a tu cuenta de OnCargo para gestionar tus solicitudes, ofertas y envíos." footer="compact">
+  <AuthShell variant="login">
+    <AuthCard embedded className="mx-auto max-w-md" title="Ingresa a tu cuenta" subtitle="Gestiona tus cargas, ofertas y envíos.">
+      <LoginForm client:load next={next} expired={expired} demo={import.meta.env.DEV} />
+      <Fragment slot="footer">¿Aún no tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/registro">Crea una cuenta</a></Fragment>
+    </AuthCard>
+  </AuthShell>
 </Public>

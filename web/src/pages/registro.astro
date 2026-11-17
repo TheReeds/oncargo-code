@@ -1,14 +1,17 @@
 ---
 import Public from '@/layouts/Public.astro';
 import RegisterForm from '@/features/auth/components/RegisterForm';
+import AuthShell from '@/features/auth/components/AuthShell.astro';
 import { AuthCard } from '@/components/ui/auth-card';
 import { getCatalog } from '@/features/catalog/server';
 const { cities } = await getCatalog();
 const t = Astro.url.searchParams.get('tipo');
 ---
-<Public title="Crear cuenta">
-  <AuthCard title="Crea tu cuenta en LOGYX" subtitle="Registra tu empresa para publicar cargas u ofertar como transportista." className="max-w-2xl">
-    <RegisterForm client:load cities={cities} initialType={t === 'transportista' ? 'CARRIER' : 'PYME'} />
-    <Fragment slot="footer">¿Ya tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/login">Ingresa</a></Fragment>
-  </AuthCard>
+<Public title="Crear cuenta" description="Registra tu empresa en OnCargo para publicar cargas o para ofertar como transportista." footer="compact">
+  <AuthShell variant="registro">
+    <AuthCard embedded className="mx-auto max-w-2xl" title="Crea tu cuenta en OnCargo" subtitle="Registra tu empresa para publicar cargas u ofertar como transportista.">
+      <RegisterForm client:load cities={cities} initialType={t === 'transportista' ? 'CARRIER' : 'PYME'} />
+      <Fragment slot="footer">¿Ya tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/login">Ingresa</a></Fragment>
+    </AuthCard>
+  </AuthShell>
 </Public>

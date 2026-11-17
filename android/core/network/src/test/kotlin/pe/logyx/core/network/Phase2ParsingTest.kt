@@ -106,7 +106,7 @@ class Phase2ParsingTest {
     }
 
     @Test fun `incidencia con comentarios`() = runTest {
-        val i = api(body = """{"data":{"id":"$u","shipmentId":"$u","requesterOrgId":"$u","requesterName":"A","carrierOrgId":"$u","carrierName":"B","reportedByOrgId":"$u","category":"CARGO_DAMAGE","description":"Dos bolsas rotas","status":"OPEN","active":true,"resolutionNotes":null,"createdAt":"x","updatedAt":"x","resolvedAt":null,"comments":[{"id":"$u","authorOrgId":"$u","authorName":"LOGYX","body":"Revisando","createdAt":"x"}]},$ts}""").incident(u)
+        val i = api(body = """{"data":{"id":"$u","shipmentId":"$u","requesterOrgId":"$u","requesterName":"A","carrierOrgId":"$u","carrierName":"B","reportedByOrgId":"$u","category":"CARGO_DAMAGE","description":"Dos bolsas rotas","status":"OPEN","active":true,"resolutionNotes":null,"createdAt":"x","updatedAt":"x","resolvedAt":null,"comments":[{"id":"$u","authorOrgId":"$u","authorName":"OnCargo","body":"Revisando","createdAt":"x"}]},$ts}""").incident(u)
         assertEquals(IncidentCategory.CARGO_DAMAGE, i.category)
         assertEquals(IncidentStatus.OPEN, i.status)
         assertTrue(i.active)

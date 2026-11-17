@@ -1,0 +1,140 @@
+---
+/**
+ * Vídeo de fondo decorativo (hero, paneles de marca). Patrón completo en `.claude/skills/logyx-design-system/references/web.md`.
+ *
+ * - El LCP es la imagen del póster (`<picture>` AVIF/WebP con `fetchpriority="high"` si `priority`); el `<video>` va encima, transparente
+ *   hasta el evento `playing`, y NO tiene `autoplay` ni `preload`: arranca el script cuando la página ya cargó y está a la vista.
+ * - `desktop` (siempre) y `mobile` (opcional) son nombres base en `/media/`: `<base>.webm` (VP9) + `<base>.mp4` (H.264, faststart).
+ *   Sin `mobile`, por debajo de `breakpoint` no hay fuentes → solo póster, cero bytes de vídeo.
+ * - Pausa con `prefers-reduced-motion`, `Save-Data`, red lenta, fuera de pantalla y pestaña oculta. `control` agrega el botón accesible.
+ * - Sin texto propio: el contenido que va encima debe garantizar contraste con su degradado (ver `.bgv__scrim`).
+ */
+import { Pause, Play } from '@lucide/astro';
+interface Props {
+  desktop: string; mobile?: string;
+  /** Base del póster en /media/ (`<base>.avif` / `.webp`); con `posterMobile` se sirve otro recorte en móvil. */
+  poster: string; posterMobile?: string;
+  /** Dimensiones intrínsecas del vídeo de escritorio (evita saltos de maquetación). */
+  width?: number; height?: number;
+  /** Póster = candidato a LCP: carga con prioridad alta. Si no, `loading="lazy"`. */
+  priority?: boolean;
+  /** Botón Pausar/Reproducir (obligatorio si el vídeo se mueve más de 5 s y no es trivial: WCAG 2.2.2). */
+  control?: boolean;
+  /** Ancho (px) desde el que se sirve el vídeo de escritorio. */
+  breakpoint?: number;
+  /** `object-position` del recorte. */
+  position?: string;
+  /** Etiqueta del botón (contexto de la sección). */
+  label?: string;
+  class?: string;
+  /** Clase del botón de control (posición). */
+  controlClass?: string;
+}
+const { desktop, mobile, poster, posterMobile, width = 1920, height = 1080, priority = false, control = false, breakpoint = 768, position = 'center', label = 'vídeo de fondo', class: cls, controlClass = 'right-4 bottom-4' } = Astro.props;
+const mq = `(min-width: ${breakpoint}px)`;
+const mqMobile = `(max-width: ${breakpoint - 1}px)`;
+---
+<div class:list={['bgv absolute inset-0 -z-10 overflow-hidden', cls]} data-bgv data-breakpoint={breakpoint} aria-hidden="true">
+  <picture>
+    {posterMobile && <source media={mqMobile} type="image/avif" srcset={`/media/${posterMobile}.avif`} />}
+    {posterMobile && <source media={mqMobile} type="image/webp" srcset={`/media/${posterMobile}.webp`} />}
+    <source type="image/avif" srcset={`/media/${poster}.avif`} />
+    <source type="image/webp" srcset={`/media/${poster}.webp`} />
+    <img src={`/media/${poster}.webp`} alt="" width={width} height={height} decoding="async" fetchpriority={priority ? 'high' : undefined} loading={priority ? undefined : 'lazy'} class="absolute inset-0 size-full object-cover" style={`object-position:${position}`} />
+  </picture>
+  <video class="bgv__video absolute inset-0 size-full object-cover" style={`object-position:${position}`} muted loop playsinline preload="none" width={width} height={height} tabindex="-1" disablepictureinpicture disableRemotePlayback aria-hidden="true">
+    {mobile && <source src={`/media/${mobile}.webm`} type="video/webm; codecs=vp9" media={mqMobile} />}
+    {mobile && <source src={`/media/${mobile}.mp4`} type="video/mp4" media={mqMobile} />}
+    <source src={`/media/${desktop}.webm`} type="video/webm; codecs=vp9" media={mq} />
+    <source src={`/media/${desktop}.mp4`} type="video/mp4" media={mq} />
+  </video>
+  <div class="bgv__scrim absolute inset-0" aria-hidden="true"></div>
+</div>
+{control && (
+  <button type="button" class:list={['bgv__toggle absolute z-10 inline-flex size-10 items-center justify-center rounded-full border border-white/25 bg-chrome/60 text-white backdrop-blur transition-colors hover:bg-chrome/80', controlClass]} data-bgv-toggle data-label={label} aria-label={`Pausar ${label}`} hidden>
+    <Pause size={16} class="bgv__ic-pause" aria-hidden="true" />
+    <Play size={16} class="bgv__ic-play" aria-hidden="true" />
+  </button>
+)}
+
+<style is:global>
+  .bgv__video { opacity: 0; }
+  @media (prefers-reduced-motion: no-preference) { .bgv__video { transition: opacity 0.8s ease; } }
+  .bgv[data-playing] .bgv__video { opacity: 1; }
+  .bgv__ic-play { display: none; }
+  .bgv__toggle[data-paused] .bgv__ic-pause { display: none; }
+  .bgv__toggle[data-paused] .bgv__ic-play { display: block; }
+  /* Velo de contraste: izquierda más cerrada (texto), sin hex: mezcla con el token chrome (oscuro en ambos temas). */
+  .bgv__scrim {
+    background:
+      linear-gradient(90deg, color-mix(in oklab, var(--color-chrome) 92%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 72%, transparent) 48%, color-mix(in oklab, var(--color-chrome) 38%, transparent) 100%),
+      linear-gradient(to top, color-mix(in oklab, var(--color-chrome) 70%, transparent), transparent 40%);
+  }
+  /* Hero: el vídeo ya es oscuro; velo más ligero a la derecha (donde van las tarjetas) y base cerrada para las cifras. */
+  .bgv--hero .bgv__scrim {
+    background:
+      linear-gradient(90deg, color-mix(in oklab, var(--color-chrome) 90%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 58%, transparent) 45%, color-mix(in oklab, var(--color-chrome) 18%, transparent) 100%),
+      linear-gradient(to top, color-mix(in oklab, var(--color-chrome) 80%, transparent), transparent 35%);
+  }
+  .bgv--flat .bgv__scrim { background: color-mix(in oklab, var(--color-chrome) 74%, transparent); }
+  .bgv--panel .bgv__scrim { background: linear-gradient(to bottom, color-mix(in oklab, var(--color-chrome) 74%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 48%, transparent) 42%, color-mix(in oklab, var(--color-chrome) 88%, transparent) 100%); }
+  @media (max-width: 767px) {
+    .bgv__scrim, .bgv--hero .bgv__scrim { background: linear-gradient(to bottom, color-mix(in oklab, var(--color-chrome) 88%, transparent), color-mix(in oklab, var(--color-chrome) 78%, transparent)); }
+  }
+  @media (forced-colors: active) { .bgv__video, .bgv img { display: none; } }
+</style>
+
+<script>
+  // Un solo script para todos los vídeos de fondo de la página (Astro lo agrupa y lo carga una vez).
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  const lowData = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType ?? ''));
+
+  function setup(root: HTMLElement) {
+    const video = root.querySelector<HTMLVideoElement>('video');
+    if (!video) return;
+    const btn = root.parentElement?.querySelector<HTMLButtonElement>('[data-bgv-toggle]') ?? null;
+    let inView = false;
+    let userChoice: 'play' | 'pause' | null = null;   // decisión explícita del usuario (gana a todo lo demás)
+    let ready = document.readyState === 'complete';
+
+    const wanted = () => userChoice === 'play' || (userChoice === null && !reduce.matches && !lowData);
+    const paint = (paused: boolean) => {
+      if (!btn) return;
+      btn.toggleAttribute('data-paused', paused);
+      btn.setAttribute('aria-label', `${paused ? 'Reproducir' : 'Pausar'} ${btn.dataset.label ?? 'vídeo de fondo'}`);
+    };
+    const sync = () => {
+      if (!ready) return;
+      const shouldPlay = inView && wanted() && !document.hidden && getComputedStyle(root).display !== 'none';
+      if (shouldPlay && video.paused) {
+        video.play().catch(() => { /* autoplay bloqueado: queda el póster */ });
+      } else if (!shouldPlay && !video.paused) {
+        video.pause();
+      }
+      paint(userChoice === 'pause' || (userChoice === null && !wanted()));
+    };
+
+    video.addEventListener('playing', () => root.setAttribute('data-playing', ''));
+    // El botón solo aparece si hay una fuente aplicable (sin ella —móvil— solo se ve el póster).
+    const hasSource = () => !!video.querySelector('source') && [...video.querySelectorAll('source')].some((s) => !s.media || matchMedia(s.media).matches);
+    const showBtn = () => { if (btn) btn.hidden = !(hasSource() && getComputedStyle(root).display !== 'none'); };
+    showBtn();
+    addEventListener('resize', showBtn, { passive: true });
+
+    btn?.addEventListener('click', () => {
+      const playing = !video.paused;
+      userChoice = playing ? 'pause' : 'play';
+      if (playing) video.pause(); else video.play().catch(() => {});
+      paint(playing);
+    });
+    new IntersectionObserver((es) => { inView = es.some((e) => e.isIntersecting); sync(); }, { threshold: 0.05 }).observe(root);
+    reduce.addEventListener('change', sync);
+    document.addEventListener('visibilitychange', sync);
+    if (!ready) addEventListener('load', () => { (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 200)))(() => { ready = true; sync(); }); }, { once: true });
+    else sync();
+  }
+
+  // Con vistas de transición entre documentos el script corre una vez por página: no hace falta limpiar.
+  document.querySelectorAll<HTMLElement>('[data-bgv]').forEach(setup);
+</script>

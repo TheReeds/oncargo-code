@@ -15,9 +15,9 @@ export function Field({ label, htmlFor, hint, error, required, children, classNa
         {required && <span className="ml-0.5 text-red-600" aria-hidden="true">*</span>}
       </Label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-ink-500">{hint}</p>}
+      {hint && !error && <p id={`${htmlFor}-hint`} className="mt-1 text-xs text-ink-500">{hint}</p>}
       {error && (
-        <p className="mt-1 text-xs text-red-600" role="alert">
+        <p id={`${htmlFor}-error`} className="mt-1 text-xs text-red-600" role="alert">
           {error}
         </p>
       )}

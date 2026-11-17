@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import pe.logyx.identity.application.AuthResult;
 import pe.logyx.identity.application.RegisterCommand;
 import pe.logyx.identity.application.UserAccount;
+import pe.logyx.identity.domain.model.Organization;
 import pe.logyx.identity.domain.model.Profile;
 import pe.logyx.shared.tenancy.OrgType;
 
@@ -30,14 +31,20 @@ public final class AuthDtos {
 
     public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {}
 
+    /**
+     * {@code rucVerified}: sello "Verificado" (RF08), lo otorga el operador LOGYX (antes bastaba el dígito
+     * verificador). {@code rucValid}: el RUC pasó el módulo 11. {@code verificationStatus}/{@code verificationNote}:
+     * estado de la revisión y motivo si fue rechazada o suspendida (RN01).
+     */
     public record UserInfo(UUID id, String email, String fullName, Profile.Role role,
                            UUID organizationId, String organizationName, OrgType organizationType,
-                           boolean rucVerified, String organizationCity) {
+                           boolean rucVerified, String organizationCity, boolean rucValid,
+                           Organization.VerificationStatus verificationStatus, String verificationNote) {
         static UserInfo of(UserAccount a) {
             var p = a.profile();
             var o = a.organization();
             return new UserInfo(p.id(), p.email(), p.fullName(), p.role(), o.id(), o.legalName(), o.type(),
-                    o.rucVerified(), o.city());
+                    o.rucVerified(), o.city(), o.rucValid(), o.verificationStatus(), o.verification().note());
         }
     }
 

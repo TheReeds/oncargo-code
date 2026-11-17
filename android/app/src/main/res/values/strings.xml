@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name" translatable="false">OnCargo</string>
     <string name="tab_home">Inicio</string>
     <string name="tab_loads">Cargas</string>
     <string name="tab_bids">Ofertas</string>
@@ -10,5 +11,5 @@
     <string name="tab_trips">Viajes</string>
     <string name="tab_trip">Mi viaje</string>
     <string name="unsupported_title">Esta cuenta se gestiona desde la web</string>
-    <string name="unsupported_message">Los operadores de LOGYX usan el panel web.</string>
+    <string name="unsupported_message">Los operadores de OnCargo usan el panel web.</string>
 </resources>

@@ -132,14 +132,29 @@ public class FleetService {
         drivers.save(d);
     }
 
-    /** El envío terminó: vehículo y conductor vuelven a estar disponibles. */
+    /**
+     * El envío terminó (o se canceló en ruta): vehículo y conductor vuelven a estar disponibles. Lo invoca shipment
+     * con el RLS de quien actúa (conductor, o el operador con las políticas de V13).
+     */
     public void finishTrip(UUID vehicleId, UUID driverId) {
-        Vehicle v = vehicles.findById(vehicleId).orElseThrow();
-        Driver d = drivers.findById(driverId).orElseThrow();
-        v.release();
-        d.release();
-        vehicles.save(v);
-        drivers.save(d);
+        vehicles.findById(vehicleId).ifPresent(v -> { v.release(); vehicles.save(v); });
+        if (driverId != null) drivers.findById(driverId).ifPresent(d -> { d.release(); drivers.save(d); });
+    }
+
+    /** Cambio de vehículo con la carga ya recogida (F06): el anterior queda disponible y el nuevo en ruta. */
+    public void swapVehicleInRoute(UUID previousVehicleId, UUID newVehicleId) {
+        vehicles.findById(previousVehicleId).ifPresent(v -> { v.release(); vehicles.save(v); });
+        Vehicle n = vehicles.findById(newVehicleId).orElseThrow();
+        n.startRoute();
+        vehicles.save(n);
+    }
+
+    /** Relevo de conductor con la carga ya recogida (F06). */
+    public void swapDriverInRoute(UUID previousDriverId, UUID newDriverId) {
+        if (previousDriverId != null) drivers.findById(previousDriverId).ifPresent(d -> { d.release(); drivers.save(d); });
+        Driver n = drivers.findById(newDriverId).orElseThrow();
+        n.goOnDuty();
+        drivers.save(n);
     }
 
     private static DriverAccount account(Driver d, Profile p) {

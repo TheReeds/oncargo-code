@@ -51,9 +51,23 @@ public class ShipmentEntity extends PanacheEntityBase {
     @Column(name = "delivered_at")
     public OffsetDateTime deliveredAt;
 
+    @Column(name = "load_group_id")
+    public UUID loadGroupId;
+
+    @Column(name = "cancel_reason")
+    public String cancelReason;
+
+    @Column(name = "cancelled_at")
+    public OffsetDateTime cancelledAt;
+
+    @Column(name = "cancelled_by_org_id")
+    public UUID cancelledByOrgId;
+
     Shipment toDomain() {
         return new Shipment(id, requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, driverId, agreedPrice,
-                vehiclePlate, driverName, status, createdAt, deliveredAt);
+                vehiclePlate, driverName, status, createdAt, deliveredAt, loadGroupId,
+                cancelledAt == null && cancelReason == null ? null
+                        : new Shipment.Cancellation(cancelledByOrgId, cancelReason, cancelledAt));
     }
 
     void apply(Shipment s) {
@@ -70,5 +84,10 @@ public class ShipmentEntity extends PanacheEntityBase {
         status = s.status();
         createdAt = s.createdAt();
         deliveredAt = s.deliveredAt();
+        loadGroupId = s.loadGroupId();
+        var c = s.cancellation();
+        cancelReason = c == null ? null : c.reason();
+        cancelledAt = c == null ? null : c.at();
+        cancelledByOrgId = c == null ? null : c.byOrgId();
     }
 }

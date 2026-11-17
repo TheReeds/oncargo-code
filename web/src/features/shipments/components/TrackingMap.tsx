@@ -19,7 +19,7 @@ export function routeCoords(s: ShipmentView, cities: Record<string, CityItem>): 
 }
 
 /** Mapa MapLibre (OpenFreeMap positron). Dibuja una o varias rutas; la seleccionada va resaltada. */
-export default function TrackingMap({ shipments, cities, selectedId, height = 420 }: { shipments: ShipmentView[]; cities: CityItem[]; selectedId?: string | null; height?: number }) {
+export default function TrackingMap({ shipments, cities, selectedId, height = 420 }: { shipments: ShipmentView[]; cities: CityItem[]; selectedId?: string | null; height?: number | string }) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const markers = useRef<Marker[]>([]);

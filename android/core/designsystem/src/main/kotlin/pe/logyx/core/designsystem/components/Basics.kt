@@ -197,7 +197,7 @@ fun Refreshable(
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = modifier) { content() }
 }
 
-/** Tarjeta base de LOGYX: radio 10dp, borde fino steel-200. */
+/** Tarjeta base de OnCargo: radio 10dp, borde fino steel-200. */
 @Composable
 fun LogyxCard(
     modifier: Modifier = Modifier,

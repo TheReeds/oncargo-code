@@ -28,7 +28,7 @@ class FakeNegotiation : NegotiationRepository {
         attempts += body
         if (violatesRn07(body)) {
             return Result.failure(
-                ApiException(422, "LOGYX-NEG-001", "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de LOGYX.", field = "body"),
+                ApiException(422, "LOGYX-NEG-001", "No puedes compartir teléfonos, correos ni enlaces. Coordina todo por el chat de OnCargo.", field = "body"),
             )
         }
         val m = MessageView("m${stored.size + 1}", requestId, carrierOrgId, mine = true, body = body, createdAt = "2026-11-10T10:%02d:00-05:00".format(stored.size))

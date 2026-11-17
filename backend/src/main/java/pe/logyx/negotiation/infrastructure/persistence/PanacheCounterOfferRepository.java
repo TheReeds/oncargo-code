@@ -29,6 +29,23 @@ public class PanacheCounterOfferRepository implements CounterOfferRepository {
     }
 
     @Override
+    public Optional<CounterOffer> findPending(UUID bidId) {
+        return CounterOfferEntity.<CounterOfferEntity>find("bidId = ?1 and status = ?2", bidId,
+                CounterOfferStatus.PENDING).firstResultOptional().map(CounterOfferEntity::toDomain);
+    }
+
+    @Override
+    public List<CounterOffer> listPendingByRequest(UUID requestId) {
+        return CounterOfferEntity.<CounterOfferEntity>list("requestId = ?1 and status = ?2", requestId,
+                CounterOfferStatus.PENDING).stream().map(CounterOfferEntity::toDomain).toList();
+    }
+
+    @Override
+    public void flush() {
+        CounterOfferEntity.getEntityManager().flush();
+    }
+
+    @Override
     public void save(CounterOffer c) {
         CounterOfferEntity e = CounterOfferEntity.findById(c.id());
         if (e == null) {

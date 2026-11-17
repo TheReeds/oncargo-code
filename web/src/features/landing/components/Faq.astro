@@ -1,0 +1,29 @@
+---
+import SectionHeading from './SectionHeading.astro';
+
+const faqs = [
+  { q: '¿Cuánto dura la subasta y qué pasa al terminar?', a: 'Dura hasta 20 minutos o se cierra al llegar a 5 ofertas, lo que ocurra primero. Luego eliges la oferta que prefieras; al aceptarla, las demás se rechazan y se genera tu envío.' },
+  { q: '¿Qué pasa si nadie oferta mi solicitud?', a: 'Si pasan 24 horas sin ofertas, un operador de OnCargo asigna manualmente un transportista compatible con tu carga.' },
+  { q: '¿Cómo se calcula el precio sugerido?', a: 'Estimamos combustible, transporte, peajes y manipuleo según la ruta, el peso y la fecha. Ves el desglose antes de publicar y ninguna oferta puede bajar del 75 % del precio sugerido.' },
+  { q: '¿Cómo sé que un transportista es confiable?', a: 'Ves su sello de RUC verificado, su Trust Score (0 a 100) con las calificaciones de otras empresas y los vehículos con los que oferta. Solo se califica una entrega confirmada con foto de evidencia.' },
+  { q: '¿Puedo coordinar fuera de la plataforma?', a: 'El chat de negociación bloquea teléfonos, correos y enlaces para que los acuerdos queden registrados. Cualquier cambio de precio se hace con una contraoferta dentro de OnCargo.' },
+  { q: '¿Quién ve los datos de mi empresa?', a: 'Cuando una oferta es aceptada, la empresa y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos datos personales. Más detalle en la política de privacidad.' },
+  { q: '¿Cómo me registro como transportista?', a: 'Crea tu cuenta con el RUC de tu empresa, registra tus vehículos y conductores, y podrás ofertar por las cargas compatibles con tu flota.' },
+];
+---
+<section id="preguntas" class="border-t border-steel-200 bg-surface" aria-labelledby="preguntas-t">
+  <div class="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14 lg:px-10 lg:py-20">
+    <div>
+      <SectionHeading id="preguntas-t" eyebrow="Preguntas frecuentes" title="Lo que suelen preguntar antes de empezar" />
+      <p class="mt-4 text-sm text-ink-500">¿Algo más sobre tus datos? Escribe a <a href="mailto:privacidad@logyx.pe" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@logyx.pe</a>.</p>
+    </div>
+    <div class="faq divide-y divide-steel-200 border-y border-steel-200">
+      {faqs.map((f) => (
+        <details>
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

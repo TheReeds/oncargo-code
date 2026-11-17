@@ -9,7 +9,9 @@ import pe.logyx.marketplace.application.MarketplaceQueries;
 import pe.logyx.marketplace.application.RequestSummary;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.ShipmentSummary;
+import pe.logyx.routing.application.RoutePlanner;
 import pe.logyx.shipment.domain.model.Shipment;
+import pe.logyx.trip.domain.CityProximityPolicy;
 import pe.logyx.trip.domain.ReturnLoadPolicy;
 
 import java.time.LocalDate;
@@ -29,6 +31,7 @@ public class ReturnLoadService {
     @Inject ShipmentQueries shipments;
     @Inject MarketplaceQueries marketplace;
     @Inject FleetService fleet;
+    @Inject RoutePlanner routes;
 
     public List<ReturnLoadMatch> forCurrentCarrier() {
         LocalDate today = LocalDate.now(LIMA);
@@ -53,7 +56,7 @@ public class ReturnLoadService {
             return new ReturnLoadPolicy.Candidate(r.request().id(), c.originCity(), c.destinationCity(), c.weightKg(),
                     c.pickupDate(), c.cargoType());
         }).toList();
-        return ReturnLoadPolicy.match(legs, candidates, today).stream()
+        return ReturnLoadPolicy.match(legs, candidates, today, new CityProximityPolicy(routes::distanceKm)).stream()
                 .map(m -> new ReturnLoadMatch(m, byId.get(m.candidate().requestId()))).toList();
     }
 }

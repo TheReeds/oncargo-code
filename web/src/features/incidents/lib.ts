@@ -21,3 +21,16 @@ export const CATEGORY_OPTIONS = [
 ].map(([value, label]) => ({ value, label }));
 
 export const STATUS_LABEL_LONG: Record<string, string> = { OPEN: 'Abierta', IN_REVIEW: 'En revisión', RESOLVED: 'Resuelta', CLOSED: 'Cerrada' };
+
+/** Estados finales del envío que el operador puede fijar al resolver o cerrar, según cómo esté el envío (RF55, `IncidentOutcomePolicy`). */
+export const OUTCOME_BY_SHIPMENT: Record<string, string[]> = {
+  PENDING: ['RESUME', 'CANCELLED'],
+  IN_TRANSIT: ['RESUME', 'DELIVERED', 'CANCELLED'],
+  DELIVERED: ['DELIVERED'],
+  CANCELLED: ['CANCELLED'],
+};
+export const OUTCOME_LABEL: Record<string, { label: string; hint: string }> = {
+  RESUME: { label: 'El envío continúa', hint: 'Se libera y el conductor retoma las paradas.' },
+  DELIVERED: { label: 'Darlo por entregado', hint: 'Se cierran las paradas y el envío queda entregado.' },
+  CANCELLED: { label: 'Cancelar el envío', hint: 'Se cancelan el envío y la solicitud, y se libera la flota. No se puede deshacer.' },
+};

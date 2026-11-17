@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 export function TruckIllustration() {
   return (
@@ -13,13 +14,19 @@ export function TruckIllustration() {
   );
 }
 
-export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
+/**
+ * Estado vacío: título (qué falta) + frase + acción siguiente.
+ *  - `icon`: ícono lucide en lugar del camión (p. ej. `SearchX` para "sin resultados de filtros", `Inbox`).
+ *  - `compact`: menos aire, sin ilustración grande; para tarjetas pequeñas o paneles laterales.
+ */
+export function EmptyState({ title, description, action, actionHref, actionLabel, icon: Icon, compact }: { title: string; description?: string; action?: ReactNode; /** Alternativa serializable para usar desde .astro: enlace con estilo de botón. */ actionHref?: string; actionLabel?: string; icon?: ComponentType<{ size?: number; className?: string }>; compact?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-      <TruckIllustration />
+    <div className={cn('flex flex-col items-center text-center', compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-12')}>
+      {Icon ? <span className="grid size-12 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Icon size={22} /></span> : compact ? null : <TruckIllustration />}
       <h3 className="text-base font-semibold text-ink-900">{title}</h3>
       {description && <p className="max-w-sm text-sm text-ink-500">{description}</p>}
-      {action}
+      {action && <div className="mt-1">{action}</div>}
+      {!action && actionHref && actionLabel && <a href={actionHref} className="mt-1 inline-flex h-9 items-center rounded-input bg-petrol-700 px-4 text-sm font-medium text-on-solid hover:bg-petrol-800">{actionLabel}</a>}
     </div>
   );
 }

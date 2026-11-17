@@ -8,6 +8,6 @@ const t = Astro.locals.session!.token;
 const [vehicles, { cities }] = await Promise.all([listVehicles(t), getCatalog()]);
 ---
 <AppShell title="Publicar viaje" active="viajes">
-  <PageHeader title="Publicar viaje" subtitle="Ofrece el espacio libre de uno de tus vehículos. Las empresas reservan y tú confirmas." />
+  <PageHeader title="Publicar viaje" subtitle="Ofrece el espacio libre de uno de tus vehículos. Las empresas reservan y tú confirmas." breadcrumbs={[{ label: 'Viajes', href: '/transportista/viajes' }, { label: 'Publicar viaje' }]} />
   <PublishTripForm client:load vehicles={vehicles} cities={cities} />
 </AppShell>

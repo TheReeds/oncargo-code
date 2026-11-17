@@ -60,7 +60,7 @@ enum class ButtonSize(val height: Int, val textSp: Int, val iconDp: Int) {
 }
 
 /**
- * Botón estándar de LOGYX. Microcopy: verbo + objeto ("Enviar oferta", "Aceptar oferta").
+ * Botón estándar de OnCargo. Microcopy: verbo + objeto ("Enviar oferta", "Aceptar oferta").
  * Con [loading] se muestra un indicador, se deshabilita y se anuncia como ocupado.
  */
 @Composable

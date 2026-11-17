@@ -10,7 +10,9 @@ import { flash, toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { EmptyState } from '@/components/domain/EmptyState';
-import { CARGO_LABELS, CITY_LABELS, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
+import { Timeline } from '@/components/ui/timeline';
+import { DescriptionList } from '@/components/ui/description-list';
+import { CARGO_LABELS, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
 import type { TripBookingView } from '../server';
 
 type Tab = 'ACTIVE' | 'HISTORY';
@@ -55,23 +57,36 @@ export default function MyBookings({ bookings: initial }: { bookings: TripBookin
         <ul className="space-y-3" aria-label="Mis reservas">
           {shown.map((b) => (
             <li key={b.id}>
-              <Card className="space-y-3 p-5" data-testid="booking-card">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1"><RouteLine size="sm" origin={b.originCity!} destination={b.destinationCity!} originSub={formatDateTime(b.departureAt)} /></div>
-                  <StatusPill kind="booking" status={b.status!} />
-                </div>
-                <div className="grid gap-3 text-sm sm:grid-cols-[1fr_auto]">
-                  <div className="min-w-0 text-ink-700">
-                    <div>{CARGO_LABELS[b.cargoType!] ?? b.cargoType} · <span className="font-mono">{formatNumber(b.weightKg)} kg</span> · {b.cargoDescription}</div>
-                    <div className="mt-0.5 text-xs text-ink-500">{b.carrierName}</div>
-                    {b.decisionNote && <div className="mt-1 text-xs text-ink-500">Nota del transportista: {b.decisionNote}</div>}
+              <Card className="overflow-hidden" data-testid="booking-card">
+                <div className="space-y-4 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1"><RouteLine size="sm" origin={b.originCity!} destination={b.destinationCity!} originSub={formatDateTime(b.departureAt)} /></div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right"><div className="text-xs text-ink-500">Precio</div><div className="money whitespace-nowrap text-lg">{formatMoney(b.price)}</div></div>
+                      <StatusPill kind="booking" status={b.status!} />
+                    </div>
                   </div>
-                  <div className="sm:text-right"><div className="text-xs text-ink-500">Precio</div><div className="money text-lg">{formatMoney(b.price)}</div></div>
+                  <DescriptionList cols={3} items={[
+                    { label: 'Carga', value: `${CARGO_LABELS[b.cargoType!] ?? b.cargoType} · ${b.cargoDescription}` },
+                    { label: 'Peso reservado', value: `${formatNumber(b.weightKg)} kg`, mono: true },
+                    { label: 'Transportista', value: b.carrierName },
+                    { label: 'Nota del transportista', value: b.decisionNote, span: true },
+                  ]} />
+                  {isActive(b) && (
+                    <Timeline
+                      label="Avance de la reserva"
+                      items={[
+                        { id: 'sent', title: 'Reserva enviada', meta: formatDateTime(b.createdAt), status: 'done' },
+                        { id: 'ok', title: 'Aceptada por el transportista', meta: b.decidedAt ? formatDateTime(b.decidedAt) : undefined, status: b.status === 'CONFIRMED' ? 'done' : 'current' },
+                        { id: 'ship', title: 'Envío generado', status: b.status === 'CONFIRMED' && b.shipmentId ? 'done' : 'pending' },
+                      ]}
+                    />
+                  )}
                 </div>
                 {isActive(b) && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-steel-200 pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-steel-200 bg-steel-100/50 px-4 py-3 sm:px-5">
                     <span className="text-xs text-ink-500">{b.status === 'PENDING' ? 'Esperando la confirmación del transportista.' : 'Reserva confirmada: ya tienes un envío.'}</span>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 max-sm:w-full [&>*]:max-sm:flex-1">
                       {b.status === 'CONFIRMED' && b.shipmentId && <Button asChild size="sm" variant="outline"><a href={`/pyme/envios?id=${b.shipmentId}`}>Ver envío</a></Button>}
                       <Button size="sm" variant="destructive" loading={busy === b.id} disabled={!!busy} onClick={() => cancel(b)}>Cancelar reserva<span className="sr-only"> de {b.originCity} a {b.destinationCity}</span></Button>
                     </div>

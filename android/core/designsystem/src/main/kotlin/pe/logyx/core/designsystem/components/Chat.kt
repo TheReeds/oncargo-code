@@ -158,7 +158,7 @@ private fun ChatPreview() {
             ChatBubble("Te escribo ahora", mine = true, time = null, state = BubbleState.Sending)
             ChatBubble("Mensaje con datos", mine = true, time = null, state = BubbleState.Failed, onRetry = {})
             ChatBubble("Contraoferta enviada", mine = false, time = "10:10", system = true, price = 1700.0)
-            ChatComposer("999", {}, {}, error = "El mensaje contiene datos de contacto. Coordina todo por el chat de LOGYX.")
+            ChatComposer("999", {}, {}, error = "El mensaje contiene datos de contacto. Coordina todo por el chat de OnCargo.")
         }
     }
 }

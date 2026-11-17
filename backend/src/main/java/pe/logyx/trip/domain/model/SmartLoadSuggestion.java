@@ -75,7 +75,7 @@ public final class SmartLoadSuggestion {
 
     public boolean isExpired(OffsetDateTime now) { return !expiresAt.isAfter(now); }
 
-    /** Aceptar marca la sugerencia; no adjudica las solicitudes (el transportista debe ofertar en cada una). */
+    /** Aceptar marca la sugerencia; el servicio oferta en lote (F12). No adjudica: cada PYME decide. */
     public void accept(OffsetDateTime now) {
         ensureDecidable(now);
         status = SmartLoadStatus.ACCEPTED;

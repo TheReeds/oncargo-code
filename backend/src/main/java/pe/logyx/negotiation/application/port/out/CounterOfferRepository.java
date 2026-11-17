@@ -11,6 +11,11 @@ public interface CounterOfferRepository {
     /** Más recientes primero. */
     List<CounterOffer> listByBid(UUID bidId);
     boolean hasPending(UUID bidId);
+    java.util.Optional<CounterOffer> findPending(UUID bidId);
+    /** Pendientes de cualquier oferta de la solicitud. */
+    List<CounterOffer> listPendingByRequest(UUID requestId);
     /** Inserta o actualiza. */
     void save(CounterOffer counterOffer);
+    /** Escribe ya los cambios pendientes (el índice único de "una pendiente por oferta" se valida por fila). */
+    void flush();
 }

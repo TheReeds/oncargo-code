@@ -2,6 +2,7 @@ package pe.logyx.incident.infrastructure.web;
 
 import pe.logyx.incident.domain.model.IncidentStatus;
 import pe.logyx.incident.domain.model.IncidentCategory;
+import pe.logyx.incident.domain.model.IncidentShipmentOutcome;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,8 +22,13 @@ public final class IncidentDtos {
 
     public record AddIncidentComment(@NotBlank @Size(max = 2000) String body) {}
 
+    /**
+     * {@code resolutionNotes}: obligatorio al resolver o cerrar una incidencia activa (motivo, F27).
+     * {@code shipmentOutcome}: obligatorio en esos mismos casos (estado final del envío, RF55).
+     */
     public record ChangeIncidentStatus(@NotNull IncidentStatus status,
-                                       @Size(max = 2000) String resolutionNotes) {}
+                                       @Size(max = 2000) String resolutionNotes,
+                                       IncidentShipmentOutcome shipmentOutcome) {}
 
     public record IncidentCommentView(UUID id, UUID authorOrgId, String authorName, String body,
                                       OffsetDateTime createdAt) {
@@ -37,13 +43,15 @@ public final class IncidentDtos {
                                IncidentCategory category, String description, IncidentStatus status,
                                boolean active, String resolutionNotes, OffsetDateTime createdAt,
                                OffsetDateTime updatedAt, OffsetDateTime resolvedAt,
-                               List<IncidentCommentView> comments) {
+                               List<IncidentCommentView> comments,
+                               /** Estado final del envío que fijó el operador al resolverla (RF55). */
+                               IncidentShipmentOutcome shipmentOutcome) {
         static IncidentView of(IncidentSummary s) {
             Incident i = s.incident();
             return new IncidentView(i.id(), i.shipmentId(), i.requesterOrgId(), s.name(i.requesterOrgId()),
                     i.carrierOrgId(), s.name(i.carrierOrgId()), i.reportedByOrgId(), i.category(), i.description(),
                     i.status(), i.isActive(), i.resolutionNotes(), i.createdAt(), i.updatedAt(), i.resolvedAt(),
-                    s.comments().stream().map(c -> IncidentCommentView.of(c, s)).toList());
+                    s.comments().stream().map(c -> IncidentCommentView.of(c, s)).toList(), i.shipmentOutcome());
         }
     }
 }

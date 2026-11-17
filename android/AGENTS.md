@@ -1,7 +1,13 @@
-# LOGYX Android — guía para agentes
+# OnCargo Android — guía para agentes (producto antes LOGYX)
 
 App nativa única (Kotlin + Jetpack Compose + Material 3) con flujos por rol: **transportista**, **conductor** y **PYME**.
 Contexto global en `../AGENTS.md`; contrato de API en `../docs/api/openapi.yaml`; diseño en `../docs/design/DESIGN.md`.
+
+## Marca OnCargo
+Nombre visible: **OnCargo** (`@string/app_name`, `android:label`). Los identificadores técnicos siguen en `logyx` (paquetes `pe.logyx.*`, `applicationId`, `Logyx*`, `LOGYX-XXX-NNN`); ver `../docs/brand.md`.
+- Ícono: adaptativo (`mipmap-anydpi-v26/ic_launcher*.xml`) con fondo `@color/ic_launcher_background` (#081F46), foreground y monocromático (Android 13+) PNG en `mipmap-*dpi`, más `ic_launcher(.round).png` heredados. Generados con ImageMagick desde `media/logos/OnCargo-icono-app.png` (símbolo ~47% del lienzo, dentro de la zona segura 66/108 dp).
+- Logotipo en la app: `R.drawable.oncargo_logo` (`:core:designsystem`, `drawable-nodpi` claro y `drawable-night-nodpi` oscuro) y `oncargo_logo_on_dark` (siempre la versión para fondo oscuro; cabecera del login). Úsalos con `Image(painterResource(...))`.
+- Textos de UI: di "OnCargo", nunca "LOGYX".
 
 ## Compilar y probar
 ```bash
@@ -60,7 +66,7 @@ El tráfico HTTP en claro solo se permite en **debug** (`app/src/debug/res/xml/n
 :core:model           Kotlin/JVM PURO. DTOs @Serializable del contrato + reglas (canCarry, nextStop, normalizeCity)
 :core:network         Kotlin/JVM PURO. Ktor (OkHttp) + LogyxApi tipado, {data,meta}, ApiException (errores en español)
 :core:data            Android lib. Repositorios (interfaces + Default*), AuthRepository/SessionStore (DataStore), dataModule()
-:core:designsystem    Android lib. Tema LOGYX, Geist Sans/Mono (res/font, OFL), componentes y mapa MapLibre
+:core:designsystem    Android lib. Tema (`LogyxTheme`), Geist Sans/Mono (res/font, OFL), componentes y mapa MapLibre
 :feature:auth         Login, Cuenta
 :feature:loads        Transportista: Home "Tu actividad", feed de LoadCard + chips, detalle con mapa + bottom sheet de oferta, mis ofertas
 :feature:requests     PYME: mis solicitudes, detalle con comparación de ofertas y aceptar/cancelar

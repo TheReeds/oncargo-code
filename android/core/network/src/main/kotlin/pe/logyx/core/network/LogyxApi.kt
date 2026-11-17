@@ -188,7 +188,7 @@ class LogyxApi(
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
-            throw ApiException(0, "NETWORK", "No pudimos conectar con LOGYX. Revisa tu conexión e inténtalo de nuevo.")
+            throw ApiException(0, "NETWORK", "No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.")
         }
         if (!response.status.isSuccess()) throw response.toApiException()
         return response.readRawBytes()
@@ -336,7 +336,7 @@ class LogyxApi(
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
-            throw ApiException(0, "NETWORK", "No pudimos conectar con LOGYX. Revisa tu conexión e inténtalo de nuevo.")
+            throw ApiException(0, "NETWORK", "No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.")
         }
         if (!response.status.isSuccess()) throw response.toApiException()
         return try {
@@ -360,7 +360,7 @@ class LogyxApi(
         403 -> "No tienes permiso para realizar esta acción."
         404 -> "No encontramos lo que buscas."
         409 -> "La operación ya no es posible; actualiza e inténtalo otra vez."
-        in 500..599 -> "LOGYX tuvo un problema. Inténtalo en unos minutos."
+        in 500..599 -> "OnCargo tuvo un problema. Inténtalo en unos minutos."
         else -> "Ocurrió un error inesperado."
     }
 }

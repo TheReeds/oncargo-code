@@ -17,8 +17,11 @@ export const reportIncident = (token: string, shipmentId: string, category: Inci
   unwrap(apiFor(token).POST('/api/v1/shipments/{id}/incidents', { params: { path: { id: shipmentId } }, body: { category, description } }));
 export const addComment = (token: string, id: string, body: string) =>
   unwrap(apiFor(token).POST('/api/v1/incidents/{id}/comments', { params: { path: { id } }, body: { body } }));
-export const changeStatus = (token: string, id: string, status: IncidentStatus, resolutionNotes?: string) =>
-  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/status', { params: { path: { id } }, body: { status, resolutionNotes: resolutionNotes || undefined } }));
+/** Estado final del envío al resolver o cerrar (RF55). */
+export type ShipmentOutcome = 'RESUME' | 'DELIVERED' | 'CANCELLED';
+export const changeStatus = (token: string, id: string, status: IncidentStatus, resolutionNotes?: string, shipmentOutcome?: ShipmentOutcome) =>
+  // `shipmentOutcome` entró al contrato después de generar `schema.d.ts`; el cast se puede quitar tras `npm run gen:api`.
+  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/status', { params: { path: { id } }, body: { status, resolutionNotes: resolutionNotes || undefined, shipmentOutcome } }));
 
 export type RouteMap = Record<string, { origin: string; destination: string }>;
 

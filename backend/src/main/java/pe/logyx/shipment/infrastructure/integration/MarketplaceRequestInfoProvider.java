@@ -21,7 +21,8 @@ public class MarketplaceRequestInfoProvider implements RequestInfoProvider {
     public Map<UUID, RequestInfo> byIds(Collection<UUID> requestIds) {
         return marketplace.requestsByIds(requestIds).stream()
                 .map(r -> new RequestInfo(r.id(), r.cargo().originCity(), r.cargo().destinationCity(),
-                        r.cargo().cargoDescription(), r.cargo().weightKg()))
+                        r.cargo().cargoDescription(), r.cargo().weightKg(), r.cargo().cargoType(),
+                        r.cargo().volumeM3(), r.cargo().pickupDate(), r.pricing().distanceKm()))
                 .collect(Collectors.toMap(RequestInfo::id, Function.identity()));
     }
 }

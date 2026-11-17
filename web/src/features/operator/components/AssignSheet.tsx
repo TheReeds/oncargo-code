@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { MoneyInput } from '@/components/ui/number-input';
 import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/form-controls';
 import { Skeleton } from '@/components/ui/skeleton';
 import { confirm } from '@/components/ui/confirm-dialog';
@@ -109,7 +110,7 @@ export default function AssignSheet({ request, onClose, onAssigned }: { request:
                 <fieldset>
                   <legend className="mb-1.5 text-[13px] font-medium text-ink-700">Transportista y vehículo <span className="font-normal text-ink-500">· {candidates.length} {candidates.length === 1 ? 'candidato' : 'candidatos'}, mejor Trust Score primero</span></legend>
                   <RadioGroup value={vehicleId} onValueChange={(v) => { setVehicleId(v); setErrors((x) => ({ ...x, vehicleId: '' })); }} aria-label="Candidatos" aria-invalid={!!errors.vehicleId || undefined}>
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const on = c.vehicleId === vehicleId;
                       return (
                         <label key={c.vehicleId} htmlFor={`cand-${c.vehicleId}`} className={cn('flex cursor-pointer items-start gap-3 rounded-input border p-3 transition-colors hover:border-petrol-700/50', on ? 'border-petrol-700 bg-petrol-50' : 'border-steel-200 bg-surface')}>
@@ -119,6 +120,7 @@ export default function AssignSheet({ request, onClose, onAssigned }: { request:
                               <span className="truncate text-sm font-semibold text-ink-900">{c.carrierName}</span>
                               <VerifiedBadge verified={c.carrierRucVerified} variant="icon" />
                               <TrustScore score={c.carrierTrustScore} />
+                              {idx === 0 && candidates.length > 1 && <Badge tone="emerald">Recomendado</Badge>}
                             </span>
                             <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-500">
                               <span>{VEHICLE_LABELS[c.vehicleType!] ?? c.vehicleType} <span className="font-mono text-ink-700">{c.vehiclePlate}</span></span>
@@ -135,6 +137,12 @@ export default function AssignSheet({ request, onClose, onAssigned }: { request:
                 <Field label="Monto de la asignación" htmlFor="a-amount" error={errors.amount} hint={`Por defecto el precio sugerido. Mínimo ${formatMoney(floor)} (piso de la subasta).`}>
                   <MoneyInput id="a-amount" value={amount} onValueChange={(v) => { setAmount(v); setErrors((x) => ({ ...x, amount: '' })); }} invalid={!!errors.amount} className="h-12 text-lg" />
                 </Field>
+                {selected && amt > 0 && (
+                  <p className="rounded-input bg-petrol-50 px-3 py-2.5 text-sm text-ink-700">
+                    Asignarás a <span className="font-semibold text-ink-900">{selected.carrierName}</span> por <span className="money">{formatMoney(amt)}</span>
+                    {request.suggestedPrice ? <> ({amt === request.suggestedPrice ? 'igual al precio sugerido' : `${amt > request.suggestedPrice ? '+' : '−'}${Math.abs(Math.round(((amt - request.suggestedPrice) / request.suggestedPrice) * 100))} % frente al sugerido`})</> : null}.
+                  </p>
+                )}
                 <Field label="Notas" htmlFor="a-notes" hint="Opcional. Máximo 500 caracteres.">
                   <Textarea id="a-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Ej. Asignada por falta de ofertas tras coordinar con el transportista." />
                 </Field>
