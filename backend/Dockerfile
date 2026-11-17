@@ -8,10 +8,13 @@ WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
 COPY src src
+# true solo para el entorno de pruebas: incluye las cuentas demo (DemoDataSeeder).
+ARG DEMO_DATA=false
 # Sin tests (corren en CI). El OpenAPI se escribe dentro de target/ (el contrato versionado está en docs/api/).
 RUN --mount=type=cache,target=/root/.m2 \
     MAVEN_OPTS="-Xmx1g" ./mvnw -B -q -DskipTests package \
-      -Dquarkus.smallrye-openapi.store-schema-directory=target/openapi
+      -Dquarkus.smallrye-openapi.store-schema-directory=target/openapi \
+      -Dlogyx.demo-data=${DEMO_DATA}
 
 # ---------- runtime ----------
 FROM eclipse-temurin:21-jre-alpine

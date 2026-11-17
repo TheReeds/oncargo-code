@@ -3,7 +3,7 @@ package pe.logyx.devdata;
 import pe.logyx.incident.domain.model.IncidentCategory;
 import pe.logyx.documents.domain.model.DocumentType;
 import io.quarkus.arc.Arc;
-import io.quarkus.arc.profile.IfBuildProfile;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import pe.logyx.shared.tenancy.SystemTx;
@@ -68,7 +68,8 @@ import java.util.function.Supplier;
  * <p>Fase 4: viajes publicados (Sur Andino y Titicaca) con una reserva pendiente y otra confirmada de la PYME demo, cargas
  * de retorno desde Juliaca para Sur Andino y una sugerencia Smart Load pendiente (ASA-202 con dos cargas desde Lima).
  */
-@IfBuildProfile("dev")
+// Activo en dev (%dev.logyx.demo-data=true) y en la imagen de pruebas (docker build --build-arg DEMO_DATA=true).
+@IfBuildProperty(name = "logyx.demo-data", stringValue = "true")
 @ApplicationScoped
 public class DemoDataSeeder {
 

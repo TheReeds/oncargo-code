@@ -1,0 +1,55 @@
+# OnCargo — Caddy: HTTPS automático (Let's Encrypt) en cuanto el DNS apunte al VPS.
+(security) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+(downloads) {
+	# Página de descarga de la app de pruebas (QR) y el APK: /opt/oncargo/downloads en el host.
+	redir /app /app/ 308
+	handle_path /app/* {
+		root * /srv/downloads
+		@apk path *.apk
+		header @apk Content-Type "application/vnd.android.package-archive"
+		header @apk Content-Disposition "attachment"
+		file_server
+	}
+}
+
+{$DOMAIN} {
+	import security
+	import downloads
+	reverse_proxy web:4321
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} 308
+}
+
+# API pública para la app Android (la web llama a la API por la red interna).
+api.{$DOMAIN} {
+	import security
+	reverse_proxy backend:8080 {
+		# SSE (/api/v1/events/stream): sin buffer
+		flush_interval -1
+	}
+}
+
+# Acceso por IP mientras el DNS no apunta al VPS (solo pruebas, sin TLS).
+http://{$PUBLIC_IP} {
+	encode zstd gzip
+	import downloads
+	handle /api/* {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy web:4321
+	}
+}
