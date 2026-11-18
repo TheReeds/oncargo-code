@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useCallback, useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
 import { Star } from 'lucide-react';
@@ -9,6 +11,8 @@ import { Textarea } from '@/components/ui/input';
 import { StarRating } from '@/components/ui/star-rating';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/toaster';
+import { toFormErrors } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
 import { EmptyState } from '@/components/domain/EmptyState';
 import type { ShipmentReviewsView } from '../server';
 import { ReviewCard } from './ReviewCard';
@@ -32,13 +36,17 @@ function ReviewForm({ shipmentId, perspective, onDone }: { shipmentId: string; p
     e.preventDefault();
     const next: typeof errors = {};
     dims.forEach((d) => { if (!scores[d.key]) next[d.key] = d.empty; });
-    if (comment.length > 500) next.comment = 'El comentario admite hasta 500 caracteres.';
+    if (comment.length > LIMITS.reviewComment) next.comment = `El comentario admite hasta ${LIMITS.reviewComment} caracteres.`;
     setErrors(next);
     if (Object.keys(next).length) return;
     setBusy(true);
     const { error } = await actions.reputation.submit({ shipmentId, ...scores, comment: comment.trim() || undefined });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      const r = toFormErrors(error, ['comment']); // RN07: la reseña es pública, `LOGYX-NEG-001` queda bajo el comentario
+      if (r.errors.comment) setErrors((x) => ({ ...x, ...r.errors })); else toast.error(r.formError ?? 'No pudimos enviar la calificación.');
+      return;
+    }
     toast.success('Calificación enviada', `Tu opinión ya cuenta en el Trust Score de ${target}.`);
     onDone();
   }
@@ -54,8 +62,8 @@ function ReviewForm({ shipmentId, perspective, onDone }: { shipmentId: string; p
         ))}
       </div>
       <Field label="Comentario" htmlFor={`rate-${shipmentId}-comment`} hint="Opcional. No incluyas teléfonos ni correos." error={errors.comment}>
-        <Textarea id={`rate-${shipmentId}-comment`} value={comment} maxLength={500} onChange={(e) => setComment(e.target.value)} aria-invalid={!!errors.comment} placeholder="Cuéntanos cómo fue el servicio" />
-        <p className="mt-1 text-right font-mono text-xs tabular-nums text-ink-500">{comment.length}/500</p>
+        <Textarea id={`rate-${shipmentId}-comment`} value={comment} maxLength={LIMITS.reviewComment} onChange={(e) => { setComment(e.target.value); setErrors((x) => ({ ...x, comment: undefined })); }} aria-invalid={!!errors.comment} placeholder="Cuéntanos cómo fue el servicio" />
+        <p className="mt-1 text-right font-mono text-xs tabular-nums text-ink-500">{comment.length}/{LIMITS.reviewComment}</p>
       </Field>
       <div className="flex justify-end"><Button type="submit" loading={busy}>{busy ? 'Enviando calificación…' : 'Enviar calificación'}</Button></div>
     </form>
@@ -63,6 +71,7 @@ function ReviewForm({ shipmentId, perspective, onDone }: { shipmentId: string; p
 }
 
 export default function ReviewPanel({ shipmentId, perspective, status }: Props) {
+  const canOperate = useCan('OPERATE');
   const [data, setData] = useState<ShipmentReviewsView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +92,9 @@ export default function ReviewPanel({ shipmentId, perspective, status }: Props) 
   const delivered = status === 'DELIVERED';
   return (
     <div className="space-y-4">
-      {data.canReview ? (
+      {data.canReview && !canOperate ? (
+        <ReadOnlyNotice>No puedes calificar envíos.</ReadOnlyNotice>
+      ) : data.canReview ? (
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Star className="size-4 text-amber-700" aria-hidden="true" />Califica este envío</CardTitle></CardHeader>
           <CardBody><ReviewForm shipmentId={shipmentId} perspective={perspective} onDone={load} /></CardBody>

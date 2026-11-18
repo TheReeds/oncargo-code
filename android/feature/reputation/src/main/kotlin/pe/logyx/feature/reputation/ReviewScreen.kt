@@ -126,13 +126,13 @@ private fun ReviewForm(
         LogyxTextField(
             state.comment, onComment, stringResource(R.string.rep_comment_label), Modifier.fillMaxWidth(),
             hint = stringResource(R.string.rep_comment_hint),
-            error = state.commentError?.let { stringResource(R.string.rep_comment_error) },
+            error = state.commentError?.let { it.ifEmpty { stringResource(R.string.rep_comment_error) } },
             optional = true, singleLine = false, minLines = 3,
         )
         if (!state.complete) {
             Text(stringResource(R.string.rep_submit_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        LogyxButton(stringResource(R.string.rep_submit), { confirming = true }, enabled = state.canSubmit, loading = state.submitting)
+        LogyxButton(stringResource(R.string.rep_submit), { confirming = true }, enabled = state.canSubmit, loading = state.submitting, requiresOperate = true)
     }
     if (confirming) {
         LogyxConfirmDialog(

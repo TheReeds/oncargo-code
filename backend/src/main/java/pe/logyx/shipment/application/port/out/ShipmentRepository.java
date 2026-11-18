@@ -18,6 +18,8 @@ public interface ShipmentRepository {
     List<Shipment> listByRequester(UUID requesterOrgId);
     /** Pendientes o en tránsito, más antiguos primero. */
     List<Shipment> listActiveByDriver(UUID driverId);
+    /** Entregados o cancelados del conductor, más recientes primero (F22). */
+    List<Shipment> listHistoryByDriver(UUID driverId);
     /** Pendientes o en tránsito con ese vehículo. */
     List<Shipment> listActiveByVehicle(UUID vehicleId);
     /**
@@ -31,6 +33,8 @@ public interface ShipmentRepository {
     long countDeliveredSince(UUID orgId, boolean asCarrier, OffsetDateTime since);
     /** Todos los visibles (RLS) en ese estado. */
     long countAllByStatus(Shipment.Status status);
+    /** Suma del precio acordado de los envíos en esos estados (operador, vía RLS); 0 si no hay. */
+    java.math.BigDecimal sumAgreedPrice(Collection<Shipment.Status> statuses);
     /** Listado global (operador, vía RLS), más recientes primero. */
     pe.logyx.shared.domain.Paged<Shipment> searchAll(pe.logyx.shipment.application.OperatorShipmentFilter filter,
                                                       pe.logyx.shared.domain.PageRequest page);

@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
 import { toast } from '@/components/ui/toaster';
@@ -10,7 +12,10 @@ import { formatDateTime, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useLiveRefresh, useRealtime } from '@/lib/realtime';
 import type { BidView } from '@/lib/api/server';
+import { Button } from '@/components/ui/button';
+import { RotateCcw, Repeat2 } from 'lucide-react';
 import CancelRequestButton from './CancelRequestButton';
+import { RescheduleDialog } from './RecoveryDialogs';
 
 /**
  * Detalle de solicitud de la PYME en vivo. `RequestLiveSync` (isla sin UI) escucha el stream, vuelve a pedir
@@ -59,13 +64,22 @@ export function RequestHeaderMeta({ status, verified }: { status: string; verifi
   );
 }
 
-export function RequestHeaderActions({ requestId, status }: { requestId: string; status: string; verified?: boolean | null }) {
-  const { request } = useRequestState({ request: { status }, bids: [] });
+export function RequestHeaderActions({ requestId, status, auction, pickupDate }: { requestId: string; status: string; verified?: boolean | null; auction?: LiveAuction; pickupDate?: string | null }) {
+  const { request } = useRequestState({ request: { status, auction }, bids: [] });
   const st = request.status ?? status;
+  const a = request.auction !== undefined ? request.auction : auction;
+  const [dialog, setDialog] = useState<'reopen' | 'republish' | null>(null);
+  // F07: la subasta cerró por tiempo y la solicitud sigue publicada → reabrir. RF18: cancelada → republicar.
+  const timedOut = st === 'PUBLISHED' && a?.status === 'CLOSED' && a.closeReason === 'TIMEOUT';
+  const canOperate = useCan('OPERATE');
   return (
     <>
-      {st === 'PUBLISHED' && <CancelRequestButton id={requestId} />}
+      {!canOperate && <ReadOnlyNotice className="max-w-sm">No puedes cancelar ni reabrir solicitudes.</ReadOnlyNotice>}
+      {canOperate && timedOut && <Button variant="money" onClick={() => setDialog('reopen')}><RotateCcw />Reabrir subasta</Button>}
+      {canOperate && st === 'CANCELLED' && <Button variant="outline" onClick={() => setDialog('republish')}><Repeat2 />Republicar solicitud</Button>}
+      {canOperate && st === 'PUBLISHED' && <CancelRequestButton id={requestId} />}
       {st === 'MATCHED' && <a href="/pyme/envios" className={buttonVariants()}>Ver envío</a>}
+      {dialog && <RescheduleDialog mode={dialog} id={requestId} open onOpenChange={(o) => !o && setDialog(null)} currentPickup={pickupDate} />}
     </>
   );
 }
@@ -92,6 +106,7 @@ export function AuctionCard({ auction, suggested, floor }: { auction: LiveAuctio
               {a.status === 'OPEN'
                 ? <Countdown closesAt={a.closesAt} className="text-2xl font-semibold" />
                 : <div className="font-medium">Cerrada{a.closeReason ? ` · ${CLOSE_REASON[a.closeReason] ?? a.closeReason}` : ''}</div>}
+              {a.status !== 'OPEN' && a.closeReason === 'TIMEOUT' && <p className="mt-1 text-xs text-ink-700">{(a.bidCount ?? 0) > 0 ? 'Terminó el tiempo con ofertas sin elegir: aún puedes aceptar una.' : 'Terminó el tiempo sin ofertas.'} Si quieres seguir recibiendo ofertas, usa «Reabrir subasta».</p>}
               <div className="text-xs text-ink-500">{formatDateTime(a.closesAt)}</div>
             </div>
             <div>

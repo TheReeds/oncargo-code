@@ -11,6 +11,8 @@ import { RouteLine } from '@/components/domain/RouteLine';
 import { Countdown } from '@/components/domain/Countdown';
 import { Badge } from '@/components/ui/badge';
 import AssignFromDetail from '@/features/operator/components/AssignFromDetail';
+import OperatorBids from '@/features/operator/components/OperatorBids';
+import { listBids } from '@/features/requests/server';
 import { getRequest, getSlaAlerts } from '@/features/operator/server';
 import { ApiError } from '@/lib/api/client';
 import { CARGO_LABELS, CITY_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
@@ -24,6 +26,7 @@ try {
   if (e instanceof ApiError && [400, 403, 404].includes(e.status)) return Astro.redirect('/operador');
   throw e;
 }
+const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError && e.status === 401) throw e; return null; });
 const a = r.auction;
 // RN10: si el SLA venció (sin ofertas), el operador puede asignar desde aquí
 const alerts = r.status === 'PUBLISHED' ? await getSlaAlerts(token).catch(() => null) : null;
@@ -43,6 +46,11 @@ const auctionLabel = a?.status === 'CLOSED' ? 'Cerrada' : a?.status === 'CANCELL
     {sla && <Fragment slot="actions"><AssignFromDetail client:load request={sla} /></Fragment>}
   </PageHeader>
 
+  {r.status === 'CANCELLED' && (
+    <Alert tone="warning" title="Solicitud cancelada" className="mb-4">
+      {r.cancelReason ? <>Motivo: {r.cancelReason}. </> : 'La PYME no indicó un motivo. '}{r.republishedFrom ? 'Es una republicación de otra solicitud.' : ''}
+    </Alert>
+  )}
   {sla && (
     <Alert tone="warning" title="Sin ofertas pasado el SLA" className="mb-4">
       Lleva <span class="font-mono font-semibold">{sla.hoursWithoutBids} h</span> publicada sin ninguna oferta (SLA de {slaHours} h). Puedes asignarla manualmente a un transportista con vehículo disponible (RN10).
@@ -50,7 +58,7 @@ const auctionLabel = a?.status === 'CLOSED' ? 'Cerrada' : a?.status === 'CANCELL
   )}
   {!sla && r.status === 'PUBLISHED' && (
     <Alert tone="info" title="Asignación manual no disponible todavía" className="mb-4">
-      El operador puede asignar una solicitud cuando pasen {slaHours} h sin ofertas (RN10). Mientras tanto, los transportistas siguen ofertando.
+      El operador puede asignar una solicitud cuando pasen {slaHours} h sin ofertas o en cuanto su subasta cierre sin ofertas (RN10). Mientras tanto, los transportistas siguen ofertando.
     </Alert>
   )}
 
@@ -69,6 +77,7 @@ const auctionLabel = a?.status === 'CLOSED' ? 'Cerrada' : a?.status === 'CANCELL
           ]} />
         </CardBody>
       </Card>
+      {bids && <OperatorBids bids={bids} suggested={r.suggestedPrice} />}
       <Card>
         <CardHeader><CardTitle>Solicitante</CardTitle></CardHeader>
         <CardBody className="flex flex-wrap items-center gap-3 text-sm">

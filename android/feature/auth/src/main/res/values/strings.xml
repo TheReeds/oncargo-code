@@ -36,4 +36,41 @@
     <string name="auth_logout_action">Cerrar sesión</string>
     <string name="auth_logout_title">¿Cerrar tu sesión?</string>
     <string name="auth_logout_message">Tendrás que volver a ingresar tu correo y contraseña para usar OnCargo.</string>
+
+    <string name="auth_forgot_action">¿Olvidaste tu contraseña?</string>
+    <string name="auth_forgot_title">Restablecer contraseña</string>
+    <string name="auth_forgot_intro">Escribe el correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva. El enlace dura 30 minutos y se abre en la web de OnCargo.</string>
+    <string name="auth_forgot_send">Enviar enlace</string>
+    <string name="auth_forgot_sent_title">Revisa tu correo</string>
+    <string name="auth_forgot_sent">Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.</string>
+    <string name="auth_forgot_sent_help">Si no lo ves en unos minutos, revisa la carpeta de spam. Cuando abras el enlace elegirás tu contraseña nueva en la web y volverás aquí para iniciar sesión.</string>
+    <string name="auth_forgot_close">Entendido</string>
+
+    <string name="auth_section_security">Seguridad</string>
+    <string name="auth_change_password_action">Cambiar contraseña</string>
+    <string name="auth_change_password_title">Cambiar contraseña</string>
+    <string name="auth_change_password_intro">Por tu seguridad, escribe tu contraseña actual y la nueva.</string>
+    <string name="auth_current_password">Contraseña actual</string>
+    <string name="auth_new_password">Contraseña nueva</string>
+    <string name="auth_new_password_hint">Entre 8 y 72 caracteres.</string>
+    <string name="auth_confirm_password">Repite la contraseña nueva</string>
+    <string name="auth_change_password_effect">Al cambiarla cerramos tu sesión en los demás dispositivos; en este seguirás con tu cuenta abierta.</string>
+    <string name="auth_change_password_save">Guardar contraseña</string>
+    <string name="auth_password_changed">Contraseña actualizada</string>
+    <string name="auth_error_current_empty">Escribe tu contraseña actual.</string>
+    <string name="auth_error_new_short">La contraseña nueva necesita al menos 8 caracteres.</string>
+    <string name="auth_error_new_long">La contraseña nueva admite hasta 72 caracteres.</string>
+    <string name="auth_error_new_same">La contraseña nueva debe ser distinta de la actual.</string>
+    <string name="auth_error_confirm">Las contraseñas no coinciden. Vuelve a escribirla.</string>
+    <string name="auth_logout_all_action">Cerrar sesión en todos los dispositivos</string>
+    <string name="auth_logout_all_title">¿Cerrar sesión en todos tus dispositivos?</string>
+    <string name="auth_logout_all_message">Saldrás de OnCargo en este celular y en cualquier otro donde tengas la cuenta abierta. Tendrás que iniciar sesión de nuevo.</string>
+    <string name="auth_logout_all_confirm">Cerrar todas las sesiones</string>
+
+    <string name="auth_data_verification">Verificación de la empresa</string>
+    <string name="auth_verification_verified">Verificada por OnCargo</string>
+    <string name="auth_verification_pending">En revisión</string>
+    <string name="auth_verification_rejected">Rechazada</string>
+    <string name="auth_verification_suspended">Suspendida</string>
+    <string name="auth_verification_unknown">Sin información</string>
 </resources>

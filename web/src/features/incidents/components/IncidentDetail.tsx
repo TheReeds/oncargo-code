@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useCallback, useMemo, useState } from 'react';
 import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
@@ -14,7 +16,7 @@ import { confirm } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
-import { splitActionError } from '@/lib/action-error';
+import { RN07_FIELD_MESSAGE, isContactFailure, splitActionError } from '@/lib/action-error';
 import { INCIDENT_CATEGORY_LABELS, formatDateTime } from '@/lib/format';
 import { OUTCOME_BY_SHIPMENT, OUTCOME_LABEL, ageTone, formatOpenTime, hoursOpen } from '../lib';
 import { Select } from '@/components/ui/select';
@@ -25,6 +27,7 @@ type Route = { origin: string; destination: string } | null;
 
 /** Detalle de una incidencia: datos, hilo de comentarios y, para el operador, el panel de gestión. */
 export default function IncidentDetail({ initial, orgType, route, shipmentStatus }: { initial: IncidentView; orgType: 'PYME' | 'CARRIER' | 'OPERATOR'; route: Route; shipmentStatus?: string }) {
+  const canOperate = useCan('OPERATE');
   const [inc, setInc] = useState(initial);
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -63,7 +66,7 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
     setPosting(true);
     const { data, error } = await actions.incidents.comment({ id: inc.id!, body: comment });
     setPosting(false);
-    if (error) { const { message } = splitActionError(error); setCommentError(message); return; }
+    if (error) { const f = splitActionError(error); setCommentError(isContactFailure(f) ? RN07_FIELD_MESSAGE : f.message); return; }
     setInc(data);
     setComment('');
     toast.success('Comentario enviado');
@@ -128,9 +131,11 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
             <Timeline items={items} orientation="vertical" label="Historial de la incidencia" />
             {closed ? (
               <p className="flex items-center gap-2 rounded-input bg-steel-100 px-3 py-2.5 text-sm text-ink-700"><Lock className="size-4 shrink-0" aria-hidden="true" /> La incidencia está cerrada y ya no admite comentarios.</p>
+            ) : !canOperate ? (
+              <ReadOnlyNotice>No puedes comentar incidencias.</ReadOnlyNotice>
             ) : (
               <form onSubmit={send} method="post" noValidate className="space-y-3 border-t border-steel-200 pt-5">
-                <Field label="Agregar comentario" htmlFor="inc-comment" error={commentError} hint={`${comment.length}/${MAX} caracteres`}>
+                <Field label="Agregar comentario" htmlFor="inc-comment" error={commentError} hint={`${comment.length}/${MAX} caracteres${operator ? '' : '. Sin teléfonos ni correos.'}`}>
                   <Textarea id="inc-comment" value={comment} maxLength={MAX} rows={3} onChange={(e) => setComment(e.target.value)} aria-invalid={!!commentError} placeholder={operator ? 'Escribe una actualización para las partes.' : 'Agrega información o responde al operador.'} />
                 </Field>
                 <div className="flex justify-end"><Button type="submit" loading={posting}>{posting ? 'Enviando…' : 'Enviar comentario'}</Button></div>

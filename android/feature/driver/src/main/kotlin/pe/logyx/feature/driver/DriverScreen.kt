@@ -149,6 +149,7 @@ fun DriverTripRoute(
         onSignature = viewModel::onSignatureCaptured,
         onRetryEvidence = viewModel::retryEvidence,
         onDiscardEvidence = viewModel::discardEvidence,
+        onDismissClosedEvidence = viewModel::dismissClosedEvidence,
         onReportIncident = { shipmentId?.let(onReportIncident) },
         onOpenIncidents = { shipmentId?.let(onOpenIncidents) },
     )
@@ -176,6 +177,7 @@ fun DriverTripScreen(
     onSignature: (ByteArray) -> Unit = {},
     onRetryEvidence: (String) -> Unit = {},
     onDiscardEvidence: (String) -> Unit = {},
+    onDismissClosedEvidence: () -> Unit = {},
     onReportIncident: () -> Unit = {},
     onOpenIncidents: () -> Unit = {},
 ) {
@@ -200,13 +202,18 @@ fun DriverTripScreen(
                 state.loading -> DriverSkeleton()
                 state.error != null && trip == null -> ErrorState(state.error, onRefresh, Modifier.fillMaxSize())
                 trip == null -> Refreshable(state.refreshing, onRefresh) {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    ) {
+                        ClosedEvidenceNotice(state.closedEvidence, onDismissClosedEvidence)
                         EmptyState(stringResource(R.string.driver_empty_title), stringResource(R.string.driver_empty_message))
+                        HistorySection(state.history)
                     }
                 }
                 else -> TripContent(
                     state, trip, onRefresh, onDismissError, onConfirm = { confirming = true },
-                    onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence, onReportIncident, onOpenIncidents,
+                    onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence, onDismissClosedEvidence, onReportIncident, onOpenIncidents,
                 )
             }
         }
@@ -260,6 +267,7 @@ private fun TripContent(
     onSignature: (ByteArray) -> Unit,
     onRetryEvidence: (String) -> Unit,
     onDiscardEvidence: (String) -> Unit,
+    onDismissClosedEvidence: () -> Unit,
     onReportIncident: () -> Unit,
     onOpenIncidents: () -> Unit,
 ) {
@@ -281,7 +289,7 @@ private fun TripContent(
             if (LocalInspectionMode.current) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             } else {
-                RouteMap(state.origin, state.destination, Modifier.fillMaxSize(), fillParent = true, contentDescription = mapDescription)
+                RouteMap(state.origin, state.destination, Modifier.fillMaxSize(), path = state.route?.points, fillParent = true, contentDescription = mapDescription)
             }
             if (total > 0 && !state.delivered) {
                 LogyxBadge(
@@ -296,15 +304,21 @@ private fun TripContent(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                ClosedEvidenceNotice(state.closedEvidence, onDismissClosedEvidence)
                 if (state.delivered) DeliveredCard(trip) else trip.nextStop()?.let { NextStopCard(it, current, total) }
-                if (state.needsEvidence) {
-                    EvidencePanel(state.evidence, onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence)
+                when (state.evidencePhase) {
+                    EvidencePhase.OPEN -> EvidencePanel(state.evidence, onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence)
+                    // RN06: la foto y la firma solo se piden entre la llegada y el cierre de la entrega; se explica por qué no hay botones.
+                    EvidencePhase.NOT_YET -> EvidenceHint(R.string.driver_evidence_not_yet)
+                    EvidencePhase.CLOSED -> EvidenceHint(R.string.driver_evidence_closed)
+                    EvidencePhase.NONE -> Unit
                 }
                 Text(
                     "${Fmt.tons(trip.weightKg)} · ${trip.vehiclePlate ?: "—"} · ${trip.cargoDescription ?: stringResource(R.string.driver_cargo_default)}",
                     style = LogyxText.mono, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 StopTimeline(trip.stops, large = true)
+                HistorySection(state.history)
             }
         }
         val action = state.action
@@ -349,6 +363,60 @@ private fun TripContent(
     }
 }
 
+/** Explica por qué no se ofrece la evidencia en este momento (RN06). */
+@Composable
+private fun EvidenceHint(@androidx.annotation.StringRes text: Int) {
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.driver_evidence_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * La evidencia que el servidor rechazó por entrega cerrada (`DOC-008`) o por ya no ser el conductor asignado (`DOC-007`):
+ * se descartó de la cola (no se reintenta) y se le dice al conductor qué pasó con cada foto o firma.
+ */
+@Composable
+private fun ClosedEvidenceNotice(items: List<EvidenceItem>, onDismiss: () -> Unit) {
+    if (items.isEmpty()) return
+    val photos = items.count { it.type == DocumentType.DELIVERY_PHOTO }
+    val signatures = items.count { it.type == DocumentType.SIGNATURE }
+    val what = buildList {
+        if (photos > 0) add(androidx.compose.ui.res.pluralStringResource(R.plurals.driver_evidence_closed_photos, photos, photos))
+        if (signatures > 0) add(androidx.compose.ui.res.pluralStringResource(R.plurals.driver_evidence_closed_signatures, signatures, signatures))
+    }.joinToString(" y ")
+    AlertBanner(
+        text = stringResource(R.string.driver_evidence_closed_banner, what),
+        kind = MessageKind.Warning,
+        title = stringResource(R.string.driver_evidence_closed_title),
+        actionLabel = stringResource(R.string.driver_evidence_closed_ok),
+        onAction = onDismiss,
+    )
+}
+
+/** "Viajes anteriores" (V15, F22): últimos entregados o cancelados. */
+@Composable
+private fun HistorySection(history: List<ShipmentView>) {
+    if (history.isEmpty()) return
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.driver_history_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(8.dp))
+        history.forEach { t ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${cityLabel(t.originCity)} → ${cityLabel(t.destinationCity)}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        Fmt.dateTime(t.deliveredAt ?: t.cancelledAt ?: t.createdAt),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                StatusPill(t.status.pill())
+            }
+        }
+    }
+}
+
 /** Miniatura decodificada fuera del hilo principal y recordada por id de evidencia. */
 @Composable
 private fun rememberThumbnail(item: EvidenceItem): State<ImageBitmap?> = produceState<ImageBitmap?>(null, item.id, item.bytes?.size) {
@@ -370,7 +438,7 @@ private fun EvidenceThumb(item: EvidenceItem, caption: String, modifier: Modifie
         status = when (item.state) {
             EvidenceState.UPLOADING -> TileStatus.Uploading
             EvidenceState.UPLOADED -> TileStatus.Uploaded
-            EvidenceState.FAILED -> TileStatus.Failed
+            EvidenceState.FAILED, EvidenceState.CLOSED -> TileStatus.Failed
             EvidenceState.QUEUED -> TileStatus.Uploading
         },
         progress = item.progress,
@@ -387,7 +455,8 @@ private fun EvidencePanel(
     onDiscard: (String) -> Unit,
 ) {
     var signing by remember { mutableStateOf(false) }
-    val shown = items.filter { it.type == DocumentType.DELIVERY_PHOTO || it.type == DocumentType.SIGNATURE }
+    // Las cerradas (DOC-007/008) no se listan aquí: el aviso de arriba ya dice que se descartaron.
+    val shown = items.filter { (it.type == DocumentType.DELIVERY_PHOTO || it.type == DocumentType.SIGNATURE) && it.state != EvidenceState.CLOSED }
     LogyxCard(Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.driver_evidence_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(12.dp))
@@ -514,6 +583,18 @@ private fun DriverEvidencePreview() {
         DriverTripScreen(DriverUiState(loading = false, trip = previewTrip(StopStatus.COMPLETED, StopStatus.ARRIVED).copy(hasActiveIncident = true), allEvidence = items), {}, {})
     }
 }
+
+@Preview(showBackground = true, heightDp = 900)
+@Composable
+private fun DriverClosedEvidencePreview() {
+    val closed = listOf(EvidenceItem("c", "s1", "st1", DocumentType.DELIVERY_PHOTO, EvidenceState.CLOSED, 0f, error = EvidenceErrorsPreview))
+    val history = listOf(previewTrip(StopStatus.COMPLETED, StopStatus.COMPLETED, shipment = ShipmentStatus.DELIVERED), previewTrip(StopStatus.PENDING, shipment = ShipmentStatus.CANCELLED).copy(cancelledAt = "2026-11-05T10:00:00-05:00"))
+    LogyxTheme {
+        DriverTripScreen(DriverUiState(loading = false, trip = previewTrip(StopStatus.COMPLETED, StopStatus.PENDING), allEvidence = closed, history = history), {}, {})
+    }
+}
+
+private const val EvidenceErrorsPreview = "La entrega ya se cerró: esta evidencia no se subió y se descartó."
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable

@@ -44,6 +44,19 @@ public class ManualAssignmentUseCase {
     @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H")
     Duration sla;
 
+    /**
+     * F29: la solicitud que el operador puede asignar ahora (RN10: publicada, sin ofertas y con SLA vencido o subasta
+     * cerrada); si no, 404 / 409 {@code LOGYX-OPS-001}. Sin bloqueo: para consultar candidatos.
+     */
+    @Transactional
+    public ShipmentRequest assignableRequest(UUID requestId) {
+        ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
+        Auction a = auctions.findByRequest(r.id()).orElseThrow();
+        long bidCount = bids.countByAuctions(List.of(a.id())).getOrDefault(a.id(), 0L);
+        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), sla);
+        return r;
+    }
+
     @Transactional
     public AcceptOutcome assign(UUID requestId, ManualAssignmentCommand cmd) {
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));

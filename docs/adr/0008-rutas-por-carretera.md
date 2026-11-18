@@ -1,6 +1,6 @@
 # ADR-0008 — Rutas y distancias por carretera: precálculo OSM versionado, con motor propio como siguiente paso
 
-**Estado:** aceptado · 2026-11-16 · fase 1 (dataset y módulo `routing`) y fase 2 backend (pricing, trip, `GET /routes`) implementadas; faltan los mapas web y Android
+**Estado:** aceptado · 2026-11-16 · implementado: fase 1 (dataset y módulo `routing`), fase 2 backend (pricing, trip, `GET /routes`) y mapas web y Android
 
 ## Contexto
 - **Distancia del precio.** `pricing/infrastructure/distance/HaversineDistanceProvider` calcula la línea recta entre los
@@ -119,6 +119,13 @@ La lista de los 55 pares sale con `python3 -I scripts/routing/build_routes.py --
 - `GET /api/v1/routes?stops=…[&optimize=true]` (`routing/infrastructure/web/RoutingResource` + `RoutingDtos`): paradas, km,
   minutos, tramos, `polyline` (precisión 5), `estimated` y `attribution`. Errores `LOGYX-RTE-001/002`. Contrato compatible.
 
-**Pendiente (web y Android):** `TrackingMap.tsx` dibuja con `web/src/lib/routing` (`routePathFeature`, con la recta como
-respaldo) pidiendo `GET /routes` por Astro Action; `RouteMap.kt` recibe la línea de la ruta, que cargan los ViewModels desde
-`:core:network`. Ambos deben mostrar `attribution`.
+**Web y Android (hecho, 2026-11-16):**
+- Web: `features/routing` (`getRoute` con caché en el servidor, action `routing.route`, hook `useRouteGeometries` con caché
+  por pestaña; `toRouteGeometry` mapea `polylinePrecision` → `precision`). `TrackingMap.tsx` (envíos de PYME y transportista y
+  panel de la PYME) dibuja con `web/src/lib/routing`: línea continua por la vía cuando llega la geometría y recta **punteada**
+  mientras carga o si falla. La fuente declara "Rutas © OpenStreetMap", que aparece en el control de atribución.
+- Android: `RouteGeometry`/`RouteView`/`Polyline` (`:core:model`), `RoutesApi` (`:core:network`, implementado por `LogyxApi`),
+  `RoutesRepository` con caché (`:core:data`). `RouteMap(path = …)` dibuja la vía con la etiqueta "Rutas © OpenStreetMap"
+  y usa la recta punteada como respaldo. Cargan la ruta los ViewModels de detalle de solicitud, detalle de carga, seguimiento
+  de envío y conductor.
+- Android traza origen → destino, como antes; la web sigue las paradas del envío en orden.

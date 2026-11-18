@@ -48,7 +48,7 @@ private class FakeShipments(var current: ShipmentView, var failNext: ApiExceptio
     override suspend fun list() = Result.success(listOf(current))
     override suspend fun detail(id: String) = Result.success(current)
     override suspend fun drivers() = Result.success(emptyList<DriverView>())
-    override suspend fun assignDriver(shipmentId: String, driverId: String) = Result.success(current)
+    override suspend fun assignDriver(shipmentId: String, driverId: String, reason: String?) = Result.success(current)
 }
 
 private class FakeCatalog : CatalogRepository {

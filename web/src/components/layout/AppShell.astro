@@ -6,22 +6,24 @@ import ThemeToggle from '@/components/ui/theme-toggle';
 import LiveIndicator from '@/components/layout/LiveIndicator';
 import CommandMenu from '@/components/layout/CommandMenu';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
+import VerificationBanner from '@/components/domain/VerificationBanner';
 import { me } from '@/features/auth/server';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck } from '@lucide/astro';
+import { can } from '@/lib/permissions';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
 const session = Astro.locals.session!;
 const user = await me(session.token);
 
-type NavItem = { id: string; href: string; label: string; icon: typeof LayoutDashboard };
+type NavItem = { id: string; href: string; label: string; icon: typeof LayoutDashboard; /** Permiso requerido para mostrar la entrada (si falta, se oculta). */ needs?: 'OPERATE' };
 type NavGroup = { label?: string; items: NavItem[] };
 const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
   PYME: [
     { items: [{ id: 'panel', href: '/pyme', label: 'Panel', icon: LayoutDashboard }] },
     { label: 'Cargas', items: [
       { id: 'solicitudes', href: '/pyme/solicitudes', label: 'Solicitudes', icon: FileText },
-      { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus },
+      { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus, needs: 'OPERATE' },
       { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
       { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
     ] },
@@ -52,9 +54,22 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'operador-envios', href: '/operador/envios', label: 'Envíos', icon: Truck },
       { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
     ] },
+    { label: 'Cuentas', items: [
+      { id: 'operador-organizaciones', href: '/operador/organizaciones', label: 'Verificación', icon: Building2 },
+    ] },
+    { label: 'Control', items: [
+      { id: 'operador-auditoria', href: '/operador/auditoria', label: 'Auditoría', icon: ScrollText },
+    ] },
   ],
 };
-const groups = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
+// Sección "Organización" (PYME y transportista): el perfil lo ve todo el mundo; Usuarios solo con MANAGE_USERS.
+const orgGroup: NavGroup = { label: 'Organización', items: [
+  { id: 'organizacion', href: '/organizacion', label: 'Perfil de la empresa', icon: Building },
+  ...(can(session, 'MANAGE_USERS') ? [{ id: 'usuarios', href: '/organizacion/usuarios', label: 'Usuarios y roles', icon: Users }] : []),
+] };
+const baseGroups = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
+const withOrg = session.orgType === 'PYME' || session.orgType === 'CARRIER' ? [...baseGroups, orgGroup] : baseGroups;
+const groups = withOrg.map((g) => ({ ...g, items: g.items.filter((it) => !it.needs || can(session, it.needs)) }));
 const commandItems = groups.flatMap((g) => g.items.map((it) => ({ label: it.label, href: it.href, group: g.label ?? 'Principal' })));
 const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador LOGYX' : 'Transportista';
 ---
@@ -99,15 +114,18 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
         <button id="menu-btn" type="button" class="-ml-1 rounded-input p-2 text-ink-700 hover:bg-steel-100 lg:hidden" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><Menu size={20} /></button>
         <div class="flex min-w-0 flex-1 items-center gap-2">
           <span class="truncate text-sm font-semibold text-ink-900">{user?.organizationName ?? 'Mi empresa'}</span>
-          {user?.rucVerified && <span class="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} aria-hidden="true" /> Empresa verificada</span>}
+          {user?.rucVerified && session.orgType !== 'OPERATOR' && <span class="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 sm:inline-flex"><ShieldCheck size={12} aria-hidden="true" /> Verificado por OnCargo</span>}
         </div>
         <CommandMenu client:load items={commandItems} />
         <LiveIndicator client:load />
         <ThemeToggle client:load className="hidden sm:inline-flex" />
         <NotificationBell client:load />
-        <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} verified={!!user?.rucVerified} />
+        <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} roleName={session.role ?? undefined} verified={!!user?.rucVerified && session.orgType !== 'OPERATOR'} />
       </header>
       <main id="contenido" class:list={['mx-auto w-full flex-1 px-4 py-6 lg:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl']}>
+        {(session.orgType === 'PYME' || session.orgType === 'CARRIER') && user?.verificationStatus && user.verificationStatus !== 'VERIFIED' && (
+          <VerificationBanner client:load status={user.verificationStatus} note={user.verificationNote ?? null} orgType={session.orgType} />
+        )}
         <slot />
       </main>
     </div>

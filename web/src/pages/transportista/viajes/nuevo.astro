@@ -4,10 +4,17 @@ import PageHeader from '@/components/layout/PageHeader.astro';
 import PublishTripForm from '@/features/trips/components/PublishTripForm';
 import { listVehicles } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { can } from '@/lib/permissions';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 const t = Astro.locals.session!.token;
+const canOperate = can(Astro.locals.session, 'OPERATE');
 const [vehicles, { cities }] = await Promise.all([listVehicles(t), getCatalog()]);
 ---
 <AppShell title="Publicar viaje" active="viajes">
   <PageHeader title="Publicar viaje" subtitle="Ofrece el espacio libre de uno de tus vehículos. Las empresas reservan y tú confirmas." breadcrumbs={[{ label: 'Viajes', href: '/transportista/viajes' }, { label: 'Publicar viaje' }]} />
-  <PublishTripForm client:load vehicles={vehicles} cities={cities} />
+  {canOperate
+    ? <PublishTripForm client:load vehicles={vehicles} cities={cities} />
+    : <div class="space-y-4"><ReadOnlyNotice client:load>No puedes publicar viajes.</ReadOnlyNotice><a href="/transportista/viajes" class={cn(buttonVariants({ variant: 'outline' }))}>Volver a mis viajes</a></div>}
 </AppShell>

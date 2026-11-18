@@ -87,9 +87,18 @@ import pe.logyx.feature.trips.PymeTripsRoute
 import pe.logyx.feature.trips.ReturnLoadsRoute
 import pe.logyx.feature.trips.SmartLoadsRoute
 import pe.logyx.feature.reputation.ReviewRoute
-import pe.logyx.core.model.NotificationTarget
-import pe.logyx.core.model.NotificationType
+import pe.logyx.core.model.NotificationDestination
 import pe.logyx.core.model.NotificationView
+import pe.logyx.core.model.RealtimeTypes
+import pe.logyx.core.model.destination
+import pe.logyx.core.model.isReadOnly
+import pe.logyx.core.data.refreshSignals
+import pe.logyx.core.designsystem.components.LiveEffect
+import pe.logyx.core.designsystem.components.LocalReadOnly
+import pe.logyx.core.designsystem.components.LocalScreenBanner
+import pe.logyx.core.designsystem.components.VerificationBanner
+import pe.logyx.core.designsystem.components.needsAttention
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material.icons.rounded.Notifications
 
 /** Raíz: decide entre carga, login y la app por rol según el estado de la sesión. */
@@ -178,8 +187,19 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
     val unread by rememberUnreadCount(enabled = role != AppRole.Driver)
     val showBar = tabs.any { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
 
-    val realtimeStatus by koinInject<RealtimeRepository>().status.collectAsState()
+    val realtime = koinInject<RealtimeRepository>()
+    val authRepo = koinInject<AuthRepository>()
+    // Un aviso nuevo puede ser "tu empresa fue verificada/rechazada" (ORGANIZATION_VERIFICATION): se vuelve a leer el
+    // usuario para que el banner de inicio y los permisos se actualicen sin reiniciar la app. Solo en primer plano.
+    LiveEffect(role) {
+        if (role != AppRole.Driver) {
+            realtime.refreshSignals(setOf(RealtimeTypes.NOTIFICATION_CREATED), fallbackMs = ACCOUNT_REFRESH_FALLBACK_MS).collect { authRepo.refreshUser() }
+        }
+    }
+    val realtimeStatus by realtime.status.collectAsState()
     ProvideRealtimeStatus(realtimeStatus) {
+    // Rol Lector (B2): las acciones de escritura (LogyxButton(requiresOperate = true)) se deshabilitan y cada pantalla avisa.
+    CompositionLocalProvider(LocalReadOnly provides user.isReadOnly) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -198,7 +218,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
         // consumeWindowInsets evita que los Scaffold de cada pantalla vuelvan a aplicar los mismos insets.
         NavHost(nav, startDestination = start, modifier = Modifier.padding(inner).consumeInsets(inner)) {
             composable<CarrierHome> {
-                CarrierHomeRoute(
+                WithVerificationBanner(user) { CarrierHomeRoute(
                     onOpenLoad = { nav.navigate(LoadDetail(it)) },
                     onOpenFeed = { nav.navigateTab(CarrierFeed) },
                     onOpenBids = { nav.navigateTab(CarrierBids) },
@@ -206,7 +226,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     onOpenTrips = { nav.navigate(CarrierTrips) },
                     onOpenReturnLoads = { nav.navigate(ReturnLoads) },
                     onOpenSmartLoads = { nav.navigate(SmartLoads) },
-                )
+                ) }
             }
             composable<CarrierTrips> {
                 CarrierTripsRoute(
@@ -256,7 +276,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 )
             }
 
-            composable<RequestsTab> { RequestsRoute(onOpenRequest = { nav.navigate(RequestDetail(it)) }) }
+            composable<RequestsTab> { WithVerificationBanner(user) { RequestsRoute(onOpenRequest = { nav.navigate(RequestDetail(it)) }) } }
             composable<RequestDetail> { e ->
                 RequestDetailRoute(
                     e.toRoute<RequestDetail>().id,
@@ -265,6 +285,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     onOpenChat = { carrierOrgId, name -> nav.navigate(Chat(e.toRoute<RequestDetail>().id, carrierOrgId, name)) },
                     onOpenThreads = { nav.navigate(Threads(e.toRoute<RequestDetail>().id)) },
                     onOpenOrganization = { nav.navigate(OrgProfile(it)) },
+                    onOpenRequest = { nav.navigate(RequestDetail(it)) },
                 )
             }
 
@@ -320,26 +341,42 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
         }
     }
     }
+    }
+}
+
+/** Respaldo (solo sin stream en vivo) para volver a leer el usuario: verificación y permisos. */
+private const val ACCOUNT_REFRESH_FALLBACK_MS = 300_000L
+
+/**
+ * RN01: en el inicio de PYME y transportista, un banner bajo la barra superior si la empresa está en revisión, rechazada o
+ * suspendida (con la nota del operador). `LogyxScreen` lo pinta; en el resto de pantallas no aparece.
+ */
+@Composable
+private fun WithVerificationBanner(user: UserInfo, content: @Composable () -> Unit) {
+    val banner: (@Composable () -> Unit)? =
+        if (user.verificationStatus.needsAttention) {
+            { VerificationBanner(user.verificationStatus, user.verificationNote) }
+        } else null
+    CompositionLocalProvider(LocalScreenBanner provides banner, content = content)
 }
 
 private fun Modifier.consumeInsets(padding: androidx.compose.foundation.layout.PaddingValues) =
     this.then(Modifier.consumeWindowInsets(padding))
 
-/** Navega al recurso de una notificación (`relatedType`/`relatedId`). */
+/** Navega al recurso de una notificación (`relatedType`/`relatedId`, resuelto en `core:model`) según el rol. */
 private fun NavHostController.openNotification(n: NotificationView, role: AppRole, orgId: String) {
-    val id = n.relatedId
-    when {
-        id == null -> Unit
-        n.relatedType == NotificationTarget.TRIP -> if (role == AppRole.Pyme) navigate(PymeTripDetail(id)) else navigate(CarrierTripDetail(id))
-        n.relatedType == NotificationTarget.SMART_LOAD -> navigate(SmartLoads)
-        n.type == NotificationType.NEW_MESSAGE && n.relatedType == NotificationTarget.REQUEST ->
-            navigate(if (role == AppRole.Pyme) Threads(id) else Chat(id, orgId, null))
-        n.relatedType == NotificationTarget.REQUEST -> navigate(if (role == AppRole.Pyme) RequestDetail(id) else LoadDetail(id))
-        n.relatedType == NotificationTarget.SHIPMENT -> navigate(ShipmentDetail(id))
-        n.relatedType == NotificationTarget.INCIDENT -> navigate(IncidentDetail(id))
-        n.relatedType == NotificationTarget.COUNTER_OFFER -> navigateTab(CarrierBids)
-        n.relatedType == NotificationTarget.BID -> navigateTab(if (role == AppRole.Pyme) RequestsTab else CarrierBids)
-        n.relatedType == NotificationTarget.REVIEW -> navigate(OrgProfile(orgId))
+    val pyme = role == AppRole.Pyme
+    when (val d = n.destination()) {
+        null -> Unit
+        is NotificationDestination.Trip -> navigate(if (pyme) PymeTripDetail(d.id) else CarrierTripDetail(d.id))
+        NotificationDestination.SmartLoads -> navigate(SmartLoads)
+        is NotificationDestination.Conversation -> navigate(if (pyme) Threads(d.requestId) else Chat(d.requestId, orgId, null))
+        is NotificationDestination.Request -> navigate(if (pyme) RequestDetail(d.id) else LoadDetail(d.id))
+        is NotificationDestination.Shipment -> navigate(ShipmentDetail(d.id))
+        is NotificationDestination.Incident -> navigate(IncidentDetail(d.id))
+        NotificationDestination.BidsOrRequests -> navigateTab(if (pyme) RequestsTab else CarrierBids)
+        NotificationDestination.OwnProfile -> navigate(OrgProfile(orgId))
+        NotificationDestination.Account -> navigateTab(Account)
     }
 }
 

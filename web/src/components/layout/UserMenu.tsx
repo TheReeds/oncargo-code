@@ -1,9 +1,10 @@
-import { LogOut, ShieldCheck, ChevronDown } from 'lucide-react';
+import { LogOut, ShieldCheck, ChevronDown, UserRound } from 'lucide-react';
+import { roleLabel as orgRoleLabel } from '@/lib/permissions';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /** Menú de usuario del topbar. El cierre de sesión es un POST a /logout. */
-export default function UserMenu({ name, email, role, verified }: { name: string; email: string; role: string; verified?: boolean }) {
+export default function UserMenu({ name, email, role, roleName, verified }: { name: string; email: string; role: string; /** Rol de la organización (ADMIN, OPS, VIEWER). */ roleName?: string; verified?: boolean }) {
   function logout() {
     const form = document.createElement('form');
     form.method = 'post';
@@ -26,14 +27,18 @@ export default function UserMenu({ name, email, role, verified }: { name: string
         <div className="px-2.5 py-2">
           <p className="truncate text-sm font-semibold text-ink-900">{name}</p>
           <p className="truncate text-xs text-ink-500">{email}</p>
+          {roleName && <p className="mt-0.5 text-xs text-ink-500">Rol: <span className="font-medium text-ink-700" data-testid="user-role">{orgRoleLabel(roleName)}</span></p>}
           {verified && (
             <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              <ShieldCheck className="size-3" aria-hidden="true" /> Empresa verificada
+              <ShieldCheck className="size-3" aria-hidden="true" /> Verificado por OnCargo
             </p>
           )}
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Cuenta</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <a href="/cuenta"><UserRound aria-hidden="true" /> Mi cuenta</a>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={logout}>
           <LogOut aria-hidden="true" /> Cerrar sesión
         </DropdownMenuItem>

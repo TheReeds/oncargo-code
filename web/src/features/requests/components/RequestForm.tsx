@@ -8,13 +8,15 @@ import { Select } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { NumberInput } from '@/components/ui/number-input';
-import { flash, toast } from '@/components/ui/toaster';
+import { flash } from '@/components/ui/toaster';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { formatDate, formatKm, formatMoney } from '@/lib/format';
-import { splitActionError } from '@/lib/action-error';
+import { splitActionError, toFormErrors, isVerificationFailure, type ActionFailure } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
+import { VerificationBlock } from '@/components/domain/VerificationBlock';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/lib/api/server';
 
@@ -53,6 +55,7 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<ActionFailure | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false); // desglose plegable en móvil
@@ -95,6 +98,7 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setBlocked(null);
     const errs = validate(v);
     setErrors(errs);
     const first = ORDER.find((k) => errs[k]);
@@ -110,15 +114,16 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
       cargoType: v.cargoType as any, cargoDescription: v.cargoDescription.trim(), weightKg: weight, volumeM3: vol > 0 ? vol : undefined, pickupDate: v.pickupDate,
     });
     if (error) {
-      // `field` de la API → error bajo el campo; sin campo → Alert + toast.
-      const { message, field } = splitActionError(error);
-      const key = field ? FIELD_KEYS[field] : undefined;
+      // `field` de la API → error bajo el campo (RN07: `LOGYX-NEG-001` en dirección o descripción); `ORG-003/004` → explicación; el resto → Alert.
+      const r = toFormErrors(error, FIELD_KEYS);
+      const key = Object.keys(r.errors)[0] as keyof Values | undefined;
       if (key) {
-        setErrors({ [key]: message });
+        setErrors(r.errors);
         requestAnimationFrame(() => document.getElementById(key)?.focus());
+      } else if (isVerificationFailure(r.failure)) {
+        setBlocked(r.failure);
       } else {
-        setError(message);
-        toast.error(message);
+        setError(r.formError);
       }
       setBusy(false);
       return;
@@ -133,6 +138,7 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
     <form onSubmit={onSubmit} noValidate className="grid items-start gap-5 pb-20 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0">
       <div className="min-w-0 space-y-5">
         {error && <Alert tone="error" title="No pudimos publicar la solicitud">{error}</Alert>}
+        {blocked && <VerificationBlock failure={blocked} />}
         <Card>
           <CardHeader><CardTitle>Ruta</CardTitle><span className="text-xs text-ink-500">¿De dónde a dónde va tu carga?</span></CardHeader>
           <CardBody>
@@ -142,14 +148,14 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
                 <Field label="Ciudad de origen" htmlFor="originCity" error={err('originCity')}>
                   <Combobox id="originCity" value={v.originCity} onValueChange={set('originCity')} options={cityOptions} placeholder="Selecciona la ciudad" searchPlaceholder="Buscar ciudad…" invalid={!!err('originCity')} />
                 </Field>
-                <Field label="Dirección de recojo" htmlFor="originAddress" error={err('originAddress')}><Input id="originAddress" name="originAddress" autoComplete="off" value={v.originAddress} onChange={(e) => set('originAddress')(e.target.value)} onBlur={touch('originAddress')} placeholder="Av. Argentina 1234, Callao" aria-invalid={!!err('originAddress')} /></Field>
+                <Field label="Dirección de recojo" htmlFor="originAddress" error={err('originAddress')}><Input id="originAddress" name="originAddress" autoComplete="off" maxLength={LIMITS.originAddress} value={v.originAddress} onChange={(e) => set('originAddress')(e.target.value)} onBlur={touch('originAddress')} placeholder="Av. Argentina 1234, Callao" aria-invalid={!!err('originAddress')} /></Field>
               </fieldset>
               <fieldset className="space-y-4">
                 <legend className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-500"><span className="size-2.5 bg-petrol-700" aria-hidden="true" />Entrega</legend>
                 <Field label="Ciudad de destino" htmlFor="destinationCity" error={err('destinationCity')}>
                   <Combobox id="destinationCity" value={v.destinationCity} onValueChange={set('destinationCity')} options={cityOptions.filter((c) => c.value !== v.originCity)} placeholder="Selecciona la ciudad" searchPlaceholder="Buscar ciudad…" invalid={!!err('destinationCity')} />
                 </Field>
-                <Field label="Dirección de entrega" htmlFor="destinationAddress" error={err('destinationAddress')}><Input id="destinationAddress" name="destinationAddress" autoComplete="off" value={v.destinationAddress} onChange={(e) => set('destinationAddress')(e.target.value)} onBlur={touch('destinationAddress')} placeholder="Jr. Lima 456, Juliaca" aria-invalid={!!err('destinationAddress')} /></Field>
+                <Field label="Dirección de entrega" htmlFor="destinationAddress" error={err('destinationAddress')}><Input id="destinationAddress" name="destinationAddress" autoComplete="off" maxLength={LIMITS.destinationAddress} value={v.destinationAddress} onChange={(e) => set('destinationAddress')(e.target.value)} onBlur={touch('destinationAddress')} placeholder="Jr. Lima 456, Juliaca" aria-invalid={!!err('destinationAddress')} /></Field>
               </fieldset>
             </div>
           </CardBody>
@@ -166,7 +172,7 @@ export default function RequestForm({ cities, cargoTypes, today }: { cities: Ite
               <Field label="Peso" htmlFor="weightKg" error={err('weightKg')}><div onBlur={touch('weightKg')}><NumberInput id="weightKg" value={v.weightKg} onValueChange={set('weightKg')} decimals={1} suffix="kg" placeholder="3,200" invalid={!!err('weightKg')} /></div></Field>
               <Field label="Volumen" htmlFor="volumeM3" hint="Opcional. Ayuda a elegir el vehículo."><NumberInput id="volumeM3" value={v.volumeM3} onValueChange={set('volumeM3')} decimals={1} suffix="m³" placeholder="12" /></Field>
             </div>
-            <Field label="Descripción de la carga" htmlFor="cargoDescription" error={err('cargoDescription')}><Textarea id="cargoDescription" name="cargoDescription" value={v.cargoDescription} onChange={(e) => set('cargoDescription')(e.target.value)} onBlur={touch('cargoDescription')} placeholder="Ej.: 120 rollos de tela, paletizados" aria-invalid={!!err('cargoDescription')} /></Field>
+            <Field label="Descripción de la carga" htmlFor="cargoDescription" error={err('cargoDescription')} hint={`Hasta ${LIMITS.cargoDescription} caracteres. No incluyas teléfonos ni correos: el contacto va por el chat.`}><Textarea id="cargoDescription" name="cargoDescription" maxLength={LIMITS.cargoDescription} value={v.cargoDescription} onChange={(e) => set('cargoDescription')(e.target.value)} onBlur={touch('cargoDescription')} placeholder="Ej.: 120 rollos de tela, paletizados" aria-invalid={!!err('cargoDescription')} /></Field>
           </CardBody>
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-steel-200 bg-steel-100/50 px-5 py-3.5">
             <Button asChild variant="outline"><a href="/pyme/solicitudes">Volver</a></Button>

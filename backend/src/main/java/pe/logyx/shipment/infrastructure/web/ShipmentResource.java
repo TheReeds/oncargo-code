@@ -9,6 +9,7 @@ import pe.logyx.shared.api.ApiResponse;
 import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.tenancy.Roles;
 import pe.logyx.shipment.application.AssignDriverUseCase;
+import pe.logyx.shipment.application.DriverShipmentScope;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.TrackStopsUseCase;
 import pe.logyx.shipment.application.ShipmentLifecycleUseCase;
@@ -80,8 +81,11 @@ public class ShipmentResource {
     @GET
     @Path("/driver/shipments")
     @RolesAllowed(Roles.DRIVER)
-    public ApiResponse<List<ShipmentView>> driverShipments() {
-        return ApiResponse.of(ShipmentView.of(queries.driverShipments()));
+    @Operation(summary = "Mis envíos como conductor: activos (por omisión), historial o todos (F22)")
+    public ApiResponse<List<ShipmentView>> driverShipments(
+            @Parameter(description = "ACTIVE (por omisión: pendientes y en tránsito), HISTORY (entregados y cancelados, "
+                    + "recientes primero) o ALL (activos y luego historial).") @QueryParam("scope") String scope) {
+        return ApiResponse.of(ShipmentView.of(queries.driverShipments(DriverShipmentScope.parse(scope))));
     }
 
     @GET

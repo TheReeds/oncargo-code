@@ -1,4 +1,5 @@
 import { expect, type Page, type BrowserContext, type Locator } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 /** Espera a que todas las islas de Astro estén hidratadas (los handlers de React ya existen). */
 export async function hydrated(page: Page) {
@@ -41,6 +42,26 @@ export async function pickDay(page: Page, isoDate: string) {
     await page.getByRole('button', { name: /siguiente|next/i }).first().click();
   }
   await page.locator(`[data-day="${isoDate}"] button, button[data-day="${isoDate}"]`).first().click();
+}
+
+/** axe (WCAG 2.1 AA): sin violaciones `serious`/`critical`. `include` limita el análisis a un selector (p. ej. un diálogo abierto). */
+export async function expectNoSeriousViolations(page: Page, include?: string) {
+  const b = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+  const results = await (include ? b.include(include) : b).analyze();
+  const bad = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+  expect(bad.map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+}
+
+/** Llena el formulario de nueva solicitud (Lima → Juliaca) sin enviarlo. */
+export async function fillRequestForm(page: Page, o: { description?: string; pickupIso: string }) {
+  await pick(page, page.getByRole('combobox', { name: 'Ciudad de origen' }), 'Lima');
+  await pick(page, page.getByRole('combobox', { name: 'Ciudad de destino' }), 'Juliaca');
+  await page.getByLabel('Peso').fill('3200');
+  await page.getByLabel('Dirección de recojo').fill('Av. Argentina 1234, Callao');
+  await page.getByLabel('Dirección de entrega').fill('Jr. Lima 456, Juliaca');
+  await page.getByLabel('Descripción de la carga').fill(o.description ?? '120 rollos de tela, paletizados');
+  await page.getByRole('button', { name: 'Fecha de recojo' }).click();
+  await pickDay(page, o.pickupIso);
 }
 
 export { expect };

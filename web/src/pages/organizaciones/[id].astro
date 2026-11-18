@@ -76,7 +76,7 @@ const cityLabel = rep ? (CITY_LABELS[(rep.city ?? '').toUpperCase()] ?? rep.city
       </Card>
 
       <KpiGrid cols={3}>
-        <KpiTile label="Verificación" value={rep.rucVerified ? 'RUC verificado' : 'Sin verificar'} icon={ShieldCheck} tone={rep.rucVerified ? 'money' : 'default'} context={rep.rucVerified ? 'Empresa con RUC validado' : 'RUC aún sin validar'} />
+        <KpiTile label="Verificación" value={rep.rucVerified ? 'Verificada' : 'Sin verificar'} icon={ShieldCheck} tone={rep.rucVerified ? 'money' : 'default'} context={rep.rucVerified ? 'Revisada por OnCargo' : 'Aún sin la revisión de OnCargo'} />
         <KpiTile label="Calificación promedio" value={hasReviews ? (rep.averageRating?.toFixed(1) ?? '—') : '—'} unit={hasReviews ? '/5' : undefined} icon={Star} tone={hasReviews ? 'warn' : 'default'} context="Puntualidad, carga y comunicación" />
         <KpiTile label="Reseñas recibidas" value={total} icon={MessageSquareText} context={hasReviews ? 'De envíos entregados' : 'Aún sin reseñas'} className="col-span-2 lg:col-span-1" />
       </KpiGrid>

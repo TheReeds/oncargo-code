@@ -3,12 +3,18 @@ package pe.logyx.core.designsystem.components
 import android.annotation.SuppressLint
 import android.graphics.Color as AColor
 import android.os.Bundle
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -44,8 +50,11 @@ const val POSITRON_STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
 const val DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark"
 
 /**
- * Mapa MapLibre (OpenFreeMap positron) con la ruta origen → destino en petrol.
- * Origen = círculo hueco, destino = punto sólido. Sin API key.
+ * Mapa MapLibre (OpenFreeMap positron/dark) con la ruta origen → destino en petrol. Sin API key.
+ * Origen = círculo hueco, destino = punto sólido.
+ *
+ * [path]: geometría por carretera (`RoutesRepository`, ADR-0008) → línea continua siguiendo la vía y la atribución
+ * "Rutas © OpenStreetMap" (ODbL) sobre el mapa. Sin [path] (cargando o sin red) se dibuja la recta punteada.
  */
 @SuppressLint("MissingPermission")
 @Composable
@@ -53,6 +62,7 @@ fun RouteMap(
     origin: GeoPoint?,
     destination: GeoPoint?,
     modifier: Modifier = Modifier,
+    path: List<GeoPoint>? = null,
     height: Dp = 200.dp,
     styleUrl: String = if (androidx.compose.foundation.isSystemInDarkTheme()) DARK_STYLE_URL else POSITRON_STYLE_URL,
     fillParent: Boolean = false,
@@ -86,26 +96,45 @@ fun RouteMap(
     }
 
     val base = if (fillParent) modifier else modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(10.dp))
-    AndroidView(
-        modifier = base.semantics { this.contentDescription = contentDescription },
-        factory = {
-            mapView.getMapAsync { map -> map.setStyle(Style.Builder().fromUri(styleUrl)) { style -> drawRoute(map, style, origin, destination) } }
-            mapView
-        },
-        update = {
-            it.getMapAsync { map -> map.getStyle { style -> drawRoute(map, style, origin, destination) } }
-        },
-    )
+    val road = path?.takeIf { it.size >= 2 }
+    val lineColor = if (styleUrl == DARK_STYLE_URL) ROUTE_DARK else ROUTE_LIGHT
+    Box(base) {
+        AndroidView(
+            modifier = Modifier.matchParentSize().semantics { this.contentDescription = contentDescription },
+            factory = {
+                mapView.getMapAsync { map -> map.setStyle(Style.Builder().fromUri(styleUrl)) { style -> drawRoute(map, style, origin, destination, road, lineColor) } }
+                mapView
+            },
+            update = {
+                it.getMapAsync { map -> map.getStyle { style -> drawRoute(map, style, origin, destination, road, lineColor) } }
+            },
+        )
+        if (road != null) {
+            Text(
+                stringResource(R.string.ds_route_attribution),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        }
+    }
 }
+
+/** Petrol de la ruta: en el mapa oscuro, el tono claro (mismo par que la web). */
+private const val ROUTE_LIGHT = "#0B4F6C"
+private const val ROUTE_DARK = "#38A3C9"
 
 private const val SOURCE_ID = "logyx-route"
 private const val POINTS_ID = "logyx-route-points"
 
-private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destination: GeoPoint?) {
+private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destination: GeoPoint?, road: List<GeoPoint>?, color: String) {
     if (origin == null || destination == null) return
     val o = Point.fromLngLat(origin.lng, origin.lat)
     val d = Point.fromLngLat(destination.lng, destination.lat)
-    val line = Feature.fromGeometry(LineString.fromLngLats(listOf(o, d)))
+    val linePoints = road?.map { Point.fromLngLat(it.lng, it.lat) } ?: listOf(o, d)
+    val line = Feature.fromGeometry(LineString.fromLngLats(linePoints))
     val pts = FeatureCollection.fromFeatures(
         listOf(Feature.fromGeometry(o).apply { addStringProperty("kind", "origin") }, Feature.fromGeometry(d).apply { addStringProperty("kind", "destination") }),
     )
@@ -113,12 +142,15 @@ private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destina
         ?: style.addSource(GeoJsonSource(SOURCE_ID, line))
     (style.getSourceAs<GeoJsonSource>(POINTS_ID))?.setGeoJson(pts)
         ?: style.addSource(GeoJsonSource(POINTS_ID, pts))
-    val petrol = AColor.parseColor("#0B4F6C")
+    val petrol = AColor.parseColor(color)
+    // Por carretera: línea continua; respaldo en recta: punteada (no finge precisión).
+    val dash = if (road != null) arrayOf(1f, 0f) else arrayOf(2f, 1.5f)
+    (style.getLayer("$SOURCE_ID-line") as? LineLayer)?.setProperties(PropertyFactory.lineDasharray(dash), PropertyFactory.lineColor(petrol))
     if (style.getLayer("$SOURCE_ID-line") == null) {
         style.addLayer(
             LineLayer("$SOURCE_ID-line", SOURCE_ID).withProperties(
                 PropertyFactory.lineColor(petrol), PropertyFactory.lineWidth(4f),
-                PropertyFactory.lineCap("round"), PropertyFactory.lineDasharray(arrayOf(2f, 1.5f)),
+                PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"), PropertyFactory.lineDasharray(dash),
             ),
         )
         style.addLayer(
@@ -131,6 +163,7 @@ private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destina
             ),
         )
     }
-    val bounds = LatLngBounds.Builder().include(LatLng(origin.lat, origin.lng)).include(LatLng(destination.lat, destination.lng)).build()
+    val bounds = LatLngBounds.Builder().include(LatLng(origin.lat, origin.lng)).include(LatLng(destination.lat, destination.lng))
+        .apply { road?.forEach { include(LatLng(it.lat, it.lng)) } }.build()
     map.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 80), 600)
 }

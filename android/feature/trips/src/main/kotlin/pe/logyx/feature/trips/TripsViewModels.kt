@@ -12,6 +12,7 @@ import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.RealtimeRepository
 import pe.logyx.core.data.TripsRepository
+import pe.logyx.core.data.fieldErrors
 import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.data.userMessage
@@ -63,6 +64,8 @@ data class PublishTripErrors(
     val vehicle: UiText? = null,
     val capacity: UiText? = null,
     val rate: UiText? = null,
+    /** `NEG-001` (RN07) en las notas del viaje, field `notes`. */
+    val notes: UiText? = null,
 ) {
     val any: Boolean get() = listOf(origin, destination, departure, vehicle, capacity, rate).any { it != null }
 }
@@ -156,7 +159,7 @@ class PublishTripViewModel(
     fun onCapacity(text: String) = edit({ it.copy(capacity = null) }) { it.copy(capacityText = sanitizeKgInput(text)) }
     fun onPricingMode(mode: TripPricingMode) = edit({ it.copy(rate = null) }) { it.copy(pricingMode = mode) }
     fun onRate(text: String) = edit({ it.copy(rate = null) }) { it.copy(rateText = text) }
-    fun onNotes(text: String) = edit { it.copy(notes = text.take(300)) }
+    fun onNotes(text: String) = edit({ it.copy(notes = null) }) { it.copy(notes = text.take(MAX_TRIP_NOTES)) }
     fun onMessageShown() = _state.update { it.copy(message = null) }
 
     fun submit(now: OffsetDateTime = OffsetDateTime.now()) {
@@ -190,6 +193,7 @@ class PublishTripViewModel(
                             "departureAt" -> it.copy(submitting = false, errors = it.errors.copy(departure = raw))
                             "vehicleId" -> it.copy(submitting = false, errors = it.errors.copy(vehicle = raw))
                             "rate" -> it.copy(submitting = false, errors = it.errors.copy(rate = raw))
+                            "notes" -> it.copy(submitting = false, errors = it.errors.copy(notes = raw))
                             else -> it.copy(submitting = false, message = UiMessage.error(e.userMessage()))
                         }
                     }
@@ -255,11 +259,16 @@ data class TripDetailUiState(
     val pending: TripAction? = null,
     /** Motivo opcional al rechazar una reserva (máx. [MAX_REJECT_REASON]). */
     val rejectReason: String = "",
+    /** `NEG-001` (RN07) en el motivo del rechazo, field `reason`: la hoja sigue abierta con el error bajo el campo. */
+    val rejectError: String? = null,
     val busy: Boolean = false,
     val message: UiMessage? = null,
 )
 
 internal const val MAX_REJECT_REASON = 300
+
+/** `@Size(max = 300)` de las notas del viaje y de la oferta. */
+internal const val MAX_TRIP_NOTES = 300
 
 class CarrierTripDetailViewModel(
     private val tripId: String,
@@ -301,9 +310,9 @@ class CarrierTripDetailViewModel(
     fun askReject(b: TripBookingView) = ask(TripAction.Reject(b))
     fun askClose() = ask(TripAction.Close)
     fun askCancel() = ask(TripAction.Cancel)
-    private fun ask(a: TripAction) = _state.update { if (it.busy) it else it.copy(pending = a, rejectReason = "") }
-    fun dismissConfirm() = _state.update { if (it.busy) it else it.copy(pending = null, rejectReason = "") }
-    fun onRejectReason(text: String) = _state.update { it.copy(rejectReason = text.take(MAX_REJECT_REASON)) }
+    private fun ask(a: TripAction) = _state.update { if (it.busy) it else it.copy(pending = a, rejectReason = "", rejectError = null) }
+    fun dismissConfirm() = _state.update { if (it.busy) it else it.copy(pending = null, rejectReason = "", rejectError = null) }
+    fun onRejectReason(text: String) = _state.update { it.copy(rejectReason = text.take(MAX_REJECT_REASON), rejectError = null) }
     fun onMessageShown() = _state.update { it.copy(message = null) }
 
     fun perform() {
@@ -323,8 +332,14 @@ class CarrierTripDetailViewModel(
                     load(initial = false)
                 },
                 onFailure = { e ->
-                    _state.update { it.copy(busy = false, pending = null, rejectReason = "", message = UiMessage.error(e.userMessage())) }
-                    load(initial = false)
+                    val reasonError = if (action is TripAction.Reject) e.fieldErrors("reason")["reason"] else null
+                    if (reasonError != null) {
+                        // RN07: el motivo se queda en la hoja con la explicación bajo el campo.
+                        _state.update { it.copy(busy = false, rejectError = reasonError) }
+                    } else {
+                        _state.update { it.copy(busy = false, pending = null, rejectReason = "", rejectError = null, message = UiMessage.error(e.userMessage())) }
+                        load(initial = false)
+                    }
                 },
             )
         }

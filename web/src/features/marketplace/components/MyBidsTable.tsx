@@ -12,9 +12,10 @@ import NegotiateCell from '@/features/negotiation/components/NegotiateCell';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { RequestView } from '@/lib/api/server';
 import { cn } from '@/lib/utils';
+import { BID_STATE_LABEL, CLOSE_REASON_LABEL, bidState, standingText, type BidState } from '../bid-state';
 
 const PAGE_SIZE = 15;
-type Filter = '' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
+type Filter = '' | BidState;
 
 /** Diferencia porcentual de mi oferta respecto del precio sugerido (negativa = por debajo). */
 function diffPct(amount: number, suggested?: number | null) {
@@ -31,8 +32,8 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
     const i = openRequestId ? rows.findIndex((r) => r.id === openRequestId) : -1;
     return i < 0 ? 1 : Math.floor(i / PAGE_SIZE) + 1;
   });
-  const count = (s: Filter) => rows.filter((r) => r.myBid?.status === s).length;
-  const shown = useMemo(() => (filter ? rows.filter((r) => r.myBid?.status === filter) : rows), [rows, filter]);
+  const count = (s: Filter) => rows.filter((r) => bidState(r) === s).length;
+  const shown = useMemo(() => (filter ? rows.filter((r) => bidState(r) === filter) : rows), [rows, filter]);
   const slice = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
@@ -46,7 +47,9 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
             { value: '', label: 'Todas', count: rows.length },
             { value: 'PENDING', label: 'Pendientes', count: count('PENDING') },
             { value: 'ACCEPTED', label: 'Aceptadas', count: count('ACCEPTED') },
-            { value: 'REJECTED', label: 'Rechazadas', count: count('REJECTED') },
+            { value: 'LOST', label: 'Perdidas', count: count('LOST') },
+            ...(count('CANCELLED') > 0 ? [{ value: 'CANCELLED', label: 'Canceladas', count: count('CANCELLED') }] : []),
+            ...(count('WITHDRAWN') > 0 ? [{ value: 'WITHDRAWN', label: 'Retiradas', count: count('WITHDRAWN') }] : []),
           ]}
         />
       </div>
@@ -62,8 +65,12 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
               {slice.map((r) => {
                 const b = r.myBid!;
                 const d = diffPct(b.amount ?? 0, r.suggestedPrice);
-                const pending = b.status === 'PENDING';
+                const state = bidState(r);
+                const pending = state === 'PENDING';
                 const open = r.auction?.status === 'OPEN';
+                const standing = state === 'WITHDRAWN' ? null : standingText(r.myBidStanding);
+                const closedAt = r.auction?.closedAt;
+                const reason = r.auction?.closeReason ? CLOSE_REASON_LABEL[r.auction.closeReason] ?? null : null;
                 return (
                   <Tr key={r.id} className={cn(pending && 'bg-amber-50/40')}>
                     <Td primary className="min-w-56">
@@ -75,20 +82,29 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
                       <div className="@max-[720px]:text-right">
                         <div className="money text-base">{formatMoney(b.amount)}</div>
                         {d != null && <div className={cn('font-mono text-xs tabular-nums', d <= 0 ? 'text-emerald-700' : 'text-amber-700')}>{`${d > 0 ? '+' : ''}${d.toFixed(1)}%`}<span className="font-sans text-ink-500"> vs. sugerido {formatMoney(r.suggestedPrice)}</span></div>}
+                        {standing && (
+                          <div className="mt-1 max-w-52 whitespace-normal text-xs" data-testid="bid-standing">
+                            <span className={cn('font-semibold', standing.tone === 'good' ? 'text-emerald-700' : standing.tone === 'warn' ? 'text-amber-700' : 'text-ink-900')}>{standing.headline}</span>
+                            {standing.band && <span className="block text-ink-700">{standing.band}</span>}
+                          </div>
+                        )}
                       </div>
                     </Td>
                     <Td label="Vehículo" className="whitespace-nowrap">
                       {b.vehiclePlate ? <div className="@max-[720px]:text-right"><div className="font-mono">{b.vehiclePlate}</div><div className="text-xs text-ink-500">{b.vehicleType ? VEHICLE_LABELS[b.vehicleType] : ''}</div></div> : <span className="text-ink-500">—</span>}
                     </Td>
-                    <Td label="Estado" className="whitespace-nowrap">
+                    <Td label="Estado" className="min-w-40">
                       <div className="flex flex-col items-start gap-1 @max-[720px]:items-end">
-                        <StatusPill status={b.status!} kind="bid" />
-                        {pending && (open ? <span className="text-xs text-ink-500"><span className="font-mono">{r.auction!.bidCount}/{r.auction!.maxBids}</span> ofertas · <Countdown closesAt={r.auction!.closesAt} className="text-xs" /></span> : <span className="text-xs text-ink-500">Subasta cerrada</span>)}
+                        {state === 'LOST' ? <StatusPill status="LOST" /> : state === 'CANCELLED' ? <StatusPill status="BID_CANCELLED" /> : <StatusPill status={b.status!} kind="bid" />}
+                        {state === 'CANCELLED' && <span className="max-w-48 text-xs text-ink-700"><span className="font-medium">La PYME canceló la solicitud</span>{r.cancelReason ? <span className="text-ink-500">: {r.cancelReason}</span> : null}</span>}
+                        {state === 'LOST' && <span className="max-w-48 text-xs text-ink-700">{r.status === 'MATCHED' ? 'La PYME eligió otra oferta.' : 'La PYME no eligió tu oferta.'}</span>}
+                        {state === 'PENDING' && (open ? <span className="text-xs text-ink-500"><span className="font-mono">{r.auction!.bidCount}/{r.auction!.maxBids}</span> ofertas · <Countdown closesAt={r.auction!.closesAt} className="text-xs" /></span> : <span className="text-xs text-ink-500">Subasta cerrada: la PYME aún puede elegirte</span>)}
+                        {!open && r.auction && (reason || closedAt) && <span className="max-w-48 text-xs text-ink-500" data-testid="bid-closure">Subasta cerrada{closedAt ? ` el ${formatDateTime(closedAt)}` : ''}{reason ? ` · ${reason}` : ''}</span>}
                       </div>
                     </Td>
                     <Td actions className="whitespace-nowrap text-right">
                       <div className="flex flex-col items-end gap-1 @max-[720px]:w-full @max-[720px]:items-stretch @max-[720px]:[&>div]:items-stretch">
-                        <NegotiateCell requestId={r.id!} route={`${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`} bid={{ id: b.id!, amount: b.amount, status: b.status }} closed={r.status === 'CANCELLED' || (r.status === 'MATCHED' && b.status !== 'ACCEPTED')} autoOpen={openRequestId === r.id} />
+                        <NegotiateCell requestId={r.id!} route={`${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`} bid={{ id: b.id!, amount: b.amount, status: b.status }} closed={r.status === 'CANCELLED' || (r.status === 'MATCHED' && b.status !== 'ACCEPTED')} floor={r.priceFloor} canWithdraw={open && r.status === 'PUBLISHED'} autoOpen={openRequestId === r.id} />
                         {b.status === 'ACCEPTED' && <Button asChild size="sm" variant="ghost"><a href="/transportista/envios"><Truck />Ver envío<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></a></Button>}
                       </div>
                     </Td>

@@ -1,0 +1,136 @@
+---
+/** "Cómo funciona" en 4 pasos con mocks fieles del producto (cifras de las reglas reales: 20 min, 5 ofertas, piso 75 %, tarifa del backend). */
+import { Check, MapPin, Camera, Star, Timer, ShieldCheck, ArrowRight, Calendar, Weight } from '@lucide/astro';
+import { Badge } from '@/components/ui/badge';
+import { formatMoney, formatNumber } from '@/lib/format';
+import { km, quote } from '../pricing';
+
+const dist = km('LIMA', 'AREQUIPA');
+const q = quote(dist, 3.2);
+const offer = (p: number) => Math.round(q.suggested * (1 - p / 100) * 100) / 100;
+const A = offer(5.8), B = offer(3.1), C = offer(2.1);
+const breakdown: [string, number][] = [['Combustible', q.fuel], ['Transporte', q.transport], ['Peajes', q.tolls], ['Manipuleo', q.handling]];
+const card = 'mk-card mk-rv group relative flex flex-col overflow-hidden rounded-card border border-steel-200 bg-surface p-5 sm:p-7';
+---
+<section id="como-funciona" class="relative border-b border-steel-200 bg-steel-100" aria-labelledby="como-funciona-t">
+  <div class="mx-auto w-full max-w-[1280px] px-4 py-12 lg:px-10 lg:py-16">
+    <div class="grid items-end gap-4 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
+      <div class="mk-rv">
+        <p class="mk-eyebrow">Cómo funciona</p>
+        <h2 id="como-funciona-t" class="mk-h2 mt-3 text-ink-900">Una subasta inversa corta: los transportistas compiten, <span class="text-petrol-700">tú eliges</span></h2>
+      </div>
+      <p class="mk-lead mk-rv text-base text-ink-700 lg:text-lg" style="--i:1">De la solicitud a la entrega en cuatro pasos y con reglas claras para ambos lados: la subasta dura hasta 20 minutos o cierra al llegar a 5 ofertas, y ninguna puede bajar del 75 % del precio sugerido.</p>
+    </div>
+
+    <ol class="mt-9 grid gap-4 lg:grid-cols-12 lg:gap-5">
+      <!-- 1 · Publica -->
+      <li class:list={[card, 'lg:col-span-7']} style="--i:0">
+        <div class="flex items-start gap-4">
+          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">01</span>
+          <div>
+            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 1: </span>Publica tu solicitud</h3>
+            <p class="mt-1.5 max-w-prose text-pretty text-sm text-ink-700">Indica ruta, carga y fecha de recojo. Antes de publicar ves una cotización estimada con su desglose, calculada con los km reales por carretera.</p>
+          </div>
+        </div>
+        <div class="mt-5 grid flex-1 gap-4 rounded-input border border-steel-200 bg-steel-100/70 p-4 sm:grid-cols-[1fr_1fr]" aria-hidden="true">
+          <div class="space-y-2.5 text-sm">
+            <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><MapPin size={15} class="text-petrol-700" /><span class="text-ink-500">Origen</span><span class="ml-auto font-medium text-ink-900">Lima</span></div>
+            <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><MapPin size={15} class="text-emerald-700" /><span class="text-ink-500">Destino</span><span class="ml-auto font-medium text-ink-900">Arequipa</span></div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><Weight size={15} class="text-ink-500" /><span class="mk-num ml-auto font-medium text-ink-900">3.2 t</span></div>
+              <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><Calendar size={15} class="text-ink-500" /><span class="ml-auto font-medium text-ink-900">28 nov</span></div>
+            </div>
+            <p class="text-xs text-ink-500"><span class="mk-num">{formatNumber(dist, 1)} km</span> por carretera · Carga general</p>
+          </div>
+          <dl class="rounded-input border border-steel-200 bg-surface px-3.5 py-2 text-sm">
+            <p class="pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">Cotización estimada</p>
+            {breakdown.map(([k, v]) => <div class="flex items-center justify-between py-1"><dt class="text-ink-700">{k}</dt><dd class="mk-num text-ink-900">{formatMoney(v)}</dd></div>)}
+            <div class="mt-1 flex items-center justify-between border-t border-steel-200 py-2"><dt class="font-semibold text-ink-900">Sugerido</dt><dd class="money text-base">{formatMoney(q.suggested)}</dd></div>
+          </dl>
+        </div>
+      </li>
+
+      <!-- 2 · Ofertan -->
+      <li class:list={[card, 'lg:col-span-5']} style="--i:1">
+        <div class="flex items-start gap-4">
+          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">02</span>
+          <div>
+            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 2: </span>Los transportistas ofertan</h3>
+            <p class="mt-1.5 text-pretty text-sm text-ink-700">Hasta 20 minutos o 5 ofertas, lo que ocurra primero. Si pasan 24 horas sin ofertas, un operador de OnCargo asigna un transportista compatible.</p>
+          </div>
+        </div>
+        <div class="mt-5 flex-1 rounded-input border border-steel-200 bg-steel-100/70 p-4" aria-hidden="true">
+          <div class="flex items-center justify-between">
+            <Badge tone="amber"><Timer size={12} /> Cierra en <span class="mk-num">12:41</span></Badge>
+            <span class="flex items-center gap-2 text-xs text-ink-500"><span class="flex gap-0.5">{[0, 1, 2, 3, 4].map((i) => <span class:list={['h-1.5 w-4 rounded-full', i < 3 ? 'bg-petrol-700' : 'bg-steel-200']}></span>)}</span><span class="mk-num">3 de 5</span></span>
+          </div>
+          <ul class="mt-3 space-y-2 text-sm">
+            {[['Transportes Andinos', C], ['Ruta Andina', B]].map(([n, a]) => (
+              <li class="flex items-center justify-between rounded-input border border-steel-200 bg-surface px-3 py-2"><span class="flex items-center gap-1.5 text-ink-700"><ShieldCheck size={14} class="text-emerald-700" />{n}</span><span class="mk-num text-ink-900">{formatMoney(a as number)}</span></li>
+            ))}
+            <li class="flex items-center justify-between rounded-input border border-emerald-700/30 bg-emerald-50 px-3 py-2"><span class="flex items-center gap-1.5 text-ink-700"><Check size={14} class="text-emerald-700" stroke-width={3} />Logística Altiplano</span><span class="money">{formatMoney(A)}</span></li>
+          </ul>
+        </div>
+      </li>
+
+      <!-- 3 · Aceptas -->
+      <li class:list={[card, 'lg:col-span-5']} style="--i:0">
+        <div class="flex items-start gap-4">
+          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">03</span>
+          <div>
+            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 3: </span>Aceptas la mejor oferta</h3>
+            <p class="mt-1.5 text-pretty text-sm text-ink-700">Compara precio, vehículo y Trust Score. Al aceptar una, las demás se rechazan y nace tu envío.</p>
+          </div>
+        </div>
+        <div class="mt-5 grid flex-1 grid-cols-2 gap-3" aria-hidden="true">
+          <div class="rounded-input border-2 border-emerald-700/50 bg-emerald-50 p-3">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">Mejor precio</p>
+            <p class="money mt-1 text-lg">{formatMoney(A)}</p>
+            <p class="mk-num mt-0.5 text-[11px] font-medium text-emerald-700">−5.8 % vs sugerido</p>
+            <p class="mt-2 text-xs text-ink-700">Camión mediano</p>
+            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><Star size={12} class="text-amber-700" /> Trust <span class="mk-num">86</span>/100</p>
+            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><ShieldCheck size={12} class="text-emerald-700" /> Verificada</p>
+            <p class="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-input bg-emerald-700 text-[13px] font-medium text-on-solid">Aceptar oferta <ArrowRight size={13} /></p>
+          </div>
+          <div class="rounded-input border border-steel-200 bg-surface p-3">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">Otra oferta</p>
+            <p class="mk-num mt-1 text-lg font-semibold text-ink-900">{formatMoney(C)}</p>
+            <p class="mk-num mt-0.5 text-[11px] font-medium text-ink-500">−2.1 % vs sugerido</p>
+            <p class="mt-2 text-xs text-ink-700">Camión grande</p>
+            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><Star size={12} class="text-amber-700" /> Trust <span class="mk-num">92</span>/100</p>
+            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><ShieldCheck size={12} class="text-emerald-700" /> Verificada</p>
+            <p class="mt-3 inline-flex h-8 w-full items-center justify-center rounded-input border border-steel-200 text-[13px] font-medium text-ink-700">Ver detalle</p>
+          </div>
+        </div>
+      </li>
+
+      <!-- 4 · Sigues -->
+      <li class:list={[card, 'lg:col-span-7']} style="--i:1">
+        <div class="flex items-start gap-4">
+          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">04</span>
+          <div>
+            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 4: </span>Sigues el envío parada por parada</h3>
+            <p class="mt-1.5 max-w-prose text-pretty text-sm text-ink-700">Mira cada parada, recibe avisos y cierra con la foto de evidencia de la entrega. Después calificas al transportista.</p>
+          </div>
+        </div>
+        <div class="mt-5 grid flex-1 gap-4 rounded-input border border-steel-200 bg-steel-100/70 p-4 sm:grid-cols-[1.2fr_0.8fr]" aria-hidden="true">
+          <ol class="relative space-y-3 text-sm">
+            <span class="absolute bottom-3 left-[9px] top-3 w-0.5 rounded bg-steel-200"></span>
+            {[['Recojo en Lima', '28 nov · 08:12', 'done'], ['Paso por Ica', '28 nov · 11:20', 'done'], ['En ruta por Nazca', '28 nov · 14:40', 'now'], ['Entrega en Arequipa', 'Estimada 29 nov', 'todo']].map(([t, h, s]) => (
+              <li class="relative flex items-center gap-3">
+                <span class:list={['relative z-10 grid size-5 shrink-0 place-items-center rounded-full', s === 'done' && 'bg-emerald-500 text-on-solid', s === 'now' && 'border-[3px] border-petrol-700 bg-surface mk-ping text-petrol-700', s === 'todo' && 'border-2 border-ink-400 bg-surface']}>{s === 'done' && <Check size={11} stroke-width={3} />}</span>
+                <span><span class:list={['block font-medium', s === 'todo' ? 'text-ink-500' : 'text-ink-900']}>{t}</span><span class="mk-num block text-xs text-ink-500">{h}</span></span>
+              </li>
+            ))}
+          </ol>
+          <div class="flex flex-col justify-between gap-3 rounded-input border border-steel-200 bg-surface p-3 text-sm">
+            <p class="flex items-center gap-2 font-medium text-ink-900"><Camera size={15} class="text-petrol-700" /> Foto de evidencia</p>
+            <div class="grid h-14 place-items-center rounded-input bg-steel-100 text-xs text-ink-500">Entrega confirmada</div>
+            <p class="flex items-center gap-0.5 text-amber-700">{[0, 1, 2, 3, 4].map(() => <Star size={14} fill="currentColor" />)}<span class="mk-num ml-1.5 text-xs text-ink-700">5.0</span></p>
+          </div>
+        </div>
+      </li>
+    </ol>
+    <p class="mt-4 text-xs text-ink-500">Ejemplo ilustrativo: los nombres de empresas, horas y ofertas son de muestra; km, tarifas, el tope de 5 ofertas, los 20 minutos y el piso del 75 % siguen las reglas de la plataforma.</p>
+  </div>
+</section>

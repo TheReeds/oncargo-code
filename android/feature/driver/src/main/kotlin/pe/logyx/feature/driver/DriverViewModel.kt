@@ -1,5 +1,8 @@
 package pe.logyx.feature.driver
 
+import pe.logyx.core.data.RoutesRepository
+import pe.logyx.core.data.between
+import pe.logyx.core.model.RouteGeometry
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -38,6 +41,9 @@ data class DriverAction(val stop: StopView, val op: StopOp, val step: DriverStep
 /** Los cuatro pasos del viaje; la pantalla resuelve el texto de cada uno. */
 enum class DriverStep { ARRIVE_PICKUP, PICKED_UP, ARRIVE_DESTINATION, DELIVERED }
 
+/** Cuándo se puede subir evidencia de entrega: `OPEN` entre la llegada y el cierre; `NOT_YET` justo antes de llegar; `CLOSED` ya entregado/cancelado. */
+enum class EvidencePhase { NONE, NOT_YET, OPEN, CLOSED }
+
 /** Resultado exitoso de avanzar; la pantalla lo traduce a un mensaje. */
 enum class DriverNotice { STOP_UPDATED, DELIVERED }
 
@@ -63,6 +69,8 @@ data class DriverUiState(
     val trip: ShipmentView? = null,
     val origin: GeoPoint? = null,
     val destination: GeoPoint? = null,
+    /** Ruta por carretera para el mapa (ADR-0008); null = cargando o sin red (el mapa dibuja la recta). */
+    val route: RouteGeometry? = null,
     /** Hay una llamada de parada en curso: el botón se deshabilita. */
     val acting: Boolean = false,
     /** Error al avanzar el viaje (se muestra sobre el botón, sin perder el viaje en pantalla). */
@@ -75,6 +83,8 @@ data class DriverUiState(
     val photoMissingRejected: Boolean = false,
     /** El backend rechazó avanzar por incidencia activa (LOGYX-TRK-005). */
     val incidentRejected: Boolean = false,
+    /** Viajes anteriores (entregados y cancelados, recientes primero; `scope=HISTORY`, V15 F22). Vacío si no hay o no cargó. */
+    val history: List<ShipmentView> = emptyList(),
 ) {
     val action: DriverAction? get() = trip?.driverAction()
     val delivered: Boolean get() = trip?.status == ShipmentStatus.DELIVERED
@@ -90,6 +100,23 @@ data class DriverUiState(
     /** Pide evidencia: estamos en el paso de entrega. */
     val needsEvidence: Boolean get() = action?.step == DriverStep.DELIVERED
 
+    /**
+     * RN06/F14: la evidencia (foto y firma) solo se sube entre la **llegada** y el **cierre** de la parada de entrega.
+     * Antes de llegar y tras cerrar el backend la rechaza (`DOC-005`/`DOC-008`), así que la UI no la ofrece y lo explica.
+     */
+    val evidencePhase: EvidencePhase
+        get() = when {
+            trip == null -> EvidencePhase.NONE
+            needsEvidence -> EvidencePhase.OPEN
+            action?.step == DriverStep.ARRIVE_DESTINATION -> EvidencePhase.NOT_YET
+            trip.status == ShipmentStatus.DELIVERED || trip.status == ShipmentStatus.CANCELLED -> EvidencePhase.CLOSED
+            else -> EvidencePhase.NONE
+        }
+
+    /** Evidencias que el servidor ya no aceptó (`DOC-008`/`DOC-007`): se descartaron y hay que avisar al conductor. */
+    val closedEvidence: List<EvidenceItem>
+        get() = allEvidence.filter { it.state == EvidenceState.CLOSED } // de cualquier envío: tras entregar ya no hay viaje activo
+
     /** Hay al menos una foto de entrega ya subida (RN06). */
     val hasUploadedPhoto: Boolean get() = evidence.any { it.type == DocumentType.DELIVERY_PHOTO && it.state == EvidenceState.UPLOADED }
 
@@ -103,12 +130,14 @@ data class DriverUiState(
 }
 
 private const val RETRY_INTERVAL_MS = 20_000L
+private const val HISTORY_LIMIT = 10
 
 class DriverTripViewModel(
     private val repo: ShipmentsRepository,
     private val catalog: CatalogRepository,
     private val evidence: EvidenceRepository,
     private val realtime: RealtimeRepository,
+    private val routes: RoutesRepository = RoutesRepository.NONE,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DriverUiState())
     val state: StateFlow<DriverUiState> = _state.asStateFlow()
@@ -180,10 +209,18 @@ class DriverTripViewModel(
                         evidence.load(trip.id)
                         updateRetryLoop()
                     }
+                    val g = trip?.let { routes.between(it.originCity, it.destinationCity) }
+                    _state.update { if (it.trip?.id == trip?.id) it.copy(route = g) else it }
+                    loadHistory()
                 },
                 onFailure = { e -> if (!silent) _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
         }
+    }
+
+    /** "Viajes anteriores" (V15, F22): una llamada barata; si falla, la sección simplemente no aparece. */
+    private suspend fun loadHistory() {
+        repo.driverHistory().onSuccess { list -> _state.update { it.copy(history = list.take(HISTORY_LIMIT)) } }
     }
 
     /** Ejecuta la acción actual (arrive/complete) y reemplaza el viaje con la respuesta del servidor. */
@@ -233,6 +270,12 @@ class DriverTripViewModel(
     fun retryEvidence(id: String) { viewModelScope.launch { evidence.retry(id) } }
 
     fun discardEvidence(id: String) { viewModelScope.launch { evidence.discard(id) } }
+
+    /** El conductor leyó el aviso de evidencia cerrada: se quitan esos ítems de la lista. */
+    fun dismissClosedEvidence() {
+        val ids = _state.value.closedEvidence.map { it.id }
+        viewModelScope.launch { ids.forEach { evidence.discard(it) } }
+    }
 
     fun onNoticeShown() = _state.update { it.copy(notice = null) }
 

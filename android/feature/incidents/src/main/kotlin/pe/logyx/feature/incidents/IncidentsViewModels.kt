@@ -28,6 +28,9 @@ import pe.logyx.core.network.ApiException
 
 const val MAX_DESCRIPTION = 2000
 
+/** `@Size(max = 2000)` del comentario de incidencia (`body`; RN07 aplica a las partes). */
+const val MAX_INCIDENT_COMMENT = 2000
+
 /** Foto tomada (bytes JPEG). Clase propia para tener igualdad por identidad en el estado. */
 class IncidentPhoto(val bytes: ByteArray)
 
@@ -228,7 +231,7 @@ class IncidentDetailViewModel(
         }
     }
 
-    fun onDraft(text: String) = _state.update { it.copy(draft = text, commentError = null) }
+    fun onDraft(text: String) = _state.update { it.copy(draft = text.take(MAX_INCIDENT_COMMENT), commentError = null) }
 
     fun send() {
         val s = _state.value

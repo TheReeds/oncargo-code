@@ -94,7 +94,8 @@ private class FakeSmart : SmartLoadsRepository {
     override suspend fun returnLoads() = returns
     override suspend fun smartLoads(status: SmartLoadStatus?): Result<List<SmartLoadView>> { lastStatus = status; return smarts }
     override suspend fun generate() = generated
-    override suspend fun accept(id: String): Result<SmartLoadView> { calls += "accept:$id"; return decision }
+    var lastBody: pe.logyx.core.model.AcceptSmartLoadRequest? = null
+    override suspend fun accept(id: String, body: pe.logyx.core.model.AcceptSmartLoadRequest): Result<SmartLoadView> { calls += "accept:$id"; lastBody = body; return decision }
     override suspend fun reject(id: String): Result<SmartLoadView> { calls += "reject:$id"; return decision }
 }
 
@@ -212,6 +213,21 @@ class TripsViewModelsTest {
         assertFalse(vm.state.value.submitting)
     }
 
+    @Test fun `RN07 - NEG-001 en las notas del viaje queda bajo el campo y se limpia al editar`() = runTest {
+        val trips = FakeTrips().apply { createResult = Result.failure(apiError("LOGYX-NEG-001", "No incluyas teléfonos", "notes", 400)) }
+        val vm = PublishTripViewModel(trips, FakeLoads(), FakeCatalog())
+        vm.onOrigin(lima); vm.onDestination(juliaca); vm.onDate(LocalDate.of(2026, 11, 14)); vm.onTime(LocalTime.of(8, 0))
+        vm.onCapacity("1000"); vm.onRate("1"); vm.onNotes("llámame 987654321")
+        vm.submit(now)
+        assertEquals(UiText.Raw("No incluyas teléfonos"), vm.state.value.errors.notes)
+        assertNull(vm.state.value.message)
+        assertFalse(vm.state.value.submitting)
+        vm.onNotes("Salida 6 a. m.")
+        assertNull(vm.state.value.errors.notes)
+        vm.onNotes("x".repeat(400))
+        assertEquals(300, vm.state.value.form.notes.length)
+    }
+
     @Test fun `error generico al publicar va al snackbar`() = runTest {
         val trips = FakeTrips().apply { createResult = Result.failure(apiError("LOGYX-GEN-500", "No pudimos publicar", status = 500)) }
         val vm = PublishTripViewModel(trips, FakeLoads(), FakeCatalog())
@@ -284,6 +300,20 @@ class TripsViewModelsTest {
         vm.onRejectReason("   ")
         vm.perform()
         assertNull(trips.lastReason)
+    }
+
+    @Test fun `RN07 - NEG-001 en el motivo del rechazo deja la hoja abierta con el error bajo el campo`() = runTest {
+        val trips = FakeTrips().apply { actionResult = Result.failure(apiError("LOGYX-NEG-001", "No incluyas teléfonos", "reason", 400)) }
+        val vm = CarrierTripDetailViewModel("t1", false, trips, FakeRealtime())
+        vm.askReject(booking("b1")); vm.onRejectReason("escríbeme al 987654321"); vm.perform()
+        val s = vm.state.value
+        assertEquals("No incluyas teléfonos", s.rejectError)
+        assertNotNull(s.pending)
+        assertEquals("escríbeme al 987654321", s.rejectReason)
+        assertFalse(s.busy)
+        assertNull(s.message)
+        vm.onRejectReason("Sin espacio")
+        assertNull(vm.state.value.rejectError)
     }
 
     @Test fun `el motivo se limita a 300 caracteres y se limpia al cancelar`() = runTest {
@@ -396,25 +426,99 @@ class TripsViewModelsTest {
         assertEquals(listOf<Any>(2), vm.state.value.message?.args)
     }
 
-    @Test fun `smart load - aceptar y rechazar piden confirmacion`() = runTest {
+    @Test fun `smart load - aceptar abre la hoja con el precio sugerido por carga y pide confirmacion`() = runTest {
         val smart = FakeSmart().apply { smarts = Result.success(listOf(smartLoad("s1"))) }
         val vm = SmartLoadsViewModel(smart, FakeRealtime())
         vm.askAccept(smartLoad("s1"))
-        assertTrue(vm.state.value.pending!!.accept)
+        val form = vm.state.value.accept!!
+        assertEquals(mapOf("r1" to "8211.40", "r2" to "8211.40"), form.amounts)
         assertTrue(smart.calls.isEmpty())
-        vm.confirm()
+        vm.requestAcceptConfirm()
+        assertTrue(vm.state.value.accept!!.confirming)
+        assertTrue(smart.calls.isEmpty())
+        vm.confirmAccept()
         assertEquals(listOf("accept:s1"), smart.calls)
         assertEquals(R.string.trips_smart_accepted, vm.state.value.message?.textRes)
+        assertNull(vm.state.value.accept)
         vm.askReject(smartLoad("s1")); vm.confirm()
         assertEquals(listOf("accept:s1", "reject:s1"), smart.calls)
     }
 
-    @Test fun `smart load - sugerencia vencida muestra el mensaje del API`() = runTest {
+    @Test fun `smart load - manda un monto por carga y las notas recortadas`() = runTest {
+        val smart = FakeSmart()
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
+        vm.askAccept(smartLoad("s1"))
+        vm.onItemAmount("r1", "8000.50"); vm.onItemAmount("r2", "7500"); vm.onNotes("  Salgo el lunes  ")
+        vm.requestAcceptConfirm(); vm.confirmAccept()
+        val body = smart.lastBody!!
+        assertEquals(listOf(SmartLoadItemAmount("r1", 8000.5), SmartLoadItemAmount("r2", 7500.0)), body.items)
+        assertEquals("Salgo el lunes", body.notes)
+    }
+
+    @Test fun `smart load - una carga sin monto no se envia`() = runTest {
+        val smart = FakeSmart()
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
+        vm.askAccept(smartLoad("s1"))
+        vm.onItemAmount("r2", "")
+        vm.requestAcceptConfirm()
+        val form = vm.state.value.accept!!
+        assertFalse(form.confirming)
+        assertNotNull(form.amountErrors["r2"])
+        assertNull(form.amountErrors["r1"])
+        assertTrue(smart.calls.isEmpty())
+        vm.onItemAmount("r2", "9000")
+        assertNull(vm.state.value.accept!!.amountErrors["r2"])
+    }
+
+    @Test fun `smart load - el resultado muestra las ofertas creadas`() = runTest {
+        val plan = smartLoad("s1", SmartLoadStatus.ACCEPTED).copy(bids = listOf(SmartLoadBidView("r1", "b1", 8000.5), SmartLoadBidView("r2", "b2", 7500.0)))
+        val smart = FakeSmart().apply { decision = Result.success(plan) }
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
+        vm.askAccept(smartLoad("s1")); vm.requestAcceptConfirm(); vm.confirmAccept()
+        assertEquals(2, vm.state.value.accepted?.bids?.size)
+        vm.dismissAccepted()
+        assertNull(vm.state.value.accepted)
+    }
+
+    @Test fun `smart load - TRP-011 y TRP-012 se muestran en la hoja y se puede reintentar`() = runTest {
+        for (code in listOf("LOGYX-TRP-011", "LOGYX-TRP-012")) {
+            val smart = FakeSmart().apply { decision = Result.failure(apiError(code, "La oferta de una carga no es válida: ninguna se envió")) }
+            val vm = SmartLoadsViewModel(smart, FakeRealtime())
+            vm.askAccept(smartLoad("s1")); vm.requestAcceptConfirm(); vm.confirmAccept()
+            val form = vm.state.value.accept!!
+            assertEquals(UiText.Raw("La oferta de una carga no es válida: ninguna se envió"), form.error)
+            assertFalse(form.submitting || form.confirming)
+            assertNull(vm.state.value.accepted)
+            assertNull(vm.state.value.message)
+        }
+    }
+
+    @Test fun `smart load - RN07 en las notas queda bajo el campo`() = runTest {
+        val smart = FakeSmart().apply { decision = Result.failure(ApiException(400, "LOGYX-NEG-001", "No incluyas teléfonos", "notes")) }
+        val vm = SmartLoadsViewModel(smart, FakeRealtime())
+        vm.askAccept(smartLoad("s1")); vm.onNotes("987654321"); vm.requestAcceptConfirm(); vm.confirmAccept()
+        val form = vm.state.value.accept!!
+        assertEquals(UiText.Raw("No incluyas teléfonos"), form.notesError)
+        assertNull(form.error)
+        vm.onNotes("ok")
+        assertNull(vm.state.value.accept!!.notesError)
+    }
+
+    @Test fun `smart load - las notas se cortan a 300`() = runTest {
+        val vm = SmartLoadsViewModel(FakeSmart(), FakeRealtime())
+        vm.askAccept(smartLoad("s1")); vm.onNotes("a".repeat(400))
+        assertEquals(300, vm.state.value.accept!!.notes.length)
+    }
+
+    @Test fun `smart load - el piso orientativo es el 75 por ciento del sugerido`() {
+        assertEquals(6158.55, smartItem.floorHint())
+    }
+
+    @Test fun `smart load - sugerencia vencida muestra el mensaje del API en la hoja`() = runTest {
         val smart = FakeSmart().apply { decision = Result.failure(apiError("LOGYX-TRP-009", "La sugerencia venció")) }
         val vm = SmartLoadsViewModel(smart, FakeRealtime())
-        vm.askAccept(smartLoad("s1")); vm.confirm()
-        assertEquals("La sugerencia venció", vm.state.value.message?.text)
-        assertNull(vm.state.value.pending)
+        vm.askAccept(smartLoad("s1")); vm.requestAcceptConfirm(); vm.confirmAccept()
+        assertEquals(UiText.Raw("La sugerencia venció"), vm.state.value.accept?.error)
     }
 
     // ───────────── PYME: búsqueda y reserva ─────────────
@@ -486,6 +590,29 @@ class TripsViewModelsTest {
         assertEquals(UiText.Raw("Solo quedan 1,000 kg"), f.weightError)
         assertFalse(f.submitting); assertFalse(f.confirming)
         assertEquals(0, vm.state.value.bookedTick)
+    }
+
+    @Test fun `reserva - RN07 en descripcion, recojo y entrega quedan bajo cada campo`() = runTest {
+        for ((field, read) in listOf<Pair<String, (BookFormState) -> UiText?>>(
+            "cargoDescription" to { it.descriptionError }, "pickupAddress" to { it.pickupError }, "deliveryAddress" to { it.deliveryError },
+        )) {
+            val trips = FakeTrips().apply { bookResult = Result.failure(apiError("LOGYX-NEG-001", "Sin datos de contacto", field, 400)) }
+            val vm = TripSearchViewModel(trips, FakeCatalog())
+            fillBooking(vm)
+            vm.requestConfirm(); vm.submit()
+            val f = vm.state.value.book!!
+            assertEquals(UiText.Raw("Sin datos de contacto"), read(f), field)
+            assertFalse(f.submitting); assertFalse(f.confirming)
+            assertNull(vm.state.value.message, field)
+        }
+    }
+
+    @Test fun `reserva - los textos libres se cortan a 300 y 200`() = runTest {
+        val vm = TripSearchViewModel(FakeTrips(), FakeCatalog())
+        fillBooking(vm)
+        vm.onDescription("d".repeat(400)); vm.onPickup("p".repeat(300)); vm.onDelivery("e".repeat(300))
+        val f = vm.state.value.book!!
+        assertEquals(300, f.description.length); assertEquals(200, f.pickup.length); assertEquals(200, f.delivery.length)
     }
 
     @Test fun `reserva - error generico va al snackbar`() = runTest {

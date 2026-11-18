@@ -36,7 +36,10 @@ import pe.logyx.core.designsystem.components.ChipRow
 import pe.logyx.core.designsystem.components.EmptyState
 import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
+import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.LogyxBottomSheet
+import pe.logyx.core.designsystem.components.LogyxTextField
+import pe.logyx.core.designsystem.components.MessageKind
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
@@ -124,7 +127,7 @@ fun ReturnLoadsScreen(
                 )
                 LogyxButton(
                     stringResource(R.string.trips_bid_submit), onRequestConfirm,
-                    variant = ButtonVariant.Money, loading = bid.submitting,
+                    variant = ButtonVariant.Money, loading = bid.submitting, requiresOperate = true,
                 )
             }
         }
@@ -179,7 +182,7 @@ private fun ReturnLoadCard(r: ReturnLoadView, onBid: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         LogyxButton(
             stringResource(R.string.trips_return_bid), onBid,
-            variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !r.alreadyBid,
+            variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !r.alreadyBid, requiresOperate = true,
         )
     }
 }
@@ -193,8 +196,23 @@ fun SmartLoadsRoute(onBack: () -> Unit, viewModel: SmartLoadsViewModel = koinVie
     SmartLoadsScreen(
         state, onBack, viewModel::refresh, viewModel::setFilter, viewModel::generate,
         viewModel::askAccept, viewModel::askReject, viewModel::confirm, viewModel::dismissConfirm, viewModel::onMessageShown,
+        SmartAcceptActions(
+            viewModel::onItemAmount, viewModel::onNotes, viewModel::requestAcceptConfirm, viewModel::confirmAccept,
+            viewModel::cancelAcceptConfirm, viewModel::dismissAccept, viewModel::dismissAccepted,
+        ),
     )
 }
+
+/** Intenciones de la hoja "Ofertar este plan" y de la tarjeta de resultado. */
+class SmartAcceptActions(
+    val onAmount: (requestId: String, text: String) -> Unit = { _, _ -> },
+    val onNotes: (String) -> Unit = {},
+    val onSubmit: () -> Unit = {},
+    val onConfirm: () -> Unit = {},
+    val onCancelConfirm: () -> Unit = {},
+    val onDismiss: () -> Unit = {},
+    val onDismissResult: () -> Unit = {},
+)
 
 private val SMART_FILTERS = listOf(SmartLoadStatus.PENDING, SmartLoadStatus.ACCEPTED, SmartLoadStatus.REJECTED, SmartLoadStatus.EXPIRED)
 
@@ -210,6 +228,7 @@ fun SmartLoadsScreen(
     onConfirm: () -> Unit,
     onDismissConfirm: () -> Unit,
     onMessageShown: () -> Unit,
+    accept: SmartAcceptActions = SmartAcceptActions(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -228,7 +247,7 @@ fun SmartLoadsScreen(
                         item {
                             LogyxButton(
                                 stringResource(R.string.trips_smart_generate), onGenerate,
-                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium, loading = state.generating, icon = Icons.Rounded.Search,
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium, loading = state.generating, icon = Icons.Rounded.Search, requiresOperate = true,
                             )
                         }
                         if (state.items.isEmpty()) {
@@ -248,22 +267,88 @@ fun SmartLoadsScreen(
         }
     }
     state.pending?.let { action ->
-        if (action.accept) {
-            LogyxConfirmDialog(
-                title = stringResource(R.string.trips_smart_accept_title),
-                message = stringResource(R.string.trips_smart_accept_message, action.item.items.size),
-                confirmLabel = stringResource(R.string.trips_smart_accept),
-                onConfirm = onConfirm, onDismiss = onDismissConfirm,
-                dismissLabel = stringResource(R.string.trips_back), loading = state.busy,
+        LogyxConfirmDialog(
+            title = stringResource(R.string.trips_smart_reject_title),
+            message = stringResource(R.string.trips_smart_reject_message),
+            confirmLabel = stringResource(R.string.trips_smart_reject_confirm),
+            onConfirm = onConfirm, onDismiss = onDismissConfirm,
+            dismissLabel = stringResource(R.string.trips_back), destructive = true, loading = state.busy,
+        )
+    }
+    state.accept?.let { SmartAcceptSheet(it, accept) }
+    state.accepted?.let { SmartAcceptedSheet(it, accept.onDismissResult) }
+}
+
+/** Hoja "Ofertar este plan": un monto por carga, piso RN03 visible, notas con RN07 y confirmación (todo o nada). */
+@Composable
+private fun SmartAcceptSheet(form: SmartAcceptState, actions: SmartAcceptActions) {
+    val plan = form.item
+    LogyxBottomSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trips_smart_accept_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                stringResource(R.string.trips_smart_accept_intro, plan.vehiclePlate ?: stringResource(R.string.trips_smart_plan_vehicle_fallback)),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        } else {
-            LogyxConfirmDialog(
-                title = stringResource(R.string.trips_smart_reject_title),
-                message = stringResource(R.string.trips_smart_reject_message),
-                confirmLabel = stringResource(R.string.trips_smart_reject_confirm),
-                onConfirm = onConfirm, onDismiss = onDismissConfirm,
-                dismissLabel = stringResource(R.string.trips_back), destructive = true, loading = state.busy,
+            plan.items.forEach { item ->
+                MoneyField(
+                    value = form.amounts[item.requestId].orEmpty(),
+                    onValueChange = { actions.onAmount(item.requestId, it) },
+                    label = stringResource(R.string.trips_smart_item_label, cityLabel(item.originCity), cityLabel(item.destinationCity), kgText(item.weightKg)),
+                    hint = stringResource(R.string.trips_smart_floor_hint, Fmt.money(item.floorHint())),
+                    error = form.amountErrors[item.requestId]?.asString(),
+                    enabled = !form.submitting,
+                )
+            }
+            Text(
+                stringResource(R.string.trips_smart_total, Fmt.money(form.total)),
+                style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText,
             )
+            LogyxTextField(
+                value = form.notes, onValueChange = actions.onNotes, label = stringResource(R.string.trips_smart_notes),
+                optional = true, singleLine = false, minLines = 2, maxLines = 4, enabled = !form.submitting,
+                error = form.notesError?.asString(),
+                hint = stringResource(R.string.trips_smart_notes_hint, form.notes.length, MAX_SMART_NOTES),
+            )
+            form.error?.let { AlertBanner(it.asString(), kind = MessageKind.Error, title = stringResource(R.string.trips_smart_error_title)) }
+            LogyxButton(
+                stringResource(R.string.trips_smart_submit), actions.onSubmit,
+                variant = ButtonVariant.Money, loading = form.submitting, requiresOperate = true,
+            )
+        }
+    }
+    if (form.confirming) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.trips_smart_confirm_title, plan.items.size),
+            message = stringResource(R.string.trips_smart_confirm_message, Fmt.money(form.total)),
+            confirmLabel = stringResource(R.string.trips_smart_submit),
+            onConfirm = actions.onConfirm, onDismiss = actions.onCancelConfirm,
+            dismissLabel = stringResource(R.string.trips_back), loading = form.submitting,
+        )
+    }
+}
+
+/** Resultado de aceptar: las ofertas creadas (`SmartLoadView.bids`), una por carga. */
+@Composable
+private fun SmartAcceptedSheet(plan: SmartLoadView, onDismiss: () -> Unit) {
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.trips_smart_result_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AlertBanner(stringResource(R.string.trips_smart_result_message, plan.bids.size), kind = MessageKind.Success)
+            plan.bids.forEach { bid ->
+                val item = plan.items.firstOrNull { it.requestId == bid.requestId }
+                LogyxCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                item?.let { "${cityLabel(it.originCity)} → ${cityLabel(it.destinationCity)}" } ?: stringResource(R.string.trips_smart_result_load),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            item?.let { Text(kgText(it.weightKg), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        Text(Fmt.money(bid.amount), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
+                    }
+                }
+            }
+            LogyxButton(stringResource(R.string.trips_smart_result_done), onDismiss, variant = ButtonVariant.Primary)
         }
     }
 }
@@ -312,8 +397,8 @@ private fun SmartLoadCard(s: SmartLoadView, onAccept: () -> Unit, onReject: () -
             )
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LogyxButton(stringResource(R.string.trips_smart_reject), onReject, Modifier.weight(1f), variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
-                LogyxButton(stringResource(R.string.trips_smart_accept), onAccept, Modifier.weight(1.4f), variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = left != null)
+                LogyxButton(stringResource(R.string.trips_smart_reject), onReject, Modifier.weight(1f), variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true)
+                LogyxButton(stringResource(R.string.trips_smart_accept), onAccept, Modifier.weight(1.4f), variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = left != null, requiresOperate = true)
             }
         }
     }

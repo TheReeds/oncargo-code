@@ -73,7 +73,7 @@ fun IncidentDetailScreen(
             if (state.incident != null && state.canComment) {
                 ChatComposer(
                     value = state.draft, onValueChange = onDraft, onSend = onSend,
-                    error = state.commentError, sending = state.sending,
+                    error = state.commentError, sending = state.sending, maxLength = MAX_INCIDENT_COMMENT,
                     placeholder = stringResource(R.string.incidents_comment_placeholder),
                 )
             }

@@ -23,16 +23,23 @@ public final class Organization {
 
     private final UUID id;
     private final OrgType type;
-    private final String legalName;
-    private final String ruc;
+    private String legalName;
+    private String ruc;
     private final RucVerification rucVerification;
     private Verification verification;
-    private final String city;
-    private final String phone;
+    private String city;
+    private String phone;
+    private String address;
     private final OffsetDateTime createdAt;
 
     public Organization(UUID id, OrgType type, String legalName, String ruc, RucVerification rucVerification,
                         Verification verification, String city, String phone, OffsetDateTime createdAt) {
+        this(id, type, legalName, ruc, rucVerification, verification, city, phone, null, createdAt);
+    }
+
+    public Organization(UUID id, OrgType type, String legalName, String ruc, RucVerification rucVerification,
+                        Verification verification, String city, String phone, String address,
+                        OffsetDateTime createdAt) {
         this.id = id;
         this.type = type;
         this.legalName = legalName;
@@ -41,6 +48,7 @@ public final class Organization {
         this.verification = verification == null ? Verification.pending() : verification;
         this.city = city;
         this.phone = phone;
+        this.address = address;
         this.createdAt = createdAt;
     }
 
@@ -135,6 +143,51 @@ public final class Organization {
         return reason;
     }
 
+    // ------------------------------------------------------------ Perfil editable (F20)
+
+    /** La razón social y el RUC solo se corrigen mientras el operador no la verificó (PENDING) o si la rechazó. */
+    public boolean legalDataEditable() {
+        return verification.status() == VerificationStatus.PENDING
+                || verification.status() == VerificationStatus.REJECTED;
+    }
+
+    /** Datos de contacto no sensibles: siempre editables por el ADMIN. Vacío = se borra. */
+    public void updateContact(String newCity, String newPhone, String newAddress) {
+        if (newCity != null) city = blankToNull(newCity);
+        if (newPhone != null) phone = blankToNull(newPhone);
+        if (newAddress != null) address = blankToNull(newAddress);
+    }
+
+    /**
+     * Corrige razón social y/o RUC ({@code null} = sin cambio). Con {@code VERIFIED}/{@code SUSPENDED} no se puede
+     * (LOGYX-ORG-007). Si estaba {@code REJECTED}, vuelve a {@code PENDING} para que el operador la revise de nuevo:
+     * devuelve {@code true} en ese caso. La unicidad del RUC la verifica el caso de uso.
+     */
+    public boolean changeLegalData(String newLegalName, String newRuc, OffsetDateTime now) {
+        String name = newLegalName == null ? null : ContactInfoPolicy.clean(newLegalName, "legalName");  // RN07
+        boolean nameChanged = name != null && !name.equals(legalName);
+        boolean rucChanged = newRuc != null && !newRuc.trim().equals(ruc);
+        if (!nameChanged && !rucChanged) return false;
+        if (!legalDataEditable()) {
+            throw BusinessException.conflict("LOGYX-ORG-007", "Tu organización ya fue verificada: para cambiar la "
+                    + "razón social o el RUC contacta al equipo de OnCargo", nameChanged ? "legalName" : "ruc");
+        }
+        if (rucChanged && !RucValidator.isValid(newRuc.trim())) {
+            throw BusinessException.badRequest("LOGYX-ORG-001", "El RUC no es válido (dígito verificador)", "ruc");
+        }
+        if (nameChanged) legalName = name;
+        if (rucChanged) ruc = newRuc.trim();
+        if (verification.status() == VerificationStatus.REJECTED) {
+            verification = new Verification(VerificationStatus.PENDING, null, now, null);
+            return true;
+        }
+        return false;
+    }
+
+    private static String blankToNull(String v) {
+        return v.isBlank() ? null : v.trim();
+    }
+
     private String reasonSuffix() {
         return verification.note() == null ? "" : " (" + verification.note() + ")";
     }
@@ -148,5 +201,6 @@ public final class Organization {
     public VerificationStatus verificationStatus() { return verification.status(); }
     public String city() { return city; }
     public String phone() { return phone; }
+    public String address() { return address; }
     public OffsetDateTime createdAt() { return createdAt; }
 }

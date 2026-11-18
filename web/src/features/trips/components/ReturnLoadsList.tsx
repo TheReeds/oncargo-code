@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, Undo2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -22,6 +24,7 @@ function asRequest(r: ReturnLoadView): RequestView {
 
 export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoadView[]; vehicles: VehicleView[] }) {
   const [active, setActive] = useState<ReturnLoadView | null>(null);
+  const canOperate = useCan('OPERATE');
   const [sort, setSort] = useState('match');
   const sorted = useMemo(() => [...loads].sort((a, b) => sort === 'price' ? (b.suggestedPrice ?? 0) - (a.suggestedPrice ?? 0) : sort === 'date' ? (a.pickupDate ?? '').localeCompare(b.pickupDate ?? '') : (b.matchScore ?? 0) - (a.matchScore ?? 0)), [loads, sort]);
 
@@ -35,6 +38,7 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
 
   return (
     <>
+      <ReadOnlyNotice className="mb-3">No puedes enviar ofertas.</ReadOnlyNotice>
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="text-sm text-ink-500"><span className="font-mono font-semibold text-ink-900">{loads.length}</span> {loads.length === 1 ? 'carga' : 'cargas'} · ordenar por</span>
         <QuickFilters label="Ordenar cargas de retorno" value={sort} onValueChange={setSort} options={[{ value: 'match', label: 'Mejor compatibilidad' }, { value: 'price', label: 'Mayor precio' }, { value: 'date', label: 'Recojo más próximo' }]} />
@@ -62,9 +66,9 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
                 </div>
                 {r.alreadyBid ? (
                   <Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ya ofertaste</Badge>
-                ) : (
+                ) : canOperate ? (
                   <Button variant="money" className="max-sm:w-full" onClick={() => setActive(r)}><Undo2 />Ofertar<span className="sr-only"> por la carga de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
-                )}
+                ) : null}
               </div>
             </Card>
           </li>

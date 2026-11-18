@@ -14,7 +14,10 @@ import type { Feature, LineString } from 'geojson';
 import type { GeoJSONSource, LngLatBoundsLike, Map as MlMap } from 'maplibre-gl';
 import { decodePolyline, type LngLat } from './polyline';
 
-/** Forma prevista de la geometría que publicará la API (fase 2: `GET /api/v1/routes`). */
+/**
+ * Geometría de una ruta. Sale de `GET /api/v1/routes` vía `features/routing` (`toRouteGeometry` mapea
+ * `polylinePrecision` → `precision`).
+ */
 export interface RouteGeometry {
   /** Polyline codificada del recorrido completo (todas las paradas). */
   polyline: string;
@@ -26,7 +29,8 @@ export interface RouteGeometry {
   attribution?: string;
 }
 
-export const OSM_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+/** Atribución de las rutas (datos de OpenStreetMap, ODbL). Se muestra en el control de atribución del mapa. */
+export const OSM_ATTRIBUTION = 'Rutas © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
 
 export interface RoutePathProps {
   id: string;
@@ -70,6 +74,8 @@ export interface RoutePathLayerOptions {
   opacity?: [number, number];
   /** Capa del estilo debajo de la cual insertar (p. ej. etiquetas). */
   beforeId?: string;
+  /** Atribución de la fuente (por omisión {@link OSM_ATTRIBUTION}). */
+  attribution?: string;
 }
 
 /**
@@ -80,7 +86,7 @@ export function ensureRoutePathLayer(map: MlMap, o: RoutePathLayerOptions): void
   const [wSel, wOther] = o.width ?? [4, 2];
   const [opSel, opOther] = o.opacity ?? [1, 0.45];
   if (!map.getSource(o.id)) {
-    map.addSource(o.id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: OSM_ATTRIBUTION });
+    map.addSource(o.id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: o.attribution ?? OSM_ATTRIBUTION });
   }
   if (!map.getLayer(o.id)) {
     map.addLayer(

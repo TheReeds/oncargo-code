@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import * as api from './helpers/api';
-import { goto, pick, pickDay, setSession, toastWith } from './helpers/ui';
+import { goto, hydrated as hydratedWait, pick, pickDay, setSession, toastWith } from './helpers/ui';
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:4322';
 const SHOTS = 'docs/screenshots';
@@ -79,6 +79,8 @@ test.describe('PYME: buscar viajes y reservar', () => {
     await pick(page, page.getByRole('combobox', { name: 'Destino' }), 'Ayacucho');
     await page.waitForURL(/destino=AYACUCHO/);
     await hydratedFilters(page);
+    // Acota a la fecha del viaje del escenario (el dev acumula viajes en la misma ruta).
+    await goto(page, `/pyme/viajes?origen=ABANCAY&destino=AYACUCHO&desde=${sc.date}`);
     const row = page.getByTestId('trip-row').filter({ hasText: sc.carrier.name });
     await expect(row).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/pyme-buscar-viajes.png` });
@@ -251,7 +253,7 @@ test.describe('Transportista: Smart Load', () => {
     return { pyme, carrier };
   }
 
-  test('genera, acepta una sugerencia y avisa que no adjudica', async ({ page }) => {
+  test('genera y ofertas el plan con un monto por carga (F12)', async ({ page }) => {
     const sc = await smartScenario();
     await as(page, sc.carrier.token);
     await goto(page, '/transportista/smart-load');
@@ -263,14 +265,36 @@ test.describe('Transportista: Smart Load', () => {
     await expect(card.getByRole('meter')).toBeVisible();
     await expect(card.getByText('Ruta sugerida')).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/smart-load-lista.png`, fullPage: true });
-    await card.getByRole('button', { name: /Aceptar sugerencia/ }).click();
-    const dlg = page.getByRole('alertdialog');
-    await expect(dlg.getByText(/no te adjudica nada/i)).toBeVisible();
-    await dlg.getByRole('button', { name: 'Aceptar sugerencia' }).click();
-    await expect(toastWith(page, 'Sugerencia aceptada')).toBeVisible();
+    await card.getByRole('button', { name: /Ofertar este plan/ }).click();
+    const dlg = page.getByRole('dialog', { name: 'Ofertar este plan' });
+    await expect(dlg.getByText(/Cada PYME decide/)).toBeVisible();
+    await expect(dlg.getByText(/no te adjudica nada/i)).toHaveCount(0);
+    // Un monto por carga con el piso RN03 visible; por debajo del piso se rechaza en línea.
+    const amounts = dlg.getByRole('textbox', { name: /Tu oferta/ });
+    expect(await amounts.count()).toBeGreaterThanOrEqual(2);
+    await expect(dlg.getByText(/piso S\/ /).first()).toBeVisible();
+    await amounts.first().fill('10');
+    await dlg.getByRole('button', { name: /^Enviar \d+ ofertas$/ }).click();
+    await expect(dlg.getByText(/menor al piso de la subasta/).first()).toBeVisible();
+    // Con los montos del sugerido se crean las ofertas (todo o nada) y se listan con enlace.
+    const n = await amounts.count();
+    for (let i = 0; i < n; i++) await amounts.nth(i).fill('');
+    await dlg.getByRole('button', { name: /^Enviar \d+ ofertas$/ }).click();
+    await expect(dlg.getByText('Ingresa el monto de tu oferta.').first()).toBeVisible();
+    await page.reload();
+    await hydratedWait(page);
+    await page.getByTestId('smart-load').first().getByRole('button', { name: /Ofertar este plan/ }).click();
+    const dlg2 = page.getByRole('dialog', { name: 'Ofertar este plan' });
+    await dlg2.getByRole('button', { name: /^Enviar \d+ ofertas$/ }).click();
+    const done = page.getByRole('dialog', { name: 'Ofertas enviadas' }); // el título cambia al terminar
+    await expect(done).toBeVisible();
+    await expect(done.getByRole('list', { name: 'Ofertas creadas' }).getByRole('link', { name: /Ver oferta/ })).toHaveCount(n);
+    await page.screenshot({ path: `${SHOTS}/smart-load-ofertas.png` });
+    await done.getByRole('button', { name: 'Cerrar' }).last().click();
+    await hydratedWait(page);
     await page.getByRole('tab', { name: /Aceptadas/ }).click();
     await expect(page.getByTestId('smart-load').first().getByText('Aceptada', { exact: true })).toBeVisible();
-    await expect(page.getByText('Aceptar no es adjudicar')).toBeVisible();
+    await expect(page.getByText('Cada PYME decide', { exact: true })).toBeVisible();
   });
 
   test('rechaza una sugerencia', async ({ page }) => {

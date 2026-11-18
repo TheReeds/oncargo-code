@@ -57,6 +57,7 @@ public class TrackStopsUseCase {
         Shipment s = driverShipment(shipmentId);
         List<ShipmentStop> all = stops.listByShipment(s.id());
         ShipmentStop stop = StopSequencePolicy.requireNext(all, stopId);
+        stop.ensureArrived();                                                  // F49: TRK-003 antes que TRK-006
         DeliveryEvidencePolicy.ensureEvidence(stop.type(), evidence.hasDeliveryPhoto(s.id(), stop.id()));
         OffsetDateTime now = OffsetDateTime.now();
         stop.complete(now);

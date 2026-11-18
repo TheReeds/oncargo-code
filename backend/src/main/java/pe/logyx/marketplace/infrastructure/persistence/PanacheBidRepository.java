@@ -89,6 +89,41 @@ public class PanacheBidRepository implements BidRepository {
     }
 
     @Override
+    public Map<UUID, Bid> bestPendingByRequests(Collection<UUID> requestIds) {
+        if (requestIds.isEmpty()) return Map.of();
+        List<BidEntity> pending = BidEntity.list("requestId in ?1 and status = ?2 order by amount asc, createdAt asc",
+                requestIds, Bid.Status.PENDING);
+        Map<UUID, Bid> best = new java.util.HashMap<>();
+        for (BidEntity e : pending) best.putIfAbsent(e.requestId, e.toDomain());   // la primera de cada solicitud es la menor
+        return best;
+    }
+
+    @Override
+    public Map<UUID, Ranking> rankings(Collection<UUID> requestIds, UUID carrierOrgId) {
+        if (requestIds.isEmpty()) return Map.of();
+        var em = BidEntity.getEntityManager();
+        Map<UUID, Object[]> totals = new java.util.HashMap<>();
+        for (Object[] row : em.createQuery("select b.requestId, count(b), min(b.amount) from BidEntity b "
+                        + "where b.requestId in :ids and b.status <> :w group by b.requestId", Object[].class)
+                .setParameter("ids", requestIds).setParameter("w", Bid.Status.WITHDRAWN).getResultList()) {
+            totals.put((UUID) row[0], row);
+        }
+        Map<UUID, Long> better = new java.util.HashMap<>();
+        for (Object[] row : em.createQuery("select m.requestId, count(o) from BidEntity m, BidEntity o "
+                        + "where m.requestId in :ids and m.carrierOrgId = :me and o.requestId = m.requestId "
+                        + "and o.id <> m.id and o.status <> :w and (o.amount < m.amount "
+                        + "or (o.amount = m.amount and o.createdAt < m.createdAt)) group by m.requestId", Object[].class)
+                .setParameter("ids", requestIds).setParameter("me", carrierOrgId).setParameter("w", Bid.Status.WITHDRAWN)
+                .getResultList()) {
+            better.put((UUID) row[0], (Long) row[1]);
+        }
+        Map<UUID, Ranking> out = new java.util.HashMap<>();
+        totals.forEach((req, row) -> out.put(req, new Ranking(better.getOrDefault(req, 0L).intValue(),
+                ((Long) row[1]).intValue(), (java.math.BigDecimal) row[2])));
+        return out;
+    }
+
+    @Override
     public void save(Bid bid) {
         BidEntity e = BidEntity.findById(bid.id());
         if (e == null) {

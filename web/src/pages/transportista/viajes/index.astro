@@ -9,7 +9,10 @@ import MyTripsTable from '@/features/trips/components/MyTripsTable';
 import { listMyTrips, type TripView } from '@/features/trips/server';
 import { formatTons } from '@/lib/format';
 import { Plus } from '@lucide/astro';
+import { can } from '@/lib/permissions';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { CalendarClock, Route, PackageCheck, Weight } from 'lucide-react';
+const canOperate = can(Astro.locals.session, 'OPERATE');
 let trips: TripView[] = [];
 let loadError: string | null = null;
 try {
@@ -24,9 +27,10 @@ const freeKg = active.reduce((n, t) => n + (t.remainingKg ?? 0), 0);
 ---
 <AppShell title="Viajes" active="viajes">
   <PageHeader title="Viajes" subtitle="Publica tus salidas con espacio libre y deja que las empresas reserven.">
-    <a slot="actions" href="/transportista/viajes/nuevo" class={buttonVariants({ variant: 'money' })}><Plus size={16} /> Publicar viaje</a>
+    {canOperate && <a slot="actions" href="/transportista/viajes/nuevo" class={buttonVariants({ variant: 'money' })}><Plus size={16} /> Publicar viaje</a>}
   </PageHeader>
   {loadError && <Alert tone="error" title="No pudimos cargar tus viajes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <ReadOnlyNotice client:load className="mb-4">No puedes publicar viajes.</ReadOnlyNotice>
   <LiveRegion client:load types={['trip_booking.updated', 'trip.cancelled']} region="trips" />
   <div data-live-region="trips" class="space-y-5">
     {trips.length > 0 && (

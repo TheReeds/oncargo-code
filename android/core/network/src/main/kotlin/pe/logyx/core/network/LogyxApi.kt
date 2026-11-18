@@ -23,7 +23,19 @@ import io.ktor.client.request.forms.formData
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.client.statement.readRawBytes
+import io.ktor.client.statement.request
+import pe.logyx.core.model.AuthMessage
+import pe.logyx.core.model.ChangePasswordRequest
+import pe.logyx.core.model.DriverShipmentScope
+import pe.logyx.core.model.ForgotPasswordRequest
+import pe.logyx.core.model.LogoutRequest
+import pe.logyx.core.model.RefreshRequest
 import pe.logyx.core.model.AcceptResult
+import pe.logyx.core.model.AcceptSmartLoadRequest
+import pe.logyx.core.model.CancelRequestBody
+import pe.logyx.core.model.CancelShipmentRequest
+import pe.logyx.core.model.ChangeVehicleRequest
+import pe.logyx.core.model.RescheduleRequest
 import pe.logyx.core.model.BookingStatus
 import pe.logyx.core.model.CreateTripBookingRequest
 import pe.logyx.core.model.CreateTripRequest
@@ -65,6 +77,7 @@ import pe.logyx.core.model.LoginRequest
 import pe.logyx.core.model.PlaceBidRequest
 import pe.logyx.core.model.PublicOrganization
 import pe.logyx.core.model.RequestView
+import pe.logyx.core.model.RouteView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.UserInfo
 import pe.logyx.core.model.VehicleView
@@ -73,17 +86,49 @@ import java.io.IOException
 /**
  * Cliente tipado del contrato `docs/api/openapi.yaml`. Desenvuelve `{data, meta}` y lanza [ApiException]
  * con mensajes en español ante errores de la API o de red.
- * @param onUnauthorized se invoca ante un 401 (token vencido) para cerrar la sesión.
+ * @param onUnauthorized se invoca ante un 401 que no se pudo resolver renovando la sesión, para cerrarla.
+ * @param refresher (móvil, F24) ante un 401 de una llamada autenticada hace **un** intento de renovar la sesión y repite la
+ *  petición una vez; si no hay refresher (o la sesión terminó) se cierra la sesión como siempre. Se pide perezosamente
+ *  porque el repositorio de sesión también usa esta API.
  */
 class LogyxApi(
     private val client: HttpClient,
     private val onUnauthorized: () -> Unit = {},
-) {
+    private val refresher: () -> SessionRefresher? = { null },
+) : RoutesApi {
     // --- Auth ---
-    suspend fun login(email: String, password: String): AuthResponse =
-        post("api/v1/auth/login", LoginRequest(email.trim(), password))
+    /** [refresh] = true (app móvil): pide `refreshToken` y un access de 1 h en lugar de 8 h sin renovación. */
+    suspend fun login(email: String, password: String, refresh: Boolean = false): AuthResponse =
+        post("api/v1/auth/login", LoginRequest(email.trim(), password, refresh), auth = false)
 
     suspend fun me(): UserInfo = get("api/v1/auth/me")
+
+    /** Rota el refresh token (el anterior deja de valer). 401 `LOGYX-AUTH-009` si no sirve. Sin `Authorization`. */
+    suspend fun refresh(refreshToken: String): AuthResponse =
+        post("api/v1/auth/refresh", RefreshRequest(refreshToken), auth = false)
+
+    /** Cierra la sesión de este dispositivo en el servidor (revoca el refresh). 204. Mejor esfuerzo: el llamador ignora errores. */
+    suspend fun logout(refreshToken: String?) {
+        callNoContent(auth = false) {
+            client.post("api/v1/auth/logout") { contentType(ContentType.Application.Json); setBody(LogoutRequest(refreshToken)) }
+        }
+    }
+
+    /** Invalida todos los tokens del usuario, incluido el actual. 204. */
+    suspend fun logoutAll() {
+        callNoContent { client.post("api/v1/auth/logout-all") }
+    }
+
+    /**
+     * Cambia la contraseña y devuelve una sesión **nueva** (las demás quedan cerradas). Errores: `AUTH-006`
+     * (`field=currentPassword`), `AUTH-010` (`field=newPassword`), 429 tras 10 fallos.
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String, refresh: Boolean = true): AuthResponse =
+        post("api/v1/auth/change-password", ChangePasswordRequest(currentPassword, newPassword, refresh))
+
+    /** 202 con el mismo mensaje exista o no el correo. 429 `AUTH-429` por IP. */
+    suspend fun forgotPassword(email: String): AuthMessage =
+        post("api/v1/auth/forgot-password", ForgotPasswordRequest(email.trim()), auth = false)
 
     // --- Catálogo ---
     suspend fun cities(): List<CityItem> = get("api/v1/catalog/cities")
@@ -115,11 +160,27 @@ class LogyxApi(
     suspend fun placeBid(requestId: String, body: PlaceBidRequest): BidView =
         post("api/v1/shipment-requests/$requestId/bids", body)
 
+    /**
+     * Retira mi oferta `PENDING` mientras la subasta acepta ofertas (V13, F08). Errores: `LOGYX-BID-005` (ya no se puede);
+     * después no puedo volver a ofertar en esa subasta (`BID-003`). Las contraofertas pendientes pasan a `EXPIRED`.
+     */
+    suspend fun withdrawBid(bidId: String): BidView = post("api/v1/bids/$bidId/withdraw")
+
     // --- Solicitudes (PYME) ---
     suspend fun myRequests(): List<RequestView> = get("api/v1/shipment-requests/mine")
     suspend fun bids(requestId: String): List<BidView> = get("api/v1/shipment-requests/$requestId/bids")
     suspend fun acceptBid(bidId: String): AcceptResult = post("api/v1/bids/$bidId/accept")
-    suspend fun cancelRequest(requestId: String): RequestView = post("api/v1/shipment-requests/$requestId/cancel")
+    /** Cancela la solicitud con motivo opcional (máx. 500, RN07 en `reason`); se avisa a los transportistas que ofertaron (F16). */
+    suspend fun cancelRequest(requestId: String, reason: String? = null): RequestView =
+        post("api/v1/shipment-requests/$requestId/cancel", CancelRequestBody(reason?.trim()?.takeIf { it.isNotEmpty() }))
+
+    /** Reabre la subasta cerrada por tiempo (`closeReason = TIMEOUT`); fecha de recojo nueva opcional (`yyyy-MM-dd`). `AUC-003`/`REQ-003`. */
+    suspend fun reopenRequest(requestId: String, pickupDate: String? = null): RequestView =
+        post("api/v1/shipment-requests/$requestId/reopen", RescheduleRequest(pickupDate))
+
+    /** Publica de nuevo una solicitud `CANCELLED`: devuelve la solicitud **nueva** (`republishedFrom` = la anterior). `REQ-004`/`REQ-003`. */
+    suspend fun republishRequest(requestId: String, pickupDate: String? = null): RequestView =
+        post("api/v1/shipment-requests/$requestId/republish", RescheduleRequest(pickupDate))
 
     // --- Flota ---
     suspend fun vehicles(): List<VehicleView> = get("api/v1/vehicles")
@@ -128,10 +189,25 @@ class LogyxApi(
     // --- Envíos ---
     suspend fun shipments(): List<ShipmentView> = get("api/v1/shipments")
     suspend fun shipment(id: String): ShipmentView = get("api/v1/shipments/$id")
-    suspend fun assignDriver(shipmentId: String, driverId: String): ShipmentView =
-        put("api/v1/shipments/$shipmentId/driver", AssignDriverRequest(driverId))
+    /** `reason`: opcional antes del recojo; obligatorio con el envío en ruta (relevo, `LOGYX-SHP-006`). Errores `SHP-004`/`FLT-003` con `field = driverId`. */
+    suspend fun assignDriver(shipmentId: String, driverId: String, reason: String? = null): ShipmentView =
+        put("api/v1/shipments/$shipmentId/driver", AssignDriverRequest(driverId, reason?.trim()?.takeIf { it.isNotEmpty() }))
 
-    suspend fun driverShipments(): List<ShipmentView> = get("api/v1/driver/shipments")
+    /** Cancela el envío con motivo obligatorio (máx. 500). Las partes, solo antes del recojo (`SHP-003`) y sin incidencia activa (`TRK-005`). */
+    suspend fun cancelShipment(shipmentId: String, reason: String): ShipmentView =
+        post("api/v1/shipments/$shipmentId/cancel", CancelShipmentRequest(reason.trim()))
+
+    /**
+     * Cambia el vehículo (transportista). RN02 `CAP-001..004` y `CAP-005` con `field = vehicleId`, `SHP-007` (mismo vehículo);
+     * con el envío en ruta el `reason` es obligatorio (`SHP-006`).
+     */
+    suspend fun changeVehicle(shipmentId: String, vehicleId: String, reason: String? = null): ShipmentView =
+        put("api/v1/shipments/$shipmentId/vehicle", ChangeVehicleRequest(vehicleId, reason?.trim()?.takeIf { it.isNotEmpty() }))
+
+    /** `scope`: ACTIVE (por omisión), HISTORY (entregados y cancelados, recientes primero) o ALL (V15, F22). */
+    suspend fun driverShipments(scope: DriverShipmentScope = DriverShipmentScope.ACTIVE): List<ShipmentView> = call {
+        client.get("api/v1/driver/shipments") { if (scope != DriverShipmentScope.ACTIVE) parameter("scope", scope.name) }
+    }
 
     /** Envío activo del conductor; lanza [ApiException] 404 `LOGYX-SHP-002` si no tiene. */
     suspend fun driverActiveShipment(): ShipmentView = get("api/v1/driver/shipments/active")
@@ -183,12 +259,8 @@ class LogyxApi(
 
     /** Descarga el binario de un documento (mismo Bearer). */
     suspend fun documentFile(documentId: String): ByteArray {
-        val response = try {
+        val response = send(auth = true) {
             client.get("api/v1/documents/$documentId/file") { header(HttpHeaders.Accept, "*/*") } // el binario responde 406 si solo se acepta JSON
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            throw ApiException(0, "NETWORK", "No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.")
         }
         if (!response.status.isSuccess()) throw response.toApiException()
         return response.readRawBytes()
@@ -307,15 +379,28 @@ class LogyxApi(
         client.get("api/v1/smart-loads") { status?.let { parameter("status", it.name) } }
     }
     suspend fun generateSmartLoads(): List<SmartLoadView> = post("api/v1/smart-loads/generate")
-    suspend fun acceptSmartLoad(id: String): SmartLoadView = post("api/v1/smart-loads/$id/accept")
+    /**
+     * Acepta el plan y **oferta en lote** (V13, F12): una oferta por carga con el vehículo del plan. `items` vacío = precio sugerido
+     * de cada carga; si se manda, es todo o nada (`TRP-011`) y el `requestId` debe ser del plan (`TRP-012`). La respuesta trae `bids`.
+     */
+    suspend fun acceptSmartLoad(id: String, body: AcceptSmartLoadRequest = AcceptSmartLoadRequest()): SmartLoadView =
+        post("api/v1/smart-loads/$id/accept", body)
     suspend fun rejectSmartLoad(id: String): SmartLoadView = post("api/v1/smart-loads/$id/reject")
+
+    // --- Rutas por carretera (ADR-0008) ---
+    override suspend fun route(stops: List<String>, optimize: Boolean): RouteView = call {
+        client.get("api/v1/routes") {
+            parameter("stops", stops.joinToString(","))
+            if (optimize) parameter("optimize", true)
+        }
+    }
 
     // --- Infraestructura ---
     private suspend inline fun <reified T> get(path: String): T = call { client.get(path) }
 
     private suspend inline fun <reified T> post(path: String): T = call { client.post(path) }
 
-    private suspend inline fun <reified T, reified B : Any> post(path: String, body: B): T = call {
+    private suspend inline fun <reified T, reified B : Any> post(path: String, body: B, auth: Boolean = true): T = call(auth) {
         client.post(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 
@@ -328,16 +413,11 @@ class LogyxApi(
         client.patch(path) { contentType(ContentType.Application.Json); setBody(body) }
     }
 
-    private suspend inline fun <reified T> call(request: () -> HttpResponse): T = callEnvelope<T>(request).data
+    private suspend inline fun <reified T> call(auth: Boolean = true, noinline request: suspend () -> HttpResponse): T =
+        callEnvelope<T>(auth, request).data
 
-    private suspend inline fun <reified T> callEnvelope(request: () -> HttpResponse): ApiEnvelope<T> {
-        val response = try {
-            request()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            throw ApiException(0, "NETWORK", "No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.")
-        }
+    private suspend inline fun <reified T> callEnvelope(auth: Boolean = true, noinline request: suspend () -> HttpResponse): ApiEnvelope<T> {
+        val response = send(auth, request)
         if (!response.status.isSuccess()) throw response.toApiException()
         return try {
             response.body<ApiEnvelope<T>>()
@@ -346,9 +426,43 @@ class LogyxApi(
         }
     }
 
+    /** Respuestas 204 sin cuerpo. */
+    private suspend fun callNoContent(auth: Boolean = true, request: suspend () -> HttpResponse) {
+        val response = send(auth, request)
+        if (!response.status.isSuccess()) throw response.toApiException()
+    }
+
+    /**
+     * Ejecuta la petición. Ante un 401 de una llamada autenticada hace un solo intento de renovar la sesión
+     * ([SessionRefresher]) y repite la petición una vez con el token nuevo; si no se puede (o sigue en 401) cierra la sesión.
+     */
+    private suspend fun send(auth: Boolean, request: suspend () -> HttpResponse): HttpResponse {
+        var response = execute(request)
+        if (auth && response.status.value == 401) {
+            val rejected = response.request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")?.trim()
+            when (refresher()?.refreshAfterUnauthorized(rejected) ?: RefreshOutcome.SESSION_ENDED) {
+                RefreshOutcome.RETRY -> response = execute(request)
+                RefreshOutcome.UNAVAILABLE -> throw networkError()
+                RefreshOutcome.SESSION_ENDED -> Unit
+            }
+            if (response.status.value == 401) onUnauthorized()
+        }
+        return response
+    }
+
+    private suspend fun execute(request: suspend () -> HttpResponse): HttpResponse = try {
+        request()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: IOException) {
+        throw networkError()
+    }
+
+    private fun networkError() =
+        ApiException(0, "NETWORK", "No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.")
+
     private suspend fun HttpResponse.toApiException(): ApiException {
         val status = this.status.value
-        if (status == 401) onUnauthorized()
         val parsed = runCatching { LogyxJson.decodeFromString<ApiErrorEnvelope>(bodyAsText()).error }.getOrNull()
         val message = parsed?.message?.takeIf { it.isNotBlank() } ?: defaultMessage(status)
         return ApiException(status, parsed?.code, message, parsed?.field)
@@ -360,6 +474,7 @@ class LogyxApi(
         403 -> "No tienes permiso para realizar esta acción."
         404 -> "No encontramos lo que buscas."
         409 -> "La operación ya no es posible; actualiza e inténtalo otra vez."
+        429 -> "Hiciste demasiados intentos. Espera unos minutos e inténtalo de nuevo."
         in 500..599 -> "OnCargo tuvo un problema. Inténtalo en unos minutos."
         else -> "Ocurrió un error inesperado."
     }

@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { useLiveRefresh } from '@/lib/realtime';
@@ -5,10 +7,8 @@ import { splitActionError } from '@/lib/action-error';
 import { Ban, Check, Lock, MapPin, X } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/input';
-import { Field } from '@/components/ui/field';
-import { Dialog } from '@/components/ui/dialog';
-import { Alert } from '@/components/ui/alert';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
+import { LIMITS } from '@/lib/limits';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { flash, toast } from '@/components/ui/toaster';
 import { StatusPill } from '@/components/domain/StatusPill';
@@ -22,32 +22,26 @@ import { CARGO_LABELS, formatDateTime, formatMoney, formatNumber, formatTripRate
 import type { TripBookingView, TripView } from '../server';
 
 function RejectDialog({ booking, onClose }: { booking: TripBookingView | null; onClose: () => void }) {
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!booking) return;
-    setBusy(true);
-    setError(null);
-    const { error } = await actions.trips.rejectBooking({ id: booking.id!, reason: reason.trim() || undefined });
-    if (error) { setBusy(false); setError(splitActionError(error).message); return; }
-    flash('Reserva rechazada');
-    window.location.reload();
-  }
   return (
-    <Dialog open={!!booking} onOpenChange={(o) => !o && !busy && onClose()} title="¿Rechazar esta reserva?" description={booking ? `${booking.requesterName} pidió ${formatNumber(booking.weightKg)} kg. La empresa recibirá un aviso y no se puede deshacer.` : undefined}
-      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="reject-form" variant="destructive-solid" loading={busy}>{busy ? 'Rechazando…' : 'Rechazar reserva'}</Button></>}>
-      <form id="reject-form" onSubmit={submit} className="space-y-3">
-        {error && <Alert tone="error" title="No pudimos rechazar la reserva">{error}</Alert>}
-        <Field label="Motivo" htmlFor="reject-reason" hint="Opcional. La empresa lo verá. Máximo 300 caracteres."><Textarea id="reject-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Ej. Ya completamos la capacidad con otra carga." /></Field>
-      </form>
-    </Dialog>
+    <ReasonDialog
+      open={!!booking} onOpenChange={(o) => !o && onClose()} title="¿Rechazar esta reserva?"
+      description={booking ? `${booking.requesterName} pidió ${formatNumber(booking.weightKg)} kg. La empresa recibirá un aviso y no se puede deshacer.` : undefined}
+      label="Motivo" hint={`Opcional. La empresa lo verá. Máximo ${LIMITS.bookingRejectReason} caracteres. Sin teléfonos ni correos.`}
+      placeholder="Ej. Ya completamos la capacidad con otra carga." maxLength={LIMITS.bookingRejectReason} confirmLabel="Rechazar reserva" tone="destructive" rows={3}
+      onSubmit={async (reason) => {
+        const { error } = await actions.trips.rejectBooking({ id: booking!.id!, reason: reason || undefined });
+        if (error) return splitActionError(error);
+        flash('Reserva rechazada');
+        window.location.reload();
+        return null;
+      }}
+    />
   );
 }
 
 export default function TripDetail({ trip: initialTrip, bookings: initialBookings }: { trip: TripView; bookings: TripBookingView[] }) {
   const [trip, setTrip] = useState(initialTrip);
+  const canOperate = useCan('OPERATE');
   const [bookings, setBookings] = useState(initialBookings);
   useLiveRefresh({
     types: ['trip_booking.updated', 'trip.cancelled'],
@@ -100,7 +94,7 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
         <li className="flex gap-1.5"><MapPin className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" /><span><span className="font-medium text-ink-700">Entrega: </span><span className="text-ink-500">{b.deliveryAddress}</span></span></li>
       </ul>
       {b.decisionNote && <p className="text-xs text-ink-500">Nota: {b.decisionNote}</p>}
-      {b.status === 'PENDING' && active && (
+      {b.status === 'PENDING' && active && canOperate && (
         <div className="flex flex-wrap gap-2 max-sm:[&>*]:flex-1">
           <Button size="sm" variant="money" loading={busy === `c-${b.id}`} disabled={!!busy} onClick={() => onConfirm(b)}><Check />Confirmar reserva<span className="sr-only"> de {b.requesterName}</span></Button>
           <Button size="sm" variant="destructive" disabled={!!busy} onClick={() => setRejecting(b)}><X />Rechazar reserva<span className="sr-only"> de {b.requesterName}</span></Button>
@@ -112,6 +106,7 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
 
   return (
     <div className="space-y-6">
+      <ReadOnlyNotice className="mb-3">No puedes confirmar ni rechazar reservas ni cancelar el viaje.</ReadOnlyNotice>
       <KpiGrid cols={3}>
         <div className="col-span-2 lg:col-span-1"><KpiTile label="Ingreso confirmado" value={formatMoney(income)} context={`${trip.confirmedBookings ?? 0} reserva${trip.confirmedBookings === 1 ? '' : 's'} confirmada${trip.confirmedBookings === 1 ? '' : 's'}`} tone="money" /></div>
         <KpiTile label="Por confirmar" value={pending.length} context={pending.length ? `${formatTons(pendingKg)} esperan tu respuesta` : 'todo al día'} tone={pending.length ? 'warn' : 'default'} />
@@ -122,7 +117,7 @@ export default function TripDetail({ trip: initialTrip, bookings: initialBooking
         <CardBody className="space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2"><StatusPill kind="trip" status={trip.status!} /><span className="text-sm text-ink-700">Sale el <strong className="font-medium">{formatDateTime(trip.departureAt)}</strong></span></div>
-            {canCancel && (
+            {canCancel && canOperate && (
               <div className="flex flex-wrap gap-2">
                 {active && <Button variant="outline" size="sm" loading={busy === 'close'} disabled={!!busy} onClick={onClose}><Lock />Cerrar reservas</Button>}
                 <Button variant="destructive" size="sm" loading={busy === 'cancel'} disabled={!!busy} onClick={onCancel}><Ban />Cancelar viaje</Button>

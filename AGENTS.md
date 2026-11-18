@@ -55,8 +55,20 @@ Especificación funcional completa: repo hermano `../ProyectoEPE-LOGYX/docs/soft
 | Conductor | `DRIVER` (solo) | `org_id` del transportista, `role=DRIVER` |
 | Operador LOGYX | `OPERATOR` | `org_type=OPERATOR`; cuentas creadas por LOGYX (no hay registro público). Solo usa la web. |
 
+Todo JWT lleva además `sv` (versión de sesión): si no coincide con la BD → 401 (ADR-0009).
+**Rol de organización** (claim `role`, V14, F03) — el backend lo hace cumplir (`AccountAccessFilter`):
+| `role` | Puede | Código si no |
+|---|---|---|
+| `ADMIN` | todo: además gestiona usuarios (`/organizations/me/users`), el perfil (`PATCH /organizations/me`) y las cuentas de conductores | — |
+| `OPS` | operar: publicar, ofertar, aceptar, contraofertar, chatear, asignar, cancelar, vehículos, viajes, reservas, incidencias, documentos, reseñas | 403 `LOGYX-AUTH-008` en gestión |
+| `VIEWER` | solo leer (más su cuenta: cambiar contraseña, cerrar sesión, leer avisos) | 403 `LOGYX-AUTH-007` en cualquier escritura |
+| `DRIVER` | sus envíos (grupo `DRIVER`) | — |
+`UserInfo.permissions` (`READ`, `OPERATE`, `MANAGE_USERS`, `MANAGE_ORGANIZATION`, `MANAGE_DRIVERS`) sirve para mostrar u ocultar acciones.
+
 ## Cuentas demo (perfil dev del backend)
 `pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe`, `operator@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
+Misma PYME con otros roles: `pyme.ops@logyx.pe` (OPS) y `pyme.viewer@logyx.pe` (VIEWER). Correos en dev (restablecer,
+invitaciones): `GET http://localhost:8080/api/v1/dev/mailbox?to=<email>`.
 
 ## Cómo levantar todo
 ```bash

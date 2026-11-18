@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -45,6 +46,7 @@ fun RadioCardRow(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -54,11 +56,11 @@ fun RadioCardRow(
         color = if (selected) scheme.primaryContainer else scheme.surface,
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant),
         modifier = modifier.fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
             .semantics { if (selected) stateDescription = selectedLabel },
     ) {
         Row(
-            Modifier.padding(16.dp).heightIn(min = 48.dp),
+            Modifier.padding(16.dp).heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.72f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

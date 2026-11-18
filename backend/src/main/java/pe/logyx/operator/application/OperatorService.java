@@ -52,6 +52,7 @@ public class OperatorService {
     @Inject ReputationQueries reputation;
     @Inject pe.logyx.identity.application.OrganizationVerificationService verification;
     @Inject pe.logyx.identity.application.OrganizationGuard guard;
+    @Inject AuditQueries audit;
 
     @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H")
     Duration sla;
@@ -79,7 +80,7 @@ public class OperatorService {
                 marketplace.countRequests(ShipmentRequest.Status.MATCHED),
                 marketplace.countRequests(ShipmentRequest.Status.CANCELLED),
                 s.pending(), s.inTransit(), s.delivered(), incidents.countActive(),
-                organizations.countOfType(OrgType.PYME), organizations.countOfType(OrgType.CARRIER));
+                organizations.countOfType(OrgType.PYME), organizations.countOfType(OrgType.CARRIER), s.gmv(), s.gmvDelivered());
     }
 
     /** Listado global paginado de solicitudes, más recientes primero. */
@@ -100,7 +101,7 @@ public class OperatorService {
      */
     @Transactional
     public List<AssignmentCandidate> candidates(UUID requestId) {
-        ShipmentRequest r = marketplace.requestForParticipant(requestId);
+        ShipmentRequest r = manualAssignment.assignableRequest(requestId);   // F29: 409 OPS-001 fuera de SLA o ya adjudicada
         List<Vehicle> vehicles = fleet.availableVehiclesForOperator(r.cargo().weightKg());
         var ids = vehicles.stream().map(Vehicle::organizationId).collect(Collectors.toSet());
         Map<UUID, Organization> carriers = organizations.byIds(ids);
@@ -128,6 +129,12 @@ public class OperatorService {
     public Organization rejectOrganization(UUID id, String reason) { return verification.reject(id, reason); }
 
     public Organization suspendOrganization(UUID id, String reason) { return verification.suspend(id, reason); }
+
+    // ----- Auditoría (F05): lectura de audit_log por la política audit_operator
+
+    public Paged<AuditRecord> audit(AuditFilter filter, PageRequest page) { return audit.search(filter, page); }
+
+    public List<String> auditActions() { return audit.actions(); }
 
     /** RN10: ver {@link ManualAssignmentUseCase}. */
     public AcceptOutcome assign(UUID requestId, ManualAssignmentCommand cmd) {

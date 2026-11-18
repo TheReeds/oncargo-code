@@ -34,6 +34,9 @@ No hay datos demo (el seed es solo del perfil dev): registra una cuenta desde `/
 | `LOGYX_S3_ENDPOINT`, `LOGYX_S3_REGION`, `LOGYX_S3_BUCKET`, `LOGYX_S3_ACCESS_KEY`, `LOGYX_S3_SECRET_KEY`, `LOGYX_S3_PATH_STYLE`, `LOGYX_S3_CREATE_BUCKET`, `LOGYX_S3_PREFIX`, `LOGYX_S3_SSE` | adaptador S3/MinIO |
 | `CORS_ENABLED` / `CORS_ORIGINS` | CORS desactivado por omisión en prod (la web es SSR) |
 | `TRUSTED_PROXIES` | redes desde las que se acepta `X-Forwarded-For` (rate limiting por IP) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_START_TLS` (`REQUIRED` por omisión), `SMTP_TLS`, `MAIL_FROM` | correo de restablecer contraseña e invitaciones (V14, ADR-0009) |
+| `PASSWORD_RESET_URL` | página `/restablecer` de la web; el correo agrega `?token=…` |
+| `MAILER_MOCK` | solo pruebas: `true` no envía correos (los guarda en memoria; si la imagen se compila con `-Dlogyx.dev-mailbox=true` se leen en `GET /api/v1/dev/mailbox?to=`) |
 
 ## Producción real
 - TLS en un proxy (Caddy/Nginx/LB) delante de `web` (y de `backend` si la app Android lo usa directamente); quita

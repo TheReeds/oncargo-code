@@ -1,3 +1,4 @@
+import { useCan } from '@/lib/use-can';
 import { useMemo, useState } from 'react';
 import { CalendarClock, Plus, SearchX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -16,6 +17,7 @@ const isActive = (t: TripView) => t.status === 'OPEN' || t.status === 'FILLING';
 
 /** Mis viajes publicados: filtros rápidos por estado y tabla que pasa a tarjetas en móvil. */
 export default function MyTripsTable({ trips }: { trips: TripView[] }) {
+  const canOperate = useCan('OPERATE');
   const [filter, setFilter] = useState<Filter>('');
   const counts = useMemo(() => ({ active: trips.filter(isActive).length, pending: trips.filter((t) => (t.pendingBookings ?? 0) > 0).length, closed: trips.filter((t) => !isActive(t)).length }), [trips]);
   const shown = [...trips].sort((a, b) => Number(isActive(b)) - Number(isActive(a))).filter((t) => (filter === 'active' ? isActive(t) : filter === 'pending' ? (t.pendingBookings ?? 0) > 0 : filter === 'closed' ? !isActive(t) : true));
@@ -23,7 +25,7 @@ export default function MyTripsTable({ trips }: { trips: TripView[] }) {
   return (
     <Card>
       {trips.length === 0 ? (
-        <EmptyState icon={CalendarClock} title="Aún no publicaste viajes" description="Publica una salida con tu capacidad libre y recibe reservas de empresas que ya viajan por tu ruta." action={<Button asChild variant="money"><a href="/transportista/viajes/nuevo"><Plus />Publicar viaje</a></Button>} />
+        <EmptyState icon={CalendarClock} title="Aún no publicaste viajes" description="Publica una salida con tu capacidad libre y recibe reservas de empresas que ya viajan por tu ruta." action={canOperate ? <Button asChild variant="money"><a href="/transportista/viajes/nuevo"><Plus />Publicar viaje</a></Button> : undefined} />
       ) : (
         <>
           <div className="border-b border-steel-200 px-4 py-3 sm:px-5">

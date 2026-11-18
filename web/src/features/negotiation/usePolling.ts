@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLiveRefresh, type RealtimeEvent } from '@/lib/realtime';
+import { RN07_FIELD_MESSAGE } from '@/lib/action-error';
 
 /** Evento de ventana: algo cambió en la negociación (mensaje o contra-oferta); los paneles refrescan de inmediato. */
 export const NEGOTIATION_EVENT = 'logyx:negotiation-changed';
@@ -24,6 +25,5 @@ export function useNegotiationLive(fn: () => void, opts: { types: string[]; matc
   }, [enabled]);
 }
 
-/** El mensaje de la API para LOGYX-NEG-001 (datos de contacto) se reemplaza por una explicación con siguiente paso. */
-export const RN07_COPY = 'No puedes compartir teléfonos, correos, enlaces ni usuarios de redes. Coordina todo por este chat: así ambas partes quedan protegidas.';
-export const isContactError = (field: string | null, message: string) => (field === 'body' || field === 'message') && /contacto|chat de logyx|rn07/i.test(message);
+/** RN07: texto del campo cuando la API responde `LOGYX-NEG-001` (ver `lib/action-error.ts`). */
+export const RN07_COPY = RN07_FIELD_MESSAGE;

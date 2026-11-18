@@ -136,6 +136,21 @@ class ReputationViewModelsTest {
         assertTrue(vm.state.value.canSubmit)
     }
 
+    @Test fun `RN07 - NEG-001 en el comentario de la resena queda bajo el campo`() {
+        val repo = FakeRep(Result.failure(Exception()))
+        repo.submitResult = Result.failure(ApiException(400, "LOGYX-NEG-001", "No incluyas teléfonos.", field = "comment"))
+        val vm = ReviewViewModel("s", repo, FakeAuth(OrgType.PYME))
+        vm.onPunctuality(5); vm.onCargoCondition(5); vm.onCommunication(5); vm.onComment("987654321")
+        vm.submit()
+        assertFalse(vm.state.value.done)
+        assertEquals("No incluyas teléfonos.", vm.state.value.commentError)
+        assertNull(vm.state.value.message)
+        assertFalse(vm.state.value.canSubmit)
+        vm.onComment("Buen servicio")
+        assertNull(vm.state.value.commentError)
+        assertTrue(vm.state.value.canSubmit)
+    }
+
     @Test fun `error al enviar no marca done`() {
         val repo = FakeRep(Result.failure(Exception()))
         repo.submitResult = Result.failure(ApiException(409, "ALREADY_REVIEWED", "Ya calificaste este envío."))

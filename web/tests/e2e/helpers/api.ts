@@ -158,6 +158,76 @@ export const bookTrip = (token: string, tripId: string, o: Record<string, unknow
 export async function tripScenario(o: { capacity?: number; vehicleCapacity?: number } = {}) {
   const [pyme, carrier] = await Promise.all([registerAccount('PYME'), registerAccount('CARRIER')]);
   const vehicle = await addVehicle(carrier.token, o.vehicleCapacity ?? 12000);
-  const trip = await publishTrip(carrier.token, vehicle.id, o.capacity ? { capacityKg: o.capacity } : {});
-  return { pyme, carrier, vehicle, trip };
+  // Fecha de salida propia (10–330 días): el dev acumula viajes Abancay → Ayacucho de corridas anteriores y la búsqueda
+  // pagina de a 20; con `desde=<date>` el viaje recién creado aparece en la primera página.
+  const departure = new Date(Date.now() + (10 + Math.floor(Math.random() * 320)) * 86400000);
+  departure.setUTCHours(15, 0, 0, 0); // 10:00 en Lima: misma fecha local
+  const date = departure.toISOString().slice(0, 10);
+  const trip = await publishTrip(carrier.token, vehicle.id, { departureAt: departure.toISOString(), ...(o.capacity ? { capacityKg: o.capacity } : {}) });
+  return { pyme, carrier, vehicle, trip, date };
+}
+
+// ── Huecos P1 (V13): verificación, negociación, envío ─────────────────────
+export const orgIdOf = async (token: string) => (await call<{ organizationId: string }>('GET', '/auth/me', token)).organizationId;
+export const verifyOrg = (op: string, id: string, note?: string) => call<any>('POST', `/operator/organizations/${id}/verify`, op, note ? { note } : {});
+export const rejectOrg = (op: string, id: string, reason: string) => call<any>('POST', `/operator/organizations/${id}/reject`, op, { reason });
+export const suspendOrg = (op: string, id: string, reason: string) => call<any>('POST', `/operator/organizations/${id}/suspend`, op, { reason });
+
+/** Página (base 1, de 20) en la que aparece la organización en la bandeja del operador con ese estado. */
+export async function orgInboxPage(op: string, status: string, orgId: string, type = '', size = 20): Promise<number> {
+  for (let page = 0; page < 200; page++) {
+    const res = await fetch(`${API_URL}/api/v1/operator/organizations?status=${status}${type ? `&type=${type}` : ''}&page=${page}&size=${size}`, { headers: { authorization: `Bearer ${op}` } });
+    const json: any = await res.json();
+    const rows: any[] = json.data ?? [];
+    if (rows.some((o) => o.id === orgId)) return page + 1;
+    if (rows.length < size) break;
+  }
+  throw new Error(`La organización ${orgId} no está en la bandeja ${status}`);
+}
+
+export const counterOffer = (token: string, bidId: string, amount: number, message?: string) => call<any>('POST', `/bids/${bidId}/counter-offers`, token, { amount, message });
+export const withdrawBid = (token: string, bidId: string) => call<any>('POST', `/bids/${bidId}/withdraw`, token);
+export const cancelShipment = (token: string, id: string, reason: string) => call<any>('POST', `/shipments/${id}/cancel`, token, { reason });
+export const bidsOf = (token: string, requestId: string) => call<any[]>('GET', `/shipment-requests/${requestId}/bids`, token);
+export const notificationsOf = (token: string) => call<any[]>('GET', '/notifications?size=50', token);
+
+// ── Cuentas, contraseñas y roles (V14) ───────────────────────────────────
+export type MailboxEntry = { to: string; subject: string; text: string; link: string; token: string };
+/** Correos del buzón dev (mailer mock) para un destinatario, el más reciente primero; espera hasta que llegue al menos uno. */
+export async function mailbox(to: string, opts: { timeoutMs?: number; matching?: (m: MailboxEntry) => boolean } = {}): Promise<MailboxEntry[]> {
+  const until = Date.now() + (opts.timeoutMs ?? 10_000);
+  for (;;) {
+    const res = await fetch(`${API_URL}/api/v1/dev/mailbox?to=${encodeURIComponent(to)}`);
+    const json: any = await res.json().catch(() => ({}));
+    const rows: MailboxEntry[] = (json.data ?? json ?? []).filter((m: MailboxEntry) => !opts.matching || opts.matching(m));
+    if (rows.length > 0 || Date.now() > until) return rows;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+/** Enlace (relativo a la web) del correo más reciente recibido por `to` (el buzón dev lista primero el último). */
+export async function resetLinkFor(to: string, matching?: (m: MailboxEntry) => boolean): Promise<{ token: string; path: string }> {
+  const rows = await mailbox(to, { matching });
+  if (!rows.length) throw new Error(`No llegó ningún correo a ${to}`);
+  const last = rows[0];
+  return { token: last.token, path: `/restablecer?token=${encodeURIComponent(last.token)}` };
+}
+export type OrgUser = { id: string; email: string; fullName: string; role: string; active: boolean; invitationPending: boolean; lastLoginAt?: string | null };
+export const inviteUser = (token: string, fullName: string, email: string, role: 'ADMIN' | 'OPS' | 'VIEWER') => call<OrgUser>('POST', '/organizations/me/users', token, { fullName, email, role });
+export const orgUsers = (token: string) => call<OrgUser[]>('GET', '/organizations/me/users', token);
+export const userEmail = (prefix = 'usr') => `${prefix}-${uid()}@prueba.pe`;
+export const forgotPassword = (email: string) => call<any>('POST', '/auth/forgot-password', undefined, { email });
+export const resetPasswordApi = (token: string, newPassword: string, acceptPrivacyPolicy?: boolean) => call<any>('POST', '/auth/reset-password', undefined, { token, newPassword, acceptPrivacyPolicy });
+/** Crea (por API) un usuario con ese rol en la organización de `adminToken`, completa la invitación y devuelve su token. */
+export async function userWithRole(adminToken: string, role: 'ADMIN' | 'OPS' | 'VIEWER', password = PASSWORD) {
+  const email = userEmail(role.toLowerCase());
+  const u = await inviteUser(adminToken, `Usuario ${role} ${uid()}`, email, role);
+  const { token } = await resetLinkFor(email);
+  await resetPasswordApi(token, password, true);
+  return { ...u, email, password, token: await login(email, password) };
+}
+/** Respuesta cruda (para comprobar códigos de error de la API). */
+export async function raw(method: string, path: string, token?: string, body?: unknown) {
+  const res = await fetch(`${API_URL}/api/v1${path}`, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const json: any = await res.json().catch(() => ({}));
+  return { status: res.status, code: json?.error?.code as string | undefined, json };
 }

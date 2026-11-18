@@ -26,7 +26,7 @@ class BidFlowTest {
     private val loads = FakeLoads()
     private val auth = FakeAuth(SessionState.LoggedIn(Data.carrier))
     private val compose = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(FakeKoinRule(auth, loads)).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(FakeKoinRule(auth, loads)).around(FakeNegotiationRule(FakeNegotiation())).around(compose)
 
     private fun waitFor(text: String) = compose.waitUntil(10_000) {
         compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()

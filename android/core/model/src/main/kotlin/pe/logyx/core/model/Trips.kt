@@ -153,7 +153,20 @@ data class SmartLoadView(
     val decidedAt: String? = null,
     val items: List<SmartLoadItemView> = emptyList(),
     val route: List<SmartLoadRouteStop> = emptyList(),
+    /** Solo en la respuesta de `POST /smart-loads/{id}/accept` (V13, F12): una oferta por carga del plan. */
+    val bids: List<SmartLoadBidView> = emptyList(),
 )
+
+/** Oferta creada al aceptar un plan Smart Load (`SmartLoadView.bids`). */
+@Serializable
+data class SmartLoadBidView(val requestId: String, val bidId: String? = null, val amount: Double = 0.0)
+
+/** Cuerpo de `POST /smart-loads/{id}/accept` (V13): monto por carga (todo o nada, `LOGYX-TRP-011/012`) y notas (máx. 300). */
+@Serializable
+data class SmartLoadItemAmount(val requestId: String, val amount: Double)
+
+@Serializable
+data class AcceptSmartLoadRequest(val items: List<SmartLoadItemAmount> = emptyList(), val notes: String? = null)
 
 /** Filtros de la búsqueda de viajes de la PYME (todos opcionales). Fechas ISO `yyyy-MM-dd` (día de salida, Lima). */
 data class TripFilter(

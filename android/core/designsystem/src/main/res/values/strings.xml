@@ -28,7 +28,7 @@
     <string name="ds_open_calendar">Abrir calendario</string>
     <string name="ds_loading_action">Procesando…</string>
     <string name="ds_banner_dismiss">Descartar aviso</string>
-    <string name="ds_verified_company">Empresa verificada</string>
+    <string name="ds_verified_company">Verificado por OnCargo</string>
     <string name="ds_error_prefix">Error:</string>
     <string name="ds_success_prefix">Listo:</string>
     <string name="ds_info_prefix">Aviso:</string>
@@ -45,6 +45,7 @@
     <string name="ds_stop_arrived">En el punto desde %1$s</string>
     <string name="ds_stop_next">Siguiente parada</string>
     <string name="ds_route_map_desc">Mapa con la ruta de origen a destino</string>
+    <string name="ds_route_attribution">Rutas © OpenStreetMap</string>
     <string name="ds_cargotype_general">Carga general</string>
     <string name="ds_cargotype_fragile">Frágil</string>
     <string name="ds_cargotype_perishable">Perecible</string>
@@ -72,6 +73,8 @@
     <string name="ds_bidstatus_pending">Pendiente</string>
     <string name="ds_bidstatus_accepted">Ganada</string>
     <string name="ds_bidstatus_rejected">No elegida</string>
+    <string name="ds_bidstatus_withdrawn">Retirada</string>
+    <string name="ds_status_unknown">Otro estado</string>
     <string name="ds_shipmentstatus_pending">Por recoger</string>
     <string name="ds_shipmentstatus_in_transit">En tránsito</string>
     <string name="ds_shipmentstatus_delivered">Entregado</string>
@@ -132,4 +135,55 @@
     <string name="ds_smartload_rejected">Rechazada</string>
     <string name="ds_smartload_expired">Vencida</string>
     <string name="ds_pick_time">Elige una hora</string>
+
+    <!-- Verificación (RN01) y rol Lector (V14) -->
+    <string name="ds_verification_pending_title">Tu empresa está en revisión</string>
+    <string name="ds_verification_pending_text">Mientras OnCargo valida tus datos puedes explorar, pero no publicar, ofertar ni reservar.</string>
+    <string name="ds_verification_rejected_title">Verificación rechazada</string>
+    <string name="ds_verification_rejected_text">Corrige los datos de tu empresa en la web (razón social o RUC) para que volvamos a revisarla. Mientras tanto no puedes publicar, ofertar ni reservar.</string>
+    <string name="ds_verification_suspended_title">Tu empresa está suspendida</string>
+    <string name="ds_verification_suspended_text">Mientras dure la suspensión no puedes publicar, ofertar, reservar ni aceptar ofertas. Escríbenos para revisar tu caso.</string>
+    <string name="ds_verification_note">Motivo: %1$s</string>
+    <string name="ds_read_only_notice">Tu rol Lector solo permite consultar. Pide a un administrador de tu empresa que haga cambios.</string>
+    <string name="ds_read_only_action">No disponible con el rol Lector</string>
+
+    <!-- V13-V15: negociación, posición, motivos y compatibilidad de flota -->
+    <string name="ds_bidoutcome_open">En subasta</string>
+    <string name="ds_bidoutcome_awaiting">Esperando a la PYME</string>
+    <string name="ds_bidoutcome_won">Ganada</string>
+    <string name="ds_bidoutcome_lost">Perdida</string>
+    <string name="ds_bidoutcome_cancelled">Solicitud cancelada</string>
+    <string name="ds_bidoutcome_withdrawn">Retirada</string>
+    <string name="ds_closereason_timeout">Se acabó el tiempo</string>
+    <string name="ds_closereason_max_bids">Llegó al máximo de ofertas</string>
+    <string name="ds_closereason_accepted">La PYME adjudicó la carga</string>
+    <string name="ds_closereason_cancelled">La PYME canceló la solicitud</string>
+    <string name="ds_auction_closure_both">Subasta cerrada el %1$s · %2$s</string>
+    <string name="ds_auction_closure_when">Subasta cerrada el %1$s</string>
+    <string name="ds_auction_closure_reason">Subasta cerrada · %1$s</string>
+    <string name="ds_standing_best">Tu oferta es la mejor</string>
+    <string name="ds_standing_within_5">A menos de 5 % de la mejor</string>
+    <string name="ds_standing_within_15">A menos de 15 % de la mejor</string>
+    <string name="ds_standing_above_15">Más de 15 % sobre la mejor</string>
+    <string name="ds_standing_rank">Vas %1$d.º de %2$d</string>
+    <string name="ds_standing_final_rank">Posición final: %1$d.º de %2$d</string>
+    <string name="ds_standing_can_change">Puede cambiar mientras la subasta siga abierta.</string>
+    <string name="ds_standing_description">Posición de tu oferta: %1$s</string>
+    <string name="ds_reason_counter">%1$d/%2$d caracteres</string>
+    <string name="ds_reason_no_contact">No incluyas teléfonos, correos ni enlaces: coordina todo por el chat de OnCargo.</string>
+    <string name="ds_reason_back">Volver</string>
+    <string name="ds_vehicle_choice_unavailable_route">No disponible: está en ruta</string>
+    <string name="ds_vehicle_choice_unavailable_maintenance">No disponible: está en mantenimiento</string>
+    <string name="ds_vehicle_choice_unavailable">No disponible en este momento</string>
+    <string name="ds_vehicle_choice_weight">Capacidad %1$s; la carga pesa %2$s</string>
+    <string name="ds_vehicle_choice_type">Este tipo de vehículo no puede llevar carga %1$s</string>
+    <string name="ds_vehicle_choice_type_generic">Este tipo de vehículo no sirve para esta carga</string>
+    <string name="ds_vehicle_choice_volume">Cabe %1$s m³; la carga necesita %2$s m³</string>
+    <string name="ds_vehicle_choice_option">%1$s · hasta %2$s</string>
+    <string name="ds_vehicle_choice_not_apt">No apto</string>
+    <string name="ds_vehicle_choice_current">Vehículo actual</string>
+    <string name="ds_vehicle_choice_none_title">Ningún vehículo de tu flota puede llevar esta carga</string>
+    <string name="ds_vehicle_choice_none_text">Revisa el motivo de cada vehículo. Puedes registrar o liberar vehículos desde la web de OnCargo.</string>
+    <string name="ds_vehicle_choice_empty_title">Aún no tienes vehículos</string>
+    <string name="ds_vehicle_choice_empty_text">Registra un vehículo en la web de OnCargo para poder ofertar.</string>
 </resources>

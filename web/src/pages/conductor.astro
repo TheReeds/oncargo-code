@@ -9,17 +9,21 @@ import { cn } from '@/lib/utils';
 import { StopTimeline } from '@/features/shipments/components/StopTimeline';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
-import { activeShipment } from '@/features/driver/server';
+import { activeShipment, shipmentHistory } from '@/features/driver/server';
 import { DescriptionList } from '@/components/ui/description-list';
-import { formatTons, CITY_LABELS } from '@/lib/format';
+import { formatTons, CITY_LABELS, formatDateTime } from '@/lib/format';
 import { ApiError } from '@/lib/api/client';
-import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut, Navigation, TriangleAlert, Truck } from '@lucide/astro';
+import { Smartphone, Route, MapPinCheck, PackageCheck, LogOut, Navigation, TriangleAlert, Truck, UserRound, History } from '@lucide/astro';
 
 const session = Astro.locals.session!;
 const user = await me(session.token);
 let active = null;
 let activeError = false;
 try { active = await activeShipment(session.token); } catch (e) { if (e instanceof ApiError && e.status === 401) throw e; activeError = true; }
+let history: Awaited<ReturnType<typeof shipmentHistory>> = [];
+let historyError = false;
+try { history = await shipmentHistory(session.token); } catch (e) { if (e instanceof ApiError && e.status === 401) throw e; historyError = true; }
+const HISTORY_LIMIT = 8;
 const name = user?.fullName ?? session.email;
 const first = name.split(/\s+/)[0];
 const tasks = [
@@ -89,10 +93,38 @@ const nextLabel = next ? `${next.type === 'PICKUP' ? 'Recojo' : 'Entrega'} · ${
             <p class="mx-auto mt-1 max-w-sm text-sm text-ink-700">{activeError ? 'Recarga la página para intentarlo de nuevo.' : 'Cuando tu transportista te asigne un envío, lo verás aquí y en la app, con su ruta y sus paradas.'}</p>
           </section>
         )}
+
+        <section aria-labelledby="anteriores" class="rounded-card border border-steel-200 bg-surface" data-testid="driver-history">
+          <div class="flex items-center justify-between gap-2 border-b border-steel-200 px-5 py-3.5">
+            <h2 id="anteriores" class="flex items-center gap-2 text-[15px] font-semibold text-ink-900"><History size={16} class="text-petrol-700" aria-hidden="true" /> Viajes anteriores</h2>
+            {history.length > 0 && <span class="font-mono text-xs text-ink-500">{history.length}</span>}
+          </div>
+          {historyError ? (
+            <p class="px-5 py-4 text-sm text-ink-700">No pudimos cargar tus viajes anteriores. Recarga la página para intentarlo de nuevo.</p>
+          ) : history.length === 0 ? (
+            <p class="px-5 py-4 text-sm text-ink-700">Todavía no has terminado ningún viaje. Cuando entregues un envío, lo verás aquí.</p>
+          ) : (
+            <ul class="divide-y divide-steel-200">
+              {history.slice(0, HISTORY_LIMIT).map((h) => (
+                <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm">
+                  <div class="min-w-0">
+                    <p class="font-medium text-ink-900">{CITY_LABELS[h.originCity ?? ''] ?? h.originCity} → {CITY_LABELS[h.destinationCity ?? ''] ?? h.destinationCity}</p>
+                    <p class="truncate text-xs text-ink-500">{h.cargoDescription} · <span class="font-mono">{formatTons(h.weightKg)}</span>{h.vehiclePlate ? <> · <span class="font-mono">{h.vehiclePlate}</span></> : null}</p>
+                  </div>
+                  <div class="flex items-center gap-2 text-xs text-ink-500">
+                    <span class="font-mono tabular-nums">{formatDateTime(h.status === 'CANCELLED' ? (h.cancelledAt ?? h.createdAt) : (h.deliveredAt ?? h.createdAt))}</span>
+                    <StatusPill status={h.status!} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {history.length > HISTORY_LIMIT && <p class="border-t border-steel-200 px-5 py-3 text-xs text-ink-500">Mostrando los {HISTORY_LIMIT} más recientes de {history.length}.</p>}
+        </section>
       </div>
 
       <div class="min-w-0 space-y-4">
-        <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre LOGYX en tu celular para trabajar.</Alert>
+        <Alert tone="info" title="Tus viajes están en la app móvil">La versión web es para empresas y transportistas. Abre OnCargo en tu celular para trabajar.</Alert>
 
         <section aria-labelledby="en-app" class="rounded-card border border-steel-200 bg-surface p-5">
           <h2 id="en-app" class="flex items-center gap-2 text-[15px] font-semibold text-ink-900"><Smartphone size={18} class="text-petrol-700" aria-hidden="true" /> Qué haces en la app</h2>
@@ -108,6 +140,10 @@ const nextLabel = next ? `${next.type === 'PICKUP' ? 'Recojo' : 'Entrega'} · ${
             ))}
           </ul>
         </section>
+
+        <a href="/cuenta" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'h-12 w-full text-base')}>
+          <UserRound size={18} aria-hidden="true" /> Mi cuenta
+        </a>
 
         <form method="post" action="/logout">
           <button type="submit" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'h-12 w-full text-base')}>

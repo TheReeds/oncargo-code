@@ -28,6 +28,8 @@ public class AuthService {
     @Inject TokenIssuer tokens;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
+    @Inject RefreshSessions refreshSessions;
+    @Inject AccountSessions sessions;
 
     /** Registra organización + usuario administrador. No hay usuario aún: corre sin RLS. */
     // SystemTx: sin usuario aún; verifica RUC/email en todas las organizaciones.
@@ -75,17 +77,78 @@ public class AuthService {
         });
     }
 
+    /**
+     * Alta interna de un usuario con contraseña en una organización existente (seed dev y tests; no se expone por
+     * HTTP: por la API los usuarios se invitan). Idempotente por email: si ya existe, no hace nada.
+     */
+    // SystemTx: alta interna de plataforma (seed dev, tests), sin usuario; unicidad global del email.
+    public void provisionUser(java.util.UUID organizationId, String email, String password, String fullName,
+                              Profile.Role role) {
+        systemTx.run(() -> {
+            if (profiles.emailTaken(email)) return;
+            Profile p = Profile.create(organizationId, email, passwords.hash(password), fullName, role,
+                    OffsetDateTime.now());
+            profiles.insert(p);
+            audit.record(null, organizationId, "USER_PROVISIONED", "profile", p.id(), "rol=" + role);
+        });
+    }
+
     /** Sin usuario autenticado aún: corre sin RLS (necesita buscar el email en todas las organizaciones). */
-    // SystemTx: busca el email en todas las organizaciones antes de que exista un JWT.
     public AuthResult login(String email, String password) {
+        return login(email, password, false, null);
+    }
+
+    /**
+     * Login. Con {@code refresh=true} (opt-in del móvil/conductor, F24) el access token dura
+     * {@code logyx.jwt.refresh-access-ttl} y la respuesta trae un refresh token rotativo; sin él, la sesión web de
+     * {@code logyx.jwt.ttl} (revocable por {@code sv}). Registra {@code last_login_at}.
+     */
+    // SystemTx: busca el email en todas las organizaciones antes de que exista un JWT.
+    public AuthResult login(String email, String password, boolean refresh, String userAgent) {
         return systemTx.call(() -> {
             Profile p = profiles.findByEmail(email)
-                    .filter(Profile::active)
+                    .filter(Profile::canLogIn)
                     .filter(x -> passwords.matches(password, x.passwordHash()))
                     .orElseThrow(() -> new BusinessException(401, "LOGYX-AUTH-001", "Credenciales inválidas"));
             Organization org = organizations.findById(p.organizationId()).orElseThrow();
-            return issue(new UserAccount(p, org));
+            p.recordLogin(OffsetDateTime.now());
+            profiles.update(p);
+            return refresh ? refreshSessions.start(p, org, userAgent) : issue(new UserAccount(p, org));
         });
+    }
+
+    /**
+     * Cambio de contraseña con sesión (cualquier rol, también DRIVER y VIEWER). Verifica la actual
+     * ({@code LOGYX-AUTH-006}), sube la versión de sesión (cierra las demás sesiones) y devuelve una sesión nueva
+     * para que la actual siga (la web reemplaza su cookie).
+     */
+    @Transactional
+    public AuthResult changePassword(String currentPassword, String newPassword, boolean refresh, String userAgent) {
+        Profile p = profiles.findById(tenant.profileId()).orElseThrow(() -> BusinessException.notFound("Usuario"));
+        if (!passwords.matches(currentPassword, p.passwordHash())) {
+            throw BusinessException.badRequest("LOGYX-AUTH-006", "La contraseña actual no es correcta",
+                    "currentPassword");
+        }
+        if (passwords.matches(newPassword, p.passwordHash())) {
+            throw BusinessException.badRequest("LOGYX-AUTH-010", "La nueva contraseña debe ser distinta de la actual",
+                    "newPassword");
+        }
+        p.changePassword(passwords.hash(newPassword), OffsetDateTime.now());
+        profiles.update(p);
+        audit.record(p.id(), p.organizationId(), "PASSWORD_CHANGED", "profile", p.id(), null);
+        sessions.revoked(p.id());
+        Organization org = organizations.findById(p.organizationId()).orElseThrow();
+        return refresh ? refreshSessions.start(p, org, userAgent) : issue(new UserAccount(p, org));
+    }
+
+    /** "Cerrar sesión en todos los dispositivos" (F55): sube la versión de sesión; todos los tokens dejan de valer. */
+    @Transactional
+    public void logoutAll() {
+        Profile p = profiles.findById(tenant.profileId()).orElseThrow(() -> BusinessException.notFound("Usuario"));
+        p.revokeSessions();
+        profiles.update(p);
+        audit.record(p.id(), p.organizationId(), "LOGOUT_ALL", "profile", p.id(), null);
+        sessions.revoked(p.id());
     }
 
     @Transactional

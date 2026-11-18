@@ -71,6 +71,8 @@
 
     <!-- Jobs (cierre automático de subastas) -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-scheduler</artifactId></dependency>
+    <!-- Correo: restablecer contraseña e invitaciones (V14). Mock en dev/test. -->
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-mailer</artifactId></dependency>
 
     <!-- Tests -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>

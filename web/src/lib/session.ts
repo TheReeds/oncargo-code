@@ -1,5 +1,6 @@
 import type { AstroCookies } from 'astro';
 import type { components } from './api/schema';
+import { permissionsFor, type Permission } from './permissions';
 
 export type OrgType = components['schemas']['OrgType'];
 export const COOKIE = 'logyx_session';
@@ -10,6 +11,8 @@ export interface Session {
   orgId: string;
   orgType: OrgType | null;
   role: string | null;
+  /** Permisos según rol y tipo de organización (`lib/permissions.ts`); úsalos con `can(session, 'OPERATE')`. */
+  permissions: Permission[];
   groups: string[];
   email: string;
   exp: number;
@@ -36,6 +39,7 @@ export function readSession(cookies: AstroCookies): Session | null {
     orgId: c.org_id,
     orgType: c.org_type ?? null,
     role: c.role ?? null,
+    permissions: permissionsFor(c.role, c.org_type),
     groups: c.groups ?? [],
     email: c.upn ?? '',
     exp: c.exp,

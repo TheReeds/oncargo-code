@@ -46,6 +46,10 @@ public class AssignDriverUseCase {
         String why = ContactInfoPolicy.clean(reason, "reason");                                          // RN07
         s.ensureReassignable(why);
         DriverAccount d = fleet.ownDriver(driverId);
+        if (!d.active()) {                                                                                 // F31
+            throw BusinessException.conflict("LOGYX-FLT-003",
+                    "La cuenta de este conductor está desactivada: reactívala o elige otro conductor", "driverId");
+        }
         UUID previousDriverId = s.driverId();
         boolean changed = previousDriverId != null && !previousDriverId.equals(d.driver().id());
         UUID previous = !changed ? null

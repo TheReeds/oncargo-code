@@ -27,6 +27,21 @@ public interface BidRepository {
     /** Ofertas pendientes sobre solicitudes publicadas de la PYME (por revisar). */
     long countPendingToReview(UUID requesterOrgId);
     long countByCarrierAndStatus(UUID carrierOrgId, Bid.Status status);
+    /**
+     * La oferta pendiente más baja de cada solicitud (empate: la más antigua); sin entrada si no hay pendientes.
+     * Visible solo para quien ya ve las ofertas de la solicitud (la PYME dueña o el operador, por RLS).
+     */
+    Map<UUID, Bid> bestPendingByRequests(Collection<UUID> requestIds);
+
+    /**
+     * Agregados de posición del transportista en cada solicitud donde ofertó (ofertas no retiradas). Pensado para
+     * ejecutarse en contexto de sistema: devuelve solo conteos y el mejor monto, nunca ofertas ajenas.
+     */
+    Map<UUID, Ranking> rankings(Collection<UUID> requestIds, UUID carrierOrgId);
+
+    /** {@code betterCount}: ofertas no retiradas que van por delante de la del transportista (menor monto; empate: más antigua). */
+    record Ranking(int betterCount, int bidCount, java.math.BigDecimal bestAmount) {}
+
     /** Inserta o actualiza. */
     void save(Bid bid);
 }

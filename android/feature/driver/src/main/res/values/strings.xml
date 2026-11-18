@@ -57,4 +57,19 @@
     <string name="driver_incident_banner">Tienes una incidencia abierta. No puedes avanzar hasta que se resuelva.</string>
     <string name="driver_incident_report">Reportar incidencia</string>
     <string name="driver_incident_view">Ver incidencias</string>
+
+    <string name="driver_evidence_not_yet">La foto y la firma de entrega se piden cuando llegues a destino. Marca "Llegué a destino" y aquí aparecerán.</string>
+    <string name="driver_evidence_closed">La entrega ya está cerrada, así que no se puede agregar más evidencia.</string>
+    <string name="driver_evidence_closed_title">Evidencia que no se subió</string>
+    <string name="driver_evidence_closed_banner">Estas evidencias no se subieron: %1$s. La entrega ya se cerró o el envío ya no está a tu nombre; se descartaron y no se reintentarán.</string>
+    <string name="driver_evidence_closed_ok">Entendido</string>
+    <plurals name="driver_evidence_closed_photos">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
+    <plurals name="driver_evidence_closed_signatures">
+        <item quantity="one">%1$d firma</item>
+        <item quantity="other">%1$d firmas</item>
+    </plurals>
+    <string name="driver_history_title">Viajes anteriores</string>
 </resources>

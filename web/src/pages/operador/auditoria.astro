@@ -1,0 +1,39 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import AuditViewer from '@/features/operator/components/AuditViewer';
+import { auditActions, listAudit, type AuditQuery } from '@/features/operator/server';
+import { ApiError } from '@/lib/api/client';
+const t = Astro.locals.session!.token;
+const q = Astro.url.searchParams;
+const get = (k: string) => q.get(k) ?? '';
+const UUID = /^[0-9a-f-]{36}$/i;
+const filters = {
+  actions: get('accion').split(',').map((s) => s.trim()).filter((s) => /^[A-Z_]{3,60}$/.test(s)),
+  entity: /^[a-z_]{2,40}$/.test(get('entidad')) ? get('entidad') : '',
+  actor: UUID.test(get('actor')) ? get('actor') : '',
+  org: UUID.test(get('organizacion')) ? get('organizacion') : '',
+  entityId: UUID.test(get('entidadId')) ? get('entidadId') : '',
+  from: /^\d{4}-\d{2}-\d{2}$/.test(get('desde')) ? get('desde') : '',
+  to: /^\d{4}-\d{2}-\d{2}$/.test(get('hasta')) ? get('hasta') : '',
+};
+const pageNo = Math.max(1, Number(get('pagina')) || 1);
+const query: AuditQuery = {
+  action: filters.actions.length ? filters.actions : undefined, entity: filters.entity || undefined, actorId: filters.actor || undefined,
+  organizationId: filters.org || undefined, entityId: filters.entityId || undefined,
+  from: filters.from || undefined, to: (filters.to || filters.from) || undefined, page: pageNo - 1, size: 20,
+};
+let result = { items: [] as Awaited<ReturnType<typeof listAudit>>['items'], meta: { page: 0, size: 20, total: 0 } };
+let actionList: string[] = [];
+let loadError: string | null = null;
+try {
+  [result, actionList] = await Promise.all([listAudit(t, query), auditActions(t).catch(() => [] as string[])]);
+} catch (e) {
+  if (e instanceof ApiError && e.status === 401) throw e;
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar la auditoría.';
+}
+---
+<AppShell title="Auditoría" active="operador-auditoria" wide>
+  <PageHeader title="Auditoría" subtitle="Quién hizo qué en la plataforma, de lo más reciente a lo más antiguo." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Auditoría' }]} />
+  <AuditViewer client:load rows={result.items} actionOptions={actionList} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} loadError={loadError} />
+</AppShell>

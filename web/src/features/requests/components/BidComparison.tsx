@@ -1,3 +1,4 @@
+import { useCan } from '@/lib/use-can';
 import { useEffect, useRef, useState } from 'react';
 import { actions } from 'astro:actions';
 import { Gavel, Handshake, MessageSquare, Trophy, TrendingDown } from 'lucide-react';
@@ -9,6 +10,8 @@ import { TrustScore } from '@/components/domain/TrustScore';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { flash, toast } from '@/components/ui/toaster';
+import { splitActionError } from '@/lib/action-error';
+import { reportFailure } from '@/components/domain/VerificationBlock';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { VEHICLE_LABELS, formatDateTime, formatMoney } from '@/lib/format';
@@ -17,6 +20,7 @@ import type { BidView } from '@/lib/api/server';
 import { CounterOfferCard } from '@/features/negotiation/components/CounterOfferCard';
 import { CounterOfferDialog } from '@/features/negotiation/components/CounterOfferDialog';
 import { useCounterOffers } from '@/features/negotiation/components/NegotiationSheet';
+import type { CounterOffer } from '@/features/negotiation/server';
 import { useRequestState } from './RequestLive';
 import { OPEN_THREAD_EVENT } from '@/features/negotiation/usePolling';
 
@@ -28,15 +32,18 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
   const [showAll, setShowAll] = useState(false);
   const { offers, reload } = useCounterOffers(b.id, true);
   const d = diffPct(b.amount ?? 0, suggested);
+  const [busy, setBusy] = useState<'accept' | 'reject' | null>(null);
   const pending = offers.find((o) => o.status === 'PENDING');
+  const received = pending?.proposedByCarrier ? pending : undefined; // el transportista me propuso un monto (RF26)
+  const mine = pending && !pending.proposedByCarrier ? pending : undefined; // yo propuse y espero su respuesta
   const history = offers.filter((o) => o !== pending);
   const seen = useRef<Map<string, string>>(new Map());
 
-  // Si el transportista aceptó una contra-oferta, el monto de la oferta cambió: recargamos.
+  // Si el transportista aceptó mi contra-oferta, el monto de la oferta cambió: recargamos.
   useEffect(() => {
     for (const o of offers) {
       const prev = seen.current.get(o.id!);
-      if (prev === 'PENDING' && o.status === 'ACCEPTED') {
+      if (prev === 'PENDING' && o.status === 'ACCEPTED' && !o.proposedByCarrier) {
         flash('El transportista aceptó tu contra-oferta', 'success');
         window.location.reload();
       }
@@ -44,8 +51,40 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
     }
   }, [offers]);
 
-  const canCounter = canNegotiate && b.status === 'PENDING';
-  const dead = b.status === 'REJECTED';
+  async function acceptCounter(o: CounterOffer) {
+    const ok = await confirm({
+      title: `¿Aceptar la propuesta de ${formatMoney(o.amount)}?`,
+      description: `La oferta de ${b.carrierName} pasará de ${formatMoney(o.previousAmount)} a ${formatMoney(o.amount)}. Aceptarla no adjudica el envío: después puedes aceptar la oferta.`,
+      confirmLabel: 'Aceptar propuesta',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
+    setBusy('accept');
+    const { error } = await actions.negotiation.accept({ id: o.id! });
+    if (error) { reportFailure(splitActionError(error)); setBusy(null); return; }
+    flash('Propuesta aceptada', 'success');
+    window.location.reload();
+  }
+  async function rejectCounter(o: CounterOffer) {
+    const ok = await confirm({
+      title: `¿Rechazar la propuesta de ${formatMoney(o.amount)}?`,
+      description: 'La oferta se mantiene en su monto actual. Puedes conversar o proponer otro monto.',
+      confirmLabel: 'Rechazar propuesta',
+      cancelLabel: 'Volver',
+      tone: 'destructive',
+    });
+    if (!ok) return;
+    setBusy('reject');
+    const { error } = await actions.negotiation.reject({ id: o.id! });
+    setBusy(null);
+    if (error) { reportFailure(splitActionError(error)); return; }
+    toast.success('Propuesta rechazada');
+    reload();
+  }
+
+  const canOperate = useCan('OPERATE'); // Lector: ve las ofertas y conversa en modo lectura, pero no acepta ni contraoferta
+  const canCounter = canOperate && canNegotiate && b.status === 'PENDING';
+  const dead = b.status === 'REJECTED' || b.status === 'WITHDRAWN';
   return (
     <li className={cn('border-l-4 px-4 py-4 sm:px-5', isBest ? 'border-emerald-500 bg-emerald-50/60' : 'border-transparent', dead && 'opacity-70')}>
       <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -79,10 +118,10 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
             <Button size="sm" variant="ghost" className="max-sm:flex-1" onClick={() => window.dispatchEvent(new CustomEvent(OPEN_THREAD_EVENT, { detail: { carrierOrgId: b.carrierOrgId } }))}><MessageSquare />Conversar<span className="sr-only"> con {b.carrierName}</span></Button>
           )}
           {canCounter && (
-            <Button size="sm" variant="ghost" className="max-sm:flex-1" disabled={!!pending} onClick={() => setDialog(true)}><Handshake />Contraofertar<span className="sr-only"> a {b.carrierName}</span></Button>
+            <Button size="sm" variant="ghost" className="max-sm:flex-1" disabled={!!mine} onClick={() => setDialog(true)}><Handshake />{received ? 'Responder con otro monto' : 'Contraofertar'}<span className="sr-only"> a {b.carrierName}</span></Button>
           )}
           <div className="flex max-sm:order-first max-sm:w-full sm:ml-auto">
-            {canAccept && b.status === 'PENDING' ? (
+            {canAccept && canOperate && b.status === 'PENDING' ? (
               <Button size="sm" className="max-sm:w-full" variant={isBest ? 'money' : 'outline'} loading={busyId === b.id} disabled={busyId !== null && busyId !== b.id} onClick={() => onAccept(b)}>Aceptar oferta</Button>
             ) : (
               <StatusPill status={b.status!} kind="bid" />
@@ -92,10 +131,22 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
       </div>
       {(pending || history.length > 0) && (
         <div className="mt-3 space-y-2 sm:pl-12">
-          {pending && (
+          {mine && (
             <div>
               <p className="mb-1 text-xs font-semibold text-amber-700">Contra-oferta pendiente: esperando la respuesta del transportista. No puedes enviar otra hasta que responda.</p>
-              <CounterOfferCard offer={pending} />
+              <CounterOfferCard offer={mine} />
+            </div>
+          )}
+          {received && (
+            <div>
+              <p className="mb-1 text-xs font-semibold text-amber-700">{b.carrierName} te propone un nuevo monto</p>
+              <CounterOfferCard
+                offer={received}
+                actions={canNegotiate && canOperate ? <>
+                  <Button size="sm" variant="money" loading={busy === 'accept'} disabled={busy === 'reject'} onClick={() => acceptCounter(received)}>Aceptar propuesta</Button>
+                  <Button size="sm" variant="outline" loading={busy === 'reject'} disabled={busy === 'accept'} onClick={() => rejectCounter(received)}>Rechazar</Button>
+                </> : undefined}
+              />
             </div>
           )}
           {history.length > 0 && (
@@ -108,7 +159,7 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
           )}
         </div>
       )}
-      {canCounter && <CounterOfferDialog open={dialog} onOpenChange={setDialog} bidId={b.id!} carrierName={b.carrierName} currentAmount={b.amount ?? 0} floor={floor} onDone={reload} />}
+      {canCounter && <CounterOfferDialog open={dialog} onOpenChange={setDialog} bidId={b.id!} carrierName={b.carrierName} currentAmount={b.amount ?? 0} floor={floor} replacesTheirs={!!received} onDone={reload} />}
     </li>
   );
 }
@@ -132,8 +183,10 @@ export default function BidComparison({ bids: initialBids, suggested, requestId,
   const canNegotiate = published;
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const sorted = [...bids].sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0));
-  const best = sorted.find((b) => b.status !== 'REJECTED');
+  // Las retiradas y rechazadas no compiten: van al final.
+  const active = (b: BidView) => b.status !== 'REJECTED' && b.status !== 'WITHDRAWN';
+  const sorted = [...bids].sort((a, b) => Number(active(b)) - Number(active(a)) || (a.amount ?? 0) - (b.amount ?? 0));
+  const best = sorted.find(active);
   const saving = best && suggested ? suggested - (best.amount ?? 0) : null;
 
   async function accept(b: BidView) {
@@ -148,7 +201,7 @@ export default function BidComparison({ bids: initialBids, suggested, requestId,
     setBusyId(b.id!);
     const { data, error } = await actions.requests.accept({ bidId: b.id! });
     if (error) {
-      toast.error(error.message);
+      reportFailure(splitActionError(error));
       setBusyId(null);
       return;
     }

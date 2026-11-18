@@ -53,6 +53,12 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     }
 
     @Override
+    public List<Shipment> listHistoryByDriver(UUID driverId) {
+        return map(ShipmentEntity.list("driverId = ?1 and status in ?2 order by createdAt desc",
+                driverId, List.of(Shipment.Status.DELIVERED, Shipment.Status.CANCELLED)));
+    }
+
+    @Override
     public List<Shipment> listActiveByVehicle(UUID vehicleId) {
         return map(ShipmentEntity.list("vehicleId = ?1 and status in ?2 order by createdAt",
                 vehicleId, List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT)));
@@ -75,6 +81,14 @@ public class PanacheShipmentRepository implements ShipmentRepository {
     public long countDeliveredSince(UUID orgId, boolean asCarrier, OffsetDateTime since) {
         return ShipmentEntity.count((asCarrier ? "carrierOrgId" : "requesterOrgId")
                 + " = ?1 and status = ?2 and deliveredAt >= ?3", orgId, Shipment.Status.DELIVERED, since);
+    }
+
+    @Override
+    public java.math.BigDecimal sumAgreedPrice(Collection<Shipment.Status> statuses) {
+        java.math.BigDecimal sum = ShipmentEntity.getEntityManager()
+                .createQuery("select sum(s.agreedPrice) from ShipmentEntity s where s.status in :st", java.math.BigDecimal.class)
+                .setParameter("st", statuses).getSingleResult();
+        return sum == null ? java.math.BigDecimal.ZERO : sum;
     }
 
     @Override

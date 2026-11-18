@@ -4,6 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.model.AuctionStatus
+import pe.logyx.core.model.AuctionView
+import pe.logyx.core.model.BidOutcome
+import pe.logyx.core.model.BidStandingBand
+import pe.logyx.core.model.CloseReason
 import pe.logyx.core.model.BookingStatus
 import pe.logyx.core.model.SmartLoadStatus
 import pe.logyx.core.model.TripPricingMode
@@ -63,6 +67,7 @@ fun RequestStatus.pill() = when (this) {
     RequestStatus.PUBLISHED -> stringResource(R.string.ds_requeststatus_published) to PillTone.Petrol
     RequestStatus.MATCHED -> stringResource(R.string.ds_requeststatus_matched) to PillTone.Emerald
     RequestStatus.CANCELLED -> stringResource(R.string.ds_requeststatus_cancelled) to PillTone.Neutral
+    RequestStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
 }
 
 @Composable
@@ -70,6 +75,7 @@ fun AuctionStatus.label() = when (this) {
     AuctionStatus.OPEN -> stringResource(R.string.ds_auctionstatus_open)
     AuctionStatus.CLOSED -> stringResource(R.string.ds_auctionstatus_closed)
     AuctionStatus.CANCELLED -> stringResource(R.string.ds_auctionstatus_cancelled)
+    AuctionStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown)
 }
 
 @Composable
@@ -77,6 +83,8 @@ fun BidStatus.pill() = when (this) {
     BidStatus.PENDING -> stringResource(R.string.ds_bidstatus_pending) to PillTone.Amber
     BidStatus.ACCEPTED -> stringResource(R.string.ds_bidstatus_accepted) to PillTone.Emerald
     BidStatus.REJECTED -> stringResource(R.string.ds_bidstatus_rejected) to PillTone.Red
+    BidStatus.WITHDRAWN -> stringResource(R.string.ds_bidstatus_withdrawn) to PillTone.Neutral
+    BidStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
 }
 
 @Composable
@@ -85,6 +93,7 @@ fun ShipmentStatus.pill() = when (this) {
     ShipmentStatus.IN_TRANSIT -> stringResource(R.string.ds_shipmentstatus_in_transit) to PillTone.Petrol
     ShipmentStatus.DELIVERED -> stringResource(R.string.ds_shipmentstatus_delivered) to PillTone.Emerald
     ShipmentStatus.CANCELLED -> stringResource(R.string.ds_shipmentstatus_cancelled) to PillTone.Neutral
+    ShipmentStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
 }
 
 val IncidentCategory.label: String
@@ -125,6 +134,7 @@ fun CounterOfferStatus.pill() = when (this) {
     CounterOfferStatus.ACCEPTED -> stringResource(R.string.ds_counteroffer_accepted) to PillTone.Emerald
     CounterOfferStatus.REJECTED -> stringResource(R.string.ds_counteroffer_rejected) to PillTone.Red
     CounterOfferStatus.EXPIRED -> stringResource(R.string.ds_counteroffer_expired) to PillTone.Neutral
+    CounterOfferStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
 }
 
 // --- Fase 4: viajes, reservas y Smart Load ---
@@ -160,3 +170,53 @@ fun SmartLoadStatus.pill() = when (this) {
     SmartLoadStatus.REJECTED -> stringResource(R.string.ds_smartload_rejected) to PillTone.Red
     SmartLoadStatus.EXPIRED -> stringResource(R.string.ds_smartload_expired) to PillTone.Neutral
 }
+
+// --- V13-V15: resultado de mi oferta, posición y cierre de la subasta ---
+/** Estado de mi oferta en "Mis ofertas" (F15: Perdida, Cancelada y Retirada también se listan). */
+@Composable
+fun BidOutcome.pill() = when (this) {
+    BidOutcome.OPEN -> stringResource(R.string.ds_bidoutcome_open) to PillTone.Amber
+    BidOutcome.AWAITING_DECISION -> stringResource(R.string.ds_bidoutcome_awaiting) to PillTone.Petrol
+    BidOutcome.WON -> stringResource(R.string.ds_bidoutcome_won) to PillTone.Emerald
+    BidOutcome.LOST -> stringResource(R.string.ds_bidoutcome_lost) to PillTone.Red
+    BidOutcome.REQUEST_CANCELLED -> stringResource(R.string.ds_bidoutcome_cancelled) to PillTone.Neutral
+    BidOutcome.WITHDRAWN -> stringResource(R.string.ds_bidoutcome_withdrawn) to PillTone.Neutral
+    BidOutcome.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
+}
+
+/** Por qué cerró la subasta (`auction.closeReason`, F51). */
+val CloseReason.label: String
+    @Composable get() = stringResource(
+        when (this) {
+            CloseReason.TIMEOUT -> R.string.ds_closereason_timeout
+            CloseReason.MAX_BIDS -> R.string.ds_closereason_max_bids
+            CloseReason.ACCEPTED -> R.string.ds_closereason_accepted
+            CloseReason.CANCELLED -> R.string.ds_closereason_cancelled
+        },
+    )
+
+/** "Cerró el 28 nov · 08:00 · Se acabó el tiempo", o null si la subasta sigue abierta o no hay datos. */
+@Composable
+fun auctionClosureText(auction: AuctionView?): String? {
+    if (auction == null || auction.status == AuctionStatus.OPEN) return null
+    val reason = auction.closeReason?.label
+    val whenText = auction.closedAt?.let { Fmt.dateTime(it) }
+    return when {
+        whenText != null && reason != null -> stringResource(R.string.ds_auction_closure_both, whenText, reason)
+        whenText != null -> stringResource(R.string.ds_auction_closure_when, whenText)
+        reason != null -> stringResource(R.string.ds_auction_closure_reason, reason)
+        else -> null
+    }
+}
+
+/** Texto cualitativo de mi posición frente a la mejor oferta; nunca revela montos ajenos (RN04). */
+val BidStandingBand.label: String
+    @Composable get() = stringResource(
+        when (this) {
+            BidStandingBand.BEST -> R.string.ds_standing_best
+            BidStandingBand.WITHIN_5_PCT -> R.string.ds_standing_within_5
+            BidStandingBand.WITHIN_15_PCT -> R.string.ds_standing_within_15
+            BidStandingBand.ABOVE_15_PCT -> R.string.ds_standing_above_15
+            BidStandingBand.UNKNOWN -> R.string.ds_status_unknown
+        },
+    )

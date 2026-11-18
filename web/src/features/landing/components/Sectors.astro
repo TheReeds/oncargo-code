@@ -1,0 +1,64 @@
+---
+/** Franja de sectores (no son clientes: son los rubros para los que se diseñó el corredor). Marquee CSS con botón de pausa (WCAG 2.2.2). */
+import { Sprout, Store, Pickaxe, Shirt, BrickWall, Wheat, Pill, Snowflake, Pause, Play } from '@lucide/astro';
+const sectors = [
+  { icon: Sprout, t: 'Agroexportación' },
+  { icon: Store, t: 'Retail y distribución' },
+  { icon: Pickaxe, t: 'Minería ligera' },
+  { icon: Shirt, t: 'Textil y confecciones' },
+  { icon: BrickWall, t: 'Materiales de construcción' },
+  { icon: Wheat, t: 'Alimentos y abarrotes' },
+  { icon: Snowflake, t: 'Carga perecible' },
+  { icon: Pill, t: 'Insumos y farmacia' },
+];
+---
+<section class="relative z-10 border-b border-steel-200 bg-surface" aria-labelledby="sectores-t" data-mq>
+  <div class="mx-auto flex w-full max-w-[1280px] flex-col gap-3 px-4 py-5 lg:flex-row lg:items-center lg:gap-8 lg:px-10">
+    <h2 id="sectores-t" class="mk-eyebrow shrink-0 !tracking-[0.12em]">Pensado para quienes<br class="hidden lg:block" /> mueven carga en el sur</h2>
+    <div class="mq relative min-w-0 flex-1 overflow-hidden">
+      <div class="mq__inner">
+        <ul class="mq__track" aria-label="Sectores">
+          {sectors.map((s) => <li class="mq__item"><s.icon size={18} class="text-petrol-700" aria-hidden="true" />{s.t}</li>)}
+        </ul>
+        <ul class="mq__track mq__dup" aria-hidden="true">
+          {sectors.map((s) => <li class="mq__item"><s.icon size={18} class="text-petrol-700" aria-hidden="true" />{s.t}</li>)}
+        </ul>
+      </div>
+    </div>
+    <button type="button" class="mq__btn hidden size-9 shrink-0 items-center justify-center rounded-full border border-steel-200 text-ink-700 transition-colors hover:bg-steel-100" data-mq-toggle aria-label="Pausar el desplazamiento de sectores">
+      <Pause size={14} class="mq__ic-pause" aria-hidden="true" /><Play size={14} class="mq__ic-play" aria-hidden="true" />
+    </button>
+  </div>
+</section>
+
+<style is:global>
+  .mq__track { display: flex; flex: none; gap: 0.75rem; padding-inline-end: 0.75rem; margin: 0; padding-block: 0; list-style: none; }
+  .mq__item { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; padding: 0.5rem 1rem; border-radius: 999px; background: var(--color-steel-100); border: 1px solid var(--color-steel-200); font-size: 0.875rem; font-weight: 500; color: var(--color-ink-700); }
+  .mq__inner { display: flex; width: max-content; }
+  .mq__dup { display: none; }
+  .mq__ic-play { display: none; }
+  [data-mq][data-paused] .mq__ic-pause { display: none; }
+  [data-mq][data-paused] .mq__ic-play { display: block; }
+  /* Sin animación (movimiento reducido): lista envuelta y sin botón. */
+  .mq__inner { flex-wrap: wrap; width: auto; }
+  .mq__track { flex-wrap: wrap; }
+  @media (prefers-reduced-motion: no-preference) {
+    .mq { mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+    .mq__inner { flex-wrap: nowrap; width: max-content; animation: mq-scroll 46s linear infinite; }
+    .mq__track { flex-wrap: nowrap; }
+    .mq__dup { display: flex; }
+    .mq:hover .mq__inner, .mq:focus-within .mq__inner, [data-mq][data-paused] .mq__inner { animation-play-state: paused; }
+    .mq__btn { display: inline-flex; }
+    @keyframes mq-scroll { to { translate: -50% 0; } }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-mq]').forEach((root) => {
+    const btn = root.querySelector<HTMLButtonElement>('[data-mq-toggle]');
+    btn?.addEventListener('click', () => {
+      const paused = root.toggleAttribute('data-paused');
+      btn.setAttribute('aria-label', paused ? 'Reanudar el desplazamiento de sectores' : 'Pausar el desplazamiento de sectores');
+    });
+  });
+</script>

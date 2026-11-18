@@ -52,7 +52,8 @@ public class MarketplaceResource {
 
     @GET
     @Path("/shipment-requests/{id}/bids")
-    @RolesAllowed(Roles.PYME)
+    @RolesAllowed({Roles.PYME, Roles.OPERATOR})
+    @Operation(summary = "Ofertas de la solicitud, de menor a mayor monto: la PYME dueña o el operador (solo lectura)")
     public ApiResponse<List<BidView>> bids(@PathParam("id") UUID id) {
         return ApiResponse.of(queries.bidsFor(id).stream().map(BidView::of).toList());
     }

@@ -8,7 +8,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
 const og = new URL(ogImage, Astro.url).href;
 ---
 <!doctype html>
-<html lang="es-PE">
+<html lang="es-PE" data-perms={Astro.locals.session?.permissions.join(' ')}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

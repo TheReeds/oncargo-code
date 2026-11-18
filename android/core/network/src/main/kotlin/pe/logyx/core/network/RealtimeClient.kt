@@ -28,7 +28,9 @@ import kotlin.random.Random
  * [events] es un Flow frío que, mientras se colecta, mantiene la conexión: reconecta con espera exponencial (1 s → 30 s)
  * enviando `Last-Event-ID`, emite los eventos de dominio y, al reconectar tras una caída (o si el servidor pide
  * `stream.resync`), emite un evento [RealtimeTypes.STREAM_RESYNC] para que la app refresque lo que muestra.
- * Un 401 llama a [onUnauthorized] (sesión vencida) y deja de reintentar hasta que haya un token nuevo.
+ * Un 401 (o `stream.expired`, que el servidor emite cuando vence el JWT) pide primero renovar la sesión con [refresher]
+ * (F24: el access token del móvil dura 1 h) y reconecta de inmediato con el token nuevo; solo si la sesión terminó
+ * llama a [onUnauthorized] y deja de reintentar hasta que haya un token nuevo.
  * El latido del servidor (`: ping` cada ~20 s) mantiene viva la conexión; si no llega nada en [socketTimeoutMs],
  * se da por caída y se reconecta.
  */
@@ -36,6 +38,7 @@ class RealtimeClient(
     private val client: HttpClient,
     private val tokenProvider: () -> String?,
     private val onUnauthorized: () -> Unit = {},
+    private val refresher: () -> SessionRefresher? = { null },
     private val socketTimeoutMs: Long = 60_000,
     private val maxBackoffMs: Long = 30_000,
 ) {
@@ -47,6 +50,8 @@ class RealtimeClient(
         var backoff = 1_000L
         var everLive = false
         var rejectedToken: String? = null
+        // Token obtenido al renovar: si el servidor también lo rechaza, la sesión no tiene arreglo (no se renueva en bucle).
+        var freshToken: String? = null
         while (currentCoroutineContext().isActive) {
             val token = tokenProvider()
             if (token == null || token == rejectedToken) {
@@ -54,6 +59,8 @@ class RealtimeClient(
                 delay(2_000)
                 continue
             }
+            var reconnectNow = false
+            var expired = false
             try {
                 client.prepareGet("api/v1/events/stream") {
                     header(HttpHeaders.Accept, "text/event-stream")
@@ -64,8 +71,17 @@ class RealtimeClient(
                     }
                 }.execute { res ->
                     when (res.status.value) {
-                        200 -> Unit
-                        401 -> { rejectedToken = token; onUnauthorized(); return@execute }
+                        200 -> freshToken = null // el token nuevo sirvió
+                        401 -> {
+                            val outcome = if (token == freshToken) RefreshOutcome.SESSION_ENDED
+                            else refresher()?.refreshAfterUnauthorized(token) ?: RefreshOutcome.SESSION_ENDED
+                            when (outcome) {
+                                RefreshOutcome.RETRY -> { reconnectNow = true; freshToken = tokenProvider() }
+                                RefreshOutcome.UNAVAILABLE -> Unit // sin red: se reintenta con espera
+                                RefreshOutcome.SESSION_ENDED -> { rejectedToken = token; onUnauthorized() }
+                            }
+                            return@execute
+                        }
                         else -> return@execute
                     }
                     val channel = res.bodyAsChannel()
@@ -84,7 +100,7 @@ class RealtimeClient(
                                 _status.value = RealtimeStatus.LIVE
                                 if (resync) send(event.copy(type = RealtimeTypes.STREAM_RESYNC))
                             }
-                            RealtimeTypes.STREAM_EXPIRED -> break
+                            RealtimeTypes.STREAM_EXPIRED -> { expired = true; break }
                             else -> send(event)
                         }
                     }
@@ -93,6 +109,18 @@ class RealtimeClient(
                 throw e
             } catch (_: Exception) {
                 // red caída, timeout del socket o respuesta inválida: se reintenta
+            }
+            if (expired) {
+                // El JWT venció: renueva y reconecta con el token nuevo sin esperar.
+                when (refresher()?.refreshAfterUnauthorized(token) ?: RefreshOutcome.SESSION_ENDED) {
+                    RefreshOutcome.RETRY -> { reconnectNow = true; freshToken = tokenProvider() }
+                    RefreshOutcome.UNAVAILABLE -> Unit
+                    RefreshOutcome.SESSION_ENDED -> { rejectedToken = token; onUnauthorized() }
+                }
+            }
+            if (reconnectNow) {
+                _status.value = if (everLive) RealtimeStatus.RECONNECTING else RealtimeStatus.CONNECTING
+                continue
             }
             _status.value = if (everLive) RealtimeStatus.RECONNECTING else RealtimeStatus.OFFLINE
             delay(backoff + Random.nextLong(0, 500))

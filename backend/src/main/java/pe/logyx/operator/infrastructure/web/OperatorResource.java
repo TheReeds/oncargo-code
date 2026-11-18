@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import pe.logyx.marketplace.application.OperatorRequestFilter;
 import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shipment.application.OperatorShipmentFilter;
+import pe.logyx.operator.application.AuditFilter;
 import pe.logyx.operator.application.OperatorService;
 import pe.logyx.operator.infrastructure.web.OperatorDtos.*;
 import pe.logyx.shared.api.ApiResponse;
@@ -93,6 +94,36 @@ public class OperatorResource {
     @Operation(summary = "Vehículos disponibles con capacidad para la solicitud (para asignar manualmente)")
     public ApiResponse<List<AssignmentCandidateView>> candidates(@PathParam("id") UUID requestId) {
         return ApiResponse.of(service.candidates(requestId).stream().map(AssignmentCandidateView::of).toList());
+    }
+
+    // ----- Auditoría (F05)
+    @GET
+    @Path("/audit")
+    @Operation(summary = "Visor de auditoría: acciones registradas en la plataforma, paginadas, más recientes primero")
+    public ApiResponse<List<AuditRow>> audit(
+            @Parameter(description = "Id del perfil que ejecutó la acción.") @QueryParam("actorId") String actorId,
+            @Parameter(description = "Id de la organización a la que pertenece el actor.")
+            @QueryParam("organizationId") String organizationId,
+            @Parameter(description = "Acción exacta (p. ej. REQUEST_PUBLISHED). Repetible o separada por comas: "
+                    + "cualquiera de la lista.") @QueryParam("action") List<String> action,
+            @Parameter(description = "Tipo de entidad (p. ej. shipment_request, bid, shipment, organization).")
+            @QueryParam("entity") String entity,
+            @Parameter(description = "Id de la entidad afectada.") @QueryParam("entityId") String entityId,
+            @Parameter(description = "Desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("from") @Schema(type = SchemaType.STRING, format = "date") String from,
+            @Parameter(description = "Hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
+            @QueryParam("to") @Schema(type = SchemaType.STRING, format = "date") String to,
+            @Parameter(description = "Página 0-based (por omisión 0).") @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20).") @QueryParam("size") Integer size) {
+        var filter = AuditFilter.of(actorId, organizationId, action, entity, entityId, from, to);
+        return ApiResponse.of(service.audit(filter, PageRequest.of(page, size)).map(AuditRow::of));
+    }
+
+    @GET
+    @Path("/audit/actions")
+    @Operation(summary = "Acciones distintas presentes en la auditoría (para el filtro del visor), en orden alfabético")
+    public ApiResponse<List<String>> auditActions() {
+        return ApiResponse.of(service.auditActions());
     }
 
     // ----- Verificación de organizaciones (RN01, RF08, F05)

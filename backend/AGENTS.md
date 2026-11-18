@@ -65,12 +65,13 @@ sobre los objetos de dominio.
 | `reputation` | calificaciones post-entrega (RN06) y Trust Score bayesiano (RN09) | `reviews`, `reputation_scores` (V6) |
 | `incident` | incidencias, comentarios y estados (RN11) | `incidents`, `incident_comments` (V7) |
 | `notification` | centro de notificaciones alimentado por eventos | `notifications` (V8) |
-| `operator` | alertas SLA, métricas, candidatos y asignación manual (RN10); sin tablas propias | políticas de escritura (V9) |
+| `operator` | alertas SLA, métricas (con GMV), candidatos y asignación manual (RN10), verificación de organizaciones y **visor de auditoría** (`AuditQueries` → puerto `AuditLogReader` → `NativeAuditLogReader`, SQL nativo con LEFT JOIN a `profiles`/`organizations`); sin tablas propias | políticas de escritura (V9); índices de `audit_log` y `requests_bidder_read` (V15) |
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
 | `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
 | `realtime` | stream SSE `GET /api/v1/events/stream` alimentado por el outbox (ADR-0007) | `realtime_events` (V12) |
 | `routing` | rutas y km por carretera entre ciudades del catálogo, orden óptimo de paradas, desvíos, `GET /api/v1/routes` (ADR-0008) | sin tablas: dataset `resources/routing/routes.json` |
 | (varios) | huecos de flujo 2026-11-16: verificación de organizaciones, retiro de ofertas, cancelación/reasignación de envíos, estado final RF55, grupos de carga | columnas y políticas en V13 (sin tablas nuevas) |
+| `identity` (V14, ADR-0009) | contraseñas (olvidé/restablecer, cambio, invitaciones), sesiones revocables (`sv`), refresh del móvil, usuarios y roles de la organización, perfil editable | `password_tokens`, `refresh_tokens` + columnas de `profiles`/`organizations` (V14) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
 `reputation → shipment, documents`; `incident → shipment`; `marketplace → reputation` (Trust Score en ofertas);
@@ -204,6 +205,34 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 8. **Regenerar OpenAPI** `./mvnw package -DskipTests` y revisar `git diff ../docs/api/openapi.yaml`.
 9. **STATUS**: actualiza la fila del módulo en `../docs/STATUS.md` y `../docs/domain/business-rules.md`.
 
+## Cuentas, sesiones y roles (V14, ADR-0009)
+- **Roles de organización** (`Profile.Role`): `ADMIN` todo; `OPS` opera; `VIEWER` solo lectura; `DRIVER` grupo propio.
+  `identity/infrastructure/security/AccountAccessFilter` (`@ServerRequestFilter`, en todo endpoint con
+  `@RolesAllowed`/`@Authenticated`): (1) versión de sesión: claim `sv` = `profiles.session_version` y usuario activo, si no
+  401 `LOGYX-AUTH-401` (`SessionValidator`, `SystemTx` + caché 30 s `logyx.session.cache-ttl`); (2) VIEWER: **denegación
+  por defecto** de POST/PUT/PATCH/DELETE salvo `identity/domain/OrgAccessPolicy.viewerMayWrite` (`/auth/*`, leer
+  notificaciones, `/pricing/calculate`) → 403 `LOGYX-AUTH-007`; (3) `@shared.security.OrgAdminOnly` en método o clase → 403
+  `LOGYX-AUTH-008`. Endpoint nuevo de escritura: no hace falta nada para VIEWER; si es de gestión, ponle `@OrgAdminOnly`
+  **y** `AccessDenied.requireOrgAdmin(tenant)` en el caso de uso. Si un VIEWER debe poder escribir algo, agrégalo a
+  `OrgAccessPolicy` (con test).
+- **Subir la versión de sesión** (`Profile.revokeSessions`, o `changePassword/changeRole/deactivate`) + `profiles.update` +
+  `AccountSessions.revoked(id)` (vacía la caché y revoca refresh tokens). Lo hacen: cambio/restablecimiento de contraseña,
+  cambio de rol, desactivar usuario o conductor, reset del conductor por su ADMIN, `POST /auth/logout-all`.
+- **Tokens** (`identity/domain/OpaqueTokens`): 32 bytes base64url, en BD solo SHA-256. `PasswordTokenService` (RESET 30 min,
+  INVITE 72 h; "olvidé" corre en un pool propio fuera del hilo de la respuesta) y `RefreshSessions` (rotación, familia con
+  vencimiento absoluto 30 días, reutilización = revoca la familia). Limpieza: `AuthTokenCleanup` (`logyx.auth.token-cleanup.every`).
+- **Correo**: puerto `AccountMailer` → `infrastructure/mail/QuarkusAccountMailer` (Quarkus Mailer; textos en español,
+  marca OnCargo, texto + HTML sin recursos remotos). dev/test `quarkus.mailer.mock=true`; tests: `support/Mailbox`
+  (`MockMailbox`, espera el envío asíncrono).
+- **Buzón dev** `GET /api/v1/dev/mailbox?to=<email>` (`DevMailboxResource`, `@IfBuildProperty(logyx.dev-mailbox=true)`:
+  solo `%dev`, o una imagen compilada con `-Dlogyx.dev-mailbox=true`; oculto del OpenAPI): últimos 20 correos del mock con
+  `subject`, `text`, `link` y `token` extraídos. Para e2e: `POST /auth/forgot-password` → leer el buzón → `/restablecer?token=`.
+- **Usuarios** (`OrganizationUserService`, `/api/v1/organizations/me/users`): invitar (perfil con hash inutilizable +
+  `invitation_pending`, token INVITE), reenviar, cambiar rol, desactivar/reactivar; siempre un ADMIN activo (fila de la
+  organización con `FOR UPDATE`). Conductores: `FleetService.setDriverActive/resetDriverPassword` → `UserAccounts`; uno
+  desactivado no se asigna (`LOGYX-FLT-003`).
+- **Perfil de la organización** (`OrganizationProfileService`, `GET|PATCH /organizations/me`): ver ADR-0009 §7.
+
 ## RLS, dos datasources y SystemTx (ADR-0001, ADR-0006) — no romper
 - **Dos datasources sobre la misma BD.** Por defecto = dueño del esquema (`logyx_owner` en prod; `quarkus` en dev/test):
   Flyway y `SystemTx`. `app` = `logyx_api` (LOGIN, miembro solo de `logyx_app`): todo lo demás. Hibernate elige con
@@ -227,6 +256,8 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   - `FleetService.plateForContract`: la PYME que acepta copia la placa (flota privada del transportista).
   - `PlaceBidUseCase`: conteo total de ofertas para RN04 (bajo RLS un transportista solo ve la suya).
   - `RequestSummaries.bidCounts`: conteo agregado de ofertas para transportistas (sin montos ni competidores).
+  - `RequestSummaries.standings` (V15, RN04): posición del transportista en las solicitudes donde ofertó (`BidRepository.rankings`: conteos y el
+    mejor monto; `BidStandingPolicy` lo convierte en banda). Del `SystemTx` solo sale `BidStanding{rank, bidCount, best, vsBest, finalStanding}`: nunca un monto ni un id ajeno.
   - `NotificationPublisher.publish`: la notificación es para otra organización; `notifications` no tiene política
     de INSERT para `logyx_app` (ADR-0004). Se une a la transacción del despacho del outbox.
   - `ReputationRecalculator.recalculate`: quien califica actualiza la reputación de otra organización;
@@ -242,13 +273,23 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   - `DemoDataSeeder.verifyExistingDemoOrganizations` (dev): marca verificadas las cuentas demo de una BD previa a V13.
   - Consumidores `@Outboxed` nuevos (corren en la transacción de sistema del despacho): `RequestLifecycleObserver`,
     `BookingShipmentObserver`, `CounterOfferExpiry`.
+  - V14 (ADR-0009): `AuthService.login` también registra `last_login_at` y abre la familia de refresh;
+    `AuthService.provisionUser` (seed/tests); `SessionValidator` (versión de sesión/estado del propio perfil, antes de la
+    transacción de usuario); `RefreshSessions` (rotate/logout/cleanup) y `PasswordTokenService` (forgot/inspect/redeem,
+    sin usuario; `password_tokens`/`refresh_tokens` no son accesibles para `logyx_app`); `AccountSessions.revoked`
+    (revoca refresh tokens); `OrganizationUserService.invite` (unicidad global del email + token INVITE con FK al perfil
+    nuevo, en una transacción) y `resendInvitation` (token); `OrganizationProfileService.update` (volver de REJECTED a
+    PENDING toca columnas que el trigger de V13 reserva al operador/plataforma; solo la organización del JWT y tras
+    comprobar ADMIN).
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
     la fila y se resta el peso de esa reserva.
+- Auditoría del operador (`GET /api/v1/operator/audit`, `/audit/actions`; V15): `NativeAuditLogReader` lee `audit_log` con `audit_operator` y hace LEFT JOIN a `profiles`/`organizations` (el operador las lee enteras: `profiles_operator`, `orgs_read`). Filtros en `AuditFilter` (`LOGYX-VAL-001` con `field`; `action` exacta, repetible o con comas; `from`/`to` de Lima, inclusive). Índices por fecha, organización, actor y acción. Acción nueva auditada = nada que hacer: aparece sola en `/audit/actions`.
 - Listados globales del operador (`GET /api/v1/operator/requests|shipments`, `OperatorService` → `MarketplaceQueries.allRequests` / `ShipmentQueries.allShipments`, paginados y filtrados por estado/ciudad/fechas): leen con las políticas `*_operator`, sin SystemTx. Viven en `OperatorResource` (un `@Path` más corto en otra clase daría 404: RESTEasy elige la clase por el prefijo más largo).
 - El operador **no** usa `SystemTx`: lee con las políticas `*_operator` (V2, V4–V7) y la asignación manual escribe
   con las políticas de V9 (`bids_operator_insert` exige `assigned_by_operator`, etc.). V13 le suma UPDATE de
   `organizations` (verificación; un trigger impide que otra organización toque esas columnas), `shipments`,
   `shipment_stops`, `vehicles` y `drivers` (cancelar o dar por entregado al resolver una incidencia, RF55).
+- `shipment_requests` (V15, F15): además de `requests_owner`/`requests_marketplace`/`requests_operator`, `requests_bidder_read` deja a un transportista leer (solo SELECT) las solicitudes en las que tiene una oferta propia, aunque se adjudiquen a otro o se cancelen. No abre `bids` ajenos ni `shipments`. Quien no ofertó sigue viendo 404.
 - RLS por tabla nueva: `messages`/`counter_offers`/`documents`/`incidents`/`incident_comments` → las dos partes
   (`requester_org_id`, `carrier_org_id` denormalizados) + lectura del operador; `reviews`/`reputation_scores` →
   lectura pública (RF44); `notifications` → solo la propia organización. Historial, evidencia y calificaciones no
@@ -257,11 +298,15 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   las dos partes leen/actualizan, solo la PYME (`PYME`) inserta, operador lee, sin DELETE; `smart_load_*` → solo el transportista
   dueño (+ lectura del operador, RF59).
 - La transacción de `SystemTx` no ve lo no confirmado de la transacción externa de usuario (ver comentario en `PlaceBidUseCase`).
+- `password_tokens`/`refresh_tokens` (V14): RLS activada **sin políticas** y `REVOKE ALL` para `logyx_app` (sin `FORCE`:
+  `logyx_owner` las usa vía `SystemTx` y no tiene `BYPASSRLS`). Caso en `RowLevelSecurityTest`.
 - `realtime_events` (V12): `logyx_app` solo SELECT de lo dirigido a su organización o a su tipo (sin INSERT/UPDATE/DELETE).
 - `outbox_events` (V11): `logyx_app` solo INSERT con `actor_org_id = app_org()`. `DatabasePrivilegesTest` prueba que
   `logyx_api` no puede `RESET ROLE`/`SET ROLE` a un rol privilegiado, alterar tablas/políticas ni leer sin organización.
 
 ## Seguridad HTTP (docs/security.md)
+- V14: `AuthRateLimits` también limita "olvidé mi contraseña" (por IP → 429; por email → misma respuesta 202 sin enviar),
+  canje de enlaces, refresh y contraseñas actuales incorrectas en `change-password`.
 - Rate limiting de login/registro en `shared/security/AuthRateLimits` (en memoria, por instancia): `logyx.rate-limit.*`;
   en dev/test el límite por IP es enorme (tests y e2e registran cientos de cuentas desde 127.0.0.1), el bloqueo por email
   (10 fallos / 15 min) sí aplica. 429 `LOGYX-AUTH-429` con `Retry-After`. La IP sale de `X-Forwarded-For` solo desde
@@ -273,18 +318,20 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, meta }` (`shared/api/ExceptionMappers`).
 | Área | Códigos |
 |---|---|
-| GEN | `404` no encontrado, `403` regla de permiso de negocio, `500` |
-| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token, `403` rol sin permiso, `429` demasiados intentos (login/registro) |
+| GEN | `404` no encontrado ("Solicitud no encontrada", "Envío no encontrado": `BusinessException.notFound` concuerda el género), `403` regla de permiso de negocio, `500` |
+| HTTP | `LOGYX-HTTP-<status>` errores del framework (ruta inexistente 404, método 405, formato 406/415, cuerpo 413) con mensaje en español; siempre JSON (`ExceptionMappers.json`, `PayloadTooLargeHandler` para el 413 de Vert.x) |
+| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token o sesión revocada (`sv`), `403` rol sin permiso, `429` demasiados intentos (login/registro/olvidé/canje/refresh/cambio de contraseña), `005` enlace de contraseña inválido, vencido o usado (`token`), `006` contraseña actual incorrecta (`currentPassword`), `007` (403) VIEWER solo lectura, `008` (403) solo el ADMIN de la organización, `009` (401) refresh inválido/vencido/reutilizado/revocado, `010` nueva contraseña igual a la actual (`newPassword`), `011` invitación sin aceptar la política de privacidad (`acceptPrivacyPolicy`) |
+| USR | `001` último ADMIN activo, `002` no puedes desactivarte, `003` invitación ya aceptada, `004` rol no permitido (`role`, DRIVER), `005` el usuario es conductor (se gestiona en Flota), `006` reenviar a un usuario desactivado |
 | VAL | `001` Bean Validation (`field` = propiedad) |
-| ORG | `001` RUC inválido, `002` RUC duplicado, `003` (403) sin verificar por el operador (RN01), `004` (403) suspendida, `005` operadora no se verifica, `006` falta motivo (`reason`) |
-| FLT | `001` placa duplicada, `002` estado "en ruta" lo controla el envío |
+| ORG | `001` RUC inválido, `002` RUC duplicado, `003` (403) sin verificar por el operador (RN01), `004` (403) suspendida, `005` operadora no se verifica, `006` falta motivo (`reason`), `007` razón social/RUC no editables (verificada o suspendida) |
+| FLT | `001` placa duplicada, `002` estado "en ruta" lo controla el envío, `003` conductor desactivado (`driverId`) |
 | PRC | `001` ciudad fuera del corredor, `002` origen = destino |
 | REQ | `002` cancelar solo publicadas, `003` fecha de recojo pasada (`pickupDate`), `004` solo se republica una cancelada |
 | AUC | `001` subasta no abierta, `002` subasta cerrada, `003` solo se reabre una cerrada por tiempo |
 | BID | `001` bajo el piso (RN03), `003` ya ofertó (o retiró), `004` no admite aceptar, `005` no se puede retirar |
 | CAP | `001` sin capacidad (RN02), `002` vehículo no disponible, `003` tipo de vehículo no apto para la carga, `004` volumen, `005` vehículo comprometido en otro envío solapado (F11) |
 | SHP | `001` envío cerrado: no se reasigna (antes: "solo antes del recojo"), `002` (404) el conductor no tiene envío activo, `004` conductor con otro envío solapado (`driverId`), `006` falta motivo (`reason`), `007` mismo vehículo |
-| TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada, `004` envío cerrado, `005` incidencia activa (RN11), `006` entrega sin foto |
+| TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada (se comprueba antes que la foto), `004` envío cerrado, `005` incidencia activa (RN11), `006` entrega sin foto, `007` la parada ya está completada |
 | NEG | `001` datos de contacto (RN07, `body`/`message`), `002` hilo cerrado, `003` mismo monto, `004` contra-oferta pendiente, `005` oferta no negociable, `007` ya respondida |
 | DOC | `001` tipo no permitido, `002` muy grande, `003` vacío (`file`), `004` falta parada de entrega, `005` sin llegada (`stopId`), `006` envío cancelado, `007` (403) evidencia solo del conductor asignado, `008` evidencia cerrada (parada completada o envío entregado), `500` fallo de almacenamiento |
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
@@ -316,6 +363,8 @@ Contraseña de todas: `Logyx2026!`.
 | `carrier@logyx.pe` | CARRIER (ADMIN) | Transportes Sur Andino SRL — RUC 20602345671 · ASA-101 (TRUCK_MEDIUM), ASA-202 (TRUCK_LARGE), ASA-303 (REFRIGERATED) |
 | `driver@logyx.pe` | DRIVER | conductor de Transportes Sur Andino |
 | `carrier2@logyx.pe` | CARRIER (ADMIN) | Logística Titicaca EIRL — RUC 20603456786 · LTT-401 (TRUCK_SMALL), LTT-502 (PLATFORM) |
+| `pyme.ops@logyx.pe` | PYME (OPS) | Comercial Altiplano SAC — opera, sin usuarios ni perfil (V14) |
+| `pyme.viewer@logyx.pe` | PYME (VIEWER) | Comercial Altiplano SAC — solo lectura (V14) |
 | `operator@logyx.pe` | OPERATOR (ADMIN) | LOGYX Operaciones SAC — RUC 20604567891 (creada con `AuthService.provisionOperator`; no hay registro público de operadores) |
 
 Datos: 11 solicitudes en el corredor (Lima, Arequipa, Juliaca, Puno, Cusco, Tacna), 6 ofertas; la de Lima → Juliaca

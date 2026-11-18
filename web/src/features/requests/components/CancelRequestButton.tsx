@@ -1,36 +1,42 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { Button } from '@/components/ui/button';
-import { confirm } from '@/components/ui/confirm-dialog';
-import { flash, toast } from '@/components/ui/toaster';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
+import { flash } from '@/components/ui/toaster';
+import { splitActionError } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
 
-/** Confirma y cancela una solicitud. Devuelve `true` si se canceló (la página debe recargarse). Lo usan el detalle y el listado. */
-export async function confirmAndCancelRequest(id: string): Promise<boolean> {
-  const ok = await confirm({
-    title: '¿Cancelar esta solicitud?',
-    description: 'Se cerrará la subasta y los transportistas dejarán de ver tu carga. Las ofertas recibidas se descartarán. No se puede deshacer.',
-    confirmLabel: 'Cancelar solicitud',
-    cancelLabel: 'Volver',
-    tone: 'destructive',
-  });
-  if (!ok) return false;
-  const { error } = await actions.requests.cancel({ id });
-  if (error) {
-    toast.error(error.message);
-    return false;
-  }
-  flash('Solicitud cancelada');
-  return true;
+/** Diálogo para cancelar una solicitud con motivo opcional (F16: se avisa a los transportistas con oferta pendiente). Recarga la página al cancelar. Lo usan el detalle y el listado. */
+export function CancelRequestDialog({ id, open, onOpenChange }: { id: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  return (
+    <ReasonDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="¿Cancelar esta solicitud?"
+      description="Se cerrará la subasta y los transportistas dejarán de ver tu carga. Las ofertas recibidas se descartarán y se les avisará. No se puede deshacer."
+      label="Motivo de la cancelación"
+      hint="Opcional. Los transportistas con ofertas lo verán."
+      placeholder="Ej. Cambió la fecha de despacho."
+      maxLength={LIMITS.requestCancelReason}
+      confirmLabel="Cancelar solicitud"
+      tone="destructive"
+      onSubmit={async (reason) => {
+        const { error } = await actions.requests.cancel({ id, reason: reason || undefined });
+        if (error) return splitActionError(error);
+        flash('Solicitud cancelada');
+        window.location.reload();
+        return null;
+      }}
+    />
+  );
 }
 
 export default function CancelRequestButton({ id }: { id: string }) {
-  const [busy, setBusy] = useState(false);
-
-  async function cancel() {
-    setBusy(true);
-    if (await confirmAndCancelRequest(id)) window.location.reload();
-    else setBusy(false);
-  }
-
-  return <Button variant="destructive" loading={busy} onClick={cancel}>Cancelar solicitud</Button>;
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="destructive" onClick={() => setOpen(true)}>Cancelar solicitud</Button>
+      <CancelRequestDialog id={id} open={open} onOpenChange={setOpen} />
+    </>
+  );
 }

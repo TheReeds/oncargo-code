@@ -3,8 +3,10 @@ import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
 import OperatorPanel from '@/features/operator/components/OperatorPanel';
-import { getOverview } from '@/features/operator/server';
+import { buttonVariants } from '@/components/ui/button';
+import { getOverview, listOrganizations } from '@/features/operator/server';
 import { ApiError } from '@/lib/api/client';
+import { ShieldAlert } from '@lucide/astro';
 
 const { session } = Astro.locals;
 let overview: Awaited<ReturnType<typeof getOverview>> | null = null;
@@ -16,9 +18,17 @@ try {
   else throw e;
 }
 const loadedAt = Date.now();
+const pendingOrgs = await listOrganizations(session!.token, { status: 'PENDING', size: 1 }).then((r) => r.meta.total).catch(() => 0);
 ---
 <AppShell title="Panel de operación" active="operador" wide>
   <PageHeader title="Panel de operación" subtitle="Vigila el SLA de las solicitudes, las subastas por vencer y los envíos con incidencias." />
+  {pendingOrgs > 0 && (
+    <div role="status" class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-input border border-amber-500/40 bg-amber-50 px-3 py-2.5 text-sm text-amber-700">
+      <ShieldAlert size={16} class="shrink-0" aria-hidden="true" />
+      <p class="min-w-0 flex-1"><span class="font-semibold">{pendingOrgs === 1 ? '1 empresa espera verificación' : `${pendingOrgs} empresas esperan verificación`}.</span> Las empresas sin verificar no pueden publicar, ofertar ni reservar en producción.</p>
+      <a href="/operador/organizaciones" class={buttonVariants({ variant: 'outline', size: 'sm' })}>Revisar empresas</a>
+    </div>
+  )}
   {overview ? (
     <OperatorPanel client:load metrics={overview.metrics} alerts={overview.alerts} loadedAt={loadedAt} />
   ) : (

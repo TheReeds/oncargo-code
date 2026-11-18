@@ -15,6 +15,11 @@ public interface OrganizationRepository {
     List<UUID> findIdsByType(OrgType type);
     long countByType(OrgType type);
     void insert(Organization organization);
+    /**
+     * Bloquea la fila de la organización hasta el fin de la transacción ({@code SELECT … FOR UPDATE}): serializa
+     * los cambios de rol/estado de sus usuarios (regla "al menos un ADMIN activo") y la edición del perfil.
+     */
+    void lockForUpdate(UUID id);
     /** Actualiza la fila existente (verificación). */
     void update(Organization organization);
     /** Bandeja del operador: filtra por estado de verificación y tipo (null = todos), las más antiguas primero. */

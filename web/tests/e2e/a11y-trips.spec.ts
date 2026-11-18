@@ -51,7 +51,7 @@ test.describe('Accesibilidad de viajes, retornos y Smart Load (axe)', () => {
     const sc = await api.tripScenario();
     await api.bookTrip(sc.pyme.token, sc.trip.id);
     await setSession(page.context(), sc.pyme.token, BASE);
-    await goto(page, '/pyme/viajes?origen=ABANCAY&destino=AYACUCHO');
+    await goto(page, `/pyme/viajes?origen=ABANCAY&destino=AYACUCHO&desde=${sc.date}`);
     await expect(page.getByTestId('trip-row').first()).toBeVisible();
     await expectNoSeriousViolations(page);
     await page.getByTestId('trip-row').first().getByRole('button', { name: /Reservar espacio/ }).click();

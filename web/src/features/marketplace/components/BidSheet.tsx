@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
-import { splitActionError } from '@/lib/action-error';
+import { toFormErrors, isVerificationFailure, type ActionFailure } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
+import { partitionFleet, requestNeed } from '@/features/fleet/compatibility';
+import { UnfitList } from '@/features/fleet/components/UnfitList';
+import { VerificationBlock } from '@/components/domain/VerificationBlock';
 import { Sheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
@@ -23,20 +27,25 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<ActionFailure | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
+  const fleet = useMemo(() => (request ? partitionFleet(vehicles, requestNeed(request)) : { fit: [] as VehicleView[], unfit: [] }), [vehicles, request]);
+  const compatible = fleet.fit;
+
   useEffect(() => {
-    const only = vehicles.filter((v) => v.status === 'AVAILABLE' && (v.maxWeightKg ?? 0) >= (request?.weightKg ?? 0));
-    setVehicleId(defaultVehicleId ?? (only.length === 1 ? only[0].id! : ''));
+    // Solo se preselecciona un vehículo apto (el del retorno/Smart Load si cumple, o el único apto).
+    const preferred = defaultVehicleId && compatible.some((v) => v.id === defaultVehicleId) ? defaultVehicleId : undefined;
+    setVehicleId(preferred ?? (compatible.length === 1 ? compatible[0].id! : ''));
     setAmount('');
     setNotes('');
     setError(null);
+    setBlocked(null);
     setErrors({});
     setBusy(false);
   }, [request?.id]);
 
-  const compatible = vehicles.filter((v) => v.status === 'AVAILABLE' && (v.maxWeightKg ?? 0) >= (request?.weightKg ?? 0));
   const amt = Number(amount);
   const floor = request?.priceFloor ?? 0;
   const belowFloor = floor > 0 && amt > 0 && amt < floor;
@@ -46,6 +55,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
     e.preventDefault();
     if (!request) return;
     setError(null);
+    setBlocked(null);
     const errs: Record<string, string> = {};
     if (!vehicleId) errs.vehicleId = 'Selecciona el vehículo que hará el envío.';
     if (!(amt > 0)) errs.amount = 'Ingresa el monto de tu oferta.';
@@ -56,9 +66,10 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
     const { error } = await actions.marketplace.placeBid({ requestId: request.id!, vehicleId, amount: amt, notes: notes.trim() || undefined });
     if (error) {
       setBusy(false);
-      const { message, field } = splitActionError(error);
-      if (field === 'amount' || field === 'vehicleId') setErrors({ [field]: message });
-      else setError(message);
+      const r = toFormErrors(error, ['amount', 'vehicleId', 'notes']);
+      if (isVerificationFailure(r.failure)) setBlocked(r.failure);
+      else if (r.formError) setError(r.formError);
+      setErrors(r.errors);
       return;
     }
     flash('Oferta enviada', 'success');
@@ -93,16 +104,29 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
             </div>
 
             {error && <Alert tone="error" title="No pudimos enviar tu oferta">{error}</Alert>}
+            {blocked && <VerificationBlock failure={blocked} />}
 
             {compatible.length === 0 ? (
-              <Alert tone="warning" title="No tienes un vehículo compatible" action={<Button asChild size="sm" variant="outline"><a href="/transportista/flota">Ir a Flota</a></Button>}>
-                Necesitas un vehículo disponible con capacidad para {formatTons(request.weightKg)}.
-              </Alert>
+              <div className="space-y-3">
+                <Alert tone="warning" title={vehicles.length === 0 ? 'Aún no tienes vehículos' : 'Ningún vehículo de tu flota puede llevar esta carga'} action={<Button asChild size="sm" variant="outline"><a href="/transportista/flota">{vehicles.length === 0 ? 'Registrar un vehículo' : 'Ir a Flota'}</a></Button>}>
+                  {vehicles.length === 0
+                    ? 'Para ofertar necesitas un vehículo propio y disponible. Regístralo en Flota y vuelve a esta carga.'
+                    : `Para ofertar por esta carga necesitas un vehículo disponible ${request.compatibleVehicleTypes?.length ? `de tipo ${request.compatibleVehicleTypes.map((t) => VEHICLE_LABELS[t] ?? t).join(', ')} ` : ''}con capacidad para ${formatTons(request.weightKg)}${request.volumeM3 ? ` y ${request.volumeM3} m³` : ''}.`}
+                </Alert>
+                <UnfitList items={fleet.unfit} />
+              </div>
             ) : (
               <>
-                <Field label="Vehículo" htmlFor="b-vehicle" error={errors.vehicleId} hint={compatible.length === 1 ? 'Es tu único vehículo disponible con capacidad suficiente.' : `${compatible.length} vehículos disponibles con capacidad suficiente.`}>
-                  <Combobox id="b-vehicle" value={vehicleId} onValueChange={setVehicleId} invalid={!!errors.vehicleId} placeholder="Selecciona un vehículo" searchPlaceholder="Buscar por placa…" options={compatible.map((v) => ({ value: v.id!, label: `${v.plate} · ${VEHICLE_LABELS[v.type!]}`, hint: formatTons(v.maxWeightKg) }))} />
+                <Field label="Vehículo" htmlFor="b-vehicle" error={errors.vehicleId} hint={compatible.length === 1 ? 'Es tu único vehículo apto para esta carga.' : `${compatible.length} vehículos aptos para esta carga.`}>
+                  <Combobox
+                    id="b-vehicle" value={vehicleId} onValueChange={(v) => { setVehicleId(v); setErrors((x) => ({ ...x, vehicleId: '' })); }} invalid={!!errors.vehicleId} placeholder="Selecciona un vehículo" searchPlaceholder="Buscar por placa…"
+                    options={[
+                      ...compatible.map((v) => ({ value: v.id!, label: `${v.plate} · ${VEHICLE_LABELS[v.type!]}`, hint: formatTons(v.maxWeightKg) })),
+                      ...fleet.unfit.map(({ vehicle: v, compat }) => ({ value: v.id!, label: `${v.plate} · ${VEHICLE_LABELS[v.type!]}`, hint: compat.short, disabled: true })),
+                    ]}
+                  />
                 </Field>
+                <UnfitList items={fleet.unfit} />
                 <div>
                   <Field label="Tu oferta" htmlFor="b-amount" error={errors.amount} hint={`Mínimo ${formatMoney(floor)} (piso de la subasta).`}>
                     <MoneyInput id="b-amount" value={amount} onValueChange={setAmount} invalid={!!errors.amount} placeholder={request.suggestedPrice ? String(request.suggestedPrice) : '0.00'} className="h-12 text-lg" />
@@ -121,7 +145,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
                     </ul>
                   </div>
                 )}
-                <Field label="Nota para la PYME" htmlFor="b-notes" hint="Opcional. Máximo 500 caracteres."><Textarea id="b-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Ej. Salimos el mismo día y contamos con GPS." /></Field>
+                <Field label="Nota para la PYME" htmlFor="b-notes" error={errors.notes} hint={`Opcional. Máximo ${LIMITS.bidNotes} caracteres. No incluyas teléfonos ni correos.`}><Textarea id="b-notes" value={notes} onChange={(e) => { setNotes(e.target.value); setErrors((x) => ({ ...x, notes: '' })); }} maxLength={LIMITS.bidNotes} aria-invalid={!!errors.notes || undefined} placeholder="Ej. Salimos el mismo día y contamos con GPS." /></Field>
               </>
             )}
           </div>

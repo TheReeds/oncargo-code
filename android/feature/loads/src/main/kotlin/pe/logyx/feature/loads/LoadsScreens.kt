@@ -40,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -77,6 +76,11 @@ import pe.logyx.core.designsystem.components.LogyxCombobox
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
 import pe.logyx.core.designsystem.components.LogyxDateRangeField
 import pe.logyx.core.designsystem.components.LogyxDropdown
+import pe.logyx.core.designsystem.components.LogyxReasonSheet
+import pe.logyx.core.designsystem.components.SegmentedControl
+import pe.logyx.core.designsystem.components.BidStandingRow
+import pe.logyx.core.designsystem.components.VehicleChoiceList
+import pe.logyx.core.designsystem.auctionClosureText
 import pe.logyx.core.designsystem.components.LogyxFilterChip
 import pe.logyx.core.designsystem.components.LogyxScreen
 import pe.logyx.core.designsystem.components.LogyxTextField
@@ -98,7 +102,9 @@ import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.label
 import pe.logyx.core.designsystem.pill
 import pe.logyx.core.model.AuctionStatus
+import pe.logyx.core.model.BidOutcome
 import pe.logyx.core.model.BidStatus
+import pe.logyx.core.model.CounterOfferStatus
 import pe.logyx.core.model.CargoType
 import pe.logyx.core.model.VehicleType
 import pe.logyx.core.model.CityItem
@@ -106,7 +112,9 @@ import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
+import pe.logyx.core.model.RequestStatus
 import pe.logyx.core.model.isCompatibleWith
+import pe.logyx.core.model.myBidOutcome
 import java.time.LocalDate
 
 // ───────────────────────── Home "Tu actividad" ─────────────────────────
@@ -507,6 +515,15 @@ fun LoadDetailRoute(
         viewModel::selectVehicle, viewModel::onAmountChange, viewModel::onNotesChange,
         viewModel::requestConfirm, viewModel::dismissConfirm, viewModel::submitBid, viewModel::messageShown,
         onOpenChat = onOpenChat, onOpenOrganization = onOpenOrganization,
+        myBid = MyBidActions(
+            onAskAcceptCounter = viewModel::askAcceptCounter, onAskRejectCounter = viewModel::askRejectCounter,
+            onConfirmCounterAnswer = viewModel::confirmCounterAnswer, onDismissCounterAnswer = viewModel::dismissCounterConfirm,
+            onOpenCounter = viewModel::openCounterSheet, onCounterAmount = viewModel::onCounterAmount,
+            onCounterMessage = viewModel::onCounterMessage, onAskSendCounter = viewModel::askConfirmCounterSend,
+            onSendCounter = viewModel::submitCounter, onCancelSendCounter = viewModel::cancelCounterSendConfirm,
+            onCloseCounter = viewModel::closeCounterSheet, onAskWithdraw = viewModel::askWithdraw,
+            onConfirmWithdraw = viewModel::confirmWithdraw, onDismissWithdraw = viewModel::dismissWithdraw,
+        ),
     )
 }
 
@@ -527,6 +544,7 @@ fun LoadDetailScreen(
     onMessageShown: () -> Unit,
     onOpenChat: (String, String?) -> Unit = { _, _ -> },
     onOpenOrganization: (String) -> Unit = {},
+    myBid: MyBidActions = MyBidActions(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -543,7 +561,7 @@ fun LoadDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             val mapDescription = stringResource(R.string.loads_map_description, cityLabel(r.originCity), cityLabel(r.destinationCity))
-                            RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 220.dp)
+                            RouteMap(state.origin, state.destination, path = state.route?.points, contentDescription = mapDescription, height = 220.dp)
                             LogyxCard(Modifier.fillMaxWidth()) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                     PriceTag(r.suggestedPrice, label = stringResource(R.string.loads_reference_price))
@@ -602,32 +620,14 @@ fun LoadDetailScreen(
                                 stringResource(R.string.loads_ask_company), { onOpenChat(r.id, r.requesterName ?: r.cargoDescription) },
                                 variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
                             )
-                            r.myBid?.let { bid ->
-                                LogyxCard(Modifier.fillMaxWidth()) {
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                        Text(stringResource(R.string.loads_your_bid), style = MaterialTheme.typography.titleMedium)
-                                        StatusPill(bid.status.pill())
-                                    }
-                                    Spacer(Modifier.height(8.dp))
-                                    PriceTag(bid.amount, large = false)
-                                    bid.notes?.takeIf { it.isNotBlank() }?.let {
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                            if (r.myBid == null && r.auction != null && r.auction?.status != AuctionStatus.OPEN) {
-                                AlertBanner(
-                                    stringResource(R.string.loads_auction_closed), kind = MessageKind.Info,
-                                    title = stringResource(R.string.loads_auction_closed_title),
-                                )
-                            }
+                            if (r.myBid != null) MyBidCard(state, r, myBid)
+                            ClosureBanners(r)
                         }
                     }
                     val canBid = r.myBid == null && r.auction?.status == AuctionStatus.OPEN
                     if (canBid) {
                         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                            LogyxButton(stringResource(R.string.loads_action_bid), onOpenBid, variant = ButtonVariant.Money)
+                            LogyxButton(stringResource(R.string.loads_action_bid), onOpenBid, variant = ButtonVariant.Money, requiresOperate = true)
                         }
                     }
                 }
@@ -636,6 +636,7 @@ fun LoadDetailScreen(
         if (state.form != null && r != null) {
             BidSheet(state, r, onDismissBid, onSelectVehicle, onAmountChange, onNotesChange, onRequestConfirm, onDismissConfirm, onConfirmBid)
         }
+        MyBidDialogs(state, r, myBid)
     }
 }
 
@@ -654,7 +655,6 @@ private fun BidSheet(
     val form = state.form ?: return
     val vehicles = state.compatibleVehicles
     val selected = vehicles.firstOrNull { it.id == form.vehicleId }
-    val resources = LocalContext.current.resources
     LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.loads_sheet_title)) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
@@ -664,21 +664,13 @@ private fun BidSheet(
                 stringResource(R.string.loads_sheet_route, cityLabel(request.originCity), cityLabel(request.destinationCity), Fmt.tons(request.weightKg)),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (vehicles.isEmpty()) {
-                AlertBanner(
-                    stringResource(R.string.loads_sheet_no_vehicle, Fmt.tons(request.weightKg)), kind = MessageKind.Error,
-                    title = stringResource(R.string.loads_sheet_no_vehicle_title),
-                )
-            } else {
-                val vehicleLabels = VehicleType.entries.associateWith { it.label }
-                LogyxDropdown(
-                    label = stringResource(R.string.loads_sheet_vehicle), options = vehicles, selected = selected,
-                    onSelected = { onSelectVehicle(it.id) }, optionLabel = { it.plate },
-                    placeholder = stringResource(R.string.loads_sheet_vehicle_placeholder),
-                    error = form.vehicleError?.asString(),
-                    optionSupporting = { v -> resources.getString(R.string.loads_sheet_vehicle_option, vehicleLabels.getValue(v.type), Fmt.tons(v.maxWeightKg)) },
-                )
-            }
+            Text(stringResource(R.string.loads_sheet_vehicle), style = MaterialTheme.typography.labelLarge)
+            // RN02 (F09): toda la flota, con los no aptos deshabilitados y su motivo (kg, tipo de carga, m³, disponibilidad).
+            VehicleChoiceList(
+                choices = state.vehicleChoices, selectedId = form.vehicleId, onSelect = onSelectVehicle,
+                weightKg = request.weightKg, volumeM3 = request.volumeM3, cargoType = request.cargoType,
+                error = form.vehicleError?.asString(), enabled = !form.submitting,
+            )
             MoneyField(
                 value = form.amountText, onValueChange = onAmountChange, label = stringResource(R.string.loads_sheet_amount),
                 hint = bidHint(request), error = form.amountError?.asString(),
@@ -691,13 +683,14 @@ private fun BidSheet(
                 value = form.notes, onValueChange = onNotesChange, label = stringResource(R.string.loads_sheet_notes),
                 optional = true, singleLine = false, minLines = 2, maxLines = 4,
                 hint = stringResource(R.string.loads_sheet_notes_hint, form.notes.length),
+                error = form.notesError?.asString(),
             )
             if (form.error != null) {
                 AlertBanner(form.error, kind = MessageKind.Error, title = stringResource(R.string.loads_sheet_error_title))
             }
             LogyxButton(
                 stringResource(R.string.loads_sheet_submit), onRequestConfirm, variant = ButtonVariant.Money,
-                loading = form.submitting, enabled = vehicles.isNotEmpty(),
+                loading = form.submitting, enabled = vehicles.isNotEmpty(), requiresOperate = true,
             )
         }
     }
@@ -729,6 +722,182 @@ private fun QuickAmount(label: String, amount: Double, current: String, onAmount
     LogyxFilterChip(label = label, selected = current == text, onClick = { onAmountChange(text) })
 }
 
+// ───────────────────────── Mi oferta: posición, contraofertas y retiro ─────────────────────────
+
+/** Callbacks de la tarjeta "Tu oferta" del detalle: contraoferta de la PYME, mi contraoferta y retirar. */
+class MyBidActions(
+    val onAskAcceptCounter: (CounterOfferView) -> Unit = {},
+    val onAskRejectCounter: (CounterOfferView) -> Unit = {},
+    val onConfirmCounterAnswer: () -> Unit = {},
+    val onDismissCounterAnswer: () -> Unit = {},
+    val onOpenCounter: () -> Unit = {},
+    val onCounterAmount: (String) -> Unit = {},
+    val onCounterMessage: (String) -> Unit = {},
+    val onAskSendCounter: () -> Unit = {},
+    val onSendCounter: () -> Unit = {},
+    val onCancelSendCounter: () -> Unit = {},
+    val onCloseCounter: () -> Unit = {},
+    val onAskWithdraw: () -> Unit = {},
+    val onConfirmWithdraw: () -> Unit = {},
+    val onDismissWithdraw: () -> Unit = {},
+)
+
+@Composable
+private fun MyBidCard(state: LoadDetailUiState, r: RequestView, actions: MyBidActions) {
+    val bid = r.myBid ?: return
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.loads_your_bid), style = MaterialTheme.typography.titleMedium)
+            StatusPill(r.myBidOutcome?.pill() ?: bid.status.pill())
+        }
+        Spacer(Modifier.height(8.dp))
+        PriceTag(bid.amount, large = false)
+        bid.notes?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        r.myBidStanding?.let {
+            Spacer(Modifier.height(12.dp))
+            BidStandingRow(it)
+        }
+        if (bid.status == BidStatus.WITHDRAWN) {
+            Spacer(Modifier.height(12.dp))
+            AlertBanner(stringResource(R.string.loads_withdrawn_info), kind = MessageKind.Info)
+        }
+        state.counterFromPyme?.let { c ->
+            Spacer(Modifier.height(12.dp))
+            Column(
+                Modifier.fillMaxWidth().background(LogyxTheme.colors.infoContainer, RoundedCornerShape(12.dp)).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.loads_counter_proposes, Fmt.money(c.amount)), style = MaterialTheme.typography.titleSmall)
+                c.message?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                LogyxButton(
+                    stringResource(R.string.loads_counter_accept), { actions.onAskAcceptCounter(c) },
+                    variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !state.busy, requiresOperate = true,
+                )
+                LogyxButton(
+                    stringResource(R.string.loads_counter_reject), { actions.onAskRejectCounter(c) },
+                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, enabled = !state.busy, requiresOperate = true,
+                )
+            }
+        }
+        state.myPendingCounter?.let { c ->
+            Spacer(Modifier.height(12.dp))
+            AlertBanner(
+                stringResource(R.string.loads_counter_mine_waiting, Fmt.money(c.amount)), kind = MessageKind.Info,
+                title = stringResource(R.string.loads_counter_mine_title),
+            )
+        }
+        val history = state.counters.filter { it.status != CounterOfferStatus.PENDING }.take(3)
+        if (history.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.loads_counter_history), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            history.forEach { c ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text(Fmt.money(c.amount), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
+                        Text(
+                            stringResource(if (c.proposedByCarrier) R.string.loads_counter_by_me else R.string.loads_counter_by_pyme),
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    StatusPill(c.status.pill())
+                }
+            }
+        }
+        if (state.canCounter || state.canWithdraw) {
+            Spacer(Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.canCounter) {
+                    LogyxButton(
+                        stringResource(R.string.loads_counter_action), actions.onOpenCounter,
+                        variant = ButtonVariant.Secondary, size = ButtonSize.Medium, enabled = !state.busy, requiresOperate = true,
+                    )
+                }
+                if (state.canWithdraw) {
+                    LogyxButton(
+                        stringResource(R.string.loads_withdraw_action), actions.onAskWithdraw,
+                        variant = ButtonVariant.Destructive, size = ButtonSize.Medium, enabled = !state.busy, requiresOperate = true,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Cierre de la subasta (motivo y fecha, F51) y motivo de la cancelación de la solicitud (F16). */
+@Composable
+private fun ClosureBanners(r: RequestView) {
+    val closure = auctionClosureText(r.auction)
+    if (closure != null) {
+        val text = if (r.myBid == null) closure + " " + stringResource(R.string.loads_auction_closed) else closure
+        AlertBanner(text, kind = MessageKind.Info, title = stringResource(R.string.loads_auction_closed_title))
+    }
+    if (r.status == RequestStatus.CANCELLED) {
+        AlertBanner(
+            r.cancelReason?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.loads_request_cancelled_reason, it) }
+                ?: stringResource(R.string.loads_request_cancelled),
+            kind = MessageKind.Warning, title = stringResource(R.string.loads_request_cancelled_title),
+        )
+    }
+}
+
+@Composable
+private fun MyBidDialogs(state: LoadDetailUiState, r: RequestView?, a: MyBidActions) {
+    state.counterConfirm?.let { action ->
+        LogyxConfirmDialog(
+            title = stringResource(if (action.accept) R.string.loads_counter_accept_title else R.string.loads_counter_reject_title),
+            message = if (action.accept) stringResource(R.string.loads_counter_accept_message, Fmt.money(action.counter.amount))
+            else stringResource(R.string.loads_counter_reject_message),
+            confirmLabel = stringResource(if (action.accept) R.string.loads_counter_accept else R.string.loads_counter_reject),
+            onConfirm = a.onConfirmCounterAnswer, onDismiss = a.onDismissCounterAnswer,
+            destructive = !action.accept, loading = state.busy,
+        )
+    }
+    if (state.confirmWithdraw) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.loads_withdraw_title),
+            message = stringResource(R.string.loads_withdraw_message),
+            confirmLabel = stringResource(R.string.loads_withdraw_confirm),
+            onConfirm = a.onConfirmWithdraw, onDismiss = a.onDismissWithdraw,
+            dismissLabel = stringResource(R.string.loads_withdraw_keep), destructive = true, loading = state.busy,
+        )
+    }
+    val form = state.counterForm
+    val bid = r?.myBid
+    if (form != null && r != null && bid != null) {
+        LogyxReasonSheet(
+            title = stringResource(R.string.loads_counter_action),
+            reasonLabel = stringResource(R.string.loads_counter_message_label),
+            value = form.message, onValueChange = a.onCounterMessage,
+            confirmLabel = stringResource(R.string.loads_counter_send),
+            onConfirm = a.onAskSendCounter, onDismiss = a.onCloseCounter,
+            message = stringResource(R.string.loads_counter_send_info, Fmt.money(bid.amount)),
+            error = form.messageError?.asString(), optional = true, destructive = false,
+            loading = form.sending, maxLength = MAX_COUNTER_MESSAGE,
+        ) {
+            MoneyField(
+                form.amount, a.onCounterAmount, stringResource(R.string.loads_counter_amount_label),
+                hint = r.priceFloor?.let { stringResource(R.string.loads_sheet_amount_hint_floor, Fmt.money(it)) },
+                error = form.amountError?.asString(), enabled = !form.sending,
+            )
+        }
+        if (form.confirming) {
+            LogyxConfirmDialog(
+                title = stringResource(R.string.loads_counter_confirm_title, Fmt.money(pe.logyx.core.designsystem.components.parseMoney(form.amount))),
+                message = stringResource(R.string.loads_counter_confirm_message),
+                confirmLabel = stringResource(R.string.loads_counter_send),
+                onConfirm = a.onSendCounter, onDismiss = a.onCancelSendCounter,
+                dismissLabel = stringResource(R.string.loads_confirm_review), loading = form.sending,
+            )
+        }
+    }
+}
+
 // ───────────────────────── Mis ofertas ─────────────────────────
 
 @Composable
@@ -743,6 +912,7 @@ fun MyBidsRoute(
         state, viewModel::refresh, onOpenLoad,
         onAskAccept = viewModel::askAccept, onAskReject = viewModel::askReject, onConfirm = viewModel::confirm,
         onDismissConfirm = viewModel::dismissConfirm, onMessageShown = viewModel::onMessageShown, onOpenChat = onOpenChat,
+        onFilter = viewModel::setFilter,
     )
 }
 
@@ -757,6 +927,7 @@ fun MyBidsScreen(
     onDismissConfirm: () -> Unit = {},
     onMessageShown: () -> Unit = {},
     onOpenChat: (String, String?) -> Unit = { _, _ -> },
+    onFilter: (MyBidsFilter) -> Unit = {},
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -767,12 +938,26 @@ fun MyBidsScreen(
                 state.error != null && state.items.isEmpty() -> ErrorState(state.error, onRefresh)
                 else -> Refreshable(state.refreshing, onRefresh) {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        if (state.items.isNotEmpty()) {
+                            item {
+                                val labels = MyBidsFilter.entries.associateWith { it.text(state.activeCount) }
+                                val description = stringResource(R.string.loads_bids_filter_description)
+                                SegmentedControl(
+                                    MyBidsFilter.entries, state.filter, onFilter, { labels.getValue(it) },
+                                    Modifier.semantics { contentDescription = description },
+                                )
+                            }
+                        }
                         if (state.items.isEmpty()) {
                             item {
                                 EmptyState(stringResource(R.string.loads_bids_empty_title), stringResource(R.string.loads_bids_empty_message))
                             }
+                        } else if (state.visible.isEmpty()) {
+                            item {
+                                EmptyState(stringResource(R.string.loads_bids_filtered_title), stringResource(R.string.loads_bids_filtered_message))
+                            }
                         }
-                        items(state.items, key = { it.id }) { r ->
+                        items(state.visible, key = { it.id }) { r ->
                             BidRow(
                                 r, counter = r.myBid?.let { state.counters[it.id] }, busy = state.busy,
                                 onAskAccept = onAskAccept, onAskReject = onAskReject,
@@ -799,6 +984,13 @@ fun MyBidsScreen(
 }
 
 @Composable
+private fun MyBidsFilter.text(activeCount: Int) = when (this) {
+    MyBidsFilter.All -> stringResource(R.string.loads_bids_filter_all)
+    MyBidsFilter.Active -> stringResource(R.string.loads_bids_filter_active, activeCount)
+    MyBidsFilter.Closed -> stringResource(R.string.loads_bids_filter_closed)
+}
+
+@Composable
 private fun BidRow(
     r: RequestView,
     counter: CounterOfferView?,
@@ -812,7 +1004,7 @@ private fun BidRow(
     LogyxCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(Fmt.money(bid.amount), style = LogyxText.moneyMedium, color = LogyxTheme.colors.moneyText)
-            StatusPill(bid.status.pill())
+            StatusPill(r.myBidOutcome?.pill() ?: bid.status.pill())
         }
         Spacer(Modifier.height(12.dp))
         RouteLine(
@@ -831,9 +1023,32 @@ private fun BidRow(
         FlowRow2 {
             InfoChip(r.cargoType.label)
             InfoChip(Fmt.tons(r.weightKg))
-            if (bid.status == BidStatus.PENDING) AuctionCountdown(r.auction)
+            if (r.myBidOutcome == BidOutcome.OPEN) AuctionCountdown(r.auction)
         }
-        if (counter != null) {
+        // Posición (V15) y, si ya cerró, motivo y fecha del cierre (F51); nunca montos ajenos (RN04).
+        r.myBidStanding?.let {
+            Spacer(Modifier.height(12.dp))
+            BidStandingRow(it)
+        }
+        auctionClosureText(r.auction)?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (r.status == RequestStatus.CANCELLED) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                r.cancelReason?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.loads_request_cancelled_reason, it) }
+                    ?: stringResource(R.string.loads_request_cancelled),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (counter != null && counter.proposedByCarrier) {
+            Spacer(Modifier.height(12.dp))
+            AlertBanner(
+                stringResource(R.string.loads_counter_mine_waiting, Fmt.money(counter.amount)), kind = MessageKind.Info,
+                title = stringResource(R.string.loads_counter_mine_title),
+            )
+        } else if (counter != null) {
             Spacer(Modifier.height(12.dp))
             Column(
                 Modifier.fillMaxWidth().background(LogyxTheme.colors.infoContainer, RoundedCornerShape(12.dp)).padding(12.dp),
@@ -845,11 +1060,11 @@ private fun BidRow(
                 }
                 LogyxButton(
                     stringResource(R.string.loads_counter_accept), { onAskAccept(counter) },
-                    variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !busy,
+                    variant = ButtonVariant.Money, size = ButtonSize.Medium, enabled = !busy, requiresOperate = true,
                 )
                 LogyxButton(
                     stringResource(R.string.loads_counter_reject), { onAskReject(counter) },
-                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, enabled = !busy,
+                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, enabled = !busy, requiresOperate = true,
                 )
             }
         }

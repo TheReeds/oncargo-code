@@ -5,7 +5,9 @@ import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.application.AcceptOutcome;
+import pe.logyx.marketplace.application.BidStanding;
 import pe.logyx.marketplace.application.BidSummary;
+import pe.logyx.marketplace.domain.BidStandingBand;
 import pe.logyx.marketplace.application.PlaceBidCommand;
 import pe.logyx.marketplace.application.PublishRequestCommand;
 import pe.logyx.marketplace.application.RequestSummary;
@@ -48,7 +50,28 @@ public final class MarketplaceDtos {
     public record RescheduleRequest(@FutureOrPresent(message = "La fecha de recojo no puede ser pasada") LocalDate pickupDate) {}
 
     public record AuctionView(UUID id, Auction.Status status, OffsetDateTime closesAt, int maxBids,
-                              long bidCount, Auction.CloseReason closeReason) {}
+                              long bidCount, Auction.CloseReason closeReason,
+                              /** Cuándo cerró la subasta (null mientras está abierta). */
+                              OffsetDateTime closedAt) {}
+
+    /**
+     * Posición de la oferta propia del transportista (solo en sus vistas, cuando tiene una oferta no retirada).
+     * Las ofertas son selladas (RN04): nunca trae montos ni porcentajes exactos de otras ofertas.
+     */
+    public record MyBidStanding(
+            /** 1 = la mejor (menor monto; empate: la más antigua) entre las ofertas no retiradas. */
+            int rank,
+            /** Ofertas no retiradas de la subasta, incluida la propia. */
+            int bidCount,
+            boolean isBest,
+            /** Banda frente a la mejor oferta; null si la solicitud ya se adjudicó o canceló. */
+            BidStandingBand vsBest,
+            /** true si la subasta cerró o la solicitud ya no está publicada: es la posición final. */
+            boolean finalStanding) {
+        static MyBidStanding of(BidStanding s) {
+            return s == null ? null : new MyBidStanding(s.rank(), s.bidCount(), s.best(), s.vsBest(), s.finalStanding());
+        }
+    }
 
     public record RequestView(UUID id, UUID requesterOrgId, String requesterName,
                               City originCity, String originAddress,
@@ -71,22 +94,34 @@ public final class MarketplaceDtos {
                               /** Motivo de cancelación (de la PYME o del envío adjudicado que se canceló). */
                               String cancelReason,
                               /** Solicitud cancelada de la que se republicó esta (F07). */
-                              UUID republishedFrom) {
+                              UUID republishedFrom,
+                              /** Solo para la PYME dueña: monto de la mejor oferta PENDIENTE (null sin ofertas pendientes). */
+                              BigDecimal bestBidAmount,
+                              /** Solo para la PYME dueña: transportista de la mejor oferta pendiente. */
+                              String bestBidCarrierName,
+                              /** Solo para la PYME dueña: Trust Score del transportista de la mejor oferta. */
+                              BigDecimal bestBidCarrierTrustScore,
+                              /** Solo para el transportista con oferta: su posición sin montos ajenos. */
+                              MyBidStanding myBidStanding) {
 
         static RequestView of(RequestSummary s) {
             ShipmentRequest r = s.request();
             var c = r.cargo();
             var p = r.pricing();
             Auction a = s.auction();
+            BidSummary best = s.bestBid();
             AuctionView av = a == null ? null
-                    : new AuctionView(a.id(), a.status(), a.closesAt(), a.maxBids(), s.bidCount(), a.closeReason());
+                    : new AuctionView(a.id(), a.status(), a.closesAt(), a.maxBids(), s.bidCount(), a.closeReason(),
+                            a.closedAt());
             return new RequestView(r.id(), r.requesterOrgId(), s.requesterName(),
                     c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress(),
                     c.cargoType(), c.cargoDescription(), c.weightKg(), c.volumeM3(), c.pickupDate(),
                     p.distanceKm(), p.suggestedPrice(), p.priceFloor(), r.status(), r.createdAt(), av,
                     s.myBid() == null ? null : BidView.of(s.myBid()), s.requesterRucVerified(),
                     VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()), s.requesterTrustScore(),
-                    VehicleCargoCompatibility.allowedFor(c.cargoType()), r.cancelReason(), r.republishedFrom());
+                    VehicleCargoCompatibility.allowedFor(c.cargoType()), r.cancelReason(), r.republishedFrom(),
+                    best == null ? null : best.bid().amount(), best == null ? null : best.carrierName(),
+                    best == null ? null : best.carrierTrustScore(), MyBidStanding.of(s.myStanding()));
         }
 
         static List<RequestView> of(List<RequestSummary> list) {

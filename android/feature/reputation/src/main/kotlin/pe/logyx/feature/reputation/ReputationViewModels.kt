@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
 import pe.logyx.core.data.ReputationRepository
 import pe.logyx.core.data.SessionState
+import pe.logyx.core.data.fieldErrors
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.model.OrgType
@@ -154,7 +155,14 @@ class ReviewViewModel(
                 onSuccess = {
                     _state.update { it.copy(submitting = false, done = true, message = UiMessage.success(R.string.rep_thanks)) }
                 },
-                onFailure = { e -> _state.update { it.copy(submitting = false, message = UiMessage.error(e.userMessage())) } },
+                onFailure = { e ->
+                    // RN07 (NEG-001): la reseña es pública; el texto con datos de contacto se corrige bajo el campo.
+                    val commentError = e.fieldErrors("comment")["comment"]
+                    _state.update {
+                        if (commentError != null) it.copy(submitting = false, commentError = commentError)
+                        else it.copy(submitting = false, message = UiMessage.error(e.userMessage()))
+                    }
+                },
             )
         }
     }

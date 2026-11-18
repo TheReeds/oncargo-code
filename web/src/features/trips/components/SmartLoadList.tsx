@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useState } from 'react';
 import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
@@ -8,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirm } from '@/components/ui/confirm-dialog';
+import AcceptSmartLoadDialog from './AcceptSmartLoadDialog';
 import { flash, toast } from '@/components/ui/toaster';
 import { Countdown } from '@/components/domain/Countdown';
 import { StatusPill } from '@/components/domain/StatusPill';
@@ -23,6 +26,7 @@ const tabOf = (s?: string): Tab => (s === 'PENDING' ? 'PENDING' : s === 'ACCEPTE
 
 export default function SmartLoadList({ items: initial }: { items: SmartLoadView[] }) {
   const [items, setItems] = useState(initial);
+  const canOperate = useCan('OPERATE');
   useLiveRefresh({
     types: ['smart_load.suggested', 'smart_load.accepted'],
     refresh: async () => { const { data } = await actions.trips.smartLoads(); if (data) setItems(data); },
@@ -30,6 +34,7 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
   });
   const [tab, setTab] = useState<Tab>('PENDING');
   const [busy, setBusy] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState<SmartLoadView | null>(null);
   const shown = items.filter((s) => tabOf(s.status) === tab);
   const count = (t: Tab) => items.filter((s) => tabOf(s.status) === t).length;
 
@@ -40,15 +45,6 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
     const n = (data as unknown[] | undefined)?.length ?? 0;
     if (n === 0) { toast.info('No encontramos combinaciones nuevas', 'Vuelve a intentarlo cuando se publiquen más cargas.'); setBusy(null); return; }
     flash(n === 1 ? '1 sugerencia nueva' : `${n} sugerencias nuevas`, 'success');
-    window.location.reload();
-  }
-  async function accept(s: SmartLoadView) {
-    const ok = await confirm({ title: '¿Aceptar esta combinación?', description: `Avisaremos a las ${s.items?.length ?? 0} empresas de que planeas llevar sus cargas juntas. Esto no te adjudica nada: sigues ofertando en cada subasta.`, confirmLabel: 'Aceptar sugerencia' });
-    if (!ok) return;
-    setBusy(`a-${s.id}`);
-    const { error } = await actions.trips.acceptSmartLoad({ id: s.id! });
-    if (error) { toast.error(splitActionError(error).message); setBusy(null); return; }
-    flash('Sugerencia aceptada', 'success');
     window.location.reload();
   }
   async function reject(s: SmartLoadView) {
@@ -67,6 +63,7 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
 
   return (
     <div className="space-y-4">
+      <ReadOnlyNotice className="mb-3">No puedes generar ni aceptar sugerencias.</ReadOnlyNotice>
       <KpiGrid cols={3}>
         <div className="col-span-2 lg:col-span-1"><KpiTile label="Ingreso potencial" value={formatMoney(potential)} context={pendingItems.length ? 'si aceptas todas las pendientes' : 'sin sugerencias pendientes'} tone="money" /></div>
         <KpiTile label="Pendientes" value={pendingItems.length} context="por revisar" tone={pendingItems.length ? 'warn' : 'default'} />
@@ -80,7 +77,7 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
           </TabsList>
         </Tabs>
         </div>
-        <Button variant="outline" className="max-sm:w-full" loading={busy === 'generate'} disabled={!!busy} onClick={generate}><Sparkles />{busy === 'generate' ? 'Generando…' : 'Generar sugerencias'}</Button>
+        {canOperate && <Button variant="outline" className="max-sm:w-full" loading={busy === 'generate'} disabled={!!busy} onClick={generate}><Sparkles />{busy === 'generate' ? 'Generando…' : 'Generar sugerencias'}</Button>}
       </div>
 
       {shown.length === 0 ? (
@@ -139,10 +136,10 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
 
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-steel-200 pt-4">
                     {pending ? <span className="flex items-center gap-1.5 text-xs text-ink-500">Vence en <Countdown closesAt={s.expiresAt} /></span> : <span className="text-xs text-ink-500">Vigente hasta {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: 'numeric', month: 'short' }) : '—'}</span>}
-                    {pending && (
+                    {pending && canOperate && (
                       <div className="flex gap-2">
                         <Button variant="destructive" size="sm" disabled={!!busy} loading={busy === `r-${s.id}`} onClick={() => reject(s)}><X />Rechazar sugerencia<span className="sr-only"> del vehículo {s.vehiclePlate}</span></Button>
-                        <Button variant="money" size="sm" disabled={!!busy} loading={busy === `a-${s.id}`} onClick={() => accept(s)}><Check />Aceptar sugerencia<span className="sr-only"> del vehículo {s.vehiclePlate}</span></Button>
+                        <Button variant="money" size="sm" disabled={!!busy} onClick={() => setAccepting(s)}><Check />Ofertar este plan<span className="sr-only"> del vehículo {s.vehiclePlate}</span></Button>
                       </div>
                     )}
                   </div>
@@ -152,7 +149,8 @@ export default function SmartLoadList({ items: initial }: { items: SmartLoadView
           })}
         </ul>
       )}
-      {tab === 'ACCEPTED' && shown.length > 0 && <Alert tone="info" title="Aceptar no es adjudicar">Para llevar estas cargas, ofértalas en <a className="font-medium underline" href="/transportista/marketplace">Cargas disponibles</a>. La PYME elige entre todas las ofertas.</Alert>}
+      {tab === 'ACCEPTED' && shown.length > 0 && <Alert tone="info" title="Cada PYME decide">Al aceptar un plan enviamos una oferta por cada carga. La PYME elige entre todas las ofertas que recibe: sigue cada una en <a className="font-medium underline" href="/transportista/ofertas">Mis ofertas</a>.</Alert>}
+      <AcceptSmartLoadDialog plan={accepting} onClose={(accepted) => { setAccepting(null); if (accepted) window.location.reload(); }} />
     </div>
   );
 }

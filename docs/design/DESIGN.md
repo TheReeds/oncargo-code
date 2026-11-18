@@ -73,10 +73,18 @@ Ninguno trae marca de agua visible (revisadas las 4 esquinas en fotogramas a tam
 - **Contraste:** el texto sobre vídeo siempre lleva el velo `.bgv__scrim` (degradado con `chrome` ≥ 58 % bajo el texto; variantes `bgv--hero`, `bgv--flat`, `bgv--panel`), texto blanco/`white/85` mínimo y tarjetas con `bg-chrome/50`. Verifica en ambos temas: el vídeo es igual en claro y oscuro.
 - **Assets** (`web/public/media/`, sin audio, WebM VP9 + MP4 H.264 `+faststart`, GOP 120): `hero-corredor` (1920×1080) y `hero-corredor-movil` (540×720), `login-camion` y `registro-almacen` (540×720), `cierre-cabina` (1280×720), más póster `.avif`/`.webp` de cada uno. Re-generar con ffmpeg `-threads 4`, uno a la vez (máquina de 15 GB): `-c:v libvpx-vp9 -b:v 0 -crf 30..32 -row-mt 1` y `-c:v libx264 -preset slow -crf 24 -movflags +faststart`.
 
+## Web pública v2 (landing, login, registro, privacidad)
+Objetivo: densidad y ritmo, sin huecos ni secciones planas. Detalle de componentes y clases `.mk-*` en `references/web.md` de la skill.
+- **Ritmo de fondos:** hero oscuro con vídeo → franja de sectores (superficie) → bento «cómo funciona» (`steel-100`) → antes/después (superficie) → corredor oscuro (`.mk-dark`) con el cotizador cruzando el borde → roles (`steel-100`) → retornos (superficie) → confianza (`steel-100`) → FAQ (superficie) → cierre con vídeo. Padding vertical de sección 48/64 px (`py-12 lg:py-16`), nunca 160 px; ancho de contenedor 1280 px; lectura 60–70 caracteres (`mk-lead` 62ch).
+- **Tipografía:** titulares `mk-display` (hasta 80 px en el hero) y `mk-h2` (hasta 48 px), peso 650, tracking −0.025em, `text-wrap: balance`; eyebrow en mayúsculas 12 px con barra emerald; cifras en `mk-num` (Geist Mono, tabulares).
+- **Prueba de producto:** subasta en vivo (20 min o 5 ofertas, piso 75 %), mapa con rutas reales de `routes.json` y cotizador con las reglas del `TariffCalculator`; todo lo que es de muestra va rotulado «ilustrativo».
+- **Login y registro:** pantalla partida; panel de marca a sangre con vídeo, beneficios por rol, cifras reales, testimonio ilustrativo y sellos de confianza; en < lg, banda de marca con póster y formulario que la solapa. Registro con indicador de avance (3 pasos derivados de la validez de los campos) sin ocultar campos.
+- **Movimiento:** entrada por scroll con `animation-timeline: view()`, contadores y hover de tarjetas; todo bajo `prefers-reduced-motion: no-preference`.
+
 ## Patrones (componentes con nombre — úsalos igual en web y móvil)
 - **RouteLine** — `Lima ──── 1,010 km ────▶ Juliaca` con fechas debajo de cada ciudad.
 - **LoadCard** (móvil, marketplace) — precio grande en emerald + "precio referencial"; RouteLine; chips
-  (`Carga general`, `3.2 t`, `Camión 5 t`, `Compatible`); empresa + badge "Empresa verificada" (RUC);
+  (`Carga general`, `3.2 t`, `Camión 5 t`, `Compatible`); empresa + sello "Verificado por OnCargo";
   contador de subasta ("cierra en 12 min", amber < 5 min); CTA "Ver carga y ofertar".
 - **LoadRow** (web, marketplace tabla) — columnas: Recojo (ciudad, dirección, fecha) · distancia · Entrega ·
   Carga/peso · Vehículo mínimo · Ofertas (n/5) · Precio sugerido · botón "Ofertar".
@@ -89,6 +97,12 @@ Ninguno trae marca de agua visible (revisadas las 4 esquinas en fotogramas a tam
   timeline (referencia: tracking split view).
 - **KpiTile** — número grande + etiqueta + contexto ("3 por recoger hoy"). Máx. 4 por fila.
 - **EmptyState** — ilustración simple de camión + acción siguiente.
+- **VerificationBanner / VerificationBlock** (RN01) — franja bajo el topbar con el estado de verificación de la cuenta (`PENDING` ámbar, `REJECTED`/`SUSPENDED` rojo), qué puede y qué no puede hacer, la nota del operador y a quién escribir; el bloqueo `ORG-003/004` al actuar se explica dentro del formulario, no en un toast. Sello **"Verificado por OnCargo"** (`VerifiedBadge`) = revisión del equipo, no el dígito verificador del RUC.
+- **ReadOnlyNotice / `requiresOperate`** (móvil, rol Lector) — franja de información bajo la barra superior ("Tu rol Lector solo permite consultar…") y botones de escritura deshabilitados; `VerificationBanner` también existe en Android (bajo la barra del inicio de PYME y transportista).
+- **ReasonDialog** — diálogo para acciones que piden motivo (cancelar envío/solicitud, rechazar, suspender, relevar conductor): textarea con contador, obligatorio u opcional, error en línea y botón rojo cuando es destructivo.
+- **Roles y solo lectura** — lo que el rol no puede hacer **no se muestra** (no se deshabilita): `useCan`/`can()` leen `UserInfo.permissions` (calculado del JWT), y donde faltan acciones aparece una línea discreta "Tu rol Lector solo permite consultar…" (`ReadOnlyNotice`). Las secciones que el rol no tiene (Usuarios, Operador, otro tipo de cuenta) responden una página 403 "No tienes acceso a esta sección" con enlace al panel, nunca una redirección muda.
+- **Contraseñas** — formularios con `autocomplete` correcto (`new-password` + repetir), requisitos visibles que pasan a verde al cumplirse, confirmación idéntica en "Olvidé mi contraseña" (no revela si el correo existe), estado claro para enlace vencido con "Pedir otro enlace". Un enlace con token nunca queda en la barra de direcciones ni envía `Referer`.
+- **Vehículos no aptos** — en la hoja de oferta y en el cambio de vehículo, los vehículos que no pueden llevar la carga (tipo, kg, m³) quedan deshabilitados y la lista "No disponibles para esta carga" dice por qué.
 
 ## Pantallas por rol
 ### Web — PYME (Negocio)

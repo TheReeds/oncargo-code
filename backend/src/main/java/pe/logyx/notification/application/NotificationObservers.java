@@ -116,6 +116,14 @@ public class NotificationObservers {
             case PENDING -> null;
         };
         if (n != null) publisher.publish(List.of(n));
+        // V14 (F20): una organización rechazada corrigió su razón social o RUC y vuelve a la bandeja del operador.
+        if (e.status() == pe.logyx.identity.domain.model.Organization.VerificationStatus.PENDING) {
+            String name = organizations.get(e.organizationId()).legalName();
+            publisher.publish(operators().stream().map(op -> Notification.to(op,
+                    NotificationType.ORGANIZATION_VERIFICATION, "Organización por verificar de nuevo",
+                    name + " corrigió sus datos después del rechazo: revísala en la bandeja de verificación.",
+                    NotificationTarget.ORGANIZATION, e.organizationId())).toList());
+        }
     }
 
     void onAuctionClosed(@Observes @Outboxed AuctionClosed e) {
@@ -212,8 +220,10 @@ public class NotificationObservers {
             case DELIVERED -> " El envío se dio por entregado.";
             case CANCELLED -> " El envío quedó cancelado.";
         };
-        String notes = e.resolutionNotes() == null ? "El operador cerró la incidencia."
-                : "Resolución del operador: «" + e.resolutionNotes() + "».";
+        // F46: las notas van citadas y, sin su puntuación final, se cierran con un solo punto antes del texto fijo.
+        String quoted = e.resolutionNotes() == null ? "" : e.resolutionNotes().strip().replaceAll("[\\s.;,:]+$", "");
+        String notes = quoted.isEmpty() ? "El operador cerró la incidencia."
+                : "Resolución del operador: «" + quoted + "».";
         String body = notes + effect;
         publisher.publish(List.of(
                 Notification.to(e.requesterOrgId(), NotificationType.INCIDENT_RESOLVED, title, body, NotificationTarget.INCIDENT,

@@ -22,7 +22,8 @@ export const rejectBooking = (token: string, id: string, reason?: string) =>
 export const listReturnLoads = (token: string) => unwrap(apiFor(token).GET('/api/v1/return-loads'));
 export const listSmartLoads = (token: string) => unwrap(apiFor(token).GET('/api/v1/smart-loads', { params: { query: {} } }));
 export const generateSmartLoads = (token: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/generate'));
-export const acceptSmartLoad = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/accept', { params: { path: { id } }, body: {} }));
+/** F12: acepta el plan = oferta en lote (una por carga). `items` fija el monto por carga; sin `items` se oferta el sugerido. */
+export const acceptSmartLoad = (token: string, id: string, body: Schemas['AcceptSmartLoadRequest'] = {}) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/accept', { params: { path: { id } }, body }));
 export const rejectSmartLoad = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/smart-loads/{id}/reject', { params: { path: { id } } }));
 
 // ── PYME ──────────────────────────────────────────────────────────────

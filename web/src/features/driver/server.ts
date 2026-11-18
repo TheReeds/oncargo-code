@@ -11,3 +11,8 @@ export async function activeShipment(token: string): Promise<ShipmentView | null
     throw e;
   }
 }
+
+/** Viajes anteriores del conductor: entregados y cancelados, los más recientes primero (F22, `scope=HISTORY`). */
+export async function shipmentHistory(token: string): Promise<ShipmentView[]> {
+  return unwrap(apiFor(token).GET('/api/v1/driver/shipments', { params: { query: { scope: 'HISTORY' } } }));
+}

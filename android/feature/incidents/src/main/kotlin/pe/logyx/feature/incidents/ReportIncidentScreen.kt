@@ -153,7 +153,7 @@ fun ReportIncidentScreen(
             PhotoSection(state.photo, !state.submitting, onTakePhoto, onRemovePhoto)
             LogyxButton(
                 stringResource(R.string.incidents_submit), onSubmit,
-                variant = ButtonVariant.Primary, loading = state.submitting,
+                variant = ButtonVariant.Primary, loading = state.submitting, requiresOperate = true,
             )
         }
     }

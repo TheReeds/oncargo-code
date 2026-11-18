@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { safeNext } from '@/lib/safe-redirect';
 import { actions } from 'astro:actions';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,13 @@ export default function LoginForm({ next, expired, demo }: { next?: string; expi
   const [busy, setBusy] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  // Mensaje tras restablecer la contraseña o activar la cuenta (`/login?restablecida=1|activada=1`), solo en el cliente.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has('restablecida')) setNotice('Contraseña actualizada. Ingresa con tu contraseña nueva.');
+    else if (q.has('activada')) setNotice('Tu cuenta quedó activa. Ingresa con la contraseña que acabas de crear.');
+  }, []);
 
   /** Valida un campo solo cuando el usuario ya lo editó y salió de él (no al enfocar ni mientras escribe). */
   function onBlurEmail(e: React.FocusEvent<HTMLInputElement>) {
@@ -83,7 +90,8 @@ export default function LoginForm({ next, expired, demo }: { next?: string; expi
 
   return (
     <form onSubmit={onSubmit} method="post" className="space-y-4" noValidate>
-      {expired && <Alert tone="info">Tu sesión venció. Ingresa de nuevo para continuar.</Alert>}
+      {notice && <Alert tone="success">{notice}</Alert>}
+      {expired && <Alert tone="info">Tu sesión se cerró o venció. Ingresa de nuevo para continuar.</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
       <Field label="Correo electrónico" htmlFor="email" error={errors.email}>
         <Input
@@ -118,6 +126,7 @@ export default function LoginForm({ next, expired, demo }: { next?: string; expi
           onChange={clearOnFix('password', (v) => !!v)}
         />
       </Field>
+      <p className="-mt-1 text-right text-sm"><a href="/olvide" className="font-medium text-petrol-700 underline underline-offset-2">¿Olvidaste tu contraseña?</a></p>
       <Button type="submit" size="lg" className="w-full" loading={busy}>
         {busy ? 'Ingresando…' : 'Ingresar'}
       </Button>

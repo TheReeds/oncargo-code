@@ -1,6 +1,7 @@
 # Seguridad de LOGYX — modelo de amenazas resumido
 
-Actualizado 2026-11-10 (fase 5). Decisiones: ADR-0001 (RLS), ADR-0005 (documentos), ADR-0006 (mínimo privilegio, outbox).
+Actualizado 2026-11-10 (fase 5); 2026-11-16 cuentas, sesiones y roles (V14). Decisiones: ADR-0001 (RLS), ADR-0005
+(documentos), ADR-0006 (mínimo privilegio, outbox), ADR-0009 (sesiones revocables, refresh, tokens, roles).
 Marco legal: Ley N° 29733 (datos personales) — medidas técnicas proporcionales.
 
 ## Activos
@@ -11,7 +12,7 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 | Frontera | Quién | Control |
 |---|---|---|
 | Navegador → web (Astro SSR) | cualquiera | cookie de sesión httpOnly + SameSite=Lax + Secure (prod); `checkOrigin` de Astro contra CSRF; CSP y cabeceras |
-| Web/Android → API | usuarios con JWT RSA (8 h) | `@RolesAllowed`, organización solo desde el JWT (`TenantContext`), Bean Validation |
+| Web/Android → API | usuarios con JWT RSA (web 8 h; móvil con refresh: 1 h + refresh rotativo de 30 días) | `@RolesAllowed`, organización solo desde el JWT (`TenantContext`), versión de sesión `sv` + rol de organización (`AccountAccessFilter`), Bean Validation |
 | API → PostgreSQL | `logyx_api` (solo `logyx_app`) | RLS por organización; sin dueño ni BYPASSRLS (ADR-0006) |
 | API → PostgreSQL privilegiado | `logyx_owner` | solo Flyway y `SystemTx` (usos enumerados en `backend/AGENTS.md`) |
 | API → S3/MinIO | credenciales de servicio | bucket privado; descarga solo vía API |
@@ -19,7 +20,12 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 ## Amenazas (STRIDE) y mitigaciones
 | Amenaza | Mitigación | Residual |
 |---|---|---|
-| Fuerza bruta de contraseñas / registros masivos | `AuthRateLimits`: login 50/15 min por IP, bloqueo tras 10 fallos por email (15 min), registro 10/15 min por IP → `429 LOGYX-AUTH-429` + `Retry-After`. La web reenvía la IP del navegador en `X-Forwarded-For`; el backend solo la acepta de proxies confiables (`TRUSTED_PROXIES`). Contraseñas con hash adaptativo | En memoria por instancia (con N réplicas el límite efectivo es ×N): pasar a Redis/BD al escalar. Sin CAPTCHA ni MFA |
+| Fuerza bruta de contraseñas / registros masivos | `AuthRateLimits`: login 50/15 min por IP, bloqueo tras 10 fallos por email (15 min), registro 10/15 min por IP, canje de enlaces 30/15 min por IP, refresh 300/15 min por IP, 10 contraseñas actuales incorrectas por usuario en `change-password` → `429 LOGYX-AUTH-429` + `Retry-After`. La web reenvía la IP del navegador en `X-Forwarded-For`; el backend solo la acepta de proxies confiables (`TRUSTED_PROXIES`). Contraseñas con hash adaptativo | En memoria por instancia (con N réplicas el límite efectivo es ×N): pasar a Redis/BD al escalar. Sin CAPTCHA ni MFA |
+| Token robado o sesión que debía cerrarse (F55, F31) | Claim `sv` = `profiles.session_version`, comparado en cada petición (caché 30 s): sube al cambiar/restablecer la contraseña, cambiar el rol, desactivar al usuario o al conductor y con "cerrar todas las sesiones" → 401 `LOGYX-AUTH-401` | El logout web solo borra la cookie (el JWT vale hasta 8 h o hasta "cerrar todas"); con varias réplicas la revocación tarda hasta 30 s |
+| Robo de refresh token (móvil) | Opt-in, rotativo, un solo uso, hash SHA-256 en BD, vencimiento absoluto 30 días; reutilizar uno usado revoca la familia (`REFRESH_TOKEN_REUSED` en auditoría); se rechaza si cambió `sv` o el usuario está inactivo | El robo se detecta al reutilizarse, no antes |
+| Enumeración de cuentas por "olvidé mi contraseña" | Siempre 202 con el mismo cuerpo; el trabajo (búsqueda, token, correo) corre fuera del hilo de la respuesta; límite por email sin cambiar la respuesta (3 / 15 min) y por IP (20 / 15 min → 429) | El registro sigue diciendo "El email ya está registrado" (F54, `LOGYX-AUTH-002` es contrato) |
+| Enlaces de restablecimiento o invitación filtrados | 256 bits, solo el SHA-256 en BD, un solo uso, 30 min (reset) / 72 h (invitación), pedir otro invalida los anteriores; el token nunca va en el path de la API; `password_tokens` y `refresh_tokens` sin privilegios para `logyx_app` (RLS sin políticas) | Quien controla el buzón del usuario controla la cuenta (sin MFA) |
+| Escalada dentro de la organización (F03) | VIEWER: denegación por defecto de métodos no seguros (`LOGYX-AUTH-007`); `@OrgAdminOnly` + chequeo en el caso de uso para usuarios, perfil y conductores (`LOGYX-AUTH-008`); siempre un ADMIN activo (fila de la organización bloqueada); todo en `audit_log` | — |
 | Robo de sesión (XSS) | JWT en cookie httpOnly (no accesible a JS); CSP `default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`; React escapa por defecto | `script-src 'unsafe-inline'` (scripts de hidratación de Astro); a futuro nonces/hashes |
 | CSRF | `security.checkOrigin` de Astro en acciones y POST; SameSite=Lax | — |
 | Clickjacking / sniffing | `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff` en web y API | — |
@@ -46,3 +52,10 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 6. Proxy delante de API/web: sin buffering ni compresión en `text/event-stream` (`/api/v1/events/stream` y `/eventos` de la
    web), timeout de lectura ≥ 60 s. Con varias réplicas de la API, todas contra la misma BD (fan-out por LISTEN/NOTIFY);
    si hay PgBouncer en modo transacción, el LISTEN necesita conexión directa (o modo sesión) al datasource `app`.
+7. Correo (V14): `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_START_TLS` (por omisión
+   `REQUIRED`; con TLS directo en 465: `SMTP_TLS=true` y `SMTP_START_TLS=DISABLED`), `MAIL_FROM`
+   (`OnCargo <no-reply@oncargo.tech>`) con SPF/DKIM/DMARC del dominio, y `PASSWORD_RESET_URL`
+   (`https://oncargo.tech/restablecer`, la página de la web). `MAILER_MOCK` debe quedar sin definir (false) en
+   producción. La imagen de producción no incluye el buzón dev (`logyx.dev-mailbox=false`, propiedad de build).
+8. Varias réplicas: la revocación por `sv` tarda hasta `logyx.session.cache-ttl` (30 s) y los rate limits son por
+   instancia.

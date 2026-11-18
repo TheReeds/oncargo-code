@@ -16,7 +16,27 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 
-enum class EvidenceState { QUEUED, UPLOADING, UPLOADED, FAILED }
+/**
+ * `CLOSED`: el servidor ya no acepta esa evidencia (`LOGYX-DOC-008`: la entrega se cerró; `LOGYX-DOC-007`: ya no eres el
+ * conductor asignado). El archivo de la cola se borró y **no se reintenta**; el ítem queda visible con [EvidenceItem.error]
+ * hasta que el conductor lo descarte (`discard`), para que sepa que esa foto no llegó.
+ */
+enum class EvidenceState { QUEUED, UPLOADING, UPLOADED, FAILED, CLOSED }
+
+/** Códigos del backend (V13, F14/RN06) que cierran definitivamente la subida de una evidencia. */
+object EvidenceErrors {
+    const val CLOSED = "LOGYX-DOC-008"
+    const val NOT_ASSIGNED_DRIVER = "LOGYX-DOC-007"
+    const val CLOSED_MESSAGE = "La entrega ya se cerró: esta evidencia no se subió y se descartó."
+    const val NOT_ASSIGNED_MESSAGE = "Ya no eres el conductor asignado de este envío: esta evidencia no se subió y se descartó."
+
+    /** Mensaje para el conductor si el error cierra la evidencia; null si es un fallo reintentable. */
+    fun closedMessage(code: String?): String? = when (code) {
+        CLOSED -> CLOSED_MESSAGE
+        NOT_ASSIGNED_DRIVER -> NOT_ASSIGNED_MESSAGE
+        else -> null
+    }
+}
 
 /**
  * Una evidencia (foto de entrega o firma). [id] es estable: el nombre de archivo de la cola o el id del documento del servidor.
@@ -55,7 +75,7 @@ interface EvidenceRepository {
     suspend fun retry(id: String)
     suspend fun retryAll(shipmentId: String)
 
-    /** Descarta una evidencia que aún no se subió. */
+    /** Descarta una evidencia que aún no se subió (o que el servidor cerró: DOC-007/008). */
     suspend fun discard(id: String)
 }
 
@@ -124,6 +144,8 @@ class DefaultEvidenceRepository(
         val remote = apiCall { api.shipmentDocuments(shipmentId) }
         _items.update { current ->
             val local = current.filter { it.shipmentId == shipmentId && it.state != EvidenceState.UPLOADED }
+            // Los descartes por cierre (DOC-007/008) ya no tienen archivo: se conservan hasta que el conductor los vea.
+            val closed = local.filter { it.state == EvidenceState.CLOSED }
             // Un item que ya está en memoria (p. ej. subido mientras se leía el disco) manda sobre la copia leída de la cola.
             val merged = queued.mapNotNull { q ->
                 local.firstOrNull { it.id == q.id } ?: q.takeIf { current.none { c -> c.id == q.id } }
@@ -136,7 +158,7 @@ class DefaultEvidenceRepository(
                 }
             // Las subidas de esta sesión con bytes (aún no listadas) se conservan.
             val sessionUploaded = current.filter { it.shipmentId == shipmentId && it.state == EvidenceState.UPLOADED && uploaded.none { u -> u.documentId == it.documentId } }
-            current.filter { it.shipmentId != shipmentId } + merged + uploaded + sessionUploaded
+            current.filter { it.shipmentId != shipmentId } + merged + closed + uploaded + sessionUploaded
         }
         return remote.map { }
     }
@@ -158,7 +180,7 @@ class DefaultEvidenceRepository(
     private suspend fun upload(id: String) {
         val item = lock.withLock {
             val cur = _items.value.firstOrNull { it.id == id } ?: return
-            if (cur.state == EvidenceState.UPLOADING || cur.state == EvidenceState.UPLOADED) return
+            if (cur.state == EvidenceState.UPLOADING || cur.state == EvidenceState.UPLOADED || cur.state == EvidenceState.CLOSED) return
             patch(id) { it.copy(state = EvidenceState.UPLOADING, progress = 0f, error = null) }
             cur
         }
@@ -177,7 +199,16 @@ class DefaultEvidenceRepository(
                 withContext(Dispatchers.IO) { file.delete() }
                 patch(id) { it.copy(state = EvidenceState.UPLOADED, progress = 1f, documentId = doc.id, error = null) }
             },
-            onFailure = { e -> patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage()) } },
+            onFailure = { e ->
+                val closed = EvidenceErrors.closedMessage(e.apiCode)
+                if (closed != null) {
+                    // La evidencia ya no se acepta: se borra de la cola para no reintentar nunca y se avisa al conductor.
+                    withContext(Dispatchers.IO) { file.delete() }
+                    patch(id) { it.copy(state = EvidenceState.CLOSED, progress = 0f, error = closed, bytes = null) }
+                } else {
+                    patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage()) }
+                }
+            },
         )
     }
 

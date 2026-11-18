@@ -1,0 +1,53 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { DescriptionList } from '@/components/ui/description-list';
+import { Alert } from '@/components/ui/alert';
+import { StatusPill } from '@/components/domain/StatusPill';
+import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import OrganizationForm from '@/features/organization/components/OrganizationForm';
+import { getOrganization } from '@/features/organization/server';
+import { getCatalog } from '@/features/catalog/server';
+import { can, READ_ONLY_NOTICE } from '@/lib/permissions';
+import { CITY_LABELS, formatDateTime } from '@/lib/format';
+const session = Astro.locals.session!;
+const [profile, { cities }] = await Promise.all([getOrganization(session.token), getCatalog()]);
+const canEdit = can(session, 'MANAGE_ORGANIZATION');
+const viewer = session.role === 'VIEWER';
+const typeLabel = profile.type === 'CARRIER' ? 'Transportista' : 'PYME';
+---
+<AppShell title="Perfil de la empresa" active="organizacion">
+  <PageHeader title="Perfil de la empresa" subtitle="Los datos con los que OnCargo te identifica ante PYMEs y transportistas.">
+    <Fragment slot="meta"><StatusPill kind="verification" status={profile.verificationStatus!} /><span>{typeLabel}</span></Fragment>
+  </PageHeader>
+  <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
+    <Card className="min-w-0">
+      <CardHeader><CardTitle>Datos registrados</CardTitle></CardHeader>
+      <CardBody className="space-y-4">
+        <DescriptionList cols={1} items={[
+          { label: 'Razón social', value: profile.legalName },
+          { label: 'RUC', value: profile.ruc, mono: true, hint: profile.rucValid ? 'Dígito verificador correcto' : undefined },
+          { label: 'Tipo de empresa', value: typeLabel },
+          { label: 'Ciudad', value: profile.city ? (CITY_LABELS[profile.city] ?? profile.city) : 'Sin registrar' },
+          { label: 'Teléfono', value: profile.phone || 'Sin registrar', mono: !!profile.phone },
+          { label: 'Dirección', value: profile.address || 'Sin registrar' },
+          { label: 'Registrada', value: formatDateTime(profile.createdAt) },
+        ]} />
+        <div class="rounded-input border border-steel-200 bg-steel-100/60 p-3 text-sm" data-testid="verification-summary">
+          <p class="flex flex-wrap items-center gap-2 font-medium text-ink-900">Verificación <StatusPill kind="verification" status={profile.verificationStatus!} /> {profile.rucVerified && <VerifiedBadge verified />}</p>
+          {profile.verificationNote && <p class="mt-1.5 text-ink-700">{profile.verificationNote}</p>}
+        </div>
+      </CardBody>
+    </Card>
+    <div class="min-w-0 space-y-4">
+      {canEdit ? (
+        <OrganizationForm client:load profile={profile} cities={cities} />
+      ) : (
+        <Alert tone="info" title="Solo un administrador puede editar estos datos">
+          {viewer ? READ_ONLY_NOTICE : 'Tu rol Operaciones no administra los datos de la empresa. Pídele a un administrador que los actualice.'}
+        </Alert>
+      )}
+    </div>
+  </div>
+</AppShell>

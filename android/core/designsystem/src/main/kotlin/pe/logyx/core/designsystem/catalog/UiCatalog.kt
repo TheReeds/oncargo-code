@@ -31,7 +31,19 @@ import kotlinx.coroutines.launch
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.LogyxTheme
+import pe.logyx.core.designsystem.components.BidStandingRow
 import pe.logyx.core.designsystem.components.ChatBubble
+import pe.logyx.core.designsystem.components.LogyxReasonSheet
+import pe.logyx.core.designsystem.components.VehicleChoice
+import pe.logyx.core.designsystem.components.VehicleChoiceList
+import pe.logyx.core.designsystem.pill
+import pe.logyx.core.model.BidOutcome
+import pe.logyx.core.model.BidStandingBand
+import pe.logyx.core.model.CargoType
+import pe.logyx.core.model.MyBidStanding
+import pe.logyx.core.model.VehicleFit
+import pe.logyx.core.model.VehicleStatus
+import pe.logyx.core.model.VehicleView
 import pe.logyx.core.designsystem.components.ChatComposer
 import pe.logyx.core.designsystem.components.EvidenceTile
 import pe.logyx.core.designsystem.components.RatingRow
@@ -40,6 +52,10 @@ import pe.logyx.core.designsystem.components.StarRating
 import pe.logyx.core.designsystem.components.TileStatus
 import pe.logyx.core.designsystem.components.TrustScoreBadge
 import pe.logyx.core.designsystem.components.AlertBanner
+import pe.logyx.core.designsystem.components.ProvideReadOnly
+import pe.logyx.core.designsystem.components.ReadOnlyNotice
+import pe.logyx.core.designsystem.components.VerificationBanner
+import pe.logyx.core.model.VerificationStatus
 import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
@@ -117,6 +133,14 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
             Section("Datos de negocio") { Domain() }
             Section("Reputación, chat y evidencia") { Phase3() }
+            Section("Negociación: posición, flota y motivos") { Negotiation() }
+            Section("Cuenta: verificación y rol Lector") {
+                VerificationBanner(VerificationStatus.PENDING, null)
+                VerificationBanner(VerificationStatus.REJECTED, "El RUC no coincide con la razón social.")
+                VerificationBanner(VerificationStatus.SUSPENDED, null)
+                ReadOnlyNotice()
+                ProvideReadOnly(true) { LogyxButton("Enviar oferta (requiere operar)", {}, variant = ButtonVariant.Money, requiresOperate = true) }
+            }
             Section("Indicador en vivo") {
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     LiveIndicator(RealtimeStatus.LIVE)
@@ -279,6 +303,39 @@ private fun Domain() {
             StopView("2", 2, StopType.DELIVERY, "JULIACA", "Jr. Lima 456", StopStatus.PENDING),
         ),
     )
+}
+
+@Composable
+private fun Negotiation() {
+    var reason by remember { mutableStateOf("") }
+    var sheet by remember { mutableStateOf(false) }
+    var vehicle by remember { mutableStateOf<String?>("1") }
+    BidStandingRow(MyBidStanding(1, 4, true, BidStandingBand.BEST))
+    BidStandingRow(MyBidStanding(3, 4, false, BidStandingBand.WITHIN_15_PCT))
+    BidStandingRow(MyBidStanding(4, 4, false, BidStandingBand.ABOVE_15_PCT, finalStanding = true))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BidOutcome.entries.filter { it != BidOutcome.UNKNOWN }.take(3).forEach { StatusPill(it.pill()) }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BidOutcome.entries.filter { it != BidOutcome.UNKNOWN }.drop(3).forEach { StatusPill(it.pill()) }
+    }
+    VehicleChoiceList(
+        choices = listOf(
+            VehicleChoice(VehicleView("1", "ABC-101", VehicleType.REFRIGERATED, 8000.0, 30.0, VehicleStatus.AVAILABLE), VehicleFit.FITS),
+            VehicleChoice(VehicleView("2", "XYZ-202", VehicleType.TRUCK_SMALL, 3000.0, null, VehicleStatus.AVAILABLE), VehicleFit.TYPE),
+            VehicleChoice(VehicleView("3", "DEF-303", VehicleType.VAN, 1000.0, null, VehicleStatus.IN_ROUTE), VehicleFit.UNAVAILABLE),
+        ),
+        selectedId = vehicle, onSelect = { vehicle = it }, weightKg = 2500.0, volumeM3 = 20.0, cargoType = CargoType.PERISHABLE,
+    )
+    LogyxButton("Abrir hoja con motivo", { sheet = true }, variant = ButtonVariant.Destructive, size = ButtonSize.Medium)
+    if (sheet) {
+        LogyxReasonSheet(
+            title = "¿Cancelar el envío?", reasonLabel = "Motivo", value = reason, onValueChange = { reason = it },
+            confirmLabel = "Cancelar envío", onConfirm = { sheet = false }, onDismiss = { sheet = false },
+            message = "La otra parte recibirá el motivo y la solicitud quedará cancelada.",
+            error = if (reason.any { it.isDigit() }) "El texto contiene datos de contacto. Coordina todo por el chat de OnCargo." else null,
+        )
+    }
 }
 
 @Composable

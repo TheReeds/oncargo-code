@@ -20,6 +20,7 @@ import type { CityItem, DriverView, ShipmentView } from '@/lib/api/server';
 import TrackingMap from './TrackingMap';
 import { StopTimeline } from './StopTimeline';
 import ShipmentExtras from './ShipmentExtras';
+import { ShipmentListNote } from './ShipmentListNote';
 
 interface Props {
   shipments: ShipmentView[];
@@ -150,6 +151,7 @@ export default function TrackingSplit({ shipments: initialShipments, cities, ini
                   <button type="button" onClick={() => setSelectedId(s.id!)} aria-current={s.id === selectedId} className={cn('w-full space-y-2.5 border-l-4 p-4 text-left transition-colors hover:bg-steel-100/60', s.id === selectedId ? 'border-petrol-700 bg-petrol-50/50' : 'border-transparent')}>
                     <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs text-ink-500">#{s.id?.slice(0, 8)}</span><span className="flex items-center gap-1.5">{s.hasActiveIncident && <Badge tone="red">Incidencia</Badge>}<StatusPill status={s.status!} /></span></div>
                     <RouteLine size="sm" origin={s.originCity!} destination={s.destinationCity!} />
+                    <ShipmentListNote shipment={s} perspective={perspective} />
                     {p.total > 0 && (
                       <div className="flex items-center gap-2 text-xs text-ink-500">
                         <div className="h-1 flex-1 overflow-hidden rounded-full bg-steel-200" aria-hidden="true"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(p.done / p.total) * 100}%` }} /></div>
@@ -200,7 +202,7 @@ export default function TrackingSplit({ shipments: initialShipments, cities, ini
               <StopTimeline stops={selected.stops ?? []} />
             </div>
             <div className="border-t border-steel-200 pt-5"><ShipmentExtras key={selected.id} shipment={selected} perspective={perspective} /></div>
-            {perspective === 'CARRIER' && <div className="border-t border-steel-200 pt-5"><AssignDriver key={selected.id} shipment={selected} drivers={drivers} /></div>}
+            {/* La asignación y el relevo de conductor ahora viven en ShipmentActions (dentro de ShipmentExtras): AssignDriver ya no se usa. */}
           </CardBody>
         </Card>
       )}

@@ -1,75 +1,197 @@
 ---
 /**
- * Marco de login y registro: panel de marca con vídeo a la izquierda (solo ≥ lg) y la tarjeta del formulario a la derecha.
- * En móvil solo el formulario (el panel no se renderiza visible: sin vídeo ni póster descargados) y debajo una fila corta
- * de confianza (el teclado no tapa el botón). Login = camión en la ruta; registro = almacén de la PYME.
+ * Marco de login y registro: pantalla partida a ancho completo.
+ * - ≥ lg: panel de marca a sangre (vídeo + prueba: beneficios por rol, corredor con km reales, testimonio ilustrativo, sellos)
+ *   a la izquierda y el formulario centrado sobre `steel-100` con textura a la derecha.
+ * - < lg: banda de marca compacta arriba (solo póster, sin descargar vídeo) y la tarjeta del formulario solapando su borde
+ *   inferior; debajo, los beneficios por rol (2 columnas en tablet).
+ * El panel es un contenedor (`@container`): sus tarjetas y titulares se adaptan a su propio ancho, no al de la ventana.
  */
 import BgVideo from '@/components/media/BgVideo.astro';
-import { Gavel, ShieldCheck, MapPinned, Bell, FilePlus2, BadgeCheck, Truck, Lock } from '@lucide/astro';
+import { Building, Truck, Quote, Timer, BadgeCheck, ShieldCheck, Lock, FileCheck, Check } from '@lucide/astro';
 interface Props { variant: 'login' | 'registro' }
 const { variant } = Astro.props;
 const login = variant === 'login';
-const vid = login ? { name: 'login-camion', label: 'vídeo del camión en ruta', pos: '38% center' } : { name: 'registro-almacen', label: 'vídeo del almacén', pos: '30% center' };
-const bullets = login
-  ? [
-      { icon: Gavel, t: 'Ofertas en vivo', d: 'Mira cómo llegan las ofertas y elige la mejor.' },
-      { icon: MapPinned, t: 'Seguimiento por parada', d: 'Estado de cada envío, del recojo a la entrega.' },
-      { icon: Bell, t: 'Avisos al instante', d: 'Te avisamos cuando hay una oferta, una parada o una incidencia.' },
-    ]
-  : [
-      { icon: FilePlus2, t: 'Registra tu empresa', d: 'Con tu RUC y los datos de contacto. Toma unos minutos.' },
-      { icon: BadgeCheck, t: 'Validamos tu RUC', d: 'Las empresas verificadas publican y ofertan con tu sello.' },
-      { icon: Truck, t: 'Empieza a operar', d: 'Publica tu primera solicitud o registra tu flota y ofrece.' },
-    ];
+const vid = login
+  ? { name: 'login-camion', label: 'vídeo del camión en ruta', pos: '38% center' }
+  : { name: 'registro-almacen', label: 'vídeo del almacén', pos: '30% 30%' };
+
+const copy = login
+  ? { eyebrow: 'Fletes entre Lima y la sierra sur', title: 'Cada carga, con su ruta, sus ofertas y su envío a la vista.', short: 'Cada carga, con su ruta y sus ofertas a la vista.' }
+  : { eyebrow: 'Registro para empresas y transportistas', title: 'Empieza a mover carga por el corredor en tres pasos.', short: 'Registra tu empresa y empieza a mover carga.' };
+
+const roles = [
+  { icon: Building, who: 'Si envías carga', tag: 'PYME', verbs: ['Publicar tu solicitud', 'Comparar ofertas', 'Seguir tu envío parada por parada'] },
+  { icon: Truck, who: 'Si transportas', tag: 'Transportista', verbs: ['Ofertar por cargas compatibles', 'Asignar tu conductor', 'Registrar tu flota'] },
+];
+const trust = [
+  { icon: BadgeCheck, t: 'Verificado por OnCargo' },
+  { icon: FileCheck, t: 'RUC validado' },
+  { icon: ShieldCheck, t: 'Ley 29733' },
+];
+/** Km por carretera desde Lima (`backend/src/main/resources/routing/routes.json`). */
+const corridor = [
+  { city: 'Arequipa', km: '1,001.6' },
+  { city: 'Cusco', km: '1,104.1' },
+  { city: 'Juliaca', km: '1,248.5' },
+];
+const quote = login
+  ? { q: 'Antes pedía cotización por WhatsApp a cinco transportistas. Ahora comparo las ofertas en una sola pantalla.', by: 'Jefa de logística de una PYME de Lima' }
+  : { q: 'Veo la carga, el piso y el vehículo mínimo antes de ofertar, y lleno mis viajes de retorno.', by: 'Gerente de un transportista de Arequipa' };
 ---
-<div class:list={["mx-auto grid w-full max-w-6xl gap-8 px-4 py-6 sm:py-10 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:gap-12 lg:px-10 lg:py-12", login && "lg:items-center"]}>
-  <aside class="auth-aside relative isolate hidden overflow-hidden rounded-card bg-chrome p-8 text-white lg:block lg:self-start lg:sticky lg:top-24" aria-label="Por qué OnCargo">
-    <BgVideo desktop={vid.name} poster={vid.name} width={540} height={720} breakpoint={1024} position={vid.pos} class="bgv--panel" control label={vid.label} controlClass="bottom-4 right-4" />
-    <div class="relative">
-      <p class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-chrome/50 backdrop-blur-sm px-3 py-1 text-xs font-medium text-white">
-        <span class="size-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-        {login ? 'Fletes entre Lima y la sierra sur' : 'Registro para empresas y transportistas'}
-      </p>
-      <p class="mt-5 text-balance text-2xl font-semibold leading-tight tracking-tight">
-        {login ? 'Cada carga, con su ruta, sus ofertas y su envío a la vista.' : 'Empieza a mover carga por el corredor en tres pasos.'}
-      </p>
-      <ul class="mt-7 space-y-5">
-        {bullets.map((b) => (
-          <li class="flex gap-3.5">
-            <span class="grid size-9 shrink-0 place-items-center rounded-input bg-chrome/60 text-emerald-500"><b.icon size={18} aria-hidden="true" /></span>
-            <div>
-              <p class="text-sm font-semibold">{b.t}</p>
-              <p class="mt-0.5 text-sm text-white/85">{b.d}</p>
+<div class:list={['auth grid min-h-[calc(100dvh-4.0625rem)]', login ? 'lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)]' : 'lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]']}>
+  <aside class="auth-aside mk-dark @container relative isolate overflow-hidden text-white" aria-label="Por qué OnCargo">
+    <BgVideo desktop={vid.name} poster={vid.name} width={540} height={720} breakpoint={1024} position={vid.pos} priority class="bgv--panel bgv--band" control label={vid.label} controlClass="bottom-4 right-4" />
+    <div class="mk-grid absolute inset-0" aria-hidden="true"></div>
+
+    <!-- < lg: banda compacta -->
+    <div class="relative px-4 pb-20 pt-7 sm:px-8 sm:pb-24 sm:pt-10 lg:hidden">
+      <p class="mk-eyebrow">{copy.eyebrow}</p>
+      <p class="mk-h2 mt-3 max-w-[20ch] sm:max-w-[26ch]">{copy.short}</p>
+      <ul class="mt-4 flex flex-wrap gap-2" aria-label="Garantías de OnCargo">
+        {trust.map((t) => (
+          <li class="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-chrome/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"><t.icon size={13} class="text-emerald-500" aria-hidden="true" />{t.t}</li>
+        ))}
+      </ul>
+    </div>
+
+    <!-- ≥ lg: panel completo -->
+    <div class="relative hidden h-full flex-col justify-between gap-7 p-8 lg:flex xl:p-10">
+      <div>
+        <p class="mk-eyebrow">{copy.eyebrow}</p>
+        <p class="mk-h2 auth-title mt-4 max-w-[19ch]">{copy.title}</p>
+      </div>
+
+      <ul class="grid gap-3 @md:grid-cols-2" aria-label="Qué puedes hacer según tu rol">
+        {roles.map((r) => (
+          <li class="rounded-card border border-white/15 bg-chrome/50 p-4 backdrop-blur-sm">
+            <div class="flex items-center gap-2.5">
+              <span class="grid size-8 shrink-0 place-items-center rounded-input bg-chrome/60 text-emerald-500"><r.icon size={17} aria-hidden="true" /></span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold leading-tight text-white">{r.who}</p>
+                <p class="text-xs text-white/80">{r.tag}</p>
+              </div>
             </div>
+            <ul class="mt-3 space-y-1.5 text-[13px] leading-snug text-white/90">
+              {r.verbs.map((v) => <li class="flex gap-2"><Check size={14} class="mt-0.5 shrink-0 text-emerald-500" aria-hidden="true" />{v}</li>)}
+            </ul>
           </li>
         ))}
       </ul>
 
-      <svg class="mt-9 w-full text-white/80" viewBox="0 0 320 84" fill="none" role="img" aria-label="Ruta de ejemplo entre Lima, Arequipa y Juliaca">
-        <path d="M14 58C70 58 82 24 150 28s88 28 156 12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 5" stroke-linecap="round" />
-        <path d="M14 58C70 58 82 24 150 28" style="stroke:var(--color-emerald-500)" stroke-width="2.5" stroke-linecap="round" />
-        <circle cx="14" cy="58" r="5" style="fill:var(--color-chrome);stroke:var(--color-emerald-500)" stroke-width="2.5" />
-        <circle cx="150" cy="28" r="4" style="fill:var(--color-chrome)" stroke="currentColor" stroke-width="2" />
-        <rect x="300" y="34" width="12" height="12" rx="2" style="fill:var(--color-emerald-500)" />
-        <g font-size="11" font-family="var(--font-sans)" fill="currentColor" stroke="none">
-          <text x="2" y="78">Lima</text>
-          <text x="124" y="16">Arequipa</text>
-          <text x="268" y="66">Juliaca</text>
-        </g>
-      </svg>
-      <p class="mt-5 flex items-center gap-2 text-xs text-white/80"><Lock size={14} aria-hidden="true" /> Tus datos se tratan según la Ley 29733.</p>
+      <div class="rounded-card border border-white/15 bg-chrome/50 p-4 backdrop-blur-sm">
+        <div class="flex items-center justify-between gap-3 text-xs">
+          <p class="font-semibold uppercase tracking-[0.12em] text-white">Corredor Lima – Sierra Sur</p>
+          <p class="text-white/85"><span class="mk-num font-semibold text-white" data-count="11">11</span> ciudades</p>
+        </div>
+        <div class="mt-2 grid items-center gap-x-5 gap-y-3 @xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <svg class="auth-route w-full" viewBox="0 0 320 112" fill="none" aria-hidden="true">
+          <path d="M18 26C74 30 112 88 172 92S280 98 300 76" class="auth-route__base" />
+          <path d="M18 26C98 6 192 8 262 30" class="auth-route__base auth-route__base--alt" />
+          <path d="M18 26C74 30 112 88 172 92S280 98 300 76" class="auth-route__flow" />
+          <path d="M18 26C98 6 192 8 262 30" class="auth-route__flow auth-route__flow--alt" />
+          <g class="auth-route__node">
+            <circle cx="18" cy="26" r="5.5" />
+            <circle cx="172" cy="92" r="4.5" />
+            <circle cx="262" cy="30" r="4.5" />
+            <rect x="294" y="70" width="12" height="12" rx="2.5" class="auth-route__dest" />
+          </g>
+          <g font-size="11" font-family="var(--font-sans)" fill="currentColor" stroke="none" font-weight="500">
+            <text x="4" y="48">Lima</text>
+            <text x="150" y="111">Arequipa</text>
+            <text x="244" y="18">Cusco</text>
+            <text x="272" y="100">Juliaca</text>
+          </g>
+        </svg>
+<dl class="grid grid-cols-3 gap-2 border-t border-white/15 pt-3 @xl:grid-cols-1 @xl:gap-3 @xl:border-l @xl:border-t-0 @xl:pl-5 @xl:pt-0">
+          {corridor.map((c) => (
+            <div>
+              <dt class="text-xs text-white/80">Lima → {c.city}</dt>
+              <dd class="mk-num mt-0.5 text-base font-semibold text-white">{c.km}<span class="ml-1 text-xs font-normal text-white/80">km</span></dd>
+            </div>
+          ))}
+        </dl>
+        </div>
+        <p class="mt-3 flex items-center gap-2 border-t border-white/15 pt-3 text-xs text-white/90">
+          <Timer size={14} class="shrink-0 text-emerald-500" aria-hidden="true" />
+          <span>Cada subasta cierra a los <span class="font-semibold text-white"><span class="mk-num">20</span> min</span> o al recibir <span class="font-semibold text-white"><span class="mk-num">5</span> ofertas</span>.</span>
+        </p>
+      </div>
+
+      <div class="grid gap-4 @2xl:grid-cols-[1fr_auto] @2xl:items-end">
+        <figure>
+          <div class="flex items-center gap-2">
+            <Quote size={16} class="text-emerald-500" aria-hidden="true" />
+            <span class="rounded-full border border-white/30 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-white">Ejemplo ilustrativo</span>
+          </div>
+          <blockquote class="mt-2 text-pretty text-sm leading-relaxed text-white/90">“{quote.q}”</blockquote>
+          <figcaption class="mt-1.5 text-xs text-white/80">{quote.by} · testimonio de ejemplo, no corresponde a una empresa real</figcaption>
+        </figure>
+        <ul class="flex flex-wrap gap-2 @2xl:flex-col @2xl:items-end" aria-label="Garantías de OnCargo">
+          {trust.map((t) => (
+            <li class="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-chrome/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"><t.icon size={13} class="text-emerald-500" aria-hidden="true" />{t.t}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   </aside>
 
-  <div class="min-w-0">
-    <slot />
-    <ul class="mx-auto mt-8 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-ink-500 lg:hidden" aria-label="Garantías">
-      <li class="inline-flex items-center gap-1.5"><ShieldCheck size={14} class="text-emerald-700" aria-hidden="true" /> Empresas con RUC verificado</li>
-      <li class="inline-flex items-center gap-1.5"><Lock size={14} class="text-emerald-700" aria-hidden="true" /> Datos protegidos · Ley 29733</li>
-    </ul>
+  <div class="auth-panel relative isolate flow-root lg:flex lg:items-center lg:justify-center">
+    <div class="auth-tex absolute inset-0 -z-10 bg-steel-100" aria-hidden="true"></div>
+    <div class="relative z-10 -mt-14 w-full px-4 pb-10 sm:-mt-16 sm:px-8 lg:mt-0 lg:px-8 lg:py-10 xl:px-12">
+      <slot />
+
+      <!-- < lg: beneficios por rol bajo el formulario -->
+      <section class="mx-auto mt-10 max-w-[560px] lg:hidden" aria-labelledby="auth-roles">
+        <h2 id="auth-roles" class="text-sm font-semibold text-ink-900">Qué puedes hacer en OnCargo</h2>
+        <ul class="mt-3 grid gap-3 sm:grid-cols-2">
+          {roles.map((r) => (
+            <li class="rounded-card border border-steel-200 bg-surface p-4">
+              <div class="flex items-center gap-2.5">
+                <span class="grid size-8 shrink-0 place-items-center rounded-input bg-petrol-50 text-petrol-700"><r.icon size={17} aria-hidden="true" /></span>
+                <div>
+                  <p class="text-sm font-semibold leading-tight text-ink-900">{r.who}</p>
+                  <p class="text-xs text-ink-500">{r.tag}</p>
+                </div>
+              </div>
+              <ul class="mt-3 space-y-1.5 text-[13px] leading-snug text-ink-700">
+                {r.verbs.map((v) => <li class="flex gap-2"><Check size={14} class="mt-0.5 shrink-0 text-emerald-700" aria-hidden="true" />{v}</li>)}
+              </ul>
+            </li>
+          ))}
+        </ul>
+        <p class="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-ink-500"><Lock size={13} class="shrink-0 text-emerald-700" aria-hidden="true" />Empresas verificadas por OnCargo · Datos protegidos según la Ley 29733</p>
+      </section>
+    </div>
   </div>
 </div>
 
 <style is:global>
   .auth-aside { view-transition-name: auth-aside; }
+  /* Titular del panel: escala con el ancho del propio panel (contenedor), no con la ventana. */
+  .auth-aside .auth-title { font-size: clamp(1.75rem, 0.9rem + 4.6cqi, 2.75rem); }
+  /* Textura sutil del panel del formulario (tokens, sirve en claro y oscuro). */
+  .auth-tex {
+    background-image:
+      radial-gradient(color-mix(in oklab, var(--color-ink-400) 30%, transparent) 1px, transparent 1.2px),
+      radial-gradient(60% 50% at 100% 0%, color-mix(in oklab, var(--color-petrol-700) 9%, transparent), transparent 70%);
+    background-size: 22px 22px, auto;
+    mask-image: linear-gradient(to bottom, transparent 0, #000 6rem);
+  }
+  @media (min-width: 1024px) { .auth-tex { mask-image: none; } }
+
+  /* Mini-ruta del corredor. */
+  .auth-route { color: rgb(255 255 255 / 0.85); overflow: visible; }
+  .auth-route__base { stroke: rgb(255 255 255 / 0.28); stroke-width: 1.5; stroke-linecap: round; }
+  .auth-route__base--alt { stroke-dasharray: 3 5; }
+  .auth-route__flow { stroke: var(--color-emerald-500); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 0.1 14; }
+  .auth-route__flow--alt { stroke: rgb(255 255 255 / 0.85); stroke-width: 2.5; stroke-dasharray: 0.1 16; }
+  .auth-route__node circle { fill: var(--color-chrome); stroke: currentColor; stroke-width: 2; }
+  .auth-route__node circle:first-child { stroke: var(--color-emerald-500); stroke-width: 2.5; }
+  .auth-route__dest { fill: var(--color-emerald-500); }
+  @media (prefers-reduced-motion: no-preference) {
+    .auth-route__flow { animation: auth-flow 3.2s linear infinite; }
+    .auth-route__flow--alt { animation-duration: 4.4s; }
+    @keyframes auth-flow { to { stroke-dashoffset: -140; } }
+  }
 </style>

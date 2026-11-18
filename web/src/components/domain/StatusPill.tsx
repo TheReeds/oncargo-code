@@ -10,6 +10,9 @@ const MAP: Record<string, [string, Tone]> = {
   PENDING_BID: ['Pendiente', 'amber'],
   ACCEPTED: ['Aceptada', 'emerald'],
   REJECTED: ['Rechazada', 'red'],
+  WITHDRAWN: ['Retirada', 'neutral'],
+  LOST: ['Perdida', 'red'],
+  BID_CANCELLED: ['Cancelada', 'neutral'],
   // Envío
   PENDING: ['Por recoger', 'amber'],
   IN_TRANSIT: ['En tránsito', 'petrol'],
@@ -37,10 +40,14 @@ const MAP: Record<string, [string, Tone]> = {
 const TRIP: Record<string, [string, Tone]> = { OPEN: ['Abierto', 'emerald'], FILLING: ['Con reservas', 'petrol'], CLOSED: ['Cerrado', 'neutral'], COMPLETED: ['Completado', 'neutral'], CANCELLED: ['Cancelado', 'red'] };
 const BOOKING: Record<string, [string, Tone]> = { PENDING: ['Por confirmar', 'amber'], CONFIRMED: ['Confirmada', 'emerald'], REJECTED: ['Rechazada', 'red'], CANCELLED: ['Cancelada', 'neutral'] };
 const SMART: Record<string, [string, Tone]> = { PENDING: ['Pendiente', 'amber'], ACCEPTED: ['Aceptada', 'emerald'], REJECTED: ['Rechazada', 'neutral'], EXPIRED: ['Vencida', 'neutral'] };
-const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART };
+/** Verificación de la organización (RN01). */
+const VERIFICATION: Record<string, [string, Tone]> = { PENDING: ['En revisión', 'amber'], VERIFIED: ['Verificada', 'emerald'], REJECTED: ['Rechazada', 'red'], SUSPENDED: ['Suspendida', 'red'] };
+/** Estado de una cuenta de usuario o conductor (V14): activa, invitación pendiente o desactivada. */
+const ACCOUNT: Record<string, [string, Tone]> = { ACTIVE: ['Activo', 'emerald'], INVITED: ['Invitación pendiente', 'amber'], INACTIVE: ['Desactivado', 'neutral'] };
+const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART, verification: VERIFICATION, account: ACCOUNT };
 
-export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' }) {
-  if (kind === 'trip' || kind === 'booking' || kind === 'smart') {
+export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' | 'verification' | 'account' }) {
+  if (kind === 'trip' || kind === 'booking' || kind === 'smart' || kind === 'verification' || kind === 'account') {
     const [label, tone] = BY_KIND[kind][status] ?? [status, 'neutral' as Tone];
     return <Badge tone={tone}>{label}</Badge>;
   }

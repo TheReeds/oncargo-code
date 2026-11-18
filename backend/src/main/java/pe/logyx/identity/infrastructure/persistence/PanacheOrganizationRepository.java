@@ -50,6 +50,15 @@ public class PanacheOrganizationRepository implements OrganizationRepository {
     }
 
     @Override
+    public void lockForUpdate(UUID id) {
+        // Con RLS, FOR UPDATE exige la política de UPDATE (orgs_update_own): solo la propia organización.
+        var rows = OrganizationEntity.getEntityManager()
+                .createNativeQuery("SELECT id FROM organizations WHERE id = ?1 FOR UPDATE")
+                .setParameter(1, id).getResultList();
+        if (rows.isEmpty()) throw new IllegalStateException("Organización no visible para bloquear: " + id);
+    }
+
+    @Override
     public void update(Organization organization) {
         OrganizationEntity e = OrganizationEntity.findById(organization.id());
         if (e == null) throw new IllegalStateException("Organización inexistente: " + organization.id());

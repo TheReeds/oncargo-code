@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
-import { createDriver, createVehicle, setVehicleStatus } from './server';
+import { createDriver, createVehicle, deactivateDriver, reactivateDriver, resetDriverPassword, setVehicleStatus } from './server';
 
 export const fleet = {
   createVehicle: defineAction({
@@ -26,5 +26,12 @@ export const fleet = {
     accept: 'json',
     input: z.object({ id: z.uuid(), status: z.enum(['AVAILABLE', 'IN_ROUTE', 'MAINTENANCE']) }),
     handler: ({ id, status }, ctx) => run(() => setVehicleStatus(requireToken(ctx), id, status)),
+  }),
+  deactivateDriver: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => deactivateDriver(requireToken(ctx), id)) }),
+  reactivateDriver: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => reactivateDriver(requireToken(ctx), id)) }),
+  resetDriverPassword: defineAction({
+    accept: 'json',
+    input: z.object({ id: z.uuid(), newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(72, 'La contraseña admite hasta 72 caracteres.') }),
+    handler: ({ id, newPassword }, ctx) => run(() => resetDriverPassword(requireToken(ctx), id, newPassword)),
   }),
 };

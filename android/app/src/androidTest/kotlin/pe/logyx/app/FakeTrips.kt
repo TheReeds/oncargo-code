@@ -84,7 +84,7 @@ class FakeSmartLoads(var items: List<SmartLoadView> = emptyList()) : SmartLoadsR
     override suspend fun returnLoads() = Result.success(emptyList<ReturnLoadView>())
     override suspend fun smartLoads(status: SmartLoadStatus?) = Result.success(items.filter { status == null || it.status == status })
     override suspend fun generate() = Result.success(emptyList<SmartLoadView>())
-    override suspend fun accept(id: String): Result<SmartLoadView> { accepted += id; return decide(id, SmartLoadStatus.ACCEPTED) }
+    override suspend fun accept(id: String, body: pe.logyx.core.model.AcceptSmartLoadRequest): Result<SmartLoadView> { accepted += id; return decide(id, SmartLoadStatus.ACCEPTED) }
     override suspend fun reject(id: String): Result<SmartLoadView> { rejected += id; return decide(id, SmartLoadStatus.REJECTED) }
 }
 

@@ -9,7 +9,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-50 bg-scrim" />
-        <D.Content className={cn('fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-card border border-steel-200 bg-surface shadow-xl focus:outline-none', className)}>
+        <D.Content className={cn('fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-card border border-steel-200 bg-surface shadow-xl focus:outline-none', className)}>
           <div className="flex items-start justify-between gap-4 px-5 pt-5">
             <div>
               <D.Title className="text-base font-semibold text-ink-900">{title}</D.Title>

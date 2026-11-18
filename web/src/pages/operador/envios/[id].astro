@@ -12,8 +12,10 @@ import { StopTimeline } from '@/features/shipments/components/StopTimeline';
 import DocumentsPanel from '@/features/documents/components/DocumentsPanel';
 import ShipmentIncidents from '@/features/incidents/components/ShipmentIncidents';
 import { getShipment } from '@/features/operator/server';
+import ShipmentActions from '@/features/shipments/components/ShipmentActions';
+import { ShipmentFacts } from '@/features/shipments/components/ShipmentExtras';
 import { ApiError } from '@/lib/api/client';
-import { CITY_LABELS, formatDateTime, formatMoney, formatTons } from '@/lib/format';
+import { CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
 import { TriangleAlert } from '@lucide/astro';
 
 const { id } = Astro.params;
@@ -29,7 +31,7 @@ const stops = s.stops ?? [];
 const done = stops.filter((x) => x.status === 'COMPLETED').length;
 ---
 <AppShell title="Detalle de envío" active="operador-envios" wide>
-  <PageHeader title={route} subtitle={`Envío creado ${formatDateTime(s.createdAt)}${s.deliveredAt ? ` · entregado ${formatDateTime(s.deliveredAt)}` : ''}. Vista de consulta.`}
+  <PageHeader title={route} subtitle={`Envío creado ${formatDateTime(s.createdAt)}${s.deliveredAt ? ` · entregado ${formatDateTime(s.deliveredAt)}` : ''}. Vista de consulta con acciones del operador.`}
     breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Envíos', href: '/operador/envios' }, { label: route }]}>
     <Fragment slot="meta">
       <StatusPill status={s.status!} />
@@ -44,6 +46,11 @@ const done = stops.filter((x) => x.status === 'COMPLETED').length;
       El conductor no puede avanzar las paradas hasta que se resuelva o se cierre (RN11). Gestiónala en <a class="font-medium underline" href="/operador/incidencias">Incidencias</a>.
     </Alert>
   )}
+
+  <div class="mb-6 space-y-4">
+    <ShipmentFacts client:load shipment={s} perspective="OPERATOR" />
+    <ShipmentActions client:load shipment={s} perspective="OPERATOR" />
+  </div>
 
   <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
     <div class="flex min-w-0 flex-col gap-6">
@@ -69,6 +76,7 @@ const done = stops.filter((x) => x.status === 'COMPLETED').length;
           { label: 'Vehículo', value: s.vehiclePlate, mono: true },
           { label: 'Conductor', value: s.driverName ?? 'Sin asignar' },
           { label: 'Peso', value: formatTons(s.weightKg), mono: true },
+          { label: 'Recojo', value: s.pickupDate ? formatDate(s.pickupDate) : undefined },
         ]} />
         <div class="flex items-baseline justify-between gap-3 border-t border-steel-200 pt-4"><span class="text-sm text-ink-500">Precio acordado</span><span class="money text-lg">{formatMoney(s.agreedPrice)}</span></div>
       </CardBody>

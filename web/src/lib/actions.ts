@@ -1,8 +1,8 @@
 import { ActionError, type ActionAPIContext } from 'astro:actions';
 import { ApiError } from './api/client';
+import { encodeActionMeta } from './action-error';
 
-/** Separador invisible (U+2063) entre el mensaje y el `field` de la API. Usa `splitActionError()` en la isla. */
-export const FIELD_SEP = '\u2063';
+export { FIELD_SEP } from './action-error';
 
 /** Exige sesión en una action y devuelve el token. */
 export function requireToken(ctx: ActionAPIContext): string {
@@ -11,14 +11,17 @@ export function requireToken(ctx: ActionAPIContext): string {
   return s.token;
 }
 
-/** Ejecuta una llamada a la API y convierte ApiError en ActionError (mensaje en español de la API). */
+/**
+ * Ejecuta una llamada a la API y convierte ApiError en ActionError (mensaje en español de la API).
+ * El `field` y el código `LOGYX-XXX-NNN` viajan anexos e invisibles en el mensaje: léelos con `splitActionError()`.
+ */
 export async function run<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (e) {
     if (e instanceof ApiError) {
       const code = e.status === 401 ? 'UNAUTHORIZED' : e.status === 403 ? 'FORBIDDEN' : e.status === 404 ? 'NOT_FOUND' : e.status >= 500 || e.status === 0 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST';
-      throw new ActionError({ code, message: e.field ? `${e.message}${FIELD_SEP}${e.field}` : e.message });
+      throw new ActionError({ code, message: `${e.message}${encodeActionMeta({ field: e.field, code: e.code?.startsWith('LOGYX-') ? e.code : null })}` });
     }
     throw e;
   }

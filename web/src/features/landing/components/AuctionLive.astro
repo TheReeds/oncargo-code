@@ -1,0 +1,160 @@
+---
+/**
+ * Mock fiel de una subasta en vivo (cifras derivadas de las reglas reales: 20 min o 5 ofertas, piso 75 %, km por carretera de routes.json).
+ * El HTML trae el estado final (sin JS o con movimiento reducido no se mueve nada); con movimiento permitido el script reproduce
+ * la llegada de las 5 ofertas, el temporizador y la mejor oferta, y vuelve a empezar.
+ */
+import { ShieldCheck, Timer, Check, Hourglass } from '@lucide/astro';
+import { Badge } from '@/components/ui/badge';
+import { formatMoney, formatNumber } from '@/lib/format';
+import { km, quote, driveMinutes, formatDrive } from '../pricing';
+
+const dist = km('LIMA', 'AREQUIPA');
+const q = quote(dist, 3.2);
+const pct = [2.1, 4.1, 3.1, 5.8, 4.7];
+const names = ['Transportes Andinos S.A.C.', 'Fletes del Sur E.I.R.L.', 'Ruta Andina S.A.C.', 'Logística Altiplano S.A.C.', 'Carga Sur S.R.L.'];
+const bids = pct.map((p, i) => ({ name: names[i], amount: Math.round(q.suggested * (1 - p / 100) * 100) / 100, pct: p }));
+const START = 2; // el estado inicial (y el estático con movimiento reducido) ya trae 2 ofertas
+const best = bids.slice(0, START).reduce((a, b) => (b.amount < a.amount ? b : a));
+const bestIdx = bids.indexOf(best);
+---
+<figure class="relative" aria-label="Ejemplo ilustrativo de una subasta con ofertas en vivo y un envío en curso" data-live-auction data-bids={JSON.stringify(bids.map((b) => b.amount))} data-sug={q.suggested}>
+  <script is:inline>document.currentScript.parentElement.dataset.live = matchMedia('(prefers-reduced-motion: no-preference)').matches ? '1' : '';</script>
+  <div class="la-card rounded-card border border-steel-200 bg-surface p-4 shadow-xl sm:p-5">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <span class="text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">Solicitud · ejemplo ilustrativo</span>
+      <span data-la-status class="inline-flex"><Badge tone="amber"><Timer size={12} aria-hidden="true" /> <span data-la-timer class="mk-num">Cierra en 12:41</span></Badge></span>
+    </div>
+
+    <div class="mt-3 flex items-end justify-between gap-3">
+      <div>
+        <p class="text-xl font-semibold tracking-tight text-ink-900">Lima → Arequipa</p>
+        <p class="mt-0.5 text-xs text-ink-500"><span class="mk-num">{formatNumber(dist, 1)} km</span> por carretera · <span class="mk-num">{formatDrive(driveMinutes('LIMA', 'AREQUIPA'))}</span></p>
+      </div>
+      <div class="flex flex-wrap justify-end gap-1.5"><Badge>Carga general</Badge><Badge><span class="mk-num">3.2 t</span></Badge></div>
+    </div>
+
+    <div class="mt-3 flex items-center justify-between gap-3 rounded-input bg-emerald-50 px-4 py-2.5" data-la-best>
+      <div class="min-w-0">
+        <p class="flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.1em] text-emerald-700"><Check size={13} aria-hidden="true" /> Mejor oferta</p>
+        <p class="truncate text-sm text-ink-700" data-la-best-name>{best.name}</p>
+      </div>
+      <div class="shrink-0 text-right">
+        <p class="money whitespace-nowrap text-2xl leading-none sm:text-[28px]" data-la-best-amount>{formatMoney(best.amount)}</p>
+        <p class="mt-1 whitespace-nowrap text-[11px] font-medium text-emerald-700"><span class="mk-num" data-la-best-pct>−{best.pct.toFixed(1)} %</span> vs sugerido</p>
+      </div>
+    </div>
+
+    <div class="mt-3 flex items-center justify-between text-xs">
+      <span class="font-semibold uppercase tracking-[0.1em] text-ink-500">Ofertas</span>
+      <span class="flex items-center gap-2 text-ink-500">
+        <span class="flex gap-0.5" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <span data-la-seg data-off={i >= START ? '' : undefined} class="h-1.5 w-5 rounded-full bg-petrol-700 transition-colors"></span>)}</span>
+        <span class="mk-num" data-la-count>{START} de 5</span>
+      </span>
+    </div>
+    <ol class="mt-1.5 divide-y divide-steel-200 text-sm">
+      {bids.map((b, i) => (
+        <li class:list={['la-row flex h-8 items-center justify-between gap-3', i === bestIdx && 'is-best']} data-la-row={i} data-pending={i >= START ? '' : undefined}>
+          <span class="flex min-w-0 items-center gap-1.5 text-ink-700"><ShieldCheck size={14} class="shrink-0 text-emerald-700" aria-hidden="true" /><span class="truncate" data-la-name>{b.name}</span></span>
+          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap"><span class="mk-num hidden text-[11px] text-ink-500 sm:inline" data-la-pct>−{b.pct.toFixed(1)} %</span><span class="mk-num text-ink-900" data-la-amount>{formatMoney(b.amount)}</span></span>
+        </li>
+      ))}
+    </ol>
+    <p class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-steel-200 pt-2.5 text-xs text-ink-500">
+      <span>Sugerido <span class="mk-num text-ink-700">{formatMoney(q.suggested)}</span></span>
+      <span>Piso (75 %) <span class="mk-num text-ink-700">{formatMoney(q.floor)}</span></span>
+    </p>
+  </div>
+
+  <div class="relative z-10 -mt-4 ml-auto w-[92%] rounded-card border border-steel-200 bg-surface p-4 shadow-xl lg:-ml-10 lg:w-[80%]">
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-xs font-semibold uppercase tracking-[0.1em] text-ink-500">Envío en curso</span>
+      <Badge tone="petrol">En tránsito</Badge>
+    </div>
+    <ol class="relative mt-4 grid grid-cols-4 text-xs" aria-label="Paradas del envío">
+      <span class="absolute left-[12.5%] right-[12.5%] top-[9px] h-0.5 rounded bg-steel-200" aria-hidden="true"></span>
+      <span class="absolute left-[12.5%] top-[9px] h-0.5 w-[37.5%] rounded bg-emerald-500" aria-hidden="true"></span>
+      <li class="relative text-center"><span class="mx-auto grid size-5 place-items-center rounded-full bg-emerald-500 text-on-solid"><Check size={11} stroke-width={3} aria-hidden="true" /></span><span class="mt-1.5 block font-medium text-ink-900">Recojo</span><span class="block text-ink-500">Lima · <span class="mk-num">08:12</span></span></li>
+      <li class="relative text-center"><span class="mx-auto grid size-5 place-items-center rounded-full bg-emerald-500 text-on-solid"><Check size={11} stroke-width={3} aria-hidden="true" /></span><span class="mt-1.5 block font-medium text-ink-900">Ica</span><span class="block text-ink-500"><span class="mk-num">11:20</span></span></li>
+      <li class="relative text-center"><span class="relative mx-auto block size-5 rounded-full border-[3px] border-petrol-700 bg-surface text-petrol-700 mk-ping" aria-hidden="true"></span><span class="mt-1.5 block font-medium text-petrol-700">En ruta</span><span class="block text-ink-500">Nazca · <span class="mk-num">14:40</span></span></li>
+      <li class="relative text-center"><span class="mx-auto block size-5 rounded-full border-2 border-ink-400 bg-surface" aria-hidden="true"></span><span class="mt-1.5 block font-medium text-ink-500">Entrega</span><span class="block text-ink-500">Arequipa</span></li>
+    </ol>
+  </div>
+</figure>
+
+<style is:global>
+  .la-row[data-pending] > * { visibility: hidden; }
+  .la-row[data-pending]::before { content: 'Esperando oferta…'; white-space: nowrap; font-size: 0.75rem; color: var(--color-ink-500); visibility: visible; }
+  .la-row.is-best [data-la-amount] { color: var(--color-emerald-700); font-weight: 600; }
+  [data-live-auction] [data-la-seg][data-off] { background: var(--color-steel-200); }
+  @media (prefers-reduced-motion: no-preference) {
+    .la-row { transition: background-color 0.4s; }
+    .la-row[data-new] > * { animation: la-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    [data-la-best][data-bump] [data-la-best-amount] { animation: la-bump 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    @keyframes la-in { from { opacity: 0; translate: 0 8px; } }
+    @keyframes la-bump { 40% { scale: 1.08; } }
+  }
+  [data-la-best-amount] { transform-origin: right center; display: block; }
+</style>
+
+<script>
+  // Reproduce la subasta: 5 ofertas en ~12 s, cierre y reinicio. Solo con movimiento permitido (`data-live="1"`) y a la vista.
+  const root = document.querySelector<HTMLElement>('[data-live-auction]');
+  if (root && root.dataset.live === '1') {
+    const amounts: number[] = JSON.parse(root.dataset.bids ?? '[]');
+    const sug = Number(root.dataset.sug);
+    const rows = [...root.querySelectorAll<HTMLElement>('[data-la-row]')];
+    const segs = [...root.querySelectorAll<HTMLElement>('[data-la-seg]')];
+    const names = rows.map((r) => r.querySelector('[data-la-name]')?.textContent ?? '');
+    const $ = (s: string) => root.querySelector<HTMLElement>(s)!;
+    const timer = $('[data-la-timer]'), count = $('[data-la-count]'), bestBox = $('[data-la-best]');
+    const bestAmount = $('[data-la-best-amount]'), bestName = $('[data-la-best-name]'), bestPct = $('[data-la-best-pct]');
+    const money = (n: number) => 'S/ ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pct = (a: number) => '−' + ((1 - a / sug) * 100).toFixed(1) + ' %';
+    const at = [0, 0, 2600, 5800, 8800];
+    let timers: number[] = [], tick = 0, visible = true, start = 0;
+
+    const clear = () => { timers.forEach(clearTimeout); timers = []; clearInterval(tick); };
+    const setTimer = (txt: string, tone: 'amber' | 'emerald') => {
+      timer.textContent = txt;
+      const badge = timer.parentElement!;
+      badge.className = badge.className.replace(/bg-(amber|emerald)-50 text-(amber|emerald)-700/, `bg-${tone}-50 text-${tone}-700`);
+    };
+    const paintBest = (n: number) => {
+      let bi = 0;
+      for (let i = 0; i <= n; i++) if (amounts[i] < amounts[bi]) bi = i;
+      rows.forEach((r, i) => r.classList.toggle('is-best', i === bi && i <= n));
+      bestAmount.textContent = money(amounts[bi]);
+      bestName.textContent = names[bi];
+      bestPct.textContent = pct(amounts[bi]);
+      bestBox.removeAttribute('data-bump'); void bestBox.offsetWidth; bestBox.setAttribute('data-bump', '');
+    };
+    const START = 2;
+    const reset = () => {
+      rows.forEach((r, i) => { r.toggleAttribute('data-pending', i >= START); r.removeAttribute('data-new'); r.classList.remove('is-best'); });
+      segs.forEach((s, i) => s.toggleAttribute('data-off', i >= START));
+      count.textContent = `${START} de 5`;
+      paintBest(START - 1);
+    };
+    const fmtLeft = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return `Cierra en ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+    const run = () => {
+      clear(); reset(); start = performance.now();
+      setTimer(fmtLeft(12 * 60_000 + 41_000), 'amber');
+      tick = window.setInterval(() => setTimer(fmtLeft(12 * 60_000 + 41_000 - (performance.now() - start) * 40), 'amber'), 250); // el reloj del ejemplo corre 40× para que se note
+      at.forEach((t, i) => { if (i >= START) timers.push(window.setTimeout(() => {
+        rows[i].removeAttribute('data-pending'); rows[i].setAttribute('data-new', '');
+        segs[i].removeAttribute('data-off');
+        count.textContent = `${i + 1} de 5`;
+        paintBest(i);
+      }, t)); });
+      timers.push(window.setTimeout(() => { clearInterval(tick); setTimer('Cerrada · 5 de 5 ofertas', 'emerald'); }, at[4] + 900));
+      timers.push(window.setTimeout(() => { if (visible && !document.hidden) run(); else waitVisible = true; }, at[4] + 5600));
+    };
+    let waitVisible = false;
+    new IntersectionObserver((es) => {
+      visible = es.some((e) => e.isIntersecting);
+      if (!visible) clear(); else if (!timers.length || waitVisible) { waitVisible = false; run(); }
+    }, { threshold: 0.2 }).observe(root);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) clear(); else if (visible) run(); });
+  }
+</script>

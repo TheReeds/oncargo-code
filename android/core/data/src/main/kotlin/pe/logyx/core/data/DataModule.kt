@@ -8,6 +8,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import pe.logyx.core.network.LogyxApi
 import pe.logyx.core.network.RealtimeClient
+import pe.logyx.core.network.SessionRefresher
 import pe.logyx.core.network.createLogyxHttpClient
 
 /**
@@ -15,29 +16,33 @@ import pe.logyx.core.network.createLogyxHttpClient
  */
 fun dataModule(baseUrl: String) = module {
     single { TokenHolder() }
-    single { SessionStore(androidContext()) }
+    single<SecretCipher> { KeystoreSecretCipher() }
+    single<SessionStorage> { SessionStore(androidContext(), get()) }
     single(createdAtStart = true) {
-        // Referencia perezosa al repositorio para cerrar sesión ante un 401 sin crear un ciclo de dependencias.
+        // Referencia perezosa a la API (la API pide el repositorio para renovar la sesión: sin ciclo de dependencias).
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         DefaultAuthRepository(
             api = { get<LogyxApi>() },
             store = get(),
             tokenHolder = get(),
             scope = appScope,
-        ) as AuthRepository
+        )
     }
+    single<AuthRepository> { get<DefaultAuthRepository>() }
+    single<SessionRefresher> { get<DefaultAuthRepository>() }
     single {
         val tokens = get<TokenHolder>()
         createLogyxHttpClient(baseUrl, tokenProvider = { tokens.token })
     }
     single {
         val tokens = get<TokenHolder>()
+        // Ante un 401 renueva la sesión con el refresh token (F24) y reintenta; si no se puede, cierra la sesión.
         LogyxApi(get(), onUnauthorized = {
             // Solo cierra sesión si había una; evita bucles en el login con credenciales inválidas.
             if (tokens.token != null) {
                 CoroutineScope(Dispatchers.Main.immediate).launch { get<AuthRepository>().logout() }
             }
-        })
+        }, refresher = { get<SessionRefresher>() })
     }
     // Tiempo real (SSE): misma conexión HTTP/token; un 401 del stream también cierra la sesión.
     single {
@@ -46,7 +51,7 @@ fun dataModule(baseUrl: String) = module {
             if (tokens.token != null) {
                 CoroutineScope(Dispatchers.Main.immediate).launch { get<AuthRepository>().logout() }
             }
-        })
+        }, refresher = { get<SessionRefresher>() })
     }
     single<RealtimeRepository> {
         DefaultRealtimeRepository(get(), CoroutineScope(SupervisorJob() + Dispatchers.IO))
@@ -62,5 +67,6 @@ fun dataModule(baseUrl: String) = module {
     single<NotificationsRepository> { DefaultNotificationsRepository(get()) }
     single<TripsRepository> { DefaultTripsRepository(get()) }
     single<SmartLoadsRepository> { DefaultSmartLoadsRepository(get()) }
+    single<RoutesRepository> { DefaultRoutesRepository(get<LogyxApi>()) }
     single<EvidenceRepository> { DefaultEvidenceRepository(get(), java.io.File(androidContext().filesDir, "evidence")) }
 }

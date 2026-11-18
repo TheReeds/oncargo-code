@@ -1,7 +1,8 @@
+import { useCan } from '@/lib/use-can';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { actions } from 'astro:actions';
 import { Handshake, Lock, SendHorizontal } from 'lucide-react';
-import { splitActionError } from '@/lib/action-error';
+import { RN07_FIELD_MESSAGE, splitActionError } from '@/lib/action-error';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -10,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import type { ChatMessage } from '../server';
-import { RN07_COPY, isContactError, notifyNegotiationChanged, useNegotiationLive } from '../usePolling';
+import { notifyNegotiationChanged, useNegotiationLive } from '../usePolling';
 
 export const MAX_MESSAGE = 1000;
 
@@ -59,8 +60,11 @@ function Bubble({ m }: { m: ChatMessage }) {
   );
 }
 
-function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 30000, emptyHint, className }: ChatPanelProps) {
+function ChatPanelInner({ requestId, carrierOrgId, readOnly: readOnlyProp, closed, pollMs = 30000, emptyHint, className }: ChatPanelProps) {
   const uid = useId();
+  const canOperate = useCan('OPERATE');
+  const viewerOnly = !canOperate; // rol Lector: lee la conversación pero no escribe
+  const readOnly = readOnlyProp || viewerOnly;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,8 +132,8 @@ function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 30
     const { data, error } = await actions.negotiation.postMessage({ requestId, carrierOrgId, body });
     setSending(false);
     if (error) {
-      const { message, field } = splitActionError(error);
-      if (isContactError(field, message)) setFieldError(RN07_COPY);
+      const { message, field, code } = splitActionError(error);
+      if (code === 'LOGYX-NEG-001') setFieldError(RN07_FIELD_MESSAGE);
       else if (field === 'body') setFieldError(message);
       else {
         setSendError(message);
@@ -180,7 +184,7 @@ function ChatPanelInner({ requestId, carrierOrgId, readOnly, closed, pollMs = 30
 
       {locked ? (
         <div className="border-t border-steel-200 bg-steel-100 px-4 py-3 text-sm text-ink-700">
-          <p className="flex items-center gap-2"><Lock className="size-4 shrink-0 text-ink-500" aria-hidden="true" />{readOnly && !closed ? 'Estás viendo esta conversación en modo lectura.' : 'Esta conversación está cerrada. Puedes leer los mensajes, pero ya no se pueden enviar nuevos.'}</p>
+          <p className="flex items-center gap-2"><Lock className="size-4 shrink-0 text-ink-500" aria-hidden="true" />{viewerOnly && !closed ? 'Tu rol Lector solo permite consultar: puedes leer la conversación, pero no enviar mensajes.' : readOnly && !closed ? 'Estás viendo esta conversación en modo lectura.' : 'Esta conversación está cerrada. Puedes leer los mensajes, pero ya no se pueden enviar nuevos.'}</p>
         </div>
       ) : (
         <form

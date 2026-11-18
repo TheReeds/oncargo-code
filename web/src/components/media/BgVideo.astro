@@ -76,10 +76,25 @@ const mqMobile = `(max-width: ${breakpoint - 1}px)`;
       linear-gradient(90deg, color-mix(in oklab, var(--color-chrome) 90%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 58%, transparent) 45%, color-mix(in oklab, var(--color-chrome) 18%, transparent) 100%),
       linear-gradient(to top, color-mix(in oklab, var(--color-chrome) 80%, transparent), transparent 35%);
   }
+  /* Hero de la landing: el vídeo es protagonista; velo cerrado solo bajo el texto (≥ 64 % hasta el 52 % del ancho), abierto a la derecha. */
+  .bgv--hero-lead .bgv__video, .bgv--hero-lead img { filter: saturate(1.15) brightness(1.12); }
+  .bgv--hero-lead .bgv__scrim {
+    background:
+      linear-gradient(90deg, color-mix(in oklab, var(--color-chrome) 90%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 74%, transparent) 40%, color-mix(in oklab, var(--color-chrome) 52%, transparent) 58%, color-mix(in oklab, var(--color-chrome) 14%, transparent) 100%),
+      linear-gradient(to top, color-mix(in oklab, var(--color-chrome) 70%, transparent), transparent 28%);
+  }
   .bgv--flat .bgv__scrim { background: color-mix(in oklab, var(--color-chrome) 74%, transparent); }
   .bgv--panel .bgv__scrim { background: linear-gradient(to bottom, color-mix(in oklab, var(--color-chrome) 74%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 48%, transparent) 42%, color-mix(in oklab, var(--color-chrome) 88%, transparent) 100%); }
   @media (max-width: 767px) {
-    .bgv__scrim, .bgv--hero .bgv__scrim { background: linear-gradient(to bottom, color-mix(in oklab, var(--color-chrome) 88%, transparent), color-mix(in oklab, var(--color-chrome) 78%, transparent)); }
+    .bgv__scrim, .bgv--hero .bgv__scrim, .bgv--hero-lead .bgv__scrim { background: linear-gradient(to bottom, color-mix(in oklab, var(--color-chrome) 88%, transparent), color-mix(in oklab, var(--color-chrome) 78%, transparent)); }
+  }
+  /* Banda de marca de login/registro por debajo de lg: el póster se ve a la derecha y el texto (izquierda) queda sobre el velo cerrado. */
+  @media (max-width: 1023px) {
+    .bgv--band .bgv__scrim {
+      background:
+        linear-gradient(90deg, color-mix(in oklab, var(--color-chrome) 94%, transparent) 0%, color-mix(in oklab, var(--color-chrome) 76%, transparent) 55%, color-mix(in oklab, var(--color-chrome) 52%, transparent) 100%),
+        linear-gradient(to top, color-mix(in oklab, var(--color-chrome) 70%, transparent), transparent 55%);
+    }
   }
   @media (forced-colors: active) { .bgv__video, .bgv img { display: none; } }
 </style>

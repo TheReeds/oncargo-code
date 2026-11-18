@@ -115,3 +115,66 @@ class LiveAndBidsViewModelsTest {
         job.cancel()
     }
 }
+
+/** B5: Mis ofertas con perdidas, canceladas y retiradas (F15), orden y filtro (F51). */
+@OptIn(ExperimentalCoroutinesApi::class)
+class MyBidsOutcomeTest {
+    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @After fun tearDown() = Dispatchers.resetMain()
+
+    private fun item(id: String, created: String, bid: BidStatus, request: RequestStatus, auction: AuctionStatus = AuctionStatus.OPEN) =
+        r(id, created, bid).copy(
+            status = request,
+            auction = AuctionView("a$id", auction, "2099-01-01T00:00:00Z", 5, 3, closeReason = if (auction == AuctionStatus.OPEN) null else CloseReason.MAX_BIDS, closedAt = "2026-11-10T09:00:00-05:00"),
+            myBidStanding = if (bid == BidStatus.WITHDRAWN) null else MyBidStanding(2, 3, false, BidStandingBand.WITHIN_5_PCT, finalStanding = auction != AuctionStatus.OPEN),
+        )
+
+    private val all = listOf(
+        item("lost", "2026-11-10T10:00:00Z", BidStatus.REJECTED, RequestStatus.MATCHED, AuctionStatus.CLOSED),
+        item("open", "2026-11-08T10:00:00Z", BidStatus.PENDING, RequestStatus.PUBLISHED),
+        item("cancelled", "2026-11-11T10:00:00Z", BidStatus.REJECTED, RequestStatus.CANCELLED, AuctionStatus.CLOSED),
+        item("withdrawn", "2026-11-09T10:00:00Z", BidStatus.WITHDRAWN, RequestStatus.PUBLISHED),
+        item("won", "2026-11-07T10:00:00Z", BidStatus.ACCEPTED, RequestStatus.MATCHED, AuctionStatus.CLOSED),
+    )
+
+    @Test fun `lista las solicitudes perdidas canceladas y retiradas con su resultado y las activas primero`() = runTest {
+        val vm = MyBidsViewModel(Loads(Result.success(all)), NoNegotiation(), FakeRealtime())
+        val s = vm.state.value
+        assertEquals("open", s.items.first().id, "la oferta viva va primero aunque sea la más antigua")
+        assertEquals(
+            mapOf(
+                "open" to BidOutcome.OPEN, "lost" to BidOutcome.LOST, "cancelled" to BidOutcome.REQUEST_CANCELLED,
+                "withdrawn" to BidOutcome.WITHDRAWN, "won" to BidOutcome.WON,
+            ),
+            s.items.associate { it.id to it.myBidOutcome },
+        )
+        assertEquals(1, s.activeCount)
+    }
+
+    @Test fun `el filtro separa activas y cerradas`() = runTest {
+        val vm = MyBidsViewModel(Loads(Result.success(all)), NoNegotiation(), FakeRealtime())
+        assertEquals(5, vm.state.value.visible.size)
+        vm.setFilter(MyBidsFilter.Active)
+        assertEquals(listOf("open"), vm.state.value.visible.map { it.id })
+        vm.setFilter(MyBidsFilter.Closed)
+        assertEquals(listOf("cancelled", "lost", "withdrawn", "won"), vm.state.value.visible.map { it.id })
+    }
+
+    @Test fun `solo consulta contraofertas de las ofertas vivas`() = runTest {
+        val nego = object : NegotiationRepository by NoNegotiation() {
+            val asked = mutableListOf<String>()
+            override suspend fun counterOffers(bidId: String): Result<List<CounterOfferView>> { asked += bidId; return Result.success(emptyList()) }
+        }
+        MyBidsViewModel(Loads(Result.success(all)), nego, FakeRealtime())
+        assertEquals(listOf("bopen"), nego.asked)
+    }
+
+    @Test fun `una contraoferta mia pendiente aparece como esperando a la PYME`() = runTest {
+        val mine = CounterOfferView("c", "bopen", amount = 850.0, status = CounterOfferStatus.PENDING, proposedByCarrier = true)
+        val nego = object : NegotiationRepository by NoNegotiation() {
+            override suspend fun counterOffers(bidId: String) = Result.success(listOf(mine))
+        }
+        val vm = MyBidsViewModel(Loads(Result.success(all)), nego, FakeRealtime())
+        assertTrue(vm.state.value.counters.getValue("bopen").proposedByCarrier)
+    }
+}

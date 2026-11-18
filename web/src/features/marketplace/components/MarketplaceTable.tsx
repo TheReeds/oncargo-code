@@ -25,12 +25,18 @@ import NegotiationSheet from '@/features/negotiation/components/NegotiationSheet
 import { MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BidSheet from './BidSheet';
+import { standingText } from '../bid-state';
+import { fleetBlocker, fleetCanCarry } from '@/features/fleet/compatibility';
 
 export type MarketFilters = { origin: string; dest: string; from: string; to: string; cargo: string; maxKg: string; compat: boolean; sort: string };
 
 const SORT_OPTIONS = [{ value: 'pickup', label: 'Recojo más próximo' }, { value: 'price_desc', label: 'Mayor precio' }, { value: 'recent', label: 'Más recientes' }];
 
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+
 export default function MarketplaceTable({ requests, vehicles, cities, filters, page, size, total }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[]; filters: MarketFilters; page: number; size: number; total: number }) {
+  const canOperate = useCan('OPERATE');
   const [f, setF] = useState(filters);
   const [active, setActive] = useState<RequestView | null>(null);
   const [chat, setChat] = useState<RequestView | null>(null);
@@ -38,7 +44,8 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
 
   const usable = vehicles.filter((v) => v.status === 'AVAILABLE');
   const maxCap = Math.max(0, ...usable.map((v) => v.maxWeightKg ?? 0));
-  const isCompatible = (r: RequestView) => usable.some((v) => (v.maxWeightKg ?? 0) >= (r.weightKg ?? 0));
+  // Misma matriz que la hoja de oferta (RN02): tipo de carga, kg y m³ contra la flota. Ver `features/fleet/compatibility.ts`.
+  const isCompatible = (r: RequestView) => fleetCanCarry(vehicles, r);
 
   const cityOptions = useMemo(() => cities.map((c) => ({ value: c.code!, label: c.name! })), [cities]);
   const cargoOptions = useMemo(() => [{ value: 'ALL', label: 'Todos los tipos' }, ...Object.entries(CARGO_LABELS).map(([value, label]) => ({ value, label }))], []);
@@ -73,7 +80,9 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
     if (!id) return;
     setLive((l) => ({ ...l, [id]: { bidCount: typeof e.data.bidCount === 'number' ? e.data.bidCount : l[id]?.bidCount, closed: !!e.data.auctionClosed } }));
   });
-  const rows = requests.filter((r) => !live[r.id!]?.closed).map((r) => (live[r.id!]?.bidCount != null && r.auction ? { ...r, auction: { ...r.auction, bidCount: live[r.id!]!.bidCount } } : r));
+  const rows0 = requests.filter((r) => !live[r.id!]?.closed).map((r) => (live[r.id!]?.bidCount != null && r.auction ? { ...r, auction: { ...r.auction, bidCount: live[r.id!]!.bidCount } } : r));
+  // Con "Mi vehículo", las cargas que la flota sí puede llevar van primero (orden estable dentro de la página).
+  const rows = f.compat ? [...rows0].sort((a, b) => Number(isCompatible(b)) - Number(isCompatible(a))) : rows0;
 
   // El peso máximo se aplica al dejar de escribir.
   useEffect(() => {
@@ -84,6 +93,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
 
   return (
     <>
+      <ReadOnlyNotice className="mb-3">No puedes enviar ofertas ni escribir a los solicitantes.</ReadOnlyNotice>
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-steel-200 px-4 py-3 sm:px-5">
           <QuickFilters
@@ -158,7 +168,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                       <div className="@max-[720px]:text-right">
                         <div>{CARGO_LABELS[r.cargoType!]} · <span className="font-mono">{formatTons(r.weightKg)}</span></div>
                         <div className="text-xs text-ink-500">Mín. {r.minVehicleType ? VEHICLE_LABELS[r.minVehicleType] : '—'}</div>
-                        {ok ? <Badge tone="emerald" className="mt-1">Compatible</Badge> : <Badge tone="neutral" className="mt-1">Excede tu flota</Badge>}
+                        {ok ? <Badge tone="emerald" className="mt-1">Compatible</Badge> : <Badge tone="neutral" className="mt-1" title="Ningún vehículo de tu flota puede llevar esta carga (tipo, peso o volumen)">{fleetBlocker(vehicles, r)}</Badge>}
                       </div>
                     </Td>
                     <Td label="Subasta" className="whitespace-nowrap">
@@ -173,11 +183,11 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                     <Td actions className="whitespace-nowrap text-right">
                       <div className="flex flex-col items-end gap-1 @max-[720px]:w-full @max-[720px]:flex-row @max-[720px]:items-center">
                         {mine ? (
-                          <div className="flex flex-col items-end gap-0.5 @max-[720px]:flex-1 @max-[720px]:flex-row @max-[720px]:items-center @max-[720px]:gap-2"><Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ofertada</Badge><span className="font-mono text-xs tabular-nums text-ink-700">{formatMoney(r.myBid!.amount)}</span></div>
-                        ) : (
+                          <div className="flex flex-col items-end gap-0.5 @max-[720px]:flex-1 @max-[720px]:flex-row @max-[720px]:items-center @max-[720px]:gap-2"><Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ofertada</Badge><span className="font-mono text-xs tabular-nums text-ink-700">{formatMoney(r.myBid!.amount)}</span>{standingText(r.myBidStanding) && <span className="max-w-44 whitespace-normal text-xs font-medium text-ink-700" data-testid="market-standing">{standingText(r.myBidStanding)!.headline}</span>}</div>
+                        ) : canOperate ? (
                           <Button size="sm" variant="money" className="@max-[720px]:flex-1" onClick={() => setActive(r)}>Ofertar</Button>
-                        )}
-                        <Button size="sm" variant="ghost" className="@max-[720px]:flex-1" onClick={() => setChat(r)}><MessageSquare />{mine ? 'Conversar' : 'Preguntar'}<span className="sr-only"> al solicitante de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
+                        ) : null}
+                        {(canOperate || mine) && <Button size="sm" variant="ghost" className="@max-[720px]:flex-1" onClick={() => setChat(r)}><MessageSquare />{mine ? 'Conversar' : 'Preguntar'}<span className="sr-only"> al solicitante de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>}
                       </div>
                     </Td>
                   </Tr>

@@ -72,7 +72,10 @@ public class ShipmentQueries {
         return new OperatorShipmentCounts(shipments.countAllByStatus(Shipment.Status.PENDING),
                 shipments.countAllByStatus(Shipment.Status.IN_TRANSIT),
                 shipments.countAllByStatus(Shipment.Status.DELIVERED),
-                shipments.countAllByStatus(Shipment.Status.CANCELLED));
+                shipments.countAllByStatus(Shipment.Status.CANCELLED),
+                shipments.sumAgreedPrice(List.of(Shipment.Status.PENDING, Shipment.Status.IN_TRANSIT,
+                        Shipment.Status.DELIVERED)),
+                shipments.sumAgreedPrice(List.of(Shipment.Status.DELIVERED)));
     }
 
     /** Listado global paginado de envíos (RLS shipments_operator), más recientes primero. */
@@ -92,7 +95,16 @@ public class ShipmentQueries {
     }
 
     public List<ShipmentSummary> driverShipments() {
-        return summaries(shipments.listActiveByDriver(currentDriver().id()));
+        return driverShipments(DriverShipmentScope.ACTIVE);
+    }
+
+    /** F22: envíos del conductor activos, historial (entregados y cancelados) o ambos (activos primero). */
+    public List<ShipmentSummary> driverShipments(DriverShipmentScope scope) {
+        UUID driver = currentDriver().id();
+        List<Shipment> out = new ArrayList<>();
+        if (scope != DriverShipmentScope.HISTORY) out.addAll(shipments.listActiveByDriver(driver));
+        if (scope != DriverShipmentScope.ACTIVE) out.addAll(shipments.listHistoryByDriver(driver));
+        return summaries(out);
     }
 
     /** Envío activo del conductor: el IN_TRANSIT; si no hay, el PENDING más antiguo; si no, 404 LOGYX-SHP-002. */

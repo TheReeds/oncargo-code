@@ -1,5 +1,6 @@
 package pe.logyx.core.data
 
+import pe.logyx.core.model.AcceptSmartLoadRequest
 import pe.logyx.core.model.BookingStatus
 import pe.logyx.core.model.CreateTripBookingRequest
 import pe.logyx.core.model.CreateTripRequest
@@ -37,7 +38,11 @@ interface SmartLoadsRepository {
     suspend fun smartLoads(status: SmartLoadStatus? = null): Result<List<SmartLoadView>>
     /** Genera sugerencias ahora; devuelve solo las nuevas. */
     suspend fun generate(): Result<List<SmartLoadView>>
-    suspend fun accept(id: String): Result<SmartLoadView>
+    /**
+     * Acepta el plan y **oferta en lote** (F12): una oferta por carga con el vehículo del plan. Sin `items` usa el precio sugerido
+     * de cada carga; con `items` es todo o nada (`TRP-011`, `TRP-012`). El resultado trae `bids`.
+     */
+    suspend fun accept(id: String, body: AcceptSmartLoadRequest = AcceptSmartLoadRequest()): Result<SmartLoadView>
     suspend fun reject(id: String): Result<SmartLoadView>
 }
 
@@ -60,6 +65,6 @@ class DefaultSmartLoadsRepository(private val api: LogyxApi) : SmartLoadsReposit
     override suspend fun returnLoads() = apiCall { api.returnLoads() }
     override suspend fun smartLoads(status: SmartLoadStatus?) = apiCall { api.smartLoads(status) }
     override suspend fun generate() = apiCall { api.generateSmartLoads() }
-    override suspend fun accept(id: String) = apiCall { api.acceptSmartLoad(id) }
+    override suspend fun accept(id: String, body: AcceptSmartLoadRequest) = apiCall { api.acceptSmartLoad(id, body) }
     override suspend fun reject(id: String) = apiCall { api.rejectSmartLoad(id) }
 }

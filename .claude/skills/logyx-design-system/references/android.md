@@ -83,6 +83,20 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - **`LiveEffect(key) { viewModel.liveLoop() }`** — corre el bloque solo con la pantalla en primer plano (`repeatOnLifecycle(STARTED)`); es el único punto por el que las pantallas se suscriben al tiempo real (sin UI propia).
 - Estados: `LoadingState`, **`SkeletonList` / `SkeletonLoadCard` / `SkeletonBox` / `Modifier.shimmer()`** (primer render de listas; reservan `LoadingState` para acciones bloqueantes), `EmptyState(title, message, actionLabel, onAction)` (camión + siguiente acción), `ErrorState(message, onRetry)` (camión averiado + Reintentar).
 
+### Cuenta: verificación y rol Lector (V13/V14)
+- **`VerificationBanner(status, note)`** — aviso del estado de verificación (RN01): `PENDING` ámbar, `REJECTED`/`SUSPENDED` rojo, con la nota del operador; no pinta nada con `VERIFIED`/null. `VerificationStatus?.needsAttention` decide si mostrarlo. Se muestra **bajo la barra superior del inicio** (PYME y transportista) y en Cuenta, no en cada pantalla.
+- **`LocalScreenBanner`** (CompositionLocal con un `@Composable`) — `LogyxScreen` lo pinta bajo `LogyxTopBar`; `:app` lo provee solo en las pantallas de inicio (`WithVerificationBanner`). Úsalo para cualquier aviso de cuenta que deba estar pegado a la barra sin tocar cada pantalla.
+- **`LocalReadOnly` / `ProvideReadOnly(readOnly) { }`** — rol Lector (`UserInfo.isReadOnly`, lo provee `:app`). **`LogyxButton(…, requiresOperate = true)`** se deshabilita con el rol Lector (y se anuncia "No disponible con el rol Lector"); `ChatComposer` también. `LogyxScreen` muestra **`ReadOnlyNotice`** ("Tu rol Lector solo permite consultar…") para que el botón gris tenga explicación. Regla: todo botón que haga POST/PUT/PATCH/DELETE lleva `requiresOperate = true`; cambiar contraseña, cerrar sesión y leer avisos no.
+- `VerifiedBadge()` dice **"Verificado por OnCargo"** (solo con `rucVerified`, es decir, verificada por el operador).
+- Errores: `Throwable.userMessage()` (ya trae el texto de `ORG-003/004` y `AUTH-007/008`), `Throwable.accessBlock`, y `FieldErrors` para `NEG-001`/400 con `field` (`:core:data`; ver `android/AGENTS.md`).
+- Conductor: `EvidencePhase` (`OPEN` panel de foto/firma · `NOT_YET`/`CLOSED` tarjeta que explica por qué no se pide) y aviso de evidencia descartada (`ClosedEvidenceNotice`, `AlertBanner` ámbar con "Entendido"); "Viajes anteriores" con `StatusPill`.
+
+### Negociación, motivos y flota (V13–V15)
+- **`LogyxReasonSheet(title, reasonLabel, value, onValueChange, confirmLabel, onConfirm, onDismiss, message, error, optional, destructive, loading, confirmEnabled, maxLength = 500, content)`** — patrón único de **acción con motivo** (cancelar solicitud o envío, cambiar vehículo, relevar conductor): título = pregunta, `message` = consecuencia, `content` (selector) entre el mensaje y el campo "Motivo", contador y aviso de RN07, botón destructivo con `requiresOperate`. El `error` del campo (`NEG-001`, `SHP-006`) se pinta bajo el texto. El motivo en el estado se corta con `.take(MAX_REASON_LENGTH)`.
+- **`VehicleChoiceList(choices: List<VehicleChoice(vehicle, fit)>, selectedId, onSelect, weightKg, volumeM3, cargoType, error, currentId)`** — selector de vehículo con RN02 a la vista: los aptos se eligen; los que no quedan **deshabilitados con su motivo** (`VehicleFit.reason`: kg, tipo de carga, m³, en ruta/mantenimiento). Sin aptos avisa con `AlertBanner`; sin flota, vacío. `fit = vehicle.fitFor(request)` viene de `core:model` (única función de compatibilidad, usada también por el chip "Compatible" del feed). `error` = `CAP-001..005`/`SHP-007` (field `vehicleId`).
+- **`BidStandingRow(standing: MyBidStanding)`** — "Tu oferta es la mejor" / "A menos de 5 % de la mejor" / "A menos de 15 % de la mejor" / "Más de 15 % sobre la mejor" + "Vas 2.º de 5"; con `vsBest` nulo solo la posición final. Nunca montos ajenos (RN04).
+- Etiquetas: `BidOutcome.pill()` (En subasta, Esperando a la PYME, Ganada, Perdida, Solicitud cancelada, Retirada), `CloseReason.label`, `auctionClosureText(auction)` ("Subasta cerrada el 28 nov · 08:00 · Se acabó el tiempo"), `BidStandingBand.label`. `RadioCardRow` acepta `enabled`.
+
 ### Reputación, chat y evidencia (fase 3)
 - **`TrustScoreBadge(score: Double?, onClick?)`** — Trust Score 0–100 (≥85 esmeralda, ≥70 petróleo, <70 ámbar); en `LoadCard`, comparación de ofertas y perfil. **`StarRating(value, onValueChange?, size)`** (interactivo 44–48 dp o solo lectura) y **`RatingRow(label, average)`**.
 - **`ChatBubble(text, mine, time, sender, system, price, state: BubbleState, onRetry)`** (Sent/Sending/Failed; `system` = aviso centrado de contraoferta) y **`ChatComposer(value, onValueChange, onSend, error, sending)`** (error de RN07 bajo el campo; incluye `imePadding`).
@@ -97,6 +111,11 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - Formatos: `S/ 1,850.00`, `28 nov · 08:00`, `2.5 t`, `1,010 km`. Fechas ISO solo en red.
 - Textos visibles en `res/values/strings.xml` de cada módulo (`stringResource`/`pluralStringResource`); etiquetas de enums (`CargoType.label`, `status.pill()`…) también (`ds_…`), son `@Composable`. En ViewModels no hay `Context`: usa `UiMessage.success(R.string.x, args…)` o `UiText.of(R.string.x, args…)`; `MessageEffect`/`asString()` los resuelven. Literal solo para mensajes de la API.
 - `RouteMap(…, contentDescription)` describe el mapa a TalkBack; usa estilo oscuro con tema oscuro.
+- **Ruta por carretera (ADR-0008):** pasa `path = state.route?.points` a `RouteMap`. El ViewModel la carga con
+  `RoutesRepository.between(origen, destino)` (`:core:data`, caché en memoria; `RouteGeometry` y `Polyline` en `:core:model`;
+  `RoutesApi` = `GET /api/v1/routes`, implementado por `LogyxApi`) y la guarda en `route: RouteGeometry?` del estado. Con `path`:
+  línea continua por la vía y la etiqueta "Rutas © OpenStreetMap" (atribución ODbL, abajo a la derecha); sin `path` (cargando, sin
+  red o en tests con `RoutesRepository.NONE`): recta punteada. Ruta `#0B4F6C` en claro, `#38A3C9` en oscuro.
 
 ## Do / Don't
 - DO `LogyxButton` con `loading` en vez de deshabilitar sin explicación. DON'T `Button`/`TextButton` de M3.

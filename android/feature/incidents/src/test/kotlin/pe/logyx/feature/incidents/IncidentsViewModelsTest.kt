@@ -143,6 +143,31 @@ class IncidentsViewModelsTest {
         assertEquals(1, vm.state.value.incident?.comments?.size); assertEquals("", vm.state.value.draft); assertFalse(vm.state.value.sending)
     }
 
+    @Test fun `RN07 - NEG-001 en el comentario queda bajo el campo y conserva el borrador`() {
+        val e = ApiException(400, "LOGYX-NEG-001", "No incluyas teléfonos ni correos.", field = "body")
+        val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.failure(e) }), FakeAuth(), FakeRealtime())
+        vm.onDraft("escríbeme a ana@correo.pe"); vm.send()
+        assertEquals("No incluyas teléfonos ni correos.", vm.state.value.commentError)
+        assertEquals("escríbeme a ana@correo.pe", vm.state.value.draft)
+        assertNull(vm.state.value.message); assertFalse(vm.state.value.sending)
+        vm.onDraft("Hola"); assertNull(vm.state.value.commentError)
+    }
+
+    @Test fun `el comentario se corta a 2000 como el backend`() {
+        val vm = IncidentDetailViewModel("i1", FakeIncidents(), FakeAuth(), FakeRealtime())
+        vm.onDraft("a".repeat(2500))
+        assertEquals(2000, vm.state.value.draft.length)
+    }
+
+    @Test fun `RN07 - NEG-001 en la descripcion de la incidencia queda bajo el campo`() {
+        val inc = FakeIncidents(reportResult = Result.failure(ApiException(400, "LOGYX-NEG-001", "Sin datos de contacto.", field = "description")))
+        val vm = ReportIncidentViewModel("s1", inc, FakeDocs())
+        vm.onCategory(IncidentCategory.OTHER); vm.onDescription("llámame 987654321")
+        vm.askSubmit(); vm.confirmSubmit()
+        assertEquals(UiText.Raw("Sin datos de contacto."), vm.state.value.descriptionError)
+        assertNull(vm.state.value.message)
+    }
+
     @Test fun `comentar con error conserva el borrador y avisa`() {
         val vm = IncidentDetailViewModel("i1", FakeIncidents(commentResult = { Result.failure(ApiException(0, null, "Sin conexión.")) }), FakeAuth(), FakeRealtime())
         vm.onDraft("Hola"); vm.send()

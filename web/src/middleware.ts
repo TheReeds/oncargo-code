@@ -2,8 +2,13 @@ import { defineMiddleware } from 'astro:middleware';
 import { ApiError } from './lib/api/client';
 import type { MiddlewareHandler } from 'astro';
 import { clearSession, homeFor, readSession } from './lib/session';
+import { runWithPermissions } from './lib/request-context';
 
-const PUBLIC = ['/', '/login', '/registro', '/privacidad'];
+const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/olvide', '/restablecer'];
+/** Públicas que también ve quien ya tiene sesión (no se redirigen a su home). */
+const OPEN_WITH_SESSION = ['/privacidad', '/olvide', '/restablecer'];
+/** Páginas con un token en la URL: sin `Referer` hacia ningún sitio. */
+const NO_REFERRER = ['/restablecer', '/olvide'];
 const isAsset = (p: string) => !p.startsWith('/_actions') && (p.startsWith('/_') || p.startsWith('/favicon') || p.includes('.'));
 
 const handle = defineMiddleware(async (ctx, next) => {
@@ -27,21 +32,25 @@ const handle = defineMiddleware(async (ctx, next) => {
 
   const home = homeFor(session);
   if (isPublic) {
-    // Usuarios con sesión: / y /login van a su home (privacidad es siempre visible).
-    if (pathname === '/privacidad') return next();
+    // Usuarios con sesión: / y /login van a su home (privacidad y el restablecimiento de contraseña se ven siempre).
+    if (OPEN_WITH_SESSION.includes(pathname)) return runWithPermissions(session.permissions, next);
     return ctx.redirect(home);
   }
 
   // Control de acceso por rol
   const driverOnly = home === '/conductor';
-  if (driverOnly && pathname !== '/conductor' && pathname !== '/logout') return ctx.redirect('/conductor');
-  if (pathname.startsWith('/pyme') && session.orgType !== 'PYME') return ctx.redirect(home);
-  if (pathname.startsWith('/transportista') && session.orgType !== 'CARRIER') return ctx.redirect(home);
-  if (pathname.startsWith('/operador') && session.orgType !== 'OPERATOR') return ctx.redirect(home);
+  if (driverOnly && pathname !== '/conductor' && pathname !== '/logout' && pathname !== '/cuenta') return ctx.redirect('/conductor');
+  // Secciones de otro tipo de cuenta: página 403 amable (F58) en lugar de redirigir en silencio. El conductor solo tiene /conductor.
+  const denied = (pathname === '/pyme' || pathname.startsWith('/pyme/')) && session.orgType !== 'PYME'
+    || (pathname === '/transportista' || pathname.startsWith('/transportista/')) && session.orgType !== 'CARRIER'
+    || (pathname === '/operador' || pathname.startsWith('/operador/')) && session.orgType !== 'OPERATOR'
+    || (pathname === '/organizacion' || pathname.startsWith('/organizacion/')) && (session.orgType !== 'PYME' && session.orgType !== 'CARRIER');
+  if (denied) return runWithPermissions(session.permissions, () => next('/sin-acceso'));
   if (pathname === '/conductor' && !driverOnly) return ctx.redirect(home);
 
   try {
-    return await next();
+    // Los permisos viajan en un AsyncLocalStorage para que las islas React los lean durante el SSR (`lib/use-can.ts`).
+    return await runWithPermissions(session.permissions, next);
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
       clearSession(ctx.cookies);
@@ -74,7 +83,7 @@ const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'production';
 function secure(res: Response, url: URL, req: Request): Response {
   const set: Record<string, string> = {
     'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Referrer-Policy': NO_REFERRER.includes(url.pathname) ? 'no-referrer' : 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'X-Frame-Options': 'DENY',
   };

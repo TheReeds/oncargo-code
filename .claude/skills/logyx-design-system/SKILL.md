@@ -71,6 +71,7 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Monto en soles | `MoneyInput` · número con unidad (kg, m³): `NumberInput` |
 | Una fecha / un rango con atajos | `DatePicker` / `DateRangePicker` |
 | Confirmar acción (aceptar, cancelar, eliminar) | `await confirm({...})` |
+| Acción que pide un **motivo** (cancelar con motivo, rechazar, suspender, relevar) | `ReasonDialog` (validación en línea, error de campo de la API, RN07) |
 | Feedback tras una acción | `toast.success/error/info` (o `flash()` si vas a redirigir) |
 | Mensaje persistente en la página | `Alert` (`info/success/warning/error`) |
 | Formulario corto modal | `Dialog` · panel lateral (ofertar, detalle) `Sheet` |
@@ -82,7 +83,8 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Contraseña | `PasswordInput` (mostrar/ocultar) |
 | Barra de filtros de un listado | `FilterBar` |
 | Paradas / hitos de un proceso | `Timeline` (`StopTimeline` para envíos) |
-| RUC verificado | `VerifiedBadge` (`variant="icon"` en listas densas) |
+| Sello "Verificado por OnCargo" (`rucVerified`; `rucValid` no es sello) | `VerifiedBadge` (`variant="icon"` en listas densas) |
+| Estado de verificación de la cuenta / bloqueo `ORG-003/004` | `VerificationBanner` (`AppShell`) · `VerificationBlock` / `reportFailure()` |
 | Pantalla de login/registro | `AuthCard` |
 | Puntaje de confianza de una organización | `TrustScore` |
 | Calificación 1–5 (entrada o lectura) | `StarRating` |

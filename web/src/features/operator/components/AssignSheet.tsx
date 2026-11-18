@@ -1,3 +1,4 @@
+import { LIMITS } from '@/lib/limits';
 import { useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
@@ -143,8 +144,8 @@ export default function AssignSheet({ request, onClose, onAssigned }: { request:
                     {request.suggestedPrice ? <> ({amt === request.suggestedPrice ? 'igual al precio sugerido' : `${amt > request.suggestedPrice ? '+' : '−'}${Math.abs(Math.round(((amt - request.suggestedPrice) / request.suggestedPrice) * 100))} % frente al sugerido`})</> : null}.
                   </p>
                 )}
-                <Field label="Notas" htmlFor="a-notes" hint="Opcional. Máximo 500 caracteres.">
-                  <Textarea id="a-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Ej. Asignada por falta de ofertas tras coordinar con el transportista." />
+                <Field label="Notas" htmlFor="a-notes" hint={`Opcional. Máximo ${LIMITS.operatorNotes} caracteres.`}>
+                  <Textarea id="a-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={LIMITS.operatorNotes} placeholder="Ej. Asignada por falta de ofertas tras coordinar con el transportista." />
                 </Field>
               </>
             )}

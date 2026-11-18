@@ -92,7 +92,7 @@ class FakeRequests : RequestsRepository {
     override suspend fun detail(id: String) = Result.success(Data.load(id))
     override suspend fun bids(requestId: String) = Result.success(emptyList<BidView>())
     override suspend fun acceptBid(bidId: String) = Result.failure<AcceptResult>(IllegalStateException())
-    override suspend fun cancel(requestId: String) = Result.failure<RequestView>(IllegalStateException())
+    override suspend fun cancel(requestId: String, reason: String?) = Result.failure<RequestView>(IllegalStateException())
 }
 
 /** Simula la máquina de estados de paradas del backend. */
@@ -105,7 +105,7 @@ class FakeShipments(var current: ShipmentView, private val evidence: FakeEvidenc
     override suspend fun list() = Result.success(listOf(current))
     override suspend fun detail(id: String) = Result.success(current)
     override suspend fun drivers() = Result.success(emptyList<DriverView>())
-    override suspend fun assignDriver(shipmentId: String, driverId: String) = Result.success(current)
+    override suspend fun assignDriver(shipmentId: String, driverId: String, reason: String?) = Result.success(current)
     override suspend fun driverShipments() = Result.success(listOf(current))
     override suspend fun driverActive() = Result.success<ShipmentView?>(current)
     override suspend fun arrive(shipmentId: String, stopId: String) = update(stopId, StopStatus.ARRIVED)

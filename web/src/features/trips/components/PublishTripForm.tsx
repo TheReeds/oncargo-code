@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
-import { splitActionError } from '@/lib/action-error';
+import { toFormErrors, isVerificationFailure, type ActionFailure } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
+import { VerificationBlock } from '@/components/domain/VerificationBlock';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
@@ -19,7 +21,7 @@ import { CapacityBar } from '@/components/domain/CapacityBar';
 import { DescriptionList } from '@/components/ui/description-list';
 
 /** campo de la API → clave de error local */
-const FIELD_MAP: Record<string, string> = { originCity: 'origin', destinationCity: 'dest', departureAt: 'date', vehicleId: 'vehicle', capacityKg: 'capacity', rate: 'rate', pricingMode: 'rate' };
+const FIELD_MAP: Record<string, string> = { originCity: 'origin', destinationCity: 'dest', departureAt: 'date', vehicleId: 'vehicle', capacityKg: 'capacity', rate: 'rate', pricingMode: 'rate', notes: 'notes' };
 
 function todayLima() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
@@ -38,6 +40,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<ActionFailure | null>(null);
   const [busy, setBusy] = useState(false);
 
   const cityOptions = useMemo(() => cities.map((c) => ({ value: c.code!, label: c.name! })), [cities]);
@@ -57,6 +60,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setBlocked(null);
     const errs: Record<string, string> = {};
     if (!origin) errs.origin = 'Selecciona la ciudad de origen.';
     if (!dest) errs.dest = 'Selecciona la ciudad de destino.';
@@ -74,9 +78,10 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
     const { data, error } = await actions.trips.create({ originCity: origin, destinationCity: dest, departureAt: `${date}T${time}:00-05:00`, vehicleId, capacityKg: cap, pricingMode: mode, rate: rt, notes: notes.trim() || undefined });
     if (error) {
       setBusy(false);
-      const { message, field } = splitActionError(error);
-      if (field && FIELD_MAP[field]) setErrors({ [FIELD_MAP[field]]: message });
-      else setError(message);
+      const r = toFormErrors(error, FIELD_MAP);
+      setErrors(r.errors);
+      if (isVerificationFailure(r.failure)) setBlocked(r.failure);
+      else setError(r.formError);
       return;
     }
     flash('Viaje publicado', 'success');
@@ -100,6 +105,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
         <CardHeader><CardTitle>Datos del viaje</CardTitle></CardHeader>
         <CardBody className="space-y-5">
           {error && <Alert tone="error" title="No pudimos publicar el viaje">{error}</Alert>}
+          {blocked && <VerificationBlock failure={blocked} />}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Ciudad de origen" htmlFor="t-origin" error={errors.origin} required>
               <Combobox id="t-origin" value={origin} onValueChange={(v) => { setOrigin(v); clear('origin'); }} options={cityOptions} invalid={!!errors.origin} placeholder="Selecciona una ciudad" searchPlaceholder="Buscar ciudad…" />
@@ -136,7 +142,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
           <Field label={mode === 'PER_KG' ? 'Tarifa por kg' : 'Tarifa del tramo'} htmlFor="t-rate" error={errors.rate} hint={mode === 'PER_KG' ? 'Soles por cada kg reservado. Ej. 0.48' : 'Soles por el viaje con la capacidad completa.'} required>
             <MoneyInput id="t-rate" value={rate} onValueChange={(v) => { setRate(v); clear('rate'); }} invalid={!!errors.rate} placeholder={mode === 'PER_KG' ? '0.48' : '3,200.00'} />
           </Field>
-          <Field label="Notas para las PYMEs" htmlFor="t-notes" hint="Opcional. Máximo 500 caracteres."><Textarea id="t-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Ej. Salimos a las 6 a. m. desde el almacén de Callao." /></Field>
+          <Field label="Notas para las PYMEs" htmlFor="t-notes" error={errors.notes} hint={`Opcional. Máximo ${LIMITS.tripNotes} caracteres. Sin teléfonos ni correos.`}><Textarea id="t-notes" value={notes} onChange={(e) => { setNotes(e.target.value); clear('notes'); }} maxLength={LIMITS.tripNotes} aria-invalid={!!errors.notes || undefined} placeholder="Ej. Salimos a las 6 a. m. desde el almacén de Callao." /></Field>
           <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <Button asChild variant="outline"><a href="/transportista/viajes">Volver</a></Button>
             <Button type="submit" variant="money" loading={busy}>{busy ? 'Publicando…' : 'Publicar viaje'}</Button>

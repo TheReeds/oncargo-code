@@ -28,7 +28,7 @@ private class ListRequests(var result: Result<List<RequestView>>) : RequestsRepo
     override suspend fun detail(id: String) = Result.failure<RequestView>(IllegalStateException())
     override suspend fun bids(requestId: String) = Result.success(emptyList<BidView>())
     override suspend fun acceptBid(bidId: String) = Result.failure<AcceptResult>(IllegalStateException())
-    override suspend fun cancel(requestId: String) = Result.failure<RequestView>(IllegalStateException())
+    override suspend fun cancel(requestId: String, reason: String?) = Result.failure<RequestView>(IllegalStateException())
 }
 
 private class DashLoads(var dash: Result<DashboardSummary>) : LoadsRepository {

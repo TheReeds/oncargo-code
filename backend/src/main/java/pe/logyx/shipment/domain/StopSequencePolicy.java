@@ -12,8 +12,14 @@ public final class StopSequencePolicy {
 
     private StopSequencePolicy() {}
 
-    /** La parada sobre la que se puede actuar, si es {@code stopId}; si no, LOGYX-TRK-001. */
+    /**
+     * La parada sobre la que se puede actuar, si es {@code stopId}; si ya estaba completada, LOGYX-TRK-007 (F49);
+     * si no es la siguiente, LOGYX-TRK-001.
+     */
     public static ShipmentStop requireNext(List<ShipmentStop> stops, UUID stopId) {
+        stops.stream().filter(s -> s.id().equals(stopId) && s.isCompleted()).findFirst().ifPresent(s -> {
+            throw BusinessException.conflict("LOGYX-TRK-007", "Esta parada ya está completada");   // F49
+        });
         ShipmentStop next = stops.stream()
                 .filter(s -> !s.isCompleted())
                 .min(Comparator.comparingInt(ShipmentStop::sequence))

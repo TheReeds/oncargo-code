@@ -23,7 +23,7 @@
     <string name="incidents_confirm_message">El envío quedará detenido hasta que OnCargo resuelva la incidencia. Solo puede haber una incidencia activa por envío.</string>
     <string name="incidents_confirm_action">Reportar incidencia</string>
     <string name="incidents_photo_failed_title">Incidencia reportada</string>
-    <string name="incidents_photo_failed_message">Tu incidencia ya fue registrada, pero no pudimos subir la foto. Puedes comentarlo en el detalle o adjuntarla después desde los documentos del envío.</string>
+    <string name="incidents_photo_failed_message">Tu incidencia ya fue registrada, pero no pudimos subir la foto. Puedes contarlo en un comentario del detalle de la incidencia.</string>
     <string name="incidents_photo_failed_action">Ver incidencia</string>
 
     <!-- Lista -->

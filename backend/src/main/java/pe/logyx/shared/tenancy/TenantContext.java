@@ -19,6 +19,8 @@ public class TenantContext {
     public static final String CLAIM_ORG = "org_id";
     public static final String CLAIM_ORG_TYPE = "org_type";
     public static final String CLAIM_ROLE = "role";
+    /** Versión de sesión del perfil (V14): si no coincide con la BD, el token ya no vale. Ausente = 0. */
+    public static final String CLAIM_SESSION_VERSION = "sv";
 
     @Inject
     JsonWebToken jwt;
@@ -45,6 +47,29 @@ public class TenantContext {
     public UUID profileId() {
         if (!isAuthenticated()) throw new BusinessException(401, "LOGYX-AUTH-401", "No autenticado");
         return UUID.fromString(jwt.getSubject());
+    }
+
+    /** Rol de organización del JWT ({@code ADMIN|OPS|VIEWER|DRIVER}) o null sin usuario. */
+    public String role() {
+        if (!isAuthenticated()) return null;
+        Object r = jwt.getClaim(CLAIM_ROLE);
+        return r == null ? null : r.toString();
+    }
+
+    public boolean isOrgAdmin() {
+        return "ADMIN".equals(role());
+    }
+
+    /** Versión de sesión que trae el token ({@code sv}; los tokens anteriores a V14 no la traen: 0). */
+    public int sessionVersion() {
+        if (!isAuthenticated()) return 0;
+        Object v = jwt.getClaim(CLAIM_SESSION_VERSION);
+        if (v instanceof Number n) return n.intValue();
+        if (v instanceof jakarta.json.JsonNumber n) return n.intValue();
+        if (v != null) {
+            try { return Integer.parseInt(v.toString()); } catch (NumberFormatException e) { return -1; }
+        }
+        return 0;
     }
 
     public boolean isDriver() {

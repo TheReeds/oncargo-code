@@ -1,0 +1,20 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import UsersManager from '@/features/organization/components/UsersManager';
+import { listUsers } from '@/features/organization/server';
+import { can } from '@/lib/permissions';
+import { Alert } from '@/components/ui/alert';
+import { ApiError } from '@/lib/api/client';
+const session = Astro.locals.session!;
+if (!can(session, 'MANAGE_USERS')) return Astro.rewrite('/sin-acceso');
+let users: Awaited<ReturnType<typeof listUsers>> = [];
+let loadError: string | null = null;
+try { users = await listUsers(session.token); } catch (e) { if (e instanceof ApiError && e.status === 401) throw e; loadError = e instanceof Error ? e.message : 'No pudimos cargar los usuarios.'; }
+---
+<AppShell title="Usuarios y roles" active="usuarios">
+  <PageHeader title="Usuarios y roles" subtitle="Invita a tu equipo y decide qué puede hacer cada persona en OnCargo." breadcrumbs={[{ label: 'Perfil de la empresa', href: '/organizacion' }, { label: 'Usuarios y roles' }]} />
+  {loadError
+    ? <Alert tone="error" title="No pudimos cargar los usuarios">{loadError} Recarga la página para intentarlo de nuevo.</Alert>
+    : <UsersManager client:load users={users} selfId={session.userId} />}
+</AppShell>

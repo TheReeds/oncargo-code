@@ -15,6 +15,7 @@ import java.util.Set;
 /**
  * JWT RSA. Un conductor recibe solo el grupo DRIVER (no puede usar los endpoints
  * administrativos de su transportista); el resto, el tipo de su organización.
+ * El claim {@code sv} es la versión de sesión del perfil: {@code AccountAccessFilter} lo compara con la BD.
  */
 @ApplicationScoped
 public class JwtTokenIssuer implements TokenIssuer {
@@ -25,8 +26,16 @@ public class JwtTokenIssuer implements TokenIssuer {
     @ConfigProperty(name = "logyx.jwt.ttl")
     Duration ttl;
 
+    @ConfigProperty(name = "logyx.jwt.refresh-access-ttl", defaultValue = "PT1H")
+    Duration refreshAccessTtl;
+
     @Override
     public String issue(Profile p, Organization org) {
+        return issue(p, org, ttl);
+    }
+
+    @Override
+    public String issue(Profile p, Organization org, Duration lifetime) {
         Set<String> groups = p.isDriver() ? Set.of(Roles.DRIVER) : Set.of(org.type().name());
         return Jwt.issuer(issuer)
                 .subject(p.id().toString())
@@ -35,12 +44,18 @@ public class JwtTokenIssuer implements TokenIssuer {
                 .claim(TenantContext.CLAIM_ORG, org.id().toString())
                 .claim(TenantContext.CLAIM_ORG_TYPE, org.type().name())
                 .claim(TenantContext.CLAIM_ROLE, p.role().name())
-                .expiresIn(ttl)
+                .claim(TenantContext.CLAIM_SESSION_VERSION, p.sessionVersion())
+                .expiresIn(lifetime)
                 .sign();
     }
 
     @Override
     public long ttlSeconds() {
         return ttl.toSeconds();
+    }
+
+    @Override
+    public Duration refreshAccessTtl() {
+        return refreshAccessTtl;
     }
 }

@@ -4,6 +4,120 @@
  */
 
 export interface paths {
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambiar mi contraseña
+         * @description Cualquier rol. Cierra las demás sesiones y devuelve una sesión nueva (reemplaza el token). 400 LOGYX-AUTH-006 (actual incorrecta), LOGYX-AUTH-010 (igual).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangePasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAuthResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Olvidé mi contraseña
+         * @description Siempre 202 con el mismo mensaje, exista o no el correo. Si existe, llega un enlace de un solo uso (30 min). 429 LOGYX-AUTH-429 por IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAuthMessage"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -13,7 +127,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Login */
+        /**
+         * Iniciar sesión
+         * @description Con refresh=true (app móvil) la respuesta trae refreshToken y el access token dura 1 h; renuévalo con POST /auth/refresh.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -38,6 +155,105 @@ export interface paths {
                 };
                 /** @description Bad Request */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar sesión en este dispositivo
+         * @description Con refreshToken revoca esa sesión. El access token de la web no se revoca (vence solo); para eso usa /auth/logout-all.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LogoutRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar sesión en todos los dispositivos
+         * @description Invalida todos los tokens del usuario, incluido el actual.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -101,6 +317,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password-tokens/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ver un enlace de contraseña
+         * @description Propósito (RESET o INVITE), vencimiento, email enmascarado y organización. 400 LOGYX-AUTH-005 si no vale.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PasswordTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePasswordTokenInfo"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renovar la sesión (app móvil)
+         * @description Rota el refresh token: devuelve access + refresh nuevos; el anterior deja de valer. Reutilizar uno ya usado cierra esa sesión. 401 LOGYX-AUTH-009. No envíes Authorization.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RefreshRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAuthResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/register": {
         parameters: {
             query?: never;
@@ -131,6 +447,56 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseAuthResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Definir contraseña con el enlace
+         * @description Restablecer o aceptar una invitación. Cierra todas las sesiones del usuario. 400 LOGYX-AUTH-005 (token inválido, vencido o usado), LOGYX-AUTH-011 (invitación sin aceptar la política de privacidad).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAuthMessage"];
                     };
                 };
                 /** @description Bad Request */
@@ -695,10 +1061,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Driver Shipments */
+        /** Mis envíos como conductor: activos (por omisión), historial o todos (F22) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description ACTIVE (por omisión: pendientes y en tránsito), HISTORY (entregados y cancelados, recientes primero) o ALL (activos y luego historial). */
+                    scope?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -831,7 +1200,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add Driver */
+        /**
+         * Alta de conductor
+         * @description Solo ADMIN (403 LOGYX-AUTH-008).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -842,6 +1214,182 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["DriverRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDriverView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drivers/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desactivar la cuenta del conductor
+         * @description Pierde el acceso de inmediato y no se le puede asignar envíos (409 LOGYX-FLT-003). Solo ADMIN.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDriverView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drivers/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reactivar la cuenta del conductor
+         * @description Solo ADMIN.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDriverView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drivers/{id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nueva contraseña para el conductor
+         * @description El ADMIN la define y se la comunica; se cierran las sesiones del conductor. Solo ADMIN.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverPasswordReset"];
                 };
             };
             responses: {
@@ -1389,6 +1937,125 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visor de auditoría: acciones registradas en la plataforma, paginadas, más recientes primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Acción exacta (p. ej. REQUEST_PUBLISHED). Repetible o separada por comas: cualquiera de la lista. */
+                    action?: string[];
+                    /** @description Id del perfil que ejecutó la acción. */
+                    actorId?: string;
+                    /** @description Tipo de entidad (p. ej. shipment_request, bid, shipment, organization). */
+                    entity?: string;
+                    /** @description Id de la entidad afectada. */
+                    entityId?: string;
+                    /** @description Desde esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    from?: string;
+                    /** @description Id de la organización a la que pertenece el actor. */
+                    organizationId?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                    /** @description Hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima. */
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListAuditRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/audit/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Acciones distintas presentes en la auditoría (para el filtro del visor), en orden alfabético */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListString"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1982,6 +2649,422 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Perfil de mi organización
+         * @description Datos completos de la propia organización (teléfono y dirección no son públicos). Cualquier rol.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationProfile"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar el perfil de mi organización
+         * @description Solo ADMIN (403 LOGYX-AUTH-008). Ciudad, teléfono y dirección siempre; razón social y RUC solo con verificación PENDING o REJECTED (409 LOGYX-ORG-007). Si estaba REJECTED vuelve a PENDING y se avisa a LOGYX.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateOrganizationRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationProfile"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/organizations/me/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Usuarios de mi organización
+         * @description Sin conductores (están en Flota).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOrganizationUser"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Invitar usuario
+         * @description Crea el usuario sin contraseña y le envía un enlace de invitación (72 h) que se canjea con POST /auth/reset-password. 409 LOGYX-AUTH-002 (email ya registrado), 400 LOGYX-USR-004 (rol DRIVER).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InviteUserRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationUser"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/me/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar rol
+         * @description Cierra las sesiones del usuario. 409 LOGYX-USR-001 (último ADMIN activo), LOGYX-USR-005 (conductor). Cambiar el propio rol cierra tu sesión.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeUserRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationUser"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/organizations/me/users/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desactivar usuario
+         * @description Pierde el acceso de inmediato. 409 LOGYX-USR-001 (último ADMIN activo), LOGYX-USR-002 (tú mismo).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationUser"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/me/users/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivar usuario */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationUser"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/me/users/{id}/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reenviar invitación
+         * @description Nuevo enlace; el anterior deja de valer. 409 LOGYX-USR-003 si ya la aceptó.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationUser"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -2591,7 +3674,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Bids */
+        /** Ofertas de la solicitud, de menor a mayor monto: la PYME dueña o el operador (solo lectura) */
         get: {
             parameters: {
                 query?: never;
@@ -4763,6 +5846,10 @@ export interface components {
             data?: components["schemas"]["AcceptResult"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseAuthMessage: {
+            data?: components["schemas"]["AuthMessage"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseAuthResponse: {
             data?: components["schemas"]["AuthResponse"];
             meta?: components["schemas"]["Meta"];
@@ -4793,6 +5880,10 @@ export interface components {
         };
         ApiResponseListAssignmentCandidateView: {
             data?: components["schemas"]["AssignmentCandidateView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListAuditRow: {
+            data?: components["schemas"]["AuditRow"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListBidView: {
@@ -4847,6 +5938,10 @@ export interface components {
             data?: components["schemas"]["OrganizationReviewRow"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListOrganizationUser: {
+            data?: components["schemas"]["OrganizationUser"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListRequestView: {
             data?: components["schemas"]["RequestView"][];
             meta?: components["schemas"]["Meta"];
@@ -4865,6 +5960,10 @@ export interface components {
         };
         ApiResponseListSmartLoadView: {
             data?: components["schemas"]["SmartLoadView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListString: {
+            data?: string[];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListTripBookingView: {
@@ -4903,8 +6002,20 @@ export interface components {
             data?: components["schemas"]["OperatorMetricsView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseOrganizationProfile: {
+            data?: components["schemas"]["OrganizationProfile"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseOrganizationReviewRow: {
             data?: components["schemas"]["OrganizationReviewRow"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseOrganizationUser: {
+            data?: components["schemas"]["OrganizationUser"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponsePasswordTokenInfo: {
+            data?: components["schemas"]["PasswordTokenInfo"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponsePublicOrganization: {
@@ -4986,13 +6097,37 @@ export interface components {
             /** Format: int64 */
             bidCount?: number;
             closeReason?: components["schemas"]["CloseReason"];
+            closedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        AuditRow: {
+            /** Format: int64 */
+            id?: number;
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+            actorProfileId?: components["schemas"]["UUID"];
+            actorEmail?: string;
+            actorName?: string;
+            organizationId?: components["schemas"]["UUID"];
+            organizationName?: string;
+            organizationType?: components["schemas"]["OrgType"];
+            action?: string;
+            entity?: string;
+            entityId?: components["schemas"]["UUID"];
+            detail?: string;
+        };
+        AuthMessage: {
+            message?: string;
         };
         AuthResponse: {
             accessToken?: string;
             /** Format: int64 */
             expiresIn?: number;
             user?: components["schemas"]["UserInfo"];
+            refreshToken?: string;
+            /** Format: int64 */
+            refreshExpiresIn?: number;
         };
+        /** @enum {string} */
+        BidStandingBand: "BEST" | "WITHIN_5_PCT" | "WITHIN_15_PCT" | "ABOVE_15_PCT";
         BidView: {
             id?: components["schemas"]["UUID"];
             requestId?: components["schemas"]["UUID"];
@@ -5027,6 +6162,16 @@ export interface components {
             status: components["schemas"]["IncidentStatus"];
             resolutionNotes?: string;
             shipmentOutcome?: components["schemas"]["IncidentShipmentOutcome"];
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+            /** @description Emitir también un refresh token (app móvil). Por omisión false */
+            refresh?: boolean;
+        };
+        ChangeUserRoleRequest: {
+            /** @description ADMIN, OPS o VIEWER */
+            role: components["schemas"]["Role"];
         };
         ChangeVehicle: {
             vehicleId: components["schemas"]["UUID"];
@@ -5143,6 +6288,9 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
             downloadUrl?: string;
         };
+        DriverPasswordReset: {
+            newPassword: string;
+        };
         DriverRequest: {
             fullName: string;
             email: string;
@@ -5155,6 +6303,10 @@ export interface components {
             email?: string;
             licenseNumber?: string;
             status?: components["schemas"]["Status1"];
+            active?: boolean;
+        };
+        ForgotPasswordRequest: {
+            email: string;
         };
         IncidentAlertView: {
             incidentId?: components["schemas"]["UUID"];
@@ -5206,6 +6358,12 @@ export interface components {
          * @example 2022-03-10T16:15:50Z
          */
         Instant: string;
+        InviteUserRequest: {
+            email: string;
+            fullName: string;
+            /** @description ADMIN, OPS o VIEWER (DRIVER no: los conductores se crean en la flota) */
+            role: components["schemas"]["Role"];
+        };
         /**
          * Format: date
          * @example 2022-03-10
@@ -5214,6 +6372,11 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+            /** @description Pedir refresh token rotativo (app móvil). Por omisión false */
+            refresh?: boolean;
+        };
+        LogoutRequest: {
+            refreshToken?: string;
         };
         ManualAssignment: {
             carrierOrgId: components["schemas"]["UUID"];
@@ -5258,6 +6421,15 @@ export interface components {
             /** Format: int64 */
             total?: number;
             nextCursor?: string;
+        };
+        MyBidStanding: {
+            /** Format: int32 */
+            rank?: number;
+            /** Format: int32 */
+            bidCount?: number;
+            isBest?: boolean;
+            vsBest?: components["schemas"]["BidStandingBand"];
+            finalStanding?: boolean;
         };
         /** @enum {string} */
         NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION";
@@ -5309,6 +6481,8 @@ export interface components {
             pymes?: number;
             /** Format: int64 */
             carriers?: number;
+            gmv?: number;
+            gmvDelivered?: number;
         };
         OperatorRequestRow: {
             id?: components["schemas"]["UUID"];
@@ -5347,9 +6521,26 @@ export interface components {
             hasActiveIncident?: boolean;
         };
         /** @enum {string} */
+        OrgPermission: "READ" | "OPERATE" | "MANAGE_USERS" | "MANAGE_ORGANIZATION" | "MANAGE_DRIVERS";
+        /** @enum {string} */
         OrgType: "PYME" | "CARRIER" | "OPERATOR";
         OrganizationDecision: {
             reason: string;
+        };
+        OrganizationProfile: {
+            id?: components["schemas"]["UUID"];
+            type?: components["schemas"]["OrgType"];
+            legalName?: string;
+            ruc?: string;
+            rucValid?: boolean;
+            rucVerified?: boolean;
+            verificationStatus?: components["schemas"]["VerificationStatus"];
+            verificationNote?: string;
+            city?: string;
+            phone?: string;
+            address?: string;
+            legalDataEditable?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
         };
         OrganizationReviewRow: {
             id?: components["schemas"]["UUID"];
@@ -5364,6 +6555,27 @@ export interface components {
             verificationNote?: string;
             verificationUpdatedAt?: components["schemas"]["OffsetDateTime"];
             rucVerified?: boolean;
+        };
+        OrganizationUser: {
+            id?: components["schemas"]["UUID"];
+            email?: string;
+            fullName?: string;
+            role?: components["schemas"]["Role"];
+            active?: boolean;
+            invitationPending?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            lastLoginAt?: components["schemas"]["OffsetDateTime"];
+        };
+        PasswordTokenInfo: {
+            purpose?: components["schemas"]["PasswordTokenPurpose"];
+            expiresAt?: components["schemas"]["OffsetDateTime"];
+            email?: string;
+            organizationName?: string;
+        };
+        /** @enum {string} */
+        PasswordTokenPurpose: "RESET" | "INVITE";
+        PasswordTokenRequest: {
+            token: string;
         };
         PlaceBid: {
             vehicleId: components["schemas"]["UUID"];
@@ -5417,6 +6629,9 @@ export interface components {
             data?: {
                 [key: string]: unknown;
             };
+        };
+        RefreshRequest: {
+            refreshToken: string;
         };
         RegisterRequest: {
             organizationType: components["schemas"]["OrgType"];
@@ -5480,9 +6695,18 @@ export interface components {
             compatibleVehicleTypes?: components["schemas"]["Type"][];
             cancelReason?: string;
             republishedFrom?: components["schemas"]["UUID"];
+            bestBidAmount?: number;
+            bestBidCarrierName?: string;
+            bestBidCarrierTrustScore?: number;
+            myBidStanding?: components["schemas"]["MyBidStanding"];
         };
         RescheduleRequest: {
             pickupDate?: components["schemas"]["LocalDate"];
+        };
+        ResetPasswordRequest: {
+            token: string;
+            newPassword: string;
+            acceptPrivacyPolicy?: boolean;
         };
         ReturnLoadHintView: {
             requestId?: components["schemas"]["UUID"];
@@ -5757,6 +6981,15 @@ export interface components {
             /** Format: int64 */
             unread?: number;
         };
+        UpdateOrganizationRequest: {
+            /** @description Solo si la verificación está PENDING o REJECTED (si no, 409 LOGYX-ORG-007) */
+            legalName?: string;
+            /** @description Solo si la verificación está PENDING o REJECTED (si no, 409 LOGYX-ORG-007) */
+            ruc?: string;
+            city?: string;
+            phone?: string;
+            address?: string;
+        };
         UserInfo: {
             id?: components["schemas"]["UUID"];
             email?: string;
@@ -5770,6 +7003,8 @@ export interface components {
             rucValid?: boolean;
             verificationStatus?: components["schemas"]["VerificationStatus"];
             verificationNote?: string;
+            /** @description Permisos por rol de organización (V14): READ, OPERATE, MANAGE_USERS, MANAGE_ORGANIZATION, MANAGE_DRIVERS. Úsalos para mostrar u ocultar acciones; el backend los hace cumplir igual */
+            permissions?: components["schemas"]["OrgPermission"][];
         };
         VehicleRequest: {
             plate: string;

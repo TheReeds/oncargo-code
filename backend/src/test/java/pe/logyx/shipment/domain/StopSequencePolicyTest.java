@@ -48,7 +48,7 @@ class StopSequencePolicyTest {
         assertEquals(Shipment.Status.DELIVERED, shipment.status());
 
         var e = assertThrows(BusinessException.class, () -> StopSequencePolicy.requireNext(stops, delivery.id()));
-        assertEquals("LOGYX-TRK-001", e.code(), "sin paradas pendientes no hay siguiente");
+        assertEquals("LOGYX-TRK-007", e.code(), "una parada ya completada no se vuelve a tocar (F49)");
     }
 
     @Test

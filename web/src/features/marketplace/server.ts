@@ -23,3 +23,5 @@ export async function listOpen(token: string, query: OpenQuery = {}): Promise<{ 
 export const listMyBids = (token: string) => unwrap(apiFor(token).GET('/api/v1/shipment-requests/my-bids'));
 export const placeBid = (token: string, id: string, body: Schemas['PlaceBid']) =>
   unwrap(apiFor(token).POST('/api/v1/shipment-requests/{id}/bids', { params: { path: { id } }, body }));
+export const withdrawBid = (token: string, id: string) =>
+  unwrap(apiFor(token).POST('/api/v1/bids/{id}/withdraw', { params: { path: { id } } }));

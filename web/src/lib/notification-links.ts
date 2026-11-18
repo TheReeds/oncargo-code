@@ -1,4 +1,4 @@
-import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake } from 'lucide-react';
+import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake, ShieldCheck, Undo2, Ban, Hourglass } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export type NotifOrg = 'PYME' | 'CARRIER' | 'OPERATOR' | null | undefined;
@@ -8,6 +8,12 @@ export type NotifLike = { type?: string; relatedType?: string; relatedId?: strin
 export function notificationHref(n: NotifLike, orgType: NotifOrg): string {
   const id = n.relatedId;
   const carrier = orgType === 'CARRIER';
+  // El operador recibe, p. ej., `AUCTION_CLOSED` de una subasta sin ofertas: va a sus pantallas, no a las de la PYME.
+  if (orgType === 'OPERATOR') {
+    if (n.relatedType === 'REQUEST') return id ? `/operador/solicitudes/${id}` : '/operador/solicitudes';
+    if (n.relatedType === 'SHIPMENT') return id ? `/operador/envios/${id}` : '/operador/envios';
+    if (n.relatedType === 'ORGANIZATION') return '/operador/organizaciones';
+  }
   switch (n.relatedType) {
     case 'REQUEST':
       return id ? (carrier ? `/transportista/ofertas?solicitud=${id}` : `/pyme/solicitudes/${id}`) : carrier ? '/transportista/ofertas' : '/pyme/solicitudes';
@@ -46,11 +52,11 @@ export const NOTIFICATION_META: Record<string, { label: string; icon: ComponentT
   TRIP_CANCELLED: { label: 'Viaje cancelado', icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
   SMART_LOAD_SUGGESTED: { label: 'Sugerencia Smart Load', icon: Sparkles, tone: 'bg-emerald-50 text-emerald-700' },
   SMART_LOAD_ACCEPTED: { label: 'Cargas agrupadas', icon: Route, tone: 'bg-petrol-50 text-petrol-700' },
-  AUCTION_CLOSED: { label: 'Subasta cerrada', icon: Gavel, tone: 'bg-amber-50 text-amber-700' },
-  REQUEST_CANCELLED: { label: 'Solicitud cancelada', icon: CircleX, tone: 'bg-steel-100 text-ink-700' },
-  SHIPMENT_CANCELLED: { label: 'Envío cancelado', icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
-  BID_WITHDRAWN: { label: 'Oferta retirada', icon: CircleX, tone: 'bg-steel-100 text-ink-700' },
-  ORGANIZATION_VERIFICATION: { label: 'Verificación de empresa', icon: CircleCheck, tone: 'bg-petrol-50 text-petrol-700' },
+  AUCTION_CLOSED: { label: 'Subasta cerrada', icon: Hourglass, tone: 'bg-amber-50 text-amber-700' },
+  REQUEST_CANCELLED: { label: 'Solicitud cancelada', icon: Ban, tone: 'bg-steel-100 text-ink-700' },
+  SHIPMENT_CANCELLED: { label: 'Envío cancelado', icon: Ban, tone: 'bg-red-50 text-red-600' },
+  BID_WITHDRAWN: { label: 'Oferta retirada', icon: Undo2, tone: 'bg-steel-100 text-ink-700' },
+  ORGANIZATION_VERIFICATION: { label: 'Verificación de empresa', icon: ShieldCheck, tone: 'bg-petrol-50 text-petrol-700' },
   NEW_REVIEW: { label: 'Nueva calificación', icon: Star, tone: 'bg-amber-50 text-amber-700' },
 };
 export const notificationMeta = (type?: string) => NOTIFICATION_META[type ?? ''] ?? { label: 'Aviso', icon: Bell, tone: 'bg-steel-100 text-ink-700' };

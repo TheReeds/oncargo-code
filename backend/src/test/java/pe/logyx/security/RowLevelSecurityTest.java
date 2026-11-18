@@ -123,6 +123,41 @@ class RowLevelSecurityTest {
         assertEquals(1, countAs(pyme, "PYME", bidsOfRequest), "la PYME ve las ofertas de su solicitud");
     }
 
+    /** V15 (F15): quien ofertó sigue viendo la solicitud (solo lectura) aunque se adjudique a otro o se cancele. */
+    @Test
+    void ofertanteVeLaSolicitudPerdidaOCanceladaPeroNoLaAjenaNiEscribe() {
+        Session pyme = register("PYME", "RLS F15 Pyme");
+        Session winner = register("CARRIER", "RLS F15 Ganador");
+        Session loser = register("CARRIER", "RLS F15 Perdedor");
+        Session stranger = register("CARRIER", "RLS F15 Ajeno");
+        String reqId = publish(pyme, 1000).statusCode(201).extract().path("data.id");
+        String cancelled = publish(pyme, 1000).statusCode(201).extract().path("data.id");
+        String vw = vehicle(winner, plate(), 5000), vl = vehicle(loser, plate(), 5000);
+        String winBid = bid(winner, reqId, vw, 100);
+        bid(loser, reqId, vl, 300);
+        bid(loser, cancelled, vl, 300);
+        Api.as(pyme).post("/api/v1/bids/" + winBid + "/accept").then().statusCode(200);
+        Api.as(pyme).body(Map.of("reason", "x")).post("/api/v1/shipment-requests/" + cancelled + "/cancel")
+                .then().statusCode(200);
+
+        String ofRequest = "SELECT count(*) FROM shipment_requests WHERE id = '%s'";
+        assertEquals(1, countAs(loser, "CARRIER", ofRequest.formatted(reqId)), "adjudicada a otro: sigue visible");
+        assertEquals(1, countAs(loser, "CARRIER", ofRequest.formatted(cancelled)), "cancelada: sigue visible");
+        assertEquals(1, countAs(winner, "CARRIER", ofRequest.formatted(reqId)));
+        assertEquals(0, countAs(stranger, "CARRIER", ofRequest.formatted(reqId)), "sin oferta no hay lectura");
+        assertEquals(0, countAs(stranger, "CARRIER", ofRequest.formatted(cancelled)));
+        assertEquals(0, countAs(winner, "CARRIER", ofRequest.formatted(cancelled)), "el ganador no ofertó en la otra");
+        // La política no abre las ofertas ajenas ni el envío del ganador
+        assertEquals(1, countAs(loser, "CARRIER", "SELECT count(*) FROM bids WHERE request_id = '" + reqId + "'"));
+        assertEquals(0, countAs(loser, "CARRIER", "SELECT count(*) FROM shipments WHERE request_id = '" + reqId + "'"));
+        // Solo lectura
+        assertEquals(0, executeAs(loser, "CARRIER", "UPDATE shipment_requests SET cancel_reason = 'x' WHERE id = '" + reqId + "'"));
+        assertEquals(0, executeAs(loser, "CARRIER", "DELETE FROM shipment_requests WHERE id = '" + cancelled + "'"));
+        // Y por HTTP el perdedor no ve datos del ganador
+        Api.as(loser).get("/api/v1/shipment-requests/" + reqId).then().statusCode(200);
+        Api.as(stranger).get("/api/v1/shipment-requests/" + reqId).then().statusCode(404);
+    }
+
     @Test
     void pymeNoVeSolicitudesNiUsuariosDeOtraPyme() {
         Session p1 = register("PYME", "RLS Pyme Uno");
@@ -346,5 +381,31 @@ class RowLevelSecurityTest {
     private static String rootMessage(Throwable t) {
         while (t.getCause() != null) t = t.getCause();
         return String.valueOf(t.getMessage());
+    }
+
+    @Test
+    void logyxAppNoTocaLasTablasDeTokens() {
+        Session pyme = register("PYME", "RLS Tokens");
+        // Genera filas: un refresh token y un token de restablecimiento
+        io.restassured.RestAssured.given().contentType("application/json")
+                .body(Map.of("email", pyme.email(), "password", "Secreta123", "refresh", true))
+                .post("/api/v1/auth/login").then().statusCode(200);
+        assertTrue(countAsOwner("SELECT count(*) FROM refresh_tokens WHERE profile_id = (SELECT id FROM profiles "
+                + "WHERE email = '" + pyme.email() + "')") >= 1);
+        for (String table : java.util.List.of("password_tokens", "refresh_tokens")) {
+            // Ni con la organización del dueño de los tokens: sin privilegios (42501), RLS sin políticas detrás
+            assertThrows(Exception.class, () -> countAs(pyme, "PYME", "SELECT count(*) FROM " + table), table);
+            assertThrows(Exception.class, () -> executeAs(pyme, "PYME", "DELETE FROM " + table), table);
+        }
+        assertEquals(1L, countAsOwner("SELECT count(*) FROM pg_class WHERE relname = 'refresh_tokens' AND relrowsecurity"));
+    }
+
+    @Test
+    void unUsuarioNoCambiaPerfilesDeOtraOrganizacion() {
+        Session a = register("PYME", "RLS Perfiles A");
+        Session b = register("PYME", "RLS Perfiles B");
+        assertEquals(0, executeAs(a, "PYME", "UPDATE profiles SET role = 'VIEWER', session_version = session_version + 1 "
+                + "WHERE organization_id = '" + b.orgId() + "'"));
+        assertEquals(0L, countAs(a, "PYME", "SELECT count(*) FROM profiles WHERE organization_id = '" + b.orgId() + "'"));
     }
 }

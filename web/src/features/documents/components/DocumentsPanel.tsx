@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
 import { Camera, Download, Eye, FileSignature, FileText, FolderOpen, ReceiptText, ClipboardList, File as FileIcon } from 'lucide-react';
@@ -31,6 +33,7 @@ function Thumb({ doc, onOpen, className = 'size-14' }: { doc: DocumentView; onOp
 }
 
 export default function DocumentsPanel({ shipmentId, perspective, status, readOnly: ro, title = 'Documentos del envío' }: Props) {
+  const canOperate = useCan('OPERATE');
   const [docs, setDocs] = useState<DocumentView[] | null>(null);
   const [orgId, setOrgId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export default function DocumentsPanel({ shipmentId, perspective, status, readOn
   if (!docs) return <div className="space-y-3" aria-busy="true" aria-label="Cargando documentos"><Skeleton className="h-28 w-full" /><Skeleton className="h-20 w-full" /></div>;
 
   const hasPhoto = docs.some((d) => d.type === 'DELIVERY_PHOTO');
-  const readOnly = ro || perspective === 'OPERATOR';
+  const readOnly = ro || perspective === 'OPERATOR' || !canOperate;
   const who = (d: DocumentView) => (perspective === 'OPERATOR' ? null : d.uploadedByOrgId === orgId ? 'Tú' : perspective === 'PYME' ? 'El transportista' : 'La PYME');
 
   return (
@@ -133,6 +136,7 @@ export default function DocumentsPanel({ shipmentId, perspective, status, readOn
         )}
       </Card>
 
+      {!canOperate && perspective !== 'OPERATOR' && <ReadOnlyNotice>No puedes subir documentos.</ReadOnlyNotice>}
       {!readOnly && <DocumentUpload shipmentId={shipmentId} cancelled={status === 'CANCELLED'} onUploaded={load} />}
       <DocumentViewer images={viewerList} index={viewing} onIndexChange={setViewing} onClose={() => setViewing(null)} />
     </div>

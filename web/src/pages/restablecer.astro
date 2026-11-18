@@ -1,0 +1,70 @@
+---
+// Enlace del correo: `/restablecer?token=…` (restablecer contraseña o activar una invitación, ADR-0009).
+// El token se valida aquí (`inspect`) y se entrega a la isla; la isla lo quita de la URL. La respuesta lleva
+// `Referrer-Policy: no-referrer` (middleware) y no se guarda en caché.
+import Public from '@/layouts/Public.astro';
+import AuthShell from '@/features/auth/components/AuthShell.astro';
+import ResetPasswordForm from '@/features/auth/components/ResetPasswordForm';
+import { AuthCard } from '@/components/ui/auth-card';
+import { Alert } from '@/components/ui/alert';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { inspectPasswordToken, type PasswordTokenInfo } from '@/features/auth/password';
+import { ApiError } from '@/lib/api/client';
+import { formatDateTime } from '@/lib/format';
+import { Clock, Mail, TriangleAlert } from '@lucide/astro';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+const token = Astro.url.searchParams.get('token')?.trim() ?? '';
+let info: PasswordTokenInfo | null = null;
+let state: 'ok' | 'missing' | 'invalid' | 'error' = 'ok';
+let errorMessage = '';
+if (!token) {
+  state = 'missing';
+} else {
+  try {
+    let ip: string | undefined;
+    try { ip = Astro.clientAddress || undefined; } catch { ip = undefined; }
+    info = await inspectPasswordToken(token, ip);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 400) state = 'invalid';
+    else { state = 'error'; errorMessage = e instanceof ApiError ? e.message : 'No pudimos validar el enlace.'; }
+  }
+}
+const invite = info?.purpose === 'INVITE';
+const title = state === 'ok' ? (invite ? `Activa tu cuenta en ${info?.organizationName ?? 'OnCargo'}` : 'Restablece tu contraseña') : state === 'error' ? 'No pudimos validar el enlace' : 'Este enlace ya no sirve';
+const subtitle = state === 'ok'
+  ? (invite ? 'Crea tu contraseña para empezar a usar OnCargo con tu empresa.' : 'Elige una contraseña nueva para tu cuenta.')
+  : undefined;
+---
+<Public title={state === 'ok' ? (invite ? 'Activar cuenta' : 'Restablecer contraseña') : 'Enlace no válido'} description="Crea tu contraseña nueva de OnCargo con el enlace que te enviamos por correo." footer="compact">
+  <AuthShell variant="login">
+    <AuthCard embedded className="mx-auto max-w-[560px] lg:max-w-md" cardClassName="p-5 shadow-lg shadow-chrome/10 sm:p-8" title={title} subtitle={subtitle}>
+      {state === 'ok' && info ? (
+        <div class="space-y-5">
+          <dl class="grid gap-2 rounded-input border border-steel-200 bg-steel-100/60 p-3 text-sm sm:grid-cols-2" data-testid="reset-info">
+            <div><dt class="text-xs text-ink-500">Cuenta</dt><dd class="font-mono text-[13px] text-ink-900">{info.email}</dd></div>
+            <div><dt class="flex items-center gap-1 text-xs text-ink-500"><Clock size={12} aria-hidden="true" /> El enlace vence</dt><dd class="font-medium text-ink-900">{formatDateTime(info.expiresAt)}</dd></div>
+          </dl>
+          <ResetPasswordForm client:load token={token} purpose={info.purpose!} organizationName={info.organizationName} />
+        </div>
+      ) : (
+        <div class="space-y-4" data-testid="reset-invalid">
+          {state === 'error' ? (
+            <Alert tone="error">{errorMessage} Vuelve a abrir el enlace del correo en unos segundos.</Alert>
+          ) : (
+            <div class="flex items-start gap-3 rounded-input border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              <TriangleAlert size={18} class="mt-0.5 shrink-0" aria-hidden="true" />
+              <p>{state === 'missing' ? 'Falta el enlace de tu correo.' : 'El enlace venció, ya se usó o fue reemplazado por uno más reciente.'} Pide otro y revisa tu correo: tarda unos segundos.</p>
+            </div>
+          )}
+          <div class="flex flex-wrap gap-2">
+            <a href="/olvide" class={cn(buttonVariants({ size: 'lg' }), 'flex-1')}><Mail size={16} aria-hidden="true" /> Pedir otro enlace</a>
+            <a href="/login" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }))}>Volver a ingresar</a>
+          </div>
+          {invite === false && state === 'invalid' && <p class="text-xs text-ink-500">Si te invitaron a una empresa y el enlace venció, pide a su administrador que te reenvíe la invitación.</p>}
+        </div>
+      )}
+    </AuthCard>
+  </AuthShell>
+</Public>

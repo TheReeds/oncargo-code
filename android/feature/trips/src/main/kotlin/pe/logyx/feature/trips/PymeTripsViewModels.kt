@@ -97,6 +97,8 @@ internal fun BookFormState.validated(): BookFormState {
 internal val BookFormState.hasErrors: Boolean
     get() = listOf(weightError, descriptionError, cargoTypeError, pickupError, deliveryError).any { it != null }
 
+private val BOOKING_FIELDS = setOf("weightKg", "cargoType", "cargoDescription", "pickupAddress", "deliveryAddress")
+
 class TripSearchViewModel(
     private val trips: TripsRepository,
     private val catalog: CatalogRepository,
@@ -201,10 +203,14 @@ class TripSearchViewModel(
                         when ((e as? ApiException)?.field) {
                             "weightKg" -> base.copy(weightError = raw)
                             "cargoType" -> base.copy(cargoTypeError = raw)
+                            // RN07 (NEG-001): datos de contacto en los textos libres de la reserva.
+                            "cargoDescription" -> base.copy(descriptionError = raw)
+                            "pickupAddress" -> base.copy(pickupError = raw)
+                            "deliveryAddress" -> base.copy(deliveryError = raw)
                             else -> base
                         }
                     }
-                    if ((e as? ApiException)?.field !in setOf("weightKg", "cargoType")) {
+                    if ((e as? ApiException)?.field !in BOOKING_FIELDS) {
                         _state.update { it.copy(message = UiMessage.error(e.userMessage())) }
                     }
                 },

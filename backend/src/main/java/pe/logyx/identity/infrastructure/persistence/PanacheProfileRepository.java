@@ -38,4 +38,23 @@ public class PanacheProfileRepository implements ProfileRepository {
     public void insert(Profile profile) {
         ProfileEntity.from(profile).persist();
     }
+
+    @Override
+    public void update(Profile profile) {
+        ProfileEntity e = ProfileEntity.findById(profile.id());
+        if (e == null) throw new IllegalStateException("Usuario inexistente: " + profile.id());
+        e.apply(profile);
+    }
+
+    @Override
+    public List<Profile> listOrganizationUsers(UUID organizationId) {
+        return ProfileEntity.<ProfileEntity>list("organizationId = ?1 and role <> ?2 order by createdAt, id",
+                organizationId, Profile.Role.DRIVER).stream().map(ProfileEntity::toDomain).toList();
+    }
+
+    @Override
+    public long countActiveAdmins(UUID organizationId) {
+        return ProfileEntity.count("organizationId = ?1 and role = ?2 and active = true and invitationPending = false",
+                organizationId, Profile.Role.ADMIN);
+    }
 }

@@ -11,6 +11,7 @@ const path = Astro.url.pathname;
 const session = Astro.locals.session;
 const nav = [
   { href: '/#como-funciona', label: 'Cómo funciona' },
+  { href: '/#corredor', label: 'Corredor' },
   { href: '/#para-quien', label: 'Para quién' },
   { href: '/#confianza', label: 'Confianza' },
   { href: '/#preguntas', label: 'Preguntas' },
@@ -39,10 +40,10 @@ const cols = [
   <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-surface focus:text-ink-900 focus:px-3 focus:py-2">Saltar al contenido</a>
   <div class="flex min-h-screen flex-col">
     <header class="site-header sticky top-0 z-20 border-b border-steel-200/70 bg-steel-100/90 backdrop-blur">
-      <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 lg:px-10">
+      <div class="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between gap-4 px-4 lg:px-10">
         <a href="/" aria-label="OnCargo, inicio" class="shrink-0 rounded-input"><Logo /></a>
         <nav class="hidden items-center gap-1 lg:flex" aria-label="Secciones">
-          {nav.map((n) => <a href={n.href} class="rounded-input px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-surface hover:text-ink-900">{n.label}</a>)}
+          {nav.map((n) => <a href={n.href} class="whitespace-nowrap rounded-input px-2.5 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-surface hover:text-ink-900 xl:px-3">{n.label}</a>)}
         </nav>
         <nav class="flex items-center gap-1.5 sm:gap-2" aria-label="Acceso">
           <div class="hidden sm:block"><ThemeToggle client:load /></div>
@@ -60,7 +61,7 @@ const cols = [
     <main id="contenido" class="flex-1"><slot /></main>
     {footer === 'compact' ? (
       <footer class="border-t border-steel-200 bg-surface">
-        <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-ink-500 sm:flex-row lg:px-10">
+        <div class="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-ink-500 sm:flex-row lg:px-10">
           <span>© 2026 OnCargo · Fletes entre Lima y la sierra sur</span>
           <div class="sm:hidden"><ThemeToggle client:load /></div>
           <nav class="flex gap-4" aria-label="Información legal">
@@ -71,7 +72,7 @@ const cols = [
       </footer>
     ) : (
       <footer class="border-t border-steel-200 bg-surface">
-        <div class="mx-auto w-full max-w-6xl px-4 pb-6 pt-12 lg:px-10">
+        <div class="mx-auto w-full max-w-[1280px] px-4 pb-6 pt-12 lg:px-10">
           <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
             <div class="sm:col-span-2 lg:col-span-1">
               <Logo />
@@ -108,4 +109,86 @@ const cols = [
     .site-header { view-transition-name: site-header; }
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.16s; }
   }
+
+  /* ── Marketing (landing, login, registro, privacidad) ───────────────────────────────────────────
+     Colores de marca fijos para bloques oscuros (iguales en ambos temas): azul marino del logo, petróleo y cian. */
+  /* Las rejillas de una sola columna en móvil no se ensanchan con su contenido (evita desbordes horizontales). */
+  @layer base { main .grid { grid-template-columns: minmax(0, 1fr); } }
+  .mk-dark {
+    --mk-navy: #081f46; --mk-petrol: #0b4f6c; --mk-cyan: #00bfe9;
+    color: #fff;
+    background:
+      radial-gradient(60% 90% at 88% 0%, color-mix(in oklab, var(--mk-petrol) 70%, transparent), transparent 62%),
+      radial-gradient(45% 70% at 0% 100%, color-mix(in oklab, var(--mk-cyan) 14%, transparent), transparent 70%),
+      var(--mk-navy);
+  }
+  /* Cuadrícula técnica y puntos de ruta sobre fondo oscuro. */
+  .mk-grid {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(80% 100% at 80% 0%, #000, transparent 78%);
+  }
+  /* Etiqueta de sección y titulares con más contraste de escala. */
+  .mk-eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-petrol-700); }
+  .mk-eyebrow::before { content: ''; inline-size: 1.25rem; block-size: 2px; background: var(--color-emerald-500); border-radius: 2px; }
+  .mk-dark .mk-eyebrow, .mk-eyebrow--inv { color: rgb(255 255 255 / 0.78); }
+  .mk-display { font-size: clamp(2.125rem, 1.4rem + 3.2vw, 4.25rem); line-height: 1.02; letter-spacing: -0.03em; font-weight: 650; text-wrap: balance; }
+  .mk-h2 { font-size: clamp(1.75rem, 1.2rem + 2vw, 3rem); line-height: 1.06; letter-spacing: -0.025em; font-weight: 650; text-wrap: balance; }
+  .mk-lead { text-wrap: pretty; max-inline-size: 62ch; }
+  .mk-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  /* Tarjeta del producto: relieve al pasar el cursor (solo con movimiento permitido). */
+  .mk-card { transition: border-color 0.2s, box-shadow 0.2s; }
+  .mk-card:hover { border-color: color-mix(in oklab, var(--color-petrol-700) 45%, var(--color-steel-200)); box-shadow: 0 14px 34px -18px rgb(8 31 70 / 0.35); }
+  @media (prefers-reduced-motion: no-preference) {
+    .mk-card { transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.2s, box-shadow 0.25s; }
+    .mk-card:hover { transform: translateY(-3px); }
+    .mk-pulse { animation: mk-pulse 2s ease-in-out infinite; }
+    .mk-ping::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0.45; animation: mk-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+  }
+  @keyframes mk-pulse { 50% { opacity: 0.45; } }
+  @keyframes mk-ping { 75%, 100% { transform: scale(2.6); opacity: 0; } }
+  /* Entrada por scroll (scroll-driven animations). Solo `forwards`: fuera del rango (impresión, capturas, sin soporte o movimiento reducido) el contenido queda visible. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports ((animation-timeline: view()) and (animation-range: entry)) {
+      @keyframes mk-rise { from { opacity: 0; translate: 0 32px; } }
+      @keyframes mk-fade { from { opacity: 0; } }
+      @keyframes mk-slide-l { from { opacity: 0; translate: -40px 0; } }
+      @keyframes mk-slide-r { from { opacity: 0; translate: 40px 0; } }
+      @keyframes mk-draw { from { stroke-dashoffset: var(--len, 1000); } to { stroke-dashoffset: 0; } }
+      .mk-rv { animation: mk-rise linear forwards; animation-timeline: view(); animation-range: entry calc(var(--i, 0) * 5%) entry calc(38% + var(--i, 0) * 5%); }
+      .mk-rv-l { animation: mk-slide-l linear forwards; animation-timeline: view(); animation-range: entry 0% entry 45%; }
+      .mk-rv-r { animation: mk-slide-r linear forwards; animation-timeline: view(); animation-range: entry 0% entry 45%; }
+      .mk-rv-fade { animation: mk-fade linear forwards; animation-timeline: view(); animation-range: entry 0% entry 50%; }
+      .mk-draw { stroke-dasharray: var(--len, 1000); animation: mk-draw linear forwards; animation-timeline: view(); animation-range: entry 10% cover 40%; }
+    }
+    /* Entrada del hero (no depende del scroll). */
+    .mk-in { animation: mk-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+    @keyframes mk-in { from { opacity: 0; translate: 0 14px; } }
+  }
 </style>
+
+<script>
+  // Contadores: el HTML ya trae el valor final (sin JS o con movimiento reducido no se anima nada).
+  const els = document.querySelectorAll<HTMLElement>('[data-count]');
+  if (els.length && matchMedia('(prefers-reduced-motion: no-preference)').matches && 'IntersectionObserver' in window) {
+    const fmt = (v: number, d: number) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        const el = e.target as HTMLElement;
+        const to = Number(el.dataset.count), d = Number(el.dataset.dec ?? 0);
+        const t0 = performance.now(), dur = 1100;
+        const tick = (t: number) => {
+          const k = Math.min(1, (t - t0) / dur), eased = 1 - Math.pow(1 - k, 3);
+          el.textContent = fmt(to * eased, d);
+          if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.4 });
+    els.forEach((el) => io.observe(el));
+  }
+</script>

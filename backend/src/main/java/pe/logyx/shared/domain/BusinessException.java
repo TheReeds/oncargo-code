@@ -39,8 +39,14 @@ public class BusinessException extends RuntimeException {
         return new BusinessException(409, code, message, field);
     }
 
+    /**
+     * 404 con el género correcto (F42): "Solicitud no encontrada", "Envío no encontrado". Son femeninos los sustantivos
+     * terminados en -a, -ción, -dad y -tud (Solicitud, Oferta, Incidencia, Organización, Parada, Reserva…).
+     */
     public static BusinessException notFound(String what) {
-        return new BusinessException(404, "LOGYX-GEN-404", what + " no encontrado");
+        String w = what.trim().toLowerCase(java.util.Locale.ROOT);
+        boolean feminine = w.endsWith("a") || w.endsWith("ción") || w.endsWith("dad") || w.endsWith("tud");
+        return new BusinessException(404, "LOGYX-GEN-404", what + (feminine ? " no encontrada" : " no encontrado"));
     }
 
     public static BusinessException forbidden(String message) {

@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { listMyBids } from '@/features/marketplace/server';
 import MyBidsTable from '@/features/marketplace/components/MyBidsTable';
 import { formatMoney } from '@/lib/format';
+import { bidState } from '@/features/marketplace/bid-state';
 let rows: Awaited<ReturnType<typeof listMyBids>> = [];
 let loadError: string | null = null;
 try {
@@ -17,10 +18,10 @@ try {
   loadError = e instanceof Error ? e.message : 'No pudimos cargar tus ofertas.';
 }
 const openRequestId = Astro.url.searchParams.get('solicitud');
-const by = (s: string) => rows.filter((r) => r.myBid!.status === s);
+const by = (s: string) => rows.filter((r) => bidState(r) === s);
 const pending = by('PENDING').length;
 const accepted = by('ACCEPTED');
-const rejected = by('REJECTED').length;
+const lost = by('LOST').length;
 const won = accepted.reduce((n, r) => n + (r.myBid!.amount ?? 0), 0);
 ---
 <AppShell title="Mis ofertas" active="ofertas">
@@ -35,7 +36,7 @@ const won = accepted.reduce((n, r) => n + (r.myBid!.amount ?? 0), 0);
         <KpiTile label="Ofertas enviadas" value={rows.length} context="en total" icon={Gavel} />
         <KpiTile label="Pendientes" value={pending} context={pending ? 'esperan respuesta de la PYME' : 'ninguna por ahora'} icon={Clock} tone="warn" />
         <KpiTile label="Aceptadas" value={accepted.length} context={accepted.length ? `${formatMoney(won)} adjudicados` : 'aún ninguna'} icon={CircleCheck} tone="money" href={accepted.length ? '/transportista/envios' : undefined} />
-        <KpiTile label="Rechazadas" value={rejected} context={rejected ? 'otra oferta fue elegida' : 'ninguna por ahora'} icon={CircleX} tone={rejected ? 'alert' : 'default'} />
+        <KpiTile label="Perdidas" value={lost} context={lost ? 'otra oferta fue elegida' : 'ninguna por ahora'} icon={CircleX} tone={lost ? 'alert' : 'default'} />
       </KpiGrid>
     )}
     {!loadError && <MyBidsTable client:load rows={rows} openRequestId={openRequestId} />}

@@ -20,6 +20,7 @@ import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 import pe.logyx.operator.application.AssignmentCandidate;
+import pe.logyx.operator.application.AuditRecord;
 import pe.logyx.operator.application.OperatorAlerts;
 import pe.logyx.operator.application.OperatorMetrics;
 import pe.logyx.shipment.application.ShipmentSummary;
@@ -111,6 +112,20 @@ public final class OperatorDtos {
         }
     }
 
+    /**
+     * Fila del visor de auditoría (F05). {@code actor*} y {@code organization*} pueden ser nulos (acción del sistema).
+     * {@code entity} es el tipo (p. ej. {@code shipment_request}, {@code bid}) y {@code entityId} su id.
+     */
+    public record AuditRow(long id, OffsetDateTime occurredAt, UUID actorProfileId, String actorEmail,
+                           String actorName, UUID organizationId, String organizationName, OrgType organizationType,
+                           String action, String entity, UUID entityId, String detail) {
+        static AuditRow of(AuditRecord r) {
+            return new AuditRow(r.id(), r.occurredAt(), r.actorProfileId(), r.actorEmail(), r.actorName(),
+                    r.organizationId(), r.organizationName(), r.organizationType(), r.action(), r.entity(),
+                    r.entityId(), r.detail());
+        }
+    }
+
     /** Fila del listado global de solicitudes. */
     public record OperatorRequestRow(UUID id, UUID requesterOrgId, String requesterName, City originCity,
                                      City destinationCity, CargoType cargoType, String cargoDescription,
@@ -147,11 +162,15 @@ public final class OperatorDtos {
 
     public record OperatorMetricsView(long openRequests, long requestsAtRisk, long matchedRequests,
                                       long cancelledRequests, long shipmentsPending, long shipmentsInTransit,
-                                      long shipmentsDelivered, long activeIncidents, long pymes, long carriers) {
+                                      long shipmentsDelivered, long activeIncidents, long pymes, long carriers,
+                                      /** Precio acordado total de los envíos no cancelados (S/). */
+                                      BigDecimal gmv,
+                                      /** Precio acordado de los envíos ya entregados (S/). */
+                                      BigDecimal gmvDelivered) {
         static OperatorMetricsView of(OperatorMetrics m) {
             return new OperatorMetricsView(m.openRequests(), m.requestsAtRisk(), m.matchedRequests(),
                     m.cancelledRequests(), m.shipmentsPending(), m.shipmentsInTransit(), m.shipmentsDelivered(),
-                    m.activeIncidents(), m.pymes(), m.carriers());
+                    m.activeIncidents(), m.pymes(), m.carriers(), m.gmv(), m.gmvDelivered());
         }
     }
 

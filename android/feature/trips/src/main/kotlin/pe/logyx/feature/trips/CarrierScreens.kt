@@ -172,11 +172,11 @@ fun PublishTripScreen(
                     )
                     LogyxTextField(
                         f.notes, onNotes, stringResource(R.string.trips_f_notes), optional = true, singleLine = false, minLines = 2,
-                        hint = stringResource(R.string.trips_f_notes_hint),
+                        hint = stringResource(R.string.trips_f_notes_hint), error = e.notes?.asString(),
                     )
                     LogyxButton(
                         stringResource(R.string.trips_publish_action), onSubmit,
-                        variant = ButtonVariant.Primary, loading = state.submitting,
+                        variant = ButtonVariant.Primary, loading = state.submitting, requiresOperate = true,
                     )
                 }
             }
@@ -220,7 +220,7 @@ fun CarrierTripsScreen(
                         item {
                             LogyxButton(
                                 stringResource(R.string.trips_publish_action), onPublish,
-                                size = ButtonSize.Large, icon = Icons.Rounded.Add,
+                                size = ButtonSize.Large, icon = Icons.Rounded.Add, requiresOperate = true,
                             )
                         }
                         if (state.trips.isEmpty()) {
@@ -289,11 +289,11 @@ fun CarrierTripDetailScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     LogyxButton(
                                         stringResource(R.string.trips_close_action), onClose, Modifier.weight(1f),
-                                        variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                                        variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true,
                                     )
                                     LogyxButton(
                                         stringResource(R.string.trips_cancel_action), onCancel, Modifier.weight(1f),
-                                        variant = ButtonVariant.Destructive, size = ButtonSize.Medium,
+                                        variant = ButtonVariant.Destructive, size = ButtonSize.Medium, requiresOperate = true,
                                     )
                                 }
                             }
@@ -321,7 +321,7 @@ fun CarrierTripDetailScreen(
         }
     }
     (state.pending as? TripAction.Reject)?.let { action ->
-        RejectBookingSheet(action.booking, state.rejectReason, state.busy, onRejectReason, onPerform, onDismissConfirm)
+        RejectBookingSheet(action.booking, state.rejectReason, state.busy, onRejectReason, onPerform, onDismissConfirm, error = state.rejectError)
     }
     state.pending?.takeIf { it !is TripAction.Reject }?.let { action ->
         val (title, message, label, destructive) = confirmCopy(action)
@@ -342,6 +342,7 @@ internal fun RejectBookingSheet(
     onReason: (String) -> Unit,
     onReject: () -> Unit,
     onDismiss: () -> Unit,
+    error: String? = null,
 ) {
     LogyxBottomSheet(onDismiss, title = stringResource(R.string.trips_reject_booking_title)) {
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -352,7 +353,7 @@ internal fun RejectBookingSheet(
             LogyxTextField(
                 reason, onReason, stringResource(R.string.trips_reject_reason_label), optional = true, singleLine = false, minLines = 3,
                 hint = stringResource(R.string.trips_reject_reason_hint, reason.length, MAX_REJECT_REASON),
-                placeholder = stringResource(R.string.trips_reject_reason_placeholder),
+                placeholder = stringResource(R.string.trips_reject_reason_placeholder), error = error,
                 modifier = Modifier.testTag("reject-reason"),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -362,7 +363,7 @@ internal fun RejectBookingSheet(
                 )
                 LogyxButton(
                     stringResource(R.string.trips_booking_reject), onReject, Modifier.weight(1f),
-                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, loading = busy,
+                    variant = ButtonVariant.Destructive, size = ButtonSize.Medium, loading = busy, requiresOperate = true,
                 )
             }
         }
@@ -451,13 +452,13 @@ internal fun BookingCard(
         if (forCarrier && booking.status == BookingStatus.PENDING) {
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LogyxButton(stringResource(R.string.trips_booking_reject), onReject, Modifier.weight(1f), variant = ButtonVariant.Destructive, size = ButtonSize.Medium)
-                LogyxButton(stringResource(R.string.trips_booking_confirm), onConfirm, Modifier.weight(1f), variant = ButtonVariant.Money, size = ButtonSize.Medium)
+                LogyxButton(stringResource(R.string.trips_booking_reject), onReject, Modifier.weight(1f), variant = ButtonVariant.Destructive, size = ButtonSize.Medium, requiresOperate = true)
+                LogyxButton(stringResource(R.string.trips_booking_confirm), onConfirm, Modifier.weight(1f), variant = ButtonVariant.Money, size = ButtonSize.Medium, requiresOperate = true)
             }
         }
         if (!forCarrier && onCancel != null && (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED)) {
             Spacer(Modifier.height(12.dp))
-            LogyxButton(stringResource(R.string.trips_booking_cancel), onCancel, variant = ButtonVariant.Destructive, size = ButtonSize.Medium)
+            LogyxButton(stringResource(R.string.trips_booking_cancel), onCancel, variant = ButtonVariant.Destructive, size = ButtonSize.Medium, requiresOperate = true)
         }
     }
 }

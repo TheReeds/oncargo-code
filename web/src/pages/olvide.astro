@@ -1,0 +1,15 @@
+---
+import Public from '@/layouts/Public.astro';
+import AuthShell from '@/features/auth/components/AuthShell.astro';
+import ForgotPasswordForm from '@/features/auth/components/ForgotPasswordForm';
+import { AuthCard } from '@/components/ui/auth-card';
+const email = Astro.url.searchParams.get('email') ?? undefined;
+---
+<Public title="Recuperar contraseña" description="Pide un enlace para crear una contraseña nueva en OnCargo." footer="compact">
+  <AuthShell variant="login">
+    <AuthCard embedded className="mx-auto max-w-[560px] lg:max-w-md" cardClassName="p-5 shadow-lg shadow-chrome/10 sm:p-8" title="¿Olvidaste tu contraseña?" subtitle="Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva.">
+      <ForgotPasswordForm client:load initialEmail={email} />
+      <Fragment slot="footer">¿La recordaste? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/login">Ingresa</a></Fragment>
+    </AuthCard>
+  </AuthShell>
+</Public>

@@ -2,6 +2,7 @@ import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
 import * as s from './server';
+import { LIMITS } from '@/lib/limits';
 
 const id = z.object({ id: z.uuid() });
 
@@ -22,7 +23,7 @@ export const trips = {
     accept: 'json',
     input: z.object({
       originCity: z.string().min(1), destinationCity: z.string().min(1), departureAt: z.string().min(10), vehicleId: z.uuid(),
-      capacityKg: z.number().positive(), pricingMode: z.enum(['PER_KG', 'PER_TRIP']), rate: z.number().positive(), notes: z.string().max(500).optional(),
+      capacityKg: z.number().positive(), pricingMode: z.enum(['PER_KG', 'PER_TRIP']), rate: z.number().positive(), notes: z.string().max(LIMITS.tripNotes).optional(),
     }),
     handler: (i, ctx) => run(() => s.createTrip(requireToken(ctx), i)),
   }),
@@ -31,19 +32,27 @@ export const trips = {
   confirmBooking: defineAction({ accept: 'json', input: id, handler: ({ id }, ctx) => run(() => s.confirmBooking(requireToken(ctx), id)) }),
   rejectBooking: defineAction({
     accept: 'json',
-    input: z.object({ id: z.uuid(), reason: z.string().max(300).optional() }),
+    input: z.object({ id: z.uuid(), reason: z.string().max(LIMITS.bookingRejectReason).optional() }),
     handler: ({ id, reason }, ctx) => run(() => s.rejectBooking(requireToken(ctx), id, reason)),
   }),
   book: defineAction({
     accept: 'json',
     input: z.object({
-      tripId: z.uuid(), weightKg: z.number().positive(), cargoDescription: z.string().min(1).max(500),
-      cargoType: z.enum(['GENERAL', 'FRAGILE', 'PERISHABLE', 'HAZARDOUS', 'BULK', 'OVERSIZED']), pickupAddress: z.string().min(1).max(300), deliveryAddress: z.string().min(1).max(300),
+      tripId: z.uuid(), weightKg: z.number().positive(), cargoDescription: z.string().min(1).max(LIMITS.bookingCargoDescription),
+      cargoType: z.enum(['GENERAL', 'FRAGILE', 'PERISHABLE', 'HAZARDOUS', 'BULK', 'OVERSIZED']), pickupAddress: z.string().min(1).max(LIMITS.bookingAddress), deliveryAddress: z.string().min(1).max(LIMITS.bookingAddress),
     }),
     handler: ({ tripId, ...body }, ctx) => run(() => s.createBooking(requireToken(ctx), tripId, body)),
   }),
   cancelBooking: defineAction({ accept: 'json', input: id, handler: ({ id }, ctx) => run(() => s.cancelBooking(requireToken(ctx), id)) }),
   generateSmartLoads: defineAction({ accept: 'json', handler: (_, ctx) => run(() => s.generateSmartLoads(requireToken(ctx))) }),
-  acceptSmartLoad: defineAction({ accept: 'json', input: id, handler: ({ id }, ctx) => run(() => s.acceptSmartLoad(requireToken(ctx), id)) }),
+  acceptSmartLoad: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.uuid(),
+      items: z.array(z.object({ requestId: z.uuid(), amount: z.number().positive('Ingresa un monto válido') })).optional(),
+      notes: z.string().trim().max(LIMITS.smartLoadNotes).optional(),
+    }),
+    handler: ({ id, items, notes }, ctx) => run(() => s.acceptSmartLoad(requireToken(ctx), id, { items, notes: notes || undefined })),
+  }),
   rejectSmartLoad: defineAction({ accept: 'json', input: id, handler: ({ id }, ctx) => run(() => s.rejectSmartLoad(requireToken(ctx), id)) }),
 };

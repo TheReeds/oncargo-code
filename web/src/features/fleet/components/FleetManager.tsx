@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
-import { CheckCircle2, MoreHorizontal, Plus, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
+import { Ban, CheckCircle2, KeyRound, MoreHorizontal, Plus, RotateCcw, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,9 @@ import { QuickFilters } from '@/components/ui/quick-filters';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { EmptyState } from '@/components/domain/EmptyState';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { confirm } from '@/components/ui/confirm-dialog';
+import { useCan } from '@/lib/use-can';
 import { formatNumber, VEHICLE_LABELS } from '@/lib/format';
 import type { DriverView, VehicleView } from '@/lib/api/server';
 /** campo de la API → clave de error local */
@@ -108,6 +111,66 @@ function DriverDialog({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+function ResetPasswordDialog({ driver, onClose }: { driver: DriverView | null; onClose: () => void }) {
+  const [pw, setPw] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!driver || busy) return;
+    setError(null);
+    if (pw.length < 8) { setFieldError('La contraseña debe tener al menos 8 caracteres.'); return; }
+    setBusy(true);
+    const { error: err } = await actions.fleet.resetDriverPassword({ id: driver.id!, newPassword: pw });
+    setBusy(false);
+    if (err) { const { message, field } = splitActionError(err); if (field === 'newPassword') setFieldError(message); else setError(message); return; }
+    toast.success('Contraseña restablecida', `${driver.fullName} debe ingresar de nuevo con la contraseña nueva.`);
+    setPw('');
+    onClose();
+  }
+  return (
+    <Dialog open={!!driver} onOpenChange={(o) => !o && !busy && onClose()} title="Restablecer contraseña" description={driver ? `${driver.fullName} · ${driver.email}` : undefined}
+      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="driver-reset-form" loading={busy}><KeyRound aria-hidden="true" /> {busy ? 'Restableciendo…' : 'Restablecer contraseña'}</Button></>}>
+      <form id="driver-reset-form" onSubmit={submit} noValidate className="space-y-4">
+        {error && <Alert tone="error">{error}</Alert>}
+        <Alert tone="info">Se cerrarán las sesiones del conductor (también en la app móvil). Comparte la contraseña nueva con él por un canal seguro.</Alert>
+        <Field label="Contraseña nueva" htmlFor="drv-new-pass" error={fieldError} hint="Entre 8 y 72 caracteres. El conductor podrá cambiarla desde su cuenta.">
+          <PasswordInput id="drv-new-pass" value={pw} maxLength={72} autoComplete="new-password" aria-invalid={!!fieldError} onChange={(e) => { setPw(e.currentTarget.value); setFieldError(undefined); }} />
+        </Field>
+      </form>
+    </Dialog>
+  );
+}
+
+function DriverActions({ d, onReset }: { d: DriverView; onReset: (d: DriverView) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function toggle() {
+    if (d.active !== false) {
+      const ok = await confirm({ title: `¿Desactivar a ${d.fullName}?`, description: 'Perderá el acceso a la app de inmediato y no podrás asignarle envíos. Podrás reactivarlo cuando quieras.', confirmLabel: 'Desactivar conductor', tone: 'destructive' });
+      if (!ok) return;
+    }
+    setBusy(true);
+    const { error } = d.active !== false ? await actions.fleet.deactivateDriver({ id: d.id! }) : await actions.fleet.reactivateDriver({ id: d.id! });
+    if (error) { toast.error(splitActionError(error).message); setBusy(false); return; }
+    flash(d.active !== false ? 'Conductor desactivado' : 'Conductor reactivado');
+    window.location.reload();
+  }
+  return (
+    <DropdownMenu>
+      <Tooltip content="Acciones del conductor"><DropdownMenuTrigger asChild><Button variant="outline" size="sm" loading={busy} aria-label={`Acciones de ${d.fullName}`} className="@min-[720px]:border-transparent @min-[720px]:px-2"><MoreHorizontal /><span className="@min-[720px]:sr-only">Acciones</span></Button></DropdownMenuTrigger></Tooltip>
+      <DropdownMenuContent>
+        <DropdownMenuLabel>{d.fullName}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => onReset(d)}><KeyRound aria-hidden="true" /> Restablecer contraseña</DropdownMenuItem>
+        {d.active !== false
+          ? <DropdownMenuItem destructive onSelect={toggle}><Ban aria-hidden="true" /> Desactivar conductor</DropdownMenuItem>
+          : <DropdownMenuItem onSelect={toggle}><RotateCcw aria-hidden="true" /> Reactivar conductor</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const STATUS_ACTIONS = [
   { status: 'AVAILABLE', label: 'Marcar como disponible', icon: CheckCircle2 },
   { status: 'IN_ROUTE', label: 'Marcar en ruta', icon: Route },
@@ -138,6 +201,9 @@ function VehicleActions({ v }: { v: VehicleView }) {
 }
 
 export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleView[]; drivers: DriverView[] }) {
+  const canOperate = useCan('OPERATE');
+  const canDrivers = useCan('MANAGE_DRIVERS');
+  const [resetFor, setResetFor] = useState<DriverView | null>(null);
   const [dialog, setDialog] = useState<'vehicle' | 'driver' | null>(null);
   const [vf, setVf] = useState('');
   const count = (s: string) => vehicles.filter((v) => v.status === s).length;
@@ -147,6 +213,8 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
   const onDuty = drivers.filter((d) => d.status === 'ON_DUTY').length;
   return (
     <div className="space-y-6">
+      <ReadOnlyNotice>No puedes agregar vehículos ni cambiar su estado.</ReadOnlyNotice>
+      {canOperate && !canDrivers && <p role="note" data-testid="drivers-admin-only" className="rounded-input border border-steel-200 bg-steel-100/70 px-3 py-2 text-xs text-ink-700">Las cuentas de conductores las administra un administrador de tu empresa.</p>}
       <KpiGrid>
         <KpiTile label="Vehículos" value={vehicles.length} context="en tu flota" icon={Truck} tone="petrol" />
         <KpiTile label="Disponibles" value={count('AVAILABLE')} context="listos para ofertar" icon={CheckCircle2} tone="money" />
@@ -157,10 +225,10 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Truck className="size-4 text-petrol-700" aria-hidden="true" /> Vehículos <span className="font-mono text-ink-500">({vehicles.length})</span></CardTitle>
-          <Button size="sm" onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>
+          {canOperate && <Button size="sm" onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>}
         </CardHeader>
         {vehicles.length === 0 ? (
-          <EmptyState title="Registra tu primer vehículo" description="Necesitas al menos un vehículo disponible para enviar ofertas." action={<Button onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button>} />
+          <EmptyState title="Registra tu primer vehículo" description="Necesitas al menos un vehículo disponible para enviar ofertas." action={canOperate ? <Button onClick={() => setDialog('vehicle')}><Plus /> Agregar vehículo</Button> : undefined} />
         ) : (
           <>
             <div className="border-b border-steel-200 px-4 py-3 sm:px-5">
@@ -184,7 +252,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
                       <Td label="Capacidad" className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
                       <Td label="Volumen" className="whitespace-nowrap text-right font-mono tabular-nums">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
                       <Td label="Estado"><StatusPill status={v.status!} /></Td>
-                      <Td actions className="text-right"><VehicleActions v={v} /></Td>
+                      <Td actions className="text-right">{canOperate && <VehicleActions v={v} />}</Td>
                     </Tr>
                   ))}
                 </tbody>
@@ -197,20 +265,22 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><UserRound className="size-4 text-petrol-700" aria-hidden="true" /> Conductores <span className="font-mono text-ink-500">({drivers.length})</span></CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>
+          {canDrivers && <Button size="sm" variant="outline" onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>}
         </CardHeader>
         {drivers.length === 0 ? (
-          <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={<Button onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button>} />
+          <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={canDrivers ? <Button onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button> : undefined} />
         ) : (
           <Table label="Conductores" stack>
-            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th>Correo</Th><Th>Estado</Th></tr></thead>
+            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th>Correo</Th><Th>Estado</Th><Th>Acceso</Th>{canDrivers && <Th className="w-12"><span className="sr-only">Acciones</span></Th>}</tr></thead>
             <tbody>
               {drivers.map((d) => (
-                <Tr key={d.id}>
+                <Tr key={d.id} data-testid="driver-row" className={d.active === false ? 'opacity-70' : undefined}>
                   <Td primary><div className="flex items-center gap-3"><Avatar name={d.fullName ?? '?'} /><div className="min-w-0 font-medium">{d.fullName}</div></div></Td>
                   <Td label="Licencia" className="font-mono">{d.licenseNumber}</Td>
                   <Td label="Correo" className="text-ink-700"><span className="min-w-0 truncate">{d.email}</span></Td>
-                  <Td label="Estado"><StatusPill status={d.status!} /></Td>
+                  <Td label="Estado">{d.active === false ? <span className="text-ink-500">—</span> : <StatusPill status={d.status!} />}</Td>
+                  <Td label="Acceso"><StatusPill kind="account" status={d.active === false ? 'INACTIVE' : 'ACTIVE'} /></Td>
+                  {canDrivers && <Td actions className="text-right"><DriverActions d={d} onReset={setResetFor} /></Td>}
                 </Tr>
               ))}
             </tbody>
@@ -220,6 +290,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
 
       <VehicleDialog open={dialog === 'vehicle'} onClose={close} />
       <DriverDialog open={dialog === 'driver'} onClose={close} />
+      <ResetPasswordDialog driver={resetFor} onClose={() => setResetFor(null)} />
     </div>
   );
 }

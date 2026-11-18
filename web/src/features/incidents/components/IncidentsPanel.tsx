@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useCallback, useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
 import { useLiveRefresh } from '@/lib/realtime';
@@ -11,7 +13,7 @@ import { Alert } from '@/components/ui/alert';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { toast, flash } from '@/components/ui/toaster';
-import { splitActionError } from '@/lib/action-error';
+import { toFormErrors } from '@/lib/action-error';
 import { INCIDENT_CATEGORY_LABELS, formatDateTime } from '@/lib/format';
 import { CATEGORY_OPTIONS } from '../lib';
 import type { IncidentView } from '../server';
@@ -20,6 +22,7 @@ const MAX = 2000;
 
 /** Pestaña "Incidencias" de un envío: lista, detalle y reporte (RN11: una activa congela el envío). */
 export default function IncidentsPanel({ shipmentId, status, hasActiveIncident }: { shipmentId: string; perspective: 'PYME' | 'CARRIER'; status: string; hasActiveIncident?: boolean }) {
+  const canOperate = useCan('OPERATE');
   const [list, setList] = useState<IncidentView[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -54,9 +57,9 @@ export default function IncidentsPanel({ shipmentId, status, hasActiveIncident }
     const { error } = await actions.incidents.report({ shipmentId, category: category as never, description });
     setBusy(false);
     if (error) {
-      const { message, field } = splitActionError(error);
-      if (field === 'description' || field === 'category') setErrors({ [field]: message });
-      else toast.error(message);
+      const r = toFormErrors(error, ['description', 'category']); // RN07: `LOGYX-NEG-001` queda bajo la descripción
+      if (Object.keys(r.errors).length) { setErrors(r.errors); document.getElementById(`inc-${Object.keys(r.errors)[0]}`)?.focus(); }
+      else toast.error(r.formError ?? 'No pudimos reportar la incidencia.');
       return;
     }
     setOpen(false);
@@ -72,8 +75,9 @@ export default function IncidentsPanel({ shipmentId, status, hasActiveIncident }
           <h3 className="text-[15px] font-semibold text-ink-900">Incidencias del envío</h3>
           <p className="text-sm text-ink-500">Reporta daños, retrasos u otros problemas. Un operador de LOGYX te ayudará a resolverlos.</p>
         </div>
-        <Button variant="destructive" onClick={() => { reset(); setOpen(true); }} disabled={blocked}><TriangleAlert /> Reportar incidencia</Button>
+        {canOperate && <Button variant="destructive" onClick={() => { reset(); setOpen(true); }} disabled={blocked}><TriangleAlert /> Reportar incidencia</Button>}
       </div>
+      <ReadOnlyNotice>No puedes reportar incidencias.</ReadOnlyNotice>
       {active && <p className="text-sm text-ink-500">Ya hay una incidencia activa en este envío (LOGYX-INC-001). Podrás reportar otra cuando se resuelva.</p>}
       {cancelled && <p className="text-sm text-ink-500">Este envío fue cancelado, por eso no se pueden reportar incidencias.</p>}
 

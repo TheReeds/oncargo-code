@@ -20,7 +20,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.LocalShipping
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ReportProblem
@@ -67,6 +70,9 @@ import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxCard
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
 import pe.logyx.core.designsystem.components.LogyxFilterChip
+import pe.logyx.core.designsystem.components.LogyxReasonSheet
+import pe.logyx.core.designsystem.components.VehicleChoiceList
+import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.designsystem.components.LogyxScreen
 import pe.logyx.core.designsystem.components.MessageEffect
 import pe.logyx.core.designsystem.components.MessageKind
@@ -79,6 +85,7 @@ import pe.logyx.core.designsystem.components.SkeletonList
 import pe.logyx.core.designsystem.components.RadioCardRow
 import pe.logyx.core.designsystem.components.StatusPill
 import pe.logyx.core.designsystem.components.StopTimeline
+import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.pill
 import pe.logyx.core.model.DriverStatus
@@ -86,6 +93,7 @@ import pe.logyx.core.model.DriverView
 import pe.logyx.core.model.ShipmentStatus
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.VehicleType
+import pe.logyx.core.model.needsDriver
 
 @Composable
 fun ShipmentsRoute(onOpen: (String) -> Unit, viewModel: ShipmentsViewModel = koinViewModel()) {
@@ -99,6 +107,7 @@ private enum class ShipmentFilter(val labelRes: Int, val statuses: Set<ShipmentS
     Pending(R.string.shipments_filter_pending, setOf(ShipmentStatus.PENDING)),
     InTransit(R.string.shipments_filter_in_transit, setOf(ShipmentStatus.IN_TRANSIT)),
     Delivered(R.string.shipments_filter_delivered, setOf(ShipmentStatus.DELIVERED)),
+    Cancelled(R.string.shipments_filter_cancelled, setOf(ShipmentStatus.CANCELLED)),
 }
 
 @Composable
@@ -172,6 +181,10 @@ private fun ShipmentCard(s: ShipmentView, isCarrier: Boolean, onClick: () -> Uni
             ),
             style = MaterialTheme.typography.bodyMedium, color = muted,
         )
+        s.pickupDate?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.shipments_pickup_format, Fmt.date(it)), style = MaterialTheme.typography.bodyMedium, color = muted)
+        }
         val driver = s.driverName
         if (driver != null) {
             Spacer(Modifier.height(4.dp))
@@ -179,10 +192,18 @@ private fun ShipmentCard(s: ShipmentView, isCarrier: Boolean, onClick: () -> Uni
                 Text(driver, style = MaterialTheme.typography.bodyMedium)
                 s.vehiclePlate?.let { Text(it, style = LogyxText.mono, color = muted) }
             }
-        } else {
+        } else if (s.status != ShipmentStatus.CANCELLED) {
             Spacer(Modifier.height(8.dp))
-            if (isCarrier) InfoChip(stringResource(R.string.shipments_driver_missing), emphasized = true)
-            s.vehiclePlate?.let { Text(it, style = LogyxText.mono, color = muted) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (s.needsDriver) InfoChip(stringResource(R.string.shipments_driver_missing), emphasized = isCarrier)
+                s.vehiclePlate?.let { Text(it, style = LogyxText.mono, color = muted) }
+            }
+        }
+        if (s.status == ShipmentStatus.CANCELLED) {
+            s.cancellationReason?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.shipments_cancel_reason_format, it), style = MaterialTheme.typography.bodyMedium, color = muted, maxLines = 2)
+            }
         }
     }
 }
@@ -207,8 +228,18 @@ fun ShipmentDetailRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     ShipmentDetailScreen(
-        state, onBack, viewModel::refresh, viewModel::openDriverSheet, viewModel::dismissDriverSheet, viewModel::assign, viewModel::onMessageShown,
+        state, onBack, viewModel::refresh, viewModel::onMessageShown,
         ShipmentLinks(onOpenDocuments, onOpenIncidents, onReportIncident, onReview),
+        ShipmentActions(
+            onOpenDrivers = viewModel::openDriverSheet, onDismissDrivers = viewModel::dismissDriverSheet,
+            onPickDriver = viewModel::pickDriver, onCancelPick = viewModel::cancelPick,
+            onDriverReason = viewModel::onDriverReason, onConfirmDriver = viewModel::confirmPendingDriver,
+            onOpenCancel = viewModel::openCancel, onDismissCancel = viewModel::dismissCancel,
+            onCancelReason = viewModel::onCancelReason, onConfirmCancel = viewModel::confirmCancel,
+            onOpenVehicles = viewModel::openVehicleSheet, onDismissVehicles = viewModel::dismissVehicleSheet,
+            onSelectVehicle = viewModel::selectVehicle, onVehicleReason = viewModel::onVehicleReason,
+            onConfirmVehicle = viewModel::confirmVehicle,
+        ),
     )
 }
 
@@ -220,21 +251,36 @@ data class ShipmentLinks(
     val onReview: () -> Unit = {},
 )
 
+/** Intenciones del detalle: conductor (asignar/relevar), cancelar y cambiar vehículo. */
+class ShipmentActions(
+    val onOpenDrivers: () -> Unit = {},
+    val onDismissDrivers: () -> Unit = {},
+    val onPickDriver: (DriverView) -> Unit = {},
+    val onCancelPick: () -> Unit = {},
+    val onDriverReason: (String) -> Unit = {},
+    val onConfirmDriver: () -> Unit = {},
+    val onOpenCancel: () -> Unit = {},
+    val onDismissCancel: () -> Unit = {},
+    val onCancelReason: (String) -> Unit = {},
+    val onConfirmCancel: () -> Unit = {},
+    val onOpenVehicles: () -> Unit = {},
+    val onDismissVehicles: () -> Unit = {},
+    val onSelectVehicle: (String) -> Unit = {},
+    val onVehicleReason: (String) -> Unit = {},
+    val onConfirmVehicle: () -> Unit = {},
+)
+
 @Composable
 fun ShipmentDetailScreen(
     state: ShipmentDetailUiState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
-    onOpenDrivers: () -> Unit,
-    onDismissDrivers: () -> Unit,
-    onAssign: (DriverView) -> Unit,
     onMessageShown: () -> Unit,
     links: ShipmentLinks = ShipmentLinks(),
+    actions: ShipmentActions = ShipmentActions(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
-    var pending by remember { mutableStateOf<DriverView?>(null) }
-    LaunchedEffect(state.assigning) { if (!state.assigning) pending = null }
 
     LogyxScreen(stringResource(R.string.shipments_detail_title), onBack = onBack, snackbar = snackbar) { padding ->
         val s = state.shipment
@@ -243,30 +289,66 @@ fun ShipmentDetailScreen(
                 state.loading -> SkeletonList(Modifier.padding(16.dp), count = 2)
                 s == null -> ErrorState(state.error ?: stringResource(R.string.shipments_detail_not_found), onRefresh)
                 else -> Refreshable(state.refreshing, onRefresh) {
-                    TrackingContent(state, s, onOpenDrivers, links)
+                    TrackingContent(state, s, actions, links)
                 }
             }
         }
         state.drivers?.let { drivers ->
-            val s = state.shipment
             DriversSheet(
-                drivers = drivers,
-                loading = state.driversLoading,
-                onDismiss = onDismissDrivers,
-                onPick = { pending = it },
+                drivers = drivers, loading = state.driversLoading, error = state.driverError?.asString(),
+                relieving = s?.driverId != null, onDismiss = actions.onDismissDrivers, onPick = actions.onPickDriver,
             )
-            pending?.let { d ->
-                LogyxConfirmDialog(
-                    title = stringResource(R.string.shipments_confirm_title, d.fullName),
-                    message = stringResource(
-                        R.string.shipments_confirm_message,
-                        cityLabel(s?.originCity), cityLabel(s?.destinationCity),
-                    ),
-                    confirmLabel = stringResource(R.string.shipments_confirm_action),
-                    onConfirm = { onAssign(d) },
-                    onDismiss = { if (!state.assigning) pending = null },
-                    dismissLabel = stringResource(R.string.shipments_confirm_dismiss),
-                    loading = state.assigning,
+            state.pendingDriver?.let { d ->
+                if (s?.driverId == null) {
+                    LogyxConfirmDialog(
+                        title = stringResource(R.string.shipments_confirm_title, d.fullName),
+                        message = stringResource(R.string.shipments_confirm_message, cityLabel(s?.originCity), cityLabel(s?.destinationCity)),
+                        confirmLabel = stringResource(R.string.shipments_confirm_action),
+                        onConfirm = actions.onConfirmDriver,
+                        onDismiss = actions.onCancelPick,
+                        dismissLabel = stringResource(R.string.shipments_confirm_dismiss),
+                        loading = state.assigning,
+                    )
+                } else {
+                    LogyxReasonSheet(
+                        title = stringResource(R.string.shipments_relieve_title, d.fullName),
+                        message = stringResource(R.string.shipments_relieve_message, s.driverName ?: stringResource(R.string.shipments_detail_driver_pending)),
+                        reasonLabel = stringResource(R.string.shipments_reason_label),
+                        value = state.driverReason, onValueChange = actions.onDriverReason,
+                        error = state.driverReasonError?.asString(), optional = !state.reasonRequired,
+                        confirmLabel = stringResource(R.string.shipments_relieve_confirm), onConfirm = actions.onConfirmDriver,
+                        onDismiss = actions.onCancelPick, destructive = false, loading = state.assigning,
+                    )
+                }
+            }
+        }
+        state.cancel?.let { c ->
+            LogyxReasonSheet(
+                title = stringResource(R.string.shipments_cancel_title),
+                message = stringResource(R.string.shipments_cancel_message),
+                reasonLabel = stringResource(R.string.shipments_reason_label),
+                value = c.reason, onValueChange = actions.onCancelReason, error = c.reasonError?.asString(),
+                confirmLabel = stringResource(R.string.shipments_cancel_confirm), onConfirm = actions.onConfirmCancel,
+                onDismiss = actions.onDismissCancel, loading = c.submitting,
+            )
+        }
+        state.vehicle?.let { v ->
+            LogyxReasonSheet(
+                title = stringResource(R.string.shipments_vehicle_title),
+                message = stringResource(
+                    if (state.reasonRequired) R.string.shipments_vehicle_message_route else R.string.shipments_vehicle_message,
+                    s?.vehiclePlate ?: stringResource(R.string.shipments_detail_no_vehicle),
+                ),
+                reasonLabel = stringResource(R.string.shipments_reason_label),
+                value = v.reason, onValueChange = actions.onVehicleReason, error = v.reasonError?.asString(),
+                optional = !state.reasonRequired, destructive = false, loading = v.submitting,
+                confirmLabel = stringResource(R.string.shipments_vehicle_confirm), onConfirm = actions.onConfirmVehicle,
+                confirmEnabled = v.selectedId != null && !v.loading, onDismiss = actions.onDismissVehicles,
+            ) {
+                if (v.loading) SkeletonList(count = 2)
+                else VehicleChoiceList(
+                    choices = v.choices, selectedId = v.selectedId, onSelect = actions.onSelectVehicle,
+                    weightKg = s?.weightKg ?: 0.0, volumeM3 = null, error = v.vehicleError?.asString(), enabled = !v.submitting,
                 )
             }
         }
@@ -274,7 +356,7 @@ fun ShipmentDetailScreen(
 }
 
 @Composable
-private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpenDrivers: () -> Unit, links: ShipmentLinks) {
+private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actions: ShipmentActions, links: ShipmentLinks) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val dash = stringResource(R.string.shipments_no_value)
     val mapDescription = stringResource(R.string.shipments_detail_map_description, cityLabel(s.originCity), cityLabel(s.destinationCity))
@@ -282,6 +364,7 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (s.status == ShipmentStatus.CANCELLED) CancellationBanner(s, state.canceller)
         if (s.hasActiveIncident) {
             AlertBanner(
                 stringResource(R.string.shipments_incident_banner),
@@ -291,7 +374,7 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
                 onAction = links.onOpenIncidents,
             )
         }
-        RouteMap(state.origin, state.destination, contentDescription = mapDescription, height = 220.dp)
+        RouteMap(state.origin, state.destination, path = state.route?.points, contentDescription = mapDescription, height = 220.dp)
         LogyxCard(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 StatusPill(s.status.pill())
@@ -307,17 +390,32 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
                 style = LogyxText.mono, color = muted,
             )
             Spacer(Modifier.height(16.dp))
+            InfoRow(stringResource(R.string.shipments_detail_pickup_date), s.pickupDate?.let { Fmt.date(it) } ?: dash)
             InfoRow(stringResource(R.string.shipments_detail_requester), s.requesterName ?: dash)
             InfoRow(stringResource(R.string.shipments_detail_carrier), s.carrierName ?: dash)
             InfoRow(stringResource(R.string.shipments_detail_driver), s.driverName ?: stringResource(R.string.shipments_detail_driver_pending))
-            if (state.canAssign) {
+            if (state.canAssign || state.canRelieveDriver || state.canChangeVehicle) {
                 Spacer(Modifier.height(16.dp))
-                LogyxButton(
-                    stringResource(if (s.driverId == null) R.string.shipments_assign_action else R.string.shipments_change_action),
-                    onOpenDrivers,
-                    variant = if (s.driverId == null) ButtonVariant.Primary else ButtonVariant.Secondary,
-                    icon = Icons.Rounded.Person,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.canAssign) {
+                        LogyxButton(
+                            stringResource(R.string.shipments_assign_action), actions.onOpenDrivers,
+                            icon = Icons.Rounded.Person, requiresOperate = true,
+                        )
+                    }
+                    if (state.canRelieveDriver) {
+                        LogyxButton(
+                            stringResource(R.string.shipments_relieve_action), actions.onOpenDrivers,
+                            variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.SwapHoriz, requiresOperate = true,
+                        )
+                    }
+                    if (state.canChangeVehicle) {
+                        LogyxButton(
+                            stringResource(R.string.shipments_vehicle_action), actions.onOpenVehicles,
+                            variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.LocalShipping, requiresOperate = true,
+                        )
+                    }
+                }
             }
         }
         LogyxCard(Modifier.fillMaxWidth()) {
@@ -336,7 +434,7 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
             )
         }
         if (s.status == ShipmentStatus.DELIVERED && state.canReview == true) {
-            LogyxButton(stringResource(R.string.shipments_review_action), links.onReview, variant = ButtonVariant.Money, icon = Icons.Rounded.Star)
+            LogyxButton(stringResource(R.string.shipments_review_action), links.onReview, variant = ButtonVariant.Money, icon = Icons.Rounded.Star, requiresOperate = true)
         } else if (s.status == ShipmentStatus.DELIVERED && state.hasReviews) {
             LogyxButton(stringResource(R.string.shipments_review_view), links.onReview, variant = ButtonVariant.Secondary, icon = Icons.Rounded.Star)
         }
@@ -347,11 +445,35 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, onOpe
                 LogyxButton(stringResource(R.string.shipments_documents_action), links.onOpenDocuments, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.Description)
                 LogyxButton(stringResource(R.string.shipments_incidents_action), links.onOpenIncidents, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.ReportProblem)
                 if (s.status != ShipmentStatus.CANCELLED && !s.hasActiveIncident) {
-                    LogyxButton(stringResource(R.string.shipments_report_action), links.onReportIncident, variant = ButtonVariant.Ghost, size = ButtonSize.Medium)
+                    LogyxButton(stringResource(R.string.shipments_report_action), links.onReportIncident, variant = ButtonVariant.Ghost, size = ButtonSize.Medium, requiresOperate = true)
+                }
+                if (state.canCancel) {
+                    LogyxButton(
+                        stringResource(R.string.shipments_cancel_action), actions.onOpenCancel,
+                        variant = ButtonVariant.Destructive, size = ButtonSize.Medium, icon = Icons.Rounded.Cancel, requiresOperate = true,
+                    )
                 }
             }
         }
     }
+}
+
+/** Envío cancelado: motivo, fecha y quién lo canceló (V13, F06). */
+@Composable
+private fun CancellationBanner(s: ShipmentView, canceller: Canceller) {
+    val who = when (canceller) {
+        Canceller.SELF -> stringResource(R.string.shipments_cancelled_by_self)
+        Canceller.OTHER -> stringResource(R.string.shipments_cancelled_by_other)
+        Canceller.UNKNOWN -> null
+    }
+    val meta = listOfNotNull(s.cancelledAt?.let { Fmt.dateTime(it) }, who).joinToString(" · ")
+    val reason = s.cancellationReason?.takeIf { it.isNotBlank() }
+    AlertBanner(
+        text = listOfNotNull(reason?.let { stringResource(R.string.shipments_cancel_reason_format, it) }, meta.takeIf { it.isNotEmpty() })
+            .joinToString("\n").ifEmpty { stringResource(R.string.shipments_cancelled_no_reason) },
+        kind = MessageKind.Error,
+        title = stringResource(R.string.shipments_cancelled_title),
+    )
 }
 
 @Composable
@@ -364,10 +486,17 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun DriversSheet(drivers: List<DriverView>, loading: Boolean, onDismiss: () -> Unit, onPick: (DriverView) -> Unit) {
+private fun DriversSheet(
+    drivers: List<DriverView>,
+    loading: Boolean,
+    error: String?,
+    relieving: Boolean,
+    onDismiss: () -> Unit,
+    onPick: (DriverView) -> Unit,
+) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     val selected = drivers.firstOrNull { it.id == selectedId }
-    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.shipments_sheet_title)) {
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(if (relieving) R.string.shipments_relieve_sheet_title else R.string.shipments_sheet_title)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when {
                 loading -> SkeletonList(count = 3)
@@ -378,11 +507,14 @@ private fun DriversSheet(drivers: List<DriverView>, loading: Boolean, onDismiss:
                 )
                 else -> {
                     drivers.forEach { d -> DriverRow(d, d.id == selectedId) { selectedId = d.id } }
+                    if (error != null) {
+                        Text(error, style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.dangerText)
+                    }
                     LogyxButton(
-                        text = selected?.let { stringResource(R.string.shipments_sheet_continue, it.fullName) }
+                        text = selected?.let { stringResource(if (relieving) R.string.shipments_relieve_continue else R.string.shipments_sheet_continue, it.fullName) }
                             ?: stringResource(R.string.shipments_sheet_continue_none),
                         onClick = { selected?.let(onPick) },
-                        enabled = selected != null,
+                        enabled = selected != null, requiresOperate = true,
                     )
                 }
             }
@@ -416,8 +548,9 @@ private fun ShipmentsScreenPreview() {
             ShipmentsUiState(
                 loading = false, isCarrier = true,
                 items = listOf(
-                    ShipmentView(id = "1", originCity = "LIMA", destinationCity = "AREQUIPA", agreedPrice = 1850.0, vehiclePlate = "ABC-123", status = ShipmentStatus.PENDING, requesterName = "Textiles Andinos"),
+                    ShipmentView(id = "1", originCity = "LIMA", destinationCity = "AREQUIPA", agreedPrice = 1850.0, vehiclePlate = "ABC-123", status = ShipmentStatus.PENDING, requesterName = "Textiles Andinos", pickupDate = "2026-11-20"),
                     ShipmentView(id = "2", originCity = "LIMA", destinationCity = "CUSCO", agreedPrice = 2400.0, vehiclePlate = "XYZ-987", driverName = "Luis Quispe", status = ShipmentStatus.IN_TRANSIT, requesterName = "Café Selva"),
+                    ShipmentView(id = "3", originCity = "LIMA", destinationCity = "TACNA", agreedPrice = 1500.0, status = ShipmentStatus.CANCELLED, requesterName = "Ferretería Sur", cancellationReason = "Se averió el camión"),
                 ),
             ),
             onRefresh = {}, onOpen = {},
@@ -438,7 +571,7 @@ private fun ShipmentDetailScreenPreview() {
                     requesterName = "Textiles Andinos", carrierName = "Transportes Sur",
                 ),
             ),
-            onBack = {}, onRefresh = {}, onOpenDrivers = {}, onDismissDrivers = {}, onAssign = {}, onMessageShown = {},
+            onBack = {}, onRefresh = {}, onMessageShown = {},
         )
     }
 }

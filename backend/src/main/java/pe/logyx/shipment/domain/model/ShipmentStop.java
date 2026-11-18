@@ -53,6 +53,13 @@ public final class ShipmentStop {
         arrivedAt = now;
     }
 
+    /** F49: antes de pedir evidencia o cerrar, la llegada debe estar registrada (LOGYX-TRK-003). */
+    public void ensureArrived() {
+        if (status != Status.ARRIVED) {
+            throw BusinessException.conflict("LOGYX-TRK-003", "Primero registre la llegada a la parada");
+        }
+    }
+
     public void complete(OffsetDateTime now) {
         if (status != Status.ARRIVED) {
             throw BusinessException.conflict("LOGYX-TRK-003", "Primero registre la llegada a la parada");

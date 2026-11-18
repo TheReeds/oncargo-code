@@ -25,6 +25,8 @@ public class UserAccounts {
     @Inject ProfileRepository profiles;
     @Inject PasswordHasher passwords;
     @Inject SystemTx system;
+    @Inject AccountSessions sessions;
+    @Inject pe.logyx.shared.tenancy.TenantContext tenant;
 
     /**
      * Crea la cuenta de un conductor (rol DRIVER) en la organización indicada.
@@ -40,6 +42,33 @@ public class UserAccounts {
                 Profile.Role.DRIVER, OffsetDateTime.now());
         profiles.insert(p);
         return p;
+    }
+
+    /**
+     * Desactiva o reactiva la cuenta de un conductor de la organización actual (F31). Desactivar sube la versión de
+     * sesión: pierde el acceso de inmediato (y sus refresh tokens). El ADMIN lo comprueba quien llama (fleet).
+     */
+    public Profile setDriverActive(UUID profileId, boolean active) {
+        Profile p = driverProfile(profileId);
+        if (active) p.reactivate(); else p.deactivate();
+        profiles.update(p);
+        sessions.revoked(p.id());
+        return p;
+    }
+
+    /** El ADMIN del transportista define una contraseña nueva para su conductor; cierra sus sesiones. */
+    public Profile resetDriverPassword(UUID profileId, String newPassword) {
+        Profile p = driverProfile(profileId);
+        p.changePassword(passwords.hash(newPassword), OffsetDateTime.now());
+        profiles.update(p);
+        sessions.revoked(p.id());
+        return p;
+    }
+
+    private Profile driverProfile(UUID profileId) {
+        return profiles.findById(profileId)
+                .filter(p -> p.isDriver() && p.organizationId().equals(tenant.orgId()))
+                .orElseThrow(() -> BusinessException.notFound("Conductor"));
     }
 
     /** Perfiles visibles para el usuario actual (RLS: los de su organización). */

@@ -85,15 +85,17 @@ test.describe('Operador: listados globales', () => {
     const pyme = await api.registerAccount('PYME');
     await setSession(context, pyme.token, BASE);
     for (const path of ['/operador/solicitudes', '/operador/envios']) {
-      await page.goto(path);
-      await expect(page).toHaveURL(/\/pyme$/);
+      const res = await page.goto(path);
+      expect(res?.status()).toBe(403); // página "Sin acceso" (F58), en la misma URL
+      await expect(page.getByRole('heading', { name: 'No tienes acceso a esta sección' })).toBeVisible();
     }
     const carrier = await api.registerAccount('CARRIER');
     await context.clearCookies();
     await setSession(context, carrier.token, BASE);
     for (const path of ['/operador/solicitudes', '/operador/envios']) {
-      await page.goto(path);
-      await expect(page).toHaveURL(/\/transportista\//);
+      const res = await page.goto(path);
+      expect(res?.status()).toBe(403);
+      await expect(page.getByRole('heading', { name: 'No tienes acceso a esta sección' })).toBeVisible();
     }
     // y la API tampoco se los entrega
     for (const path of ['/operator/requests', '/operator/shipments']) {

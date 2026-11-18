@@ -9,7 +9,7 @@ const t = Astro.url.searchParams.get('tipo');
 ---
 <Public title="Crear cuenta" description="Registra tu empresa en OnCargo para publicar cargas o para ofertar como transportista." footer="compact">
   <AuthShell variant="registro">
-    <AuthCard embedded className="mx-auto max-w-2xl" title="Crea tu cuenta en OnCargo" subtitle="Registra tu empresa para publicar cargas u ofertar como transportista.">
+    <AuthCard embedded className="mx-auto max-w-2xl" cardClassName="p-4 shadow-lg shadow-chrome/10 sm:p-7" title="Crea tu cuenta en OnCargo" subtitle="Registra tu empresa para publicar cargas u ofertar como transportista.">
       <RegisterForm client:load cities={cities} initialType={t === 'transportista' ? 'CARRIER' : 'PYME'} />
       <Fragment slot="footer">¿Ya tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/login">Ingresa</a></Fragment>
     </AuthCard>

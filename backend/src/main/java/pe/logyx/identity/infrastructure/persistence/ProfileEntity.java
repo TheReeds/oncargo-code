@@ -36,13 +36,35 @@ public class ProfileEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
+    @Column(name = "session_version")
+    public int sessionVersion;
+
+    @Column(name = "last_login_at")
+    public OffsetDateTime lastLoginAt;
+
+    @Column(name = "password_changed_at")
+    public OffsetDateTime passwordChangedAt;
+
+    @Column(name = "invitation_pending")
+    public boolean invitationPending;
+
+    @Column(name = "invited_by")
+    public UUID invitedBy;
+
     Profile toDomain() {
         return new Profile(id, organizationId, email, passwordHash, fullName, role, active,
-                consentAcceptedAt, createdAt);
+                consentAcceptedAt, createdAt, sessionVersion, lastLoginAt, passwordChangedAt, invitationPending,
+                invitedBy);
     }
 
     static ProfileEntity from(Profile p) {
         ProfileEntity e = new ProfileEntity();
+        e.apply(p);
+        return e;
+    }
+
+    void apply(Profile p) {
+        ProfileEntity e = this;
         e.id = p.id();
         e.organizationId = p.organizationId();
         e.email = p.email();
@@ -52,6 +74,10 @@ public class ProfileEntity extends PanacheEntityBase {
         e.active = p.active();
         e.consentAcceptedAt = p.consentAcceptedAt();
         e.createdAt = p.createdAt();
-        return e;
+        e.sessionVersion = p.sessionVersion();
+        e.lastLoginAt = p.lastLoginAt();
+        e.passwordChangedAt = p.passwordChangedAt();
+        e.invitationPending = p.invitationPending();
+        e.invitedBy = p.invitedBy();
     }
 }

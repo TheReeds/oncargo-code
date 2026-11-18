@@ -1,118 +1,43 @@
 ---
-import { ArrowRight, ShieldCheck, Lock, Timer, Check, Truck } from '@lucide/astro';
-import { Badge } from '@/components/ui/badge';
-import { RouteLine } from '@/components/domain/RouteLine';
-import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { ArrowRight, ShieldCheck, Truck, Building2 } from '@lucide/astro';
 import BgVideo from '@/components/media/BgVideo.astro';
+import AuctionLive from './AuctionLive.astro';
 
-const bids = [
-  { n: 'Transportes Andinos S.A.C.', a: 'S/ 1,990.00' },
-  { n: 'Fletes del Sur E.I.R.L.', a: 'S/ 1,920.00' },
+const kpis = [
+  { n: 20, u: 'min', t: 'duración máxima de la subasta' },
+  { n: 5, u: 'ofertas', t: 'tope por solicitud; cierra al completarse' },
+  { n: 75, u: '%', t: 'del sugerido es el piso de cada oferta' },
+  { n: 11, u: 'ciudades', t: 'entre Lima y la sierra sur' },
 ];
-const trust = [
-  { icon: ShieldCheck, t: 'RUC verificado' },
-  { icon: Timer, t: 'Subasta de 20 min' },
-  { icon: Lock, t: 'Ley 29733' },
-];
-const facts = [
-  { n: '20', u: 'min', t: 'Duración máxima de cada subasta' },
-  { n: '5', u: 'ofertas', t: 'Tope por solicitud: cierra al completarse' },
-  { n: '75', u: '%', t: 'Piso: nadie oferta bajo este % del sugerido' },
-  { n: '11', u: 'ciudades', t: 'Cubiertas entre Lima y la sierra sur' },
-];
-const cta = 'inline-flex whitespace-nowrap h-12 items-center justify-center gap-2 rounded-input px-6 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+const cta = 'inline-flex h-12 whitespace-nowrap items-center justify-center gap-2 rounded-input px-6 text-[15px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 ---
-<section class="lp-hero relative isolate overflow-hidden bg-chrome text-white" aria-labelledby="hero-title">
-  <BgVideo desktop="hero-corredor" mobile="hero-corredor-movil" poster="hero-corredor" posterMobile="hero-corredor-movil" width={1920} height={1080} priority control class="bgv--hero" label="vídeo de fondo del corredor" controlClass="right-4 top-4" />
-  <div class="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pb-12 pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:px-10 lg:pb-16 lg:pt-20">
+<section class="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden mk-dark text-white" aria-labelledby="hero-title">
+  <BgVideo desktop="hero-corredor" mobile="hero-corredor-movil" poster="hero-corredor" posterMobile="hero-corredor-movil" width={1920} height={1080} priority control class="bgv--hero bgv--hero-lead" label="vídeo de fondo del corredor" controlClass="right-4 top-4" />
+  <div class="mk-grid absolute inset-0 -z-[5] opacity-60" aria-hidden="true"></div>
+
+  <div class="mx-auto grid w-full max-w-[1280px] flex-1 items-center gap-10 px-4 pb-8 pt-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-12 lg:px-10 lg:pb-6 lg:pt-6">
     <div>
-      <p class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-        <span class="lp-pulse size-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span> Corredor Lima – Arequipa – Cusco – Puno
+      <p class="mk-in inline-flex items-center gap-2 rounded-full border border-white/25 bg-chrome/60 px-3 py-1 text-xs font-medium text-white backdrop-blur" style="--d:0ms">
+        <span class="relative size-1.5 rounded-full bg-emerald-500 text-emerald-500 mk-ping" aria-hidden="true"></span> Corredor Lima – Arequipa – Cusco – Puno
       </p>
-      <h1 id="hero-title" class="mt-5 text-balance text-[38px] font-semibold leading-[1.06] tracking-tight sm:text-5xl lg:text-[60px]">Contrata fletes al mejor precio, <span class="text-emerald-500">sin llamadas.</span></h1>
-      <p class="mt-5 max-w-xl text-pretty text-lg text-white/85">Publica tu carga y recibe ofertas de transportistas con RUC verificado en una subasta corta. Elige, acepta y sigue tu envío parada por parada.</p>
-      <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <a href="/registro" class:list={[cta, 'bg-white text-chrome hover:bg-white/90']}>Crear cuenta de empresa <ArrowRight size={16} aria-hidden="true" /></a>
-        <a href="/registro?tipo=transportista" class:list={[cta, 'border border-white/35 bg-white/10 text-white backdrop-blur hover:bg-white/20']}><Truck size={18} aria-hidden="true" /> Soy transportista</a>
+      <h1 id="hero-title" class="mk-display mk-in mt-5 text-[clamp(2.5rem,1.4rem+4.6vw,5rem)]" style="--d:80ms">Contrata fletes. <span class="text-emerald-500">Sin llamadas.</span></h1>
+      <p class="mk-in mt-5 max-w-[34rem] text-pretty text-lg text-white/90 lg:text-xl" style="--d:160ms">Publica tu carga, recibe ofertas de transportistas verificados en una subasta de 20 minutos y sigue tu envío parada por parada.</p>
+      <div class="mk-in mt-8 grid gap-3 sm:grid-cols-2 sm:max-w-[34rem]" style="--d:240ms">
+        <a href="/registro" class:list={[cta, 'bg-white text-chrome hover:bg-white/90']}><Building2 size={18} class="shrink-0" aria-hidden="true" /> Crear cuenta de empresa <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a>
+        <a href="/registro?tipo=transportista" class:list={[cta, 'border border-white/40 bg-chrome/55 text-white backdrop-blur hover:bg-chrome/80']}><Truck size={18} class="shrink-0" aria-hidden="true" /> Soy transportista</a>
       </div>
-      <p class="mt-4 text-sm text-white/80">¿Ya tienes cuenta? <a href="/login" class="font-semibold text-white underline underline-offset-2 hover:text-white/80">Ingresa</a></p>
-      <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/90" aria-label="Garantías">
-        {trust.map((t) => <li class="inline-flex items-center gap-2"><t.icon size={16} class="text-emerald-500" aria-hidden="true" />{t.t}</li>)}
-      </ul>
+      <p class="mk-in mt-4 text-sm text-white/85" style="--d:300ms">¿Ya tienes cuenta? <a href="/login" class="font-semibold text-white underline underline-offset-2 hover:text-white/80">Ingresa</a></p>
+      <p class="mk-in mt-6 inline-flex items-center gap-2 text-sm text-white/90" style="--d:360ms"><ShieldCheck size={16} class="text-emerald-500" aria-hidden="true" /> Empresas verificadas por OnCargo · Datos protegidos (Ley 29733)</p>
     </div>
 
-    <figure class="relative" aria-label="Ejemplo ilustrativo de una solicitud con ofertas y un envío en curso">
-      <div class="lp-rise rounded-card border border-steel-200 bg-surface p-5 pb-9 shadow-lg sm:p-6 sm:pb-10" style="--d:0ms">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <span class="text-xs font-semibold uppercase tracking-wide text-ink-500">Ejemplo de solicitud</span>
-          <span class="flex items-center gap-2">
-            <Badge tone="amber"><Timer size={12} aria-hidden="true" /> Cierra en <span class="font-mono tabular-nums">12:41</span> min</Badge>
-          </span>
-        </div>
-        <div class="mt-4"><RouteLine origin="LIMA" destination="JULIACA" km={1010} originSub="28 nov · 08:00" destinationSub="30 nov" /></div>
-        <div class="mt-4 flex flex-wrap gap-1.5">
-          <Badge>Carga general</Badge><Badge><span class="font-mono tabular-nums">3.2 t</span></Badge><Badge>Camión mediano</Badge>
-        </div>
-
-        <div class="mt-5 flex items-center justify-between text-xs">
-          <span class="font-semibold uppercase tracking-wide text-ink-500">Ofertas</span>
-          <span class="flex items-center gap-2 text-ink-500">
-            <span class="flex gap-0.5" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <span class:list={['h-1.5 w-4 rounded-full', i < 3 ? 'bg-petrol-700' : 'bg-steel-200']}></span>)}</span>
-            <span class="font-mono tabular-nums">3 de 5</span>
-          </span>
-        </div>
-        <ul class="mt-2 divide-y divide-steel-200 text-sm">
-          {bids.map((b, i) => (
-            <li class="lp-rise flex items-center justify-between gap-3 py-2.5" style={`--d:${200 + i * 150}ms`}>
-              <span class="flex min-w-0 items-center gap-1.5 text-ink-700"><span class="truncate">{b.n}</span><VerifiedBadge variant="icon" /></span>
-              <span class="font-mono tabular-nums text-ink-900">{b.a}</span>
-            </li>
-          ))}
-          <li class="lp-rise -mx-2 flex items-center justify-between gap-3 rounded-input bg-emerald-50 px-2 py-2.5" style="--d:500ms">
-            <span class="min-w-0">
-              <span class="flex items-center gap-1 text-xs font-semibold text-emerald-700"><Check size={13} aria-hidden="true" /> Mejor oferta</span>
-              <span class="flex items-center gap-1.5 text-ink-700"><span class="truncate">Logística Altiplano S.A.C.</span><VerifiedBadge variant="icon" /></span>
-            </span>
-            <span class="shrink-0 text-right">
-              <span class="money block text-lg tabular-nums">S/ 1,850.00</span>
-              <span class="block whitespace-nowrap font-mono text-[11px] tabular-nums text-emerald-700">−11.9 % vs sugerido</span>
-            </span>
-          </li>
-        </ul>
-        <p class="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-steel-200 pt-3 text-xs text-ink-500">
-          <span>Sugerido <span class="font-mono tabular-nums text-ink-700">S/ 2,100.00</span></span>
-          <span>Piso <span class="font-mono tabular-nums text-ink-700">S/ 1,575.00</span></span>
-        </p>
-      </div>
-
-      <div class="lp-rise relative z-10 -mt-4 ml-auto w-[88%] rounded-card border border-steel-200 bg-surface p-4 shadow-lg lg:-ml-8 lg:mt-[-1.25rem] lg:w-[78%]" style="--d:700ms">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-semibold uppercase tracking-wide text-ink-500">Envío en curso</span>
-          <Badge tone="petrol">En tránsito</Badge>
-        </div>
-        <ol class="mt-3 grid grid-cols-3 gap-2 text-xs" aria-label="Paradas del envío">
-          <li>
-            <span class="flex items-center gap-1.5 font-medium text-emerald-700"><span class="grid size-4 place-items-center rounded-full bg-emerald-500 text-on-solid"><Check size={10} stroke-width={3} aria-hidden="true" /></span>Recojo</span>
-            <span class="mt-0.5 block text-ink-500">Lima · <span class="font-mono tabular-nums">08:12</span></span>
-          </li>
-          <li>
-            <span class="flex items-center gap-1.5 font-medium text-petrol-700"><span class="lp-pulse size-4 rounded-full border-[3px] border-petrol-700 bg-surface" aria-hidden="true"></span>En ruta</span>
-            <span class="mt-0.5 block text-ink-500">Nazca · <span class="font-mono tabular-nums">14:40</span></span>
-          </li>
-          <li>
-            <span class="flex items-center gap-1.5 font-medium text-ink-500"><span class="size-4 rounded-full border-2 border-ink-400 bg-surface" aria-hidden="true"></span>Entrega</span>
-            <span class="mt-0.5 block text-ink-500">Juliaca · 30 nov</span>
-          </li>
-        </ol>
-      </div>
-    </figure>
+    <div class="mk-in lg:pl-2" style="--d:220ms"><AuctionLive /></div>
   </div>
 
-  <ul class="relative mx-auto grid w-full max-w-6xl grid-cols-2 border-t border-white/15 lg:grid-cols-4" aria-label="La subasta en cifras">
-    {facts.map((f, i) => (
-      <li class:list={['px-4 py-5 lg:px-10', i % 2 === 1 && 'border-l border-white/15', i >= 2 && 'border-t border-white/15 lg:border-t-0', i >= 1 && 'lg:border-l lg:border-white/15']}>
-        <p class="font-mono text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl">{f.n}<span class="ml-1 text-base font-medium text-white/80">{f.u}</span></p>
-        <p class="mt-1 max-w-[24ch] text-pretty text-sm text-white/80">{f.t}</p>
+  <ul class="relative mx-auto grid w-full max-w-[1280px] grid-cols-2 border-t border-white/15 bg-chrome/55 backdrop-blur-sm lg:grid-cols-4 lg:px-10" aria-label="La subasta en cifras">
+    {kpis.map((f, i) => (
+      <li class:list={['px-4 py-3.5 lg:py-4', i % 2 === 1 && 'border-l border-white/15', i >= 2 && 'border-t border-white/15 lg:border-t-0', i >= 1 && 'lg:border-l lg:border-white/15', 'lg:px-6 first:lg:pl-0']}>
+        <p class="mk-num text-3xl font-semibold tracking-tight sm:text-[36px] sm:leading-none"><span data-count={f.n}>{f.n}</span><span class="ml-1.5 text-base font-medium text-white/80">{f.u}</span></p>
+        <p class="mt-1.5 max-w-[26ch] text-pretty text-[13px] leading-snug text-white/80">{f.t}</p>
       </li>
     ))}
   </ul>

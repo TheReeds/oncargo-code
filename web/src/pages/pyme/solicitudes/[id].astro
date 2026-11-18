@@ -49,12 +49,20 @@ const summary = [
       <span>Creada {formatDateTime(r.createdAt)}</span>
     </Fragment>
     <div slot="actions" class="flex flex-wrap items-center gap-3">
-      <RequestHeaderActions client:load requestId={r.id!} status={r.status!} verified={r.requesterRucVerified} />
+      <RequestHeaderActions client:load requestId={r.id!} status={r.status!} verified={r.requesterRucVerified} auction={a ?? null} pickupDate={r.pickupDate} />
       {shipment && <a href={`/pyme/envios?id=${shipment.id}`} class={buttonVariants({ variant: 'outline' })}>Ver envío y documentos</a>}
     </div>
   </PageHeader>
 
   <RequestLiveSync client:load requestId={r.id!} />
+  {r.status === 'CANCELLED' && (
+    <Alert tone="warning" title="Solicitud cancelada" className="mb-4">
+      {r.cancelReason ? <>Motivo: {r.cancelReason}. </> : null}Los transportistas que ofertaron ya fueron avisados. Si todavía necesitas llevar la carga, usa «Republicar solicitud» para crear una nueva con los mismos datos.
+    </Alert>
+  )}
+  {r.republishedFrom && (
+    <Alert tone="info" className="mb-4">Esta solicitud es una republicación de <a class="font-medium underline" href={`/pyme/solicitudes/${r.republishedFrom}`}>una solicitud cancelada</a>.</Alert>
+  )}
   {created && <Alert tone="success" className="mb-4">Solicitud publicada. La subasta ya está abierta para los transportistas.</Alert>}
 
   <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

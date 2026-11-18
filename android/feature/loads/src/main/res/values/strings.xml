@@ -89,10 +89,7 @@
     <string name="loads_sheet_title">Hacer una oferta</string>
     <string name="loads_sheet_route">%1$s → %2$s · %3$s</string>
     <string name="loads_sheet_vehicle">Vehículo</string>
-    <string name="loads_sheet_vehicle_placeholder">Elige tu vehículo</string>
     <string name="loads_sheet_vehicle_option">%1$s · hasta %2$s</string>
-    <string name="loads_sheet_no_vehicle_title">Ningún vehículo puede llevar esta carga</string>
-    <string name="loads_sheet_no_vehicle">Ninguno de tus vehículos disponibles soporta %1$s. Registra o libera un vehículo en la web para poder ofertar.</string>
     <string name="loads_sheet_amount">Tu oferta</string>
     <string name="loads_sheet_amount_hint_both">Piso %1$s · Referencial %2$s</string>
     <string name="loads_sheet_amount_hint_floor">Piso %1$s</string>
@@ -150,4 +147,39 @@
     <string name="loads_counter_reject_message">Tu oferta seguirá con el monto actual.</string>
     <string name="loads_counter_accepted">Contraoferta aceptada. Tu oferta ahora es de %1$s.</string>
     <string name="loads_counter_rejected">Contraoferta rechazada</string>
+
+    <!-- V13: mi oferta (contraoferta del transportista, retiro) -->
+    <string name="loads_counter_action">Contraofertar</string>
+    <string name="loads_counter_send">Enviar contraoferta</string>
+    <string name="loads_counter_send_info">Tu oferta actual es %1$s. Propón otro monto y la PYME decidirá si lo acepta; si acepta, tu oferta cambiará a ese monto.</string>
+    <string name="loads_counter_amount_label">Tu contraoferta</string>
+    <string name="loads_counter_message_label">Mensaje para la PYME</string>
+    <string name="loads_counter_amount_required">Ingresa el monto de tu contraoferta.</string>
+    <string name="loads_counter_same_amount">Propón un monto distinto a tu oferta actual (%1$s).</string>
+    <string name="loads_counter_confirm_title">¿Enviar contraoferta de %1$s?</string>
+    <string name="loads_counter_confirm_message">Reemplaza cualquier propuesta anterior de la PYME. Solo puedes tener una contraoferta pendiente.</string>
+    <string name="loads_counter_sent">Contraoferta enviada</string>
+    <string name="loads_counter_mine_title">Tu contraoferta está pendiente</string>
+    <string name="loads_counter_mine_waiting">Propusiste %1$s. Te avisaremos cuando la PYME responda.</string>
+    <string name="loads_counter_history">Contraofertas anteriores</string>
+    <string name="loads_counter_by_me">La enviaste tú</string>
+    <string name="loads_counter_by_pyme">La envió la PYME</string>
+    <string name="loads_withdraw_action">Retirar oferta</string>
+    <string name="loads_withdraw_title">¿Retirar tu oferta?</string>
+    <string name="loads_withdraw_message">La PYME dejará de verla y no podrás volver a ofertar por esta carga.</string>
+    <string name="loads_withdraw_confirm">Sí, retirar oferta</string>
+    <string name="loads_withdraw_keep">No, mantenerla</string>
+    <string name="loads_withdrawn">Oferta retirada</string>
+    <string name="loads_withdrawn_info">Retiraste esta oferta. No puedes volver a ofertar por esta carga.</string>
+    <string name="loads_request_cancelled_title">Solicitud cancelada</string>
+    <string name="loads_request_cancelled">La PYME canceló esta solicitud.</string>
+    <string name="loads_request_cancelled_reason">La PYME canceló esta solicitud. Motivo: %1$s</string>
+
+    <!-- Mis ofertas: filtros -->
+    <string name="loads_bids_filter_description">Filtrar mis ofertas</string>
+    <string name="loads_bids_filter_all">Todas</string>
+    <string name="loads_bids_filter_active">Activas (%1$d)</string>
+    <string name="loads_bids_filter_closed">Cerradas</string>
+    <string name="loads_bids_filtered_title">Sin ofertas en este filtro</string>
+    <string name="loads_bids_filtered_message">Prueba con otro filtro para ver el resto de tus ofertas.</string>
 </resources>

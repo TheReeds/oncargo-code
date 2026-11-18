@@ -43,8 +43,13 @@ public class MarketplaceQueries {
         return new Paged<>(summaries.of(p.items(), false), page, p.total());
     }
 
+    /**
+     * Ofertas de una solicitud, de menor a mayor monto: las de la PYME dueña (404 si es ajena) o, para el operador,
+     * las de cualquier solicitud (RLS bids_operator). Un transportista no entra aquí: sus ofertas van en {@code myBid}.
+     */
     public List<BidSummary> bidsFor(UUID requestId) {
-        ShipmentRequest r = requests.findOwned(requestId, tenant.orgId())
+        ShipmentRequest r = (tenant.orgType() == OrgType.OPERATOR
+                ? requests.findById(requestId) : requests.findOwned(requestId, tenant.orgId()))
                 .orElseThrow(() -> BusinessException.notFound("Solicitud"));
         return summaries.bids(bids.listByRequest(r.id()));
     }

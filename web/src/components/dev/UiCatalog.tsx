@@ -42,7 +42,15 @@ import { Timeline } from '@/components/ui/timeline';
 import { TimeSelect } from '@/components/ui/time-select';
 import { CapacityBar } from '@/components/domain/CapacityBar';
 import { AuthCard } from '@/components/ui/auth-card';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
+import VerificationBanner from '@/components/domain/VerificationBanner';
+import { VerificationBlock } from '@/components/domain/VerificationBlock';
+import { UnfitList } from '@/features/fleet/components/UnfitList';
+import { partitionFleet } from '@/features/fleet/compatibility';
 import ThemeToggle from '@/components/ui/theme-toggle';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { RoleChoice, type AssignableRole } from '@/features/organization/components/RoleChoice';
+import { PasswordRequirements } from '@/features/auth/components/PasswordRequirements';
 import { useResolvedTheme } from '@/lib/theme';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
 
@@ -80,8 +88,11 @@ const NAV = [['tipografia', 'Tipografía'], ['colores', 'Colores'], ['botones', 
 
 export default function UiCatalog() {
   const theme = useResolvedTheme();
+  const [reasonOpen, setReasonOpen] = useState(false);
   const [city, setCity] = useState('');
   const [time, setTime] = useState('08:00');
+  const [role, setRole] = useState<AssignableRole>('OPS');
+  const [pw, setPw] = useState('');
   const [multi, setMulti] = useState<string[]>(['LIMA', 'JULIACA']);
   const [cargo, setCargo] = useState('GENERAL');
   const [date, setDate] = useState('');
@@ -274,6 +285,35 @@ export default function UiCatalog() {
             <div className="flex flex-wrap items-center gap-2"><StatusPill status="PUBLISHED" /><StatusPill status="MATCHED" /><StatusPill status="CANCELLED" /><StatusPill status="PENDING" /><StatusPill status="IN_TRANSIT" /><StatusPill status="DELIVERED" /><StatusPill status="REJECTED" /><StatusPill status="MAINTENANCE" /></div>
             <div className="flex items-center gap-2 text-sm">Cierra en <Countdown closesAt={new Date(Date.now() + 3 * 60_000).toISOString()} /> · <Countdown closesAt={new Date(Date.now() + 5 * 3600_000).toISOString()} /></div>
           </CardBody></Card>
+        </Section>
+
+        <Section id="cuentas" title="Verificación y acciones con motivo" note="RN01: VerificationBanner (AppShell lo monta según /auth/me), VerificationBlock (ORG-003/004 dentro de un formulario), StatusPill kind=verification y VerifiedBadge (= Verificado por OnCargo; rucValid no da sello). ReasonDialog: cancelar, rechazar, suspender, reasignar. UnfitList: vehículos no aptos con su motivo (RN02).">
+          <div className="space-y-3">
+            <VerificationBanner status="PENDING" orgType="PYME" />
+            <VerificationBanner status="REJECTED" note="La razón social no coincide con el RUC." orgType="CARRIER" />
+            <VerificationBanner status="SUSPENDED" note="Reportes reiterados de incumplimiento." orgType="PYME" />
+            <VerificationBlock failure={{ code: 'LOGYX-ORG-004', message: 'Tu organización está suspendida por LOGYX (Reportes reiterados). Escríbenos para revisarlo' }} />
+          </div>
+          <Card className="space-y-4 p-5">
+            <div className="flex flex-wrap items-center gap-2"><StatusPill kind="verification" status="PENDING" /><StatusPill kind="verification" status="VERIFIED" /><StatusPill kind="verification" status="REJECTED" /><StatusPill kind="verification" status="SUSPENDED" /><StatusPill kind="bid" status="WITHDRAWN" /><StatusPill kind="counter" status="EXPIRED" /><VerifiedBadge /></div>
+            <div className="flex flex-wrap gap-2"><Button variant="destructive" onClick={() => setReasonOpen(true)}>Abrir ReasonDialog</Button></div>
+            <UnfitList items={partitionFleet([{ id: '1', plate: 'ABC-123', type: 'TRUCK_SMALL', maxWeightKg: 5000, status: 'AVAILABLE' }, { id: '2', plate: 'XYZ-987', type: 'VAN', maxWeightKg: 1200, status: 'MAINTENANCE' }], { weightKg: 3000, cargoType: 'HAZARDOUS', compatibleVehicleTypes: ['TRUCK_MEDIUM', 'TRUCK_LARGE', 'TANKER'] }).unfit} />
+          </Card>
+          <ReasonDialog open={reasonOpen} onOpenChange={setReasonOpen} title="¿Cancelar este envío?" description="Se avisa a la otra parte con el motivo. No se puede deshacer." required maxLength={500} confirmLabel="Cancelar envío" tone="destructive" hint="Lo verá la otra parte." placeholder="Ej. El cliente pidió postergar la entrega." onSubmit={async (r) => { toast.info('Motivo recibido', r); return null; }} />
+        </Section>
+
+        <Section id="roles" title="Cuentas, roles y contraseñas" note="V14: ReadOnlyNotice (solo aparece sin permiso OPERATE; `useCan('OPERATE')` oculta las acciones de escritura, el backend responde AUTH-007/008), RoleChoice (rol con descripción de qué puede cada uno), PasswordRequirements (reglas visibles de la contraseña nueva) y StatusPill kind=account (activo, invitación pendiente, desactivado) y LOST/BID_CANCELLED de Mis ofertas.">
+          <Card className="space-y-4 p-5">
+            <ReadOnlyNotice>No puedes publicar solicitudes.</ReadOnlyNotice>
+            <div className="flex flex-wrap items-center gap-2"><StatusPill kind="account" status="ACTIVE" /><StatusPill kind="account" status="INVITED" /><StatusPill kind="account" status="INACTIVE" /><StatusPill status="LOST" /><StatusPill status="BID_CANCELLED" /></div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <RoleChoice value={role} onValueChange={setRole} idPrefix="d-role" />
+              <div className="space-y-3">
+                <Field label="Contraseña nueva" htmlFor="d-newpw"><PasswordInput id="d-newpw" value={pw} onChange={(e) => setPw(e.currentTarget.value)} autoComplete="new-password" /></Field>
+                <PasswordRequirements id="d-rules" password={pw} confirm={pw ? pw : ''} />
+              </div>
+            </div>
+          </Card>
         </Section>
 
         <Section id="fase4" title="Viajes" note="TimeSelect (hora cada 30 min junto a DatePicker) y CapacityBar (ocupación en kg, role meter).">

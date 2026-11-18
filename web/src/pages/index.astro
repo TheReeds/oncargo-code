@@ -1,43 +1,30 @@
 ---
 import Public from '@/layouts/Public.astro';
 import Hero from '@/features/landing/components/Hero.astro';
+import Sectors from '@/features/landing/components/Sectors.astro';
+import HowItWorks from '@/features/landing/components/HowItWorks.astro';
+import BeforeAfter from '@/features/landing/components/BeforeAfter.astro';
+import Corridor from '@/features/landing/components/Corridor.astro';
 import Audiences from '@/features/landing/components/Audiences.astro';
-import Auction from '@/features/landing/components/Auction.astro';
 import Returns from '@/features/landing/components/Returns.astro';
 import Trust from '@/features/landing/components/Trust.astro';
-import Corridor from '@/features/landing/components/Corridor.astro';
 import Faq from '@/features/landing/components/Faq.astro';
 import FinalCta from '@/features/landing/components/FinalCta.astro';
 ---
 <Public title="Fletes entre Lima y la sierra sur" description="Publica tu carga, recibe ofertas de transportistas verificados y sigue tu envío parada por parada en el corredor Lima – Sierra Sur.">
   <Hero />
+  <Sectors />
+  <HowItWorks />
+  <BeforeAfter />
+  <Corridor />
   <Audiences />
-  <Auction />
   <Returns />
   <Trust />
-  <Corridor />
   <Faq />
   <FinalCta />
 </Public>
 
 <style is:global>
-  /* Landing: cuadrícula decorativa de los bloques oscuros (solo tokens/blanco translúcido). */
-  .lp-grid-dark {
-    background-image:
-      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: radial-gradient(90% 100% at 100% 0%, black, transparent 75%);
-  }
-
-  /* Entrada escalonada de las tarjetas del hero y punto en vivo. Solo con movimiento permitido. */
-  @media (prefers-reduced-motion: no-preference) {
-    .lp-rise { animation: lp-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
-    .lp-pulse { animation: lp-pulse 2s ease-in-out infinite; }
-  }
-  @keyframes lp-rise { from { opacity: 0; transform: translateY(10px); } }
-  @keyframes lp-pulse { 50% { opacity: 0.45; } }
-
   /* Preguntas frecuentes: <details> nativos, no exclusivos; marcador propio junto al texto y apertura animada donde se soporta. */
   .faq details > summary {
     display: flex; align-items: center; gap: 0.75rem; padding: 1.1rem 0.25rem; cursor: pointer; list-style: none;

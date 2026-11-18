@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -65,6 +67,12 @@ import pe.logyx.core.designsystem.components.AlertBanner
 import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ChipRow
 import pe.logyx.core.designsystem.components.LogyxBadge
+import pe.logyx.core.designsystem.components.LogyxBottomSheet
+import pe.logyx.core.designsystem.components.MessageEffect
+import pe.logyx.core.designsystem.components.UiMessage
+import pe.logyx.core.designsystem.components.VerificationBanner
+import pe.logyx.core.designsystem.components.needsAttention
+import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.InitialsAvatar
 import pe.logyx.core.designsystem.components.LogyxCard
@@ -80,6 +88,7 @@ import pe.logyx.core.designsystem.components.ButtonSize
 import pe.logyx.core.model.OrgType
 import pe.logyx.core.model.Role
 import pe.logyx.core.model.UserInfo
+import pe.logyx.core.model.VerificationStatus
 import pe.logyx.core.model.VehicleType
 
 /** Cuenta de prueba mostrada solo en builds de desarrollo. */
@@ -93,6 +102,8 @@ fun LoginRoute(
     viewModel: LoginViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showForgot by rememberSaveable { mutableStateOf(false) }
+    if (showForgot) ForgotPasswordSheet(prefillEmail = state.email, onDismiss = { showForgot = false })
     LoginScreen(
         state = state,
         onEmailChange = viewModel::onEmailChange,
@@ -102,6 +113,7 @@ fun LoginRoute(
         demoAccounts = demoAccounts,
         onDemo = { viewModel.fill(it.email, it.password) },
         onOpenCatalog = onOpenCatalog,
+        onForgotPassword = { showForgot = true },
     )
 }
 
@@ -115,6 +127,7 @@ fun LoginScreen(
     demoAccounts: List<DemoAccount> = emptyList(),
     onDemo: (DemoAccount) -> Unit = {},
     onOpenCatalog: (() -> Unit)? = null,
+    onForgotPassword: () -> Unit = {},
 ) {
     var showPassword by rememberSaveable { mutableStateOf(false) }
     // La cabecera es siempre oscura: iconos de la barra de estado claros mientras se vea el login.
@@ -208,6 +221,15 @@ fun LoginScreen(
                 loading = state.loading,
             )
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                LogyxButton(
+                    text = stringResource(R.string.auth_forgot_action),
+                    onClick = onForgotPassword,
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Medium,
+                    fullWidth = false,
+                )
+            }
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     stringResource(R.string.auth_no_account),
                     style = MaterialTheme.typography.bodyMedium,
@@ -260,18 +282,45 @@ private fun roleLabel(user: UserInfo) = stringResource(
 @Composable
 fun AccountRoute(apiUrl: String, versionName: String, viewModel: AccountViewModel = koinViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
-    AccountScreen(user, apiUrl, versionName, onLogout = viewModel::logout)
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
+    AccountScreen(
+        user, apiUrl, versionName,
+        onLogout = viewModel::logout,
+        onLogoutAll = viewModel::logoutAll,
+        loggingOutAll = ui.loggingOutAll,
+        message = ui.message,
+        onMessageShown = viewModel::onMessageShown,
+        onPasswordChanged = { viewModel.showMessage(UiMessage.success(R.string.auth_password_changed)) },
+    )
 }
 
 @Composable
-fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout: () -> Unit) {
+fun AccountScreen(
+    user: UserInfo?,
+    apiUrl: String,
+    versionName: String,
+    onLogout: () -> Unit,
+    onLogoutAll: () -> Unit = {},
+    loggingOutAll: Boolean = false,
+    message: UiMessage? = null,
+    onMessageShown: () -> Unit = {},
+    onPasswordChanged: () -> Unit = {},
+    passwordSheet: @Composable (onDismiss: () -> Unit) -> Unit = { dismiss -> ChangePasswordSheet(onDismiss = dismiss, onChanged = onPasswordChanged) },
+) {
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
-    LogyxScreen(stringResource(R.string.auth_account_title)) { padding ->
+    var confirmLogoutAll by rememberSaveable { mutableStateOf(false) }
+    var changePassword by rememberSaveable { mutableStateOf(false) }
+    val snackbar = rememberLogyxSnackbarState()
+    MessageEffect(message, snackbar, onMessageShown)
+    LogyxScreen(stringResource(R.string.auth_account_title), snackbar = snackbar) { padding ->
         Column(
             Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (user != null) {
+                if (user.role != Role.DRIVER && user.verificationStatus.needsAttention) {
+                    VerificationBanner(user.verificationStatus, user.verificationNote)
+                }
                 LogyxCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         val avatarDescription = stringResource(R.string.auth_avatar_description, user.fullName)
@@ -298,6 +347,9 @@ fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout
                         InfoRow(stringResource(R.string.auth_data_email), user.email)
                         InfoRow(stringResource(R.string.auth_data_org), user.organizationName ?: "—")
                         InfoRow(stringResource(R.string.auth_data_role), roleLabel(user))
+                        if (user.role != Role.DRIVER) {
+                            InfoRow(stringResource(R.string.auth_data_verification), verificationLabel(user))
+                        }
                     }
                 }
             } else {
@@ -310,6 +362,28 @@ fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout
                     InfoRow(stringResource(R.string.auth_api), apiUrl)
                 }
             }
+            if (user != null) {
+                LogyxCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionTitle(stringResource(R.string.auth_section_security))
+                        // Cambiar la contraseña y cerrar sesiones es autoservicio: también lo pueden hacer el rol Lector y el conductor.
+                        LogyxButton(
+                            text = stringResource(R.string.auth_change_password_action),
+                            onClick = { changePassword = true },
+                            variant = ButtonVariant.Secondary,
+                            size = ButtonSize.Medium,
+                            icon = Icons.Rounded.Lock,
+                        )
+                        LogyxButton(
+                            text = stringResource(R.string.auth_logout_all_action),
+                            onClick = { confirmLogoutAll = true },
+                            variant = ButtonVariant.Ghost,
+                            size = ButtonSize.Medium,
+                            loading = loggingOutAll,
+                        )
+                    }
+                }
+            }
             LogyxButton(
                 text = stringResource(R.string.auth_logout_action),
                 onClick = { confirmLogout = true },
@@ -318,6 +392,7 @@ fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout
             )
         }
     }
+    if (changePassword) passwordSheet { changePassword = false }
     if (confirmLogout) {
         LogyxConfirmDialog(
             title = stringResource(R.string.auth_logout_title),
@@ -328,6 +403,148 @@ fun AccountScreen(user: UserInfo?, apiUrl: String, versionName: String, onLogout
             destructive = true,
             icon = Icons.AutoMirrored.Rounded.Logout,
         )
+    }
+    if (confirmLogoutAll) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.auth_logout_all_title),
+            message = stringResource(R.string.auth_logout_all_message),
+            confirmLabel = stringResource(R.string.auth_logout_all_confirm),
+            onConfirm = { confirmLogoutAll = false; onLogoutAll() },
+            onDismiss = { confirmLogoutAll = false },
+            destructive = true,
+            icon = Icons.AutoMirrored.Rounded.Logout,
+        )
+    }
+}
+
+@Composable
+private fun verificationLabel(user: UserInfo) = stringResource(
+    when (user.verificationStatus) {
+        VerificationStatus.VERIFIED -> R.string.auth_verification_verified
+        VerificationStatus.PENDING -> R.string.auth_verification_pending
+        VerificationStatus.REJECTED -> R.string.auth_verification_rejected
+        VerificationStatus.SUSPENDED -> R.string.auth_verification_suspended
+        else -> if (user.rucVerified) R.string.auth_verification_verified else R.string.auth_verification_unknown
+    },
+)
+
+/** Cambiar contraseña en una hoja: errores bajo cada campo (`AUTH-006` actual incorrecta, `AUTH-010` igual a la actual). */
+@Composable
+fun ChangePasswordSheet(onDismiss: () -> Unit, onChanged: () -> Unit, viewModel: ChangePasswordViewModel = koinViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.done) {
+        if (state.done) { viewModel.onDoneShown(); onChanged(); onDismiss() }
+    }
+    ChangePasswordSheetContent(
+        state, onDismiss, viewModel::onCurrentChange, viewModel::onNewChange, viewModel::onConfirmChange, viewModel::submit,
+    )
+}
+
+@Composable
+fun ChangePasswordSheetContent(
+    state: ChangePasswordUiState,
+    onDismiss: () -> Unit,
+    onCurrentChange: (String) -> Unit,
+    onNewChange: (String) -> Unit,
+    onConfirmChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    var show by rememberSaveable { mutableStateOf(false) }
+    val toggle: @Composable () -> Unit = {
+        IconButton(onClick = { show = !show }) {
+            Icon(
+                if (show) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                contentDescription = stringResource(if (show) R.string.auth_hide_password else R.string.auth_show_password),
+            )
+        }
+    }
+    val transform = if (show) VisualTransformation.None else PasswordVisualTransformation()
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.auth_change_password_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                stringResource(R.string.auth_change_password_intro),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            state.error?.let { AlertBanner(it, kind = MessageKind.Error) }
+            LogyxTextField(
+                value = state.current, onValueChange = onCurrentChange, label = stringResource(R.string.auth_current_password),
+                error = state.serverErrors["currentPassword"] ?: state.currentError?.let { passwordErrorText(it) },
+                visualTransformation = transform, trailing = toggle,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            )
+            LogyxTextField(
+                value = state.new, onValueChange = onNewChange, label = stringResource(R.string.auth_new_password),
+                hint = stringResource(R.string.auth_new_password_hint),
+                error = state.serverErrors["newPassword"] ?: state.newError?.let { passwordErrorText(it) },
+                visualTransformation = transform,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            )
+            LogyxTextField(
+                value = state.confirm, onValueChange = onConfirmChange, label = stringResource(R.string.auth_confirm_password),
+                error = state.confirmError?.let { passwordErrorText(it) },
+                visualTransformation = transform,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            )
+            Text(
+                stringResource(R.string.auth_change_password_effect),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LogyxButton(stringResource(R.string.auth_change_password_save), onSubmit, loading = state.saving)
+        }
+    }
+}
+
+@Composable
+private fun passwordErrorText(e: PasswordFormError) = stringResource(
+    when (e) {
+        PasswordFormError.CurrentEmpty -> R.string.auth_error_current_empty
+        PasswordFormError.NewTooShort -> R.string.auth_error_new_short
+        PasswordFormError.NewTooLong -> R.string.auth_error_new_long
+        PasswordFormError.NewSameAsCurrent -> R.string.auth_error_new_same
+        PasswordFormError.ConfirmMismatch -> R.string.auth_error_confirm
+    },
+)
+
+/** "¿Olvidaste tu contraseña?": el mensaje de confirmación es el mismo exista o no el correo. */
+@Composable
+fun ForgotPasswordSheet(prefillEmail: String, onDismiss: () -> Unit, viewModel: ForgotPasswordViewModel = koinViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(prefillEmail) { viewModel.prefill(prefillEmail) }
+    ForgotPasswordSheetContent(state, onDismiss, viewModel::onEmailChange, viewModel::submit)
+}
+
+@Composable
+fun ForgotPasswordSheetContent(state: ForgotPasswordUiState, onDismiss: () -> Unit, onEmailChange: (String) -> Unit, onSubmit: () -> Unit) {
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.auth_forgot_title)) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (state.sent) {
+                AlertBanner(
+                    text = state.serverMessage ?: stringResource(R.string.auth_forgot_sent),
+                    kind = MessageKind.Success,
+                    title = stringResource(R.string.auth_forgot_sent_title),
+                )
+                Text(
+                    stringResource(R.string.auth_forgot_sent_help),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LogyxButton(stringResource(R.string.auth_forgot_close), onDismiss, variant = ButtonVariant.Secondary)
+            } else {
+                Text(
+                    stringResource(R.string.auth_forgot_intro),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                state.error?.let { AlertBanner(it, kind = MessageKind.Error) }
+                LogyxTextField(
+                    value = state.email, onValueChange = onEmailChange, label = stringResource(R.string.auth_email),
+                    placeholder = stringResource(R.string.auth_email_placeholder),
+                    error = if (state.emailInvalid) stringResource(R.string.auth_email_error) else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+                )
+                LogyxButton(stringResource(R.string.auth_forgot_send), onSubmit, loading = state.sending)
+            }
+        }
     }
 }
 

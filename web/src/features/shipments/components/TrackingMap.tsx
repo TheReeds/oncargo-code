@@ -3,6 +3,8 @@ import type { Map as MlMap, Marker } from 'maplibre-gl';
 import type { CityItem, ShipmentView } from '@/lib/api/server';
 
 import { useResolvedTheme, type Theme } from '@/lib/theme';
+import { boundsOf, ensureRoutePathLayer, routePathFeature, setRoutePaths } from '@/lib/routing';
+import { routeKey, useRouteGeometries } from '@/features/routing/use-route-geometries';
 
 const STYLES: Record<Theme, string> = {
   light: 'https://tiles.openfreemap.org/styles/positron',
@@ -11,14 +13,22 @@ const STYLES: Record<Theme, string> = {
 const ROUTE_COLOR: Record<Theme, string> = { light: '#0B4F6C', dark: '#38A3C9' };
 const MARKER_FILL: Record<Theme, string> = { light: '#ffffff', dark: '#0B1220' };
 
-/** Coordenadas de la ruta de un envío (paradas en orden; si no hay, origen→destino). */
-export function routeCoords(s: ShipmentView, cities: Record<string, CityItem>): [number, number][] {
-  const pts = (s.stops ?? []).slice().sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0)).map((st) => cities[st.city!]).filter(Boolean);
-  const list = pts.length >= 2 ? pts : [cities[s.originCity!], cities[s.destinationCity!]].filter(Boolean);
-  return list.map((c) => [c.lng!, c.lat!] as [number, number]);
+/** Ciudades de la ruta de un envío (paradas en orden; si no hay, origen→destino), sin repetir consecutivas. */
+export function routeStops(s: ShipmentView): string[] {
+  const fromStops = (s.stops ?? []).slice().sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0)).map((st) => st.city!).filter(Boolean);
+  const list = fromStops.length >= 2 ? fromStops : [s.originCity!, s.destinationCity!].filter(Boolean);
+  return list.filter((c, i) => i === 0 || c !== list[i - 1]);
 }
 
-/** Mapa MapLibre (OpenFreeMap positron). Dibuja una o varias rutas; la seleccionada va resaltada. */
+/** Coordenadas de los centros de las ciudades de la ruta (respaldo en línea recta y marcadores). */
+export function routeCoords(s: ShipmentView, cities: Record<string, CityItem>): [number, number][] {
+  return routeStops(s).map((code) => cities[code]).filter(Boolean).map((c) => [c.lng!, c.lat!] as [number, number]);
+}
+
+/**
+ * Mapa MapLibre (OpenFreeMap positron/dark). Dibuja una o varias rutas por carretera (`GET /api/v1/routes`, ADR-0008);
+ * mientras carga o si falla, la recta punteada entre ciudades. La seleccionada va resaltada.
+ */
 export default function TrackingMap({ shipments, cities, selectedId, height = 420 }: { shipments: ShipmentView[]; cities: CityItem[]; selectedId?: string | null; height?: number | string }) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -28,29 +38,28 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
   const themeRef = useRef<Theme>(theme);
   themeRef.current = theme;
   const appliedTheme = useRef<Theme | null>(null);
-  const latest = useRef({ shipments, selectedId });
-  latest.current = { shipments, selectedId };
+  const geoms = useRouteGeometries(shipments.map(routeStops));
+  const latest = useRef({ shipments, selectedId, geoms });
+  latest.current = { shipments, selectedId, geoms };
   const byCode = Object.fromEntries(cities.map((c) => [c.code!, c]));
 
   function draw() {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     import('maplibre-gl').then((ml) => {
-      const { LngLatBounds } = ml;
-      const { shipments, selectedId } = latest.current;
-      const features = shipments.map((s) => ({
-        type: 'Feature' as const,
-        properties: { id: s.id, sel: s.id === selectedId || shipments.length === 1 ? 1 : 0 },
-        geometry: { type: 'LineString' as const, coordinates: routeCoords(s, byCode) },
+      const { shipments, selectedId, geoms } = latest.current;
+      const features = shipments.map((s) => routePathFeature({
+        id: s.id!,
+        selected: s.id === selectedId || shipments.length === 1,
+        geometry: geoms[routeKey(routeStops(s))],
+        fallback: routeCoords(s, byCode),
       }));
       const th = themeRef.current;
       const PETROL = ROUTE_COLOR[th];
-      const src = map.getSource('routes') as any;
-      src?.setData({ type: 'FeatureCollection', features });
+      setRoutePaths(map, 'routes', features);
       markers.current.forEach((m) => m.remove());
       markers.current = [];
-      const bounds = new LngLatBounds();
-      const focus = shipments.filter((s) => !selectedId || s.id === selectedId);
+      const focus = features.filter((f) => !selectedId || f.properties.id === selectedId);
       for (const s of shipments) {
         const coords = routeCoords(s, byCode);
         if (coords.length < 2) continue;
@@ -62,8 +71,8 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
         };
         markers.current.push(mk(coords[0], false), mk(coords[coords.length - 1], true));
       }
-      for (const s of focus) routeCoords(s, byCode).forEach((c) => bounds.extend(c));
-      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 56, maxZoom: 9, duration: 500 });
+      const bounds = boundsOf(focus);
+      if (bounds) map.fitBounds(bounds, { padding: 56, maxZoom: 9, duration: 500 });
     });
   }
 
@@ -77,15 +86,8 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
       const map = new ml.Map({ container: el.current, style: STYLES[themeRef.current], center: [-74, -14], zoom: 4.5, attributionControl: { compact: true } });
       mapRef.current = map;
       map.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right');
-      const addRoutes = () => {
-        if (map.getSource('routes')) return;
-        map.addSource('routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({
-          id: 'routes', type: 'line', source: 'routes',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': ROUTE_COLOR[themeRef.current], 'line-width': ['case', ['==', ['get', 'sel'], 1], 4, 2], 'line-opacity': ['case', ['==', ['get', 'sel'], 1], 1, 0.45] },
-        });
-      };
+      // Fuente + capa de rutas (idempotente; con atribución de OSM para las rutas por carretera).
+      const addRoutes = () => ensureRoutePathLayer(map, { id: 'routes', color: ROUTE_COLOR[themeRef.current] });
       map.on('load', () => {
         addRoutes();
         readyRef.current = true;
@@ -106,7 +108,7 @@ export default function TrackingMap({ shipments, cities, selectedId, height = 42
     };
   }, []);
 
-  useEffect(draw, [shipments, selectedId, cities]);
+  useEffect(draw, [shipments, selectedId, cities, geoms]);
 
   useEffect(() => {
     const map = mapRef.current;

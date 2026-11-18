@@ -19,6 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material.icons.rounded.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.Chat
 import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.LocalShipping
@@ -186,6 +189,10 @@ internal fun NotificationType.icon() = when (this) {
     NotificationType.TRIP_BOOKING_CONFIRMED -> Icons.Rounded.CheckCircle
     NotificationType.TRIP_BOOKING_REJECTED, NotificationType.TRIP_BOOKING_CANCELLED, NotificationType.TRIP_CANCELLED -> Icons.Rounded.Cancel
     NotificationType.SMART_LOAD_SUGGESTED, NotificationType.SMART_LOAD_ACCEPTED -> Icons.Rounded.LocalOffer
+    NotificationType.AUCTION_CLOSED -> Icons.Rounded.Gavel
+    NotificationType.REQUEST_CANCELLED, NotificationType.SHIPMENT_CANCELLED -> Icons.Rounded.Cancel
+    NotificationType.BID_WITHDRAWN -> Icons.Rounded.RemoveCircleOutline
+    NotificationType.ORGANIZATION_VERIFICATION -> Icons.Rounded.Verified
     NotificationType.UNKNOWN -> Icons.Rounded.Notifications
 }
 

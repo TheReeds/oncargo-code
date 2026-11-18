@@ -47,6 +47,7 @@ public class OrganizationEntity extends PanacheEntityBase {
 
     public String city;
     public String phone;
+    public String address;
 
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
@@ -54,7 +55,7 @@ public class OrganizationEntity extends PanacheEntityBase {
     Organization toDomain() {
         return new Organization(id, type, legalName, ruc, rucVerification,
                 new Organization.Verification(verificationStatus, verificationNote, verificationUpdatedAt,
-                        verificationUpdatedBy), city, phone, createdAt);
+                        verificationUpdatedBy), city, phone, address, createdAt);
     }
 
     static OrganizationEntity from(Organization o) {
@@ -76,6 +77,7 @@ public class OrganizationEntity extends PanacheEntityBase {
         e.verificationUpdatedBy = o.verification().updatedBy();
         e.city = o.city();
         e.phone = o.phone();
+        e.address = o.address();
         e.createdAt = o.createdAt();
     }
 }

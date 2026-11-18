@@ -14,7 +14,10 @@
     <string name="shipments_client_format">Cliente: %1$s</string>
     <string name="shipments_carrier_format">Transporta: %1$s</string>
     <string name="shipments_driver_format">Conductor: %1$s</string>
-    <string name="shipments_driver_missing">Falta asignar conductor</string>
+    <string name="shipments_driver_missing">Sin conductor</string>
+    <string name="shipments_filter_cancelled">Cancelados</string>
+    <string name="shipments_pickup_format">Recojo: %1$s</string>
+    <string name="shipments_cancel_reason_format">Motivo: %1$s</string>
     <string name="shipments_no_value">—</string>
 
     <string name="shipments_detail_title">Seguimiento</string>
@@ -29,8 +32,35 @@
     <string name="shipments_detail_stops">Paradas</string>
     <string name="shipments_detail_no_stops">Las paradas aparecerán cuando el transportista inicie el viaje.</string>
     <string name="shipments_detail_delivered_format">Entregado el %1$s</string>
+    <string name="shipments_detail_pickup_date">Fecha de recojo</string>
     <string name="shipments_assign_action">Asignar conductor</string>
     <string name="shipments_change_action">Cambiar conductor</string>
+    <string name="shipments_relieve_action">Relevar conductor</string>
+    <string name="shipments_relieve_sheet_title">Elige el conductor de relevo</string>
+    <string name="shipments_relieve_continue">Relevar con %1$s</string>
+    <string name="shipments_relieve_title">¿Relevar con %1$s?</string>
+    <string name="shipments_relieve_message">%1$s dejará de ver este envío y el nuevo conductor lo recibirá en su app. Avisaremos a la PYME.</string>
+    <string name="shipments_relieve_confirm">Relevar conductor</string>
+    <string name="shipments_driver_relieved">Conductor relevado</string>
+    <string name="shipments_reason_label">Motivo</string>
+    <string name="shipments_reason_required">Cuéntanos el motivo para continuar.</string>
+
+    <string name="shipments_cancel_action">Cancelar envío</string>
+    <string name="shipments_cancel_title">¿Cancelar el envío?</string>
+    <string name="shipments_cancel_message">La otra parte recibirá el motivo, la solicitud quedará cancelada y no podrás deshacerlo. Solo se cancela antes del recojo.</string>
+    <string name="shipments_cancel_confirm">Cancelar envío</string>
+    <string name="shipments_cancelled">Envío cancelado</string>
+    <string name="shipments_cancelled_title">Envío cancelado</string>
+    <string name="shipments_cancelled_by_self">Lo cancelaste tú</string>
+    <string name="shipments_cancelled_by_other">Lo canceló la otra parte</string>
+    <string name="shipments_cancelled_no_reason">No se indicó un motivo.</string>
+
+    <string name="shipments_vehicle_action">Cambiar vehículo</string>
+    <string name="shipments_vehicle_title">Cambiar vehículo</string>
+    <string name="shipments_vehicle_message">Vehículo actual: %1$s. Elige otro de tu flota; OnCargo valida que lleve la carga y que no tenga otro envío en esas fechas. Avisaremos a la PYME.</string>
+    <string name="shipments_vehicle_message_route">Vehículo actual: %1$s. El envío ya salió: cuéntanos el motivo del cambio. Avisaremos a la PYME.</string>
+    <string name="shipments_vehicle_confirm">Cambiar vehículo</string>
+    <string name="shipments_vehicle_changed">Vehículo cambiado</string>
 
     <string name="shipments_sheet_title">Elige un conductor</string>
     <string name="shipments_sheet_license_format">Licencia %1$s</string>

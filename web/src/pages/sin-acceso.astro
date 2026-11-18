@@ -1,0 +1,20 @@
+---
+// 403 amable (F58): el middleware reescribe aquí cuando alguien con sesión entra a una sección que no es de su cuenta
+// o de su rol, en lugar de redirigirlo en silencio a su panel.
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { homeFor } from '@/lib/session';
+import { roleLabel } from '@/lib/permissions';
+import { ShieldAlert } from 'lucide-react';
+Astro.response.status = 403;
+const session = Astro.locals.session!;
+const home = homeFor(session);
+const who = session.orgType === 'OPERATOR' ? 'Operador' : session.orgType === 'CARRIER' ? 'Transportista' : 'PYME';
+---
+<AppShell title="Sin acceso" active="">
+  <PageHeader title="No tienes acceso a esta sección" />
+  <div class="rounded-card border border-steel-200 bg-surface" data-testid="forbidden">
+    <EmptyState icon={ShieldAlert} title="Esta sección no está disponible para tu cuenta" description={`Entraste como ${roleLabel(session.role)} de una cuenta ${who}. Si necesitas esta sección, pídele a un administrador de tu empresa que revise tu rol; si crees que es un error, escríbenos.`} actionHref={home} actionLabel="Ir a mi panel" />
+  </div>
+</AppShell>

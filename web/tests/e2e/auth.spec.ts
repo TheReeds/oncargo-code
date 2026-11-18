@@ -108,11 +108,14 @@ test.describe('Login, logout y redirección por rol', () => {
         await page.goto('/pyme');
         await expect(page).toHaveURL(/\/conductor$/);
       } else if (name === 'PYME') {
-        await page.goto('/transportista/marketplace');
-        await expect(page).toHaveURL(/\/pyme$/);
+        // Sección de otro tipo de cuenta: 403 amable (F58), no una redirección silenciosa.
+        const res = await page.goto('/transportista/marketplace');
+        expect(res?.status()).toBe(403);
+        await expect(page.getByRole('heading', { name: 'No tienes acceso a esta sección' })).toBeVisible();
       } else {
-        await page.goto('/pyme/solicitudes');
-        await expect(page).toHaveURL(/\/transportista\/marketplace$/);
+        const res = await page.goto('/pyme/solicitudes');
+        expect(res?.status()).toBe(403);
+        await expect(page.getByRole('heading', { name: 'No tienes acceso a esta sección' })).toBeVisible();
       }
       // logout
       if (name === 'conductor') {

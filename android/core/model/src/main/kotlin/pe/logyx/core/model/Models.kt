@@ -1,6 +1,27 @@
 package pe.logyx.core.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+/**
+ * Lista de enums tolerante: los valores que este cliente no conoce se descartan en lugar de romper todo el objeto
+ * (`coerceInputValues` solo cubre propiedades con valor por omisión, no elementos de una lista).
+ */
+abstract class LenientEnumListSerializer<E : Enum<E>>(private val entries: List<E>) : KSerializer<List<E>> {
+    private val delegate = ListSerializer(String.serializer())
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun deserialize(decoder: Decoder): List<E> =
+        delegate.deserialize(decoder).mapNotNull { name -> entries.firstOrNull { it.name == name } }
+    override fun serialize(encoder: Encoder, value: List<E>) = delegate.serialize(encoder, value.map { it.name })
+}
+
+object VehicleTypeListSerializer : LenientEnumListSerializer<VehicleType>(VehicleType.entries)
+object OrgPermissionListSerializer : LenientEnumListSerializer<OrgPermission>(OrgPermission.entries)
 
 // Espejo de docs/api/openapi.yaml. Fechas como String ISO-8601 (se formatean en la capa de UI).
 // Las ciudades viajan como código (`LIMA`, `AREQUIPA`...); coordenadas en /api/v1/catalog/cities.
@@ -10,19 +31,51 @@ data class UserInfo(
     val id: String,
     val email: String,
     val fullName: String,
-    val role: Role,
+    val role: Role = Role.UNKNOWN,
     val organizationId: String,
     val organizationName: String? = null,
     val organizationType: OrgType,
     val rucVerified: Boolean = false,
     val organizationCity: String? = null,
+    /** El RUC pasa el dígito verificador (no es lo mismo que [rucVerified], que lo decide el operador). */
+    val rucValid: Boolean = false,
+    /** RN01: PENDING/REJECTED/SUSPENDED restringen publicar, ofertar y reservar. Null en sesiones guardadas antes de V13. */
+    val verificationStatus: VerificationStatus? = null,
+    /** Motivo o comentario del operador (rechazo, suspensión, nota de verificación). */
+    val verificationNote: String? = null,
+    /** Permisos calculados por el backend (V14). Vacío en sesiones antiguas: usa los helpers de `Access.kt`, que derivan del rol. */
+    @Serializable(with = OrgPermissionListSerializer::class)
+    val permissions: List<OrgPermission> = emptyList(),
 )
 
 @Serializable
-data class AuthResponse(val accessToken: String, val expiresIn: Long = 0, val user: UserInfo)
+data class AuthResponse(
+    val accessToken: String,
+    val expiresIn: Long = 0,
+    val user: UserInfo,
+    /** Solo con `refresh = true` (móvil): token opaco rotativo (~30 días). */
+    val refreshToken: String? = null,
+    val refreshExpiresIn: Long? = null,
+)
 
 @Serializable
-data class LoginRequest(val email: String, val password: String)
+data class LoginRequest(val email: String, val password: String, val refresh: Boolean = false)
+
+@Serializable
+data class RefreshRequest(val refreshToken: String)
+
+@Serializable
+data class LogoutRequest(val refreshToken: String? = null)
+
+@Serializable
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String, val refresh: Boolean = false)
+
+@Serializable
+data class ForgotPasswordRequest(val email: String)
+
+/** Respuesta `{message}` de `forgot-password` (siempre el mismo texto, exista o no el correo). */
+@Serializable
+data class AuthMessage(val message: String = "")
 
 @Serializable
 data class CityItem(val code: String, val name: String, val lat: Double, val lng: Double)
@@ -38,16 +91,35 @@ data class PublicOrganization(
     val ruc: String? = null,
     val rucVerified: Boolean = false,
     val city: String? = null,
+    val rucValid: Boolean = false,
+    val verificationStatus: VerificationStatus? = null,
 )
 
 @Serializable
 data class AuctionView(
     val id: String,
-    val status: AuctionStatus,
+    val status: AuctionStatus = AuctionStatus.UNKNOWN,
     val closesAt: String,
     val maxBids: Int = 5,
     val bidCount: Long = 0,
     val closeReason: CloseReason? = null,
+    /** Cuándo cerró la subasta; null si sigue abierta (V15). */
+    val closedAt: String? = null,
+)
+
+/**
+ * Mi posición en la subasta (V15, F15). Solo en las vistas del transportista con una oferta no retirada.
+ * Ofertas selladas (RN04): nunca trae montos ni porcentajes exactos de otras ofertas.
+ */
+@Serializable
+data class MyBidStanding(
+    val rank: Int = 0,
+    val bidCount: Int = 0,
+    val isBest: Boolean = false,
+    /** Nulo cuando la solicitud ya se adjudicó o canceló (no se insinúa el precio del ganador). */
+    val vsBest: BidStandingBand? = null,
+    /** La subasta ya cerró: es la posición final. */
+    val finalStanding: Boolean = false,
 )
 
 @Serializable
@@ -60,7 +132,7 @@ data class BidView(
     val vehicleId: String? = null,
     val amount: Double,
     val notes: String? = null,
-    val status: BidStatus,
+    val status: BidStatus = BidStatus.UNKNOWN,
     val createdAt: String? = null,
     val vehicleType: VehicleType? = null,
     val vehiclePlate: String? = null,
@@ -86,13 +158,26 @@ data class RequestView(
     val distanceKm: Double? = null,
     val suggestedPrice: Double? = null,
     val priceFloor: Double? = null,
-    val status: RequestStatus,
+    val status: RequestStatus = RequestStatus.UNKNOWN,
     val createdAt: String? = null,
     val auction: AuctionView? = null,
     val myBid: BidView? = null,
     val requesterRucVerified: Boolean = false,
     val minVehicleType: VehicleType? = null,
     val requesterTrustScore: Double? = null,
+    /** Tipos de vehículo que pueden llevar la carga (matriz RN02, V13). */
+    @Serializable(with = VehicleTypeListSerializer::class)
+    val compatibleVehicleTypes: List<VehicleType> = emptyList(),
+    /** Motivo de la cancelación (V13). */
+    val cancelReason: String? = null,
+    /** Id de la solicitud cancelada de la que se republicó esta (V13). */
+    val republishedFrom: String? = null,
+    // Solo para la PYME dueña (V15): la oferta PENDING más baja.
+    val bestBidAmount: Double? = null,
+    val bestBidCarrierName: String? = null,
+    val bestBidCarrierTrustScore: Double? = null,
+    /** Solo para el transportista con oferta no retirada (V15). */
+    val myBidStanding: MyBidStanding? = null,
 )
 
 @Serializable
@@ -131,16 +216,25 @@ data class ShipmentView(
     val vehiclePlate: String? = null,
     val driverId: String? = null,
     val driverName: String? = null,
-    val status: ShipmentStatus,
+    val status: ShipmentStatus = ShipmentStatus.UNKNOWN,
     val createdAt: String? = null,
     val deliveredAt: String? = null,
     val stops: List<StopView> = emptyList(),
     /** Incidencia activa (RN11): el conductor no puede avanzar paradas. */
     val hasActiveIncident: Boolean = false,
+    // V13
+    val pickupDate: String? = null,
+    val vehicleId: String? = null,
+    /** Envíos del mismo viaje o plan Smart Load comparten flota (F11). */
+    val loadGroupId: String? = null,
+    val cancellationReason: String? = null,
+    val cancelledAt: String? = null,
+    val cancelledByOrgId: String? = null,
 )
 
+/** `reason` (V13, F06): opcional; obligatorio al reasignar el conductor con el envío en ruta (`LOGYX-SHP-006`). */
 @Serializable
-data class AssignDriverRequest(val driverId: String)
+data class AssignDriverRequest(val driverId: String, val reason: String? = null)
 
 @Serializable
 data class VehicleView(
@@ -159,6 +253,8 @@ data class DriverView(
     val email: String? = null,
     val licenseNumber: String? = null,
     val status: DriverStatus,
+    /** V14: un conductor desactivado no inicia sesión ni se le puede asignar un envío (409 `LOGYX-FLT-003`). */
+    val active: Boolean = true,
 )
 
 /** Resumen de `GET /dashboard/summary`; los campos que no aplican al rol vienen null. */
@@ -215,7 +311,7 @@ data class DocumentView(
     val id: String,
     val shipmentId: String? = null,
     val stopId: String? = null,
-    val type: DocumentType,
+    val type: DocumentType = DocumentType.OTHER,
     val fileName: String? = null,
     val contentType: String? = null,
     val sizeBytes: Long = 0,
@@ -246,7 +342,7 @@ data class IncidentView(
     val carrierOrgId: String? = null,
     val carrierName: String? = null,
     val reportedByOrgId: String? = null,
-    val category: IncidentCategory,
+    val category: IncidentCategory = IncidentCategory.OTHER,
     val description: String,
     val status: IncidentStatus,
     val active: Boolean = false,
@@ -255,6 +351,8 @@ data class IncidentView(
     val updatedAt: String? = null,
     val resolvedAt: String? = null,
     val comments: List<IncidentCommentView> = emptyList(),
+    /** Estado final del envío decidido al resolver o cerrar (V13, RF55). */
+    val shipmentOutcome: IncidentShipmentOutcome? = null,
 )
 
 @Serializable
@@ -307,9 +405,11 @@ data class CounterOfferView(
     val previousAmount: Double? = null,
     val amount: Double,
     val message: String? = null,
-    val status: CounterOfferStatus,
+    val status: CounterOfferStatus = CounterOfferStatus.UNKNOWN,
     val createdAt: String? = null,
     val respondedAt: String? = null,
+    /** V13 (RF26): la propuso el transportista (antes solo la PYME). Responde quien la recibió. */
+    val proposedByCarrier: Boolean = false,
 )
 
 // --- Reputación (RN06, RN09, RF40-45) ---

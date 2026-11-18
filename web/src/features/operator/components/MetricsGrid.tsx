@@ -1,6 +1,6 @@
-import { FileText, TriangleAlert, Truck, ShieldAlert, PackageCheck, Clock, Building2, Warehouse } from 'lucide-react';
+import { FileText, TriangleAlert, Truck, ShieldAlert, PackageCheck, Clock, Building2, Warehouse, Banknote, BadgeCheck } from 'lucide-react';
 import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
-import { formatNumber } from '@/lib/format';
+import { formatMoney, formatNumber } from '@/lib/format';
 import type { OperatorMetrics } from '../server';
 
 const plural = (n: number, one: string, many: string) => `${formatNumber(n)} ${n === 1 ? one : many}`;
@@ -33,6 +33,14 @@ export function MetricsGrid({ m, slaHours, expiring }: { m: OperatorMetrics; sla
           <KpiTile label="Envíos entregados" value={formatNumber(n(m.shipmentsDelivered))} tone="money" icon={PackageCheck} href="/operador/envios?estado=DELIVERED" context="Acumulado de la plataforma" />
           <KpiTile label="PYMEs registradas" value={formatNumber(n(m.pymes))} icon={Building2} context="Cuentas que publican cargas" />
           <KpiTile label="Transportistas registrados" value={formatNumber(n(m.carriers))} icon={Warehouse} context="Cuentas que ofertan" />
+        </KpiGrid>
+      </section>
+      <section aria-labelledby="op-k-gmv">
+        <h2 id="op-k-gmv" className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-500">Volumen contratado</h2>
+        <KpiGrid cols={3}>
+          <KpiTile label="GMV contratado" value={formatMoney(m.gmv ?? 0)} tone="money" icon={Banknote} context="Precio acordado de los envíos no cancelados" />
+          <KpiTile label="GMV entregado" value={formatMoney(m.gmvDelivered ?? 0)} tone="money" icon={BadgeCheck} href="/operador/envios?estado=DELIVERED"
+            context={m.gmv ? `${Math.round(((m.gmvDelivered ?? 0) / m.gmv) * 100)} % de lo contratado` : 'Aún no hay envíos contratados'} />
         </KpiGrid>
       </section>
     </div>

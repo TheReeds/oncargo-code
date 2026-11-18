@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useEffect, useMemo, useState } from 'react';
 import { SearchX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -23,6 +25,7 @@ export type TripFilters = { origin: string; dest: string; from: string; to: stri
 
 export default function SearchTrips({ trips, cities, filters, page, size, total }: { trips: TripView[]; cities: CityItem[]; filters: TripFilters; page: number; size: number; total: number }) {
   const [f, setF] = useState(filters);
+  const canOperate = useCan('OPERATE');
   const [active, setActive] = useState<TripView | null>(null);
   const [loading, setLoading] = useState(false);
   const kg = Number(f.minKg);
@@ -52,6 +55,7 @@ export default function SearchTrips({ trips, cities, filters, page, size, total 
 
   return (
     <>
+      <ReadOnlyNotice className="mb-3">No puedes reservar espacio.</ReadOnlyNotice>
       <Card>
         <FilterBar count={total} noun={['viaje', 'viajes']} active={hasFilters} onClear={clear}>
           <Field label="Origen" htmlFor="s-o"><Combobox id="s-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
@@ -85,7 +89,7 @@ export default function SearchTrips({ trips, cities, filters, page, size, total 
                     {!fits && <div className="mt-0.5 text-xs text-amber-700">No cabe tu carga de {formatNumber(kg)} kg</div>}
                   </div>
                   <div className="min-w-0"><CapacityBar used={t.confirmedWeightKg ?? 0} total={t.capacityKg ?? 0} label={`Ocupación del viaje de ${CITY_LABELS[t.originCity!]} a ${CITY_LABELS[t.destinationCity!]}`} /><div className="mt-0.5 text-xs text-ink-700">Quedan <span className="font-mono">{formatTons(t.remainingKg)}</span></div></div>
-                  <div className="lg:text-right"><Button variant="money" size="sm" className="max-lg:w-full" disabled={!fits} onClick={() => setActive(t)}>Reservar espacio<span className="sr-only"> en el viaje de {t.carrierName}</span></Button></div>
+                  <div className="lg:text-right">{canOperate ? <Button variant="money" size="sm" className="max-lg:w-full" disabled={!fits} onClick={() => setActive(t)}>Reservar espacio<span className="sr-only"> en el viaje de {t.carrierName}</span></Button> : null}</div>
                 </li>
               );
             })}

@@ -3,10 +3,17 @@ import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import RequestForm from '@/features/requests/components/RequestForm';
 import { getCatalog } from '@/features/catalog/server';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { can } from '@/lib/permissions';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+const canOperate = can(Astro.locals.session, 'OPERATE');
 const { cities, cargo } = await getCatalog();
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 ---
 <AppShell title="Nueva solicitud" active="nueva">
   <PageHeader title="Nueva solicitud" subtitle="Describe tu carga; los transportistas competirán por ella" />
-  <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} />
+  {canOperate
+    ? <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} />
+    : <div class="space-y-4"><ReadOnlyNotice client:load>No puedes publicar solicitudes.</ReadOnlyNotice><a href="/pyme/solicitudes" class={cn(buttonVariants({ variant: 'outline' }))}>Volver a mis solicitudes</a></div>}
 </AppShell>

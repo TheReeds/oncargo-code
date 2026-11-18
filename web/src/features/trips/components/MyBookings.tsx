@@ -1,3 +1,5 @@
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { useState } from 'react';
 import { useLiveRefresh } from '@/lib/realtime';
 import { actions } from 'astro:actions';
@@ -19,6 +21,7 @@ type Tab = 'ACTIVE' | 'HISTORY';
 
 export default function MyBookings({ bookings: initial }: { bookings: TripBookingView[] }) {
   const [bookings, setBookings] = useState(initial);
+  const canOperate = useCan('OPERATE');
   useLiveRefresh({
     types: ['trip_booking.updated', 'trip.cancelled'],
     refresh: async () => { const { data } = await actions.trips.myBookings(); if (data) setBookings(data); },
@@ -41,6 +44,7 @@ export default function MyBookings({ bookings: initial }: { bookings: TripBookin
 
   return (
     <div className="space-y-4">
+      <ReadOnlyNotice className="mb-3">No puedes cancelar reservas.</ReadOnlyNotice>
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <TabsList aria-label="Estado de las reservas">
           <TabsTrigger value="ACTIVE" aria-controls={undefined}>Activas <span className="ml-1 font-mono text-xs">{bookings.filter(isActive).length}</span></TabsTrigger>
@@ -88,7 +92,7 @@ export default function MyBookings({ bookings: initial }: { bookings: TripBookin
                     <span className="text-xs text-ink-500">{b.status === 'PENDING' ? 'Esperando la confirmación del transportista.' : 'Reserva confirmada: ya tienes un envío.'}</span>
                     <div className="flex gap-2 max-sm:w-full [&>*]:max-sm:flex-1">
                       {b.status === 'CONFIRMED' && b.shipmentId && <Button asChild size="sm" variant="outline"><a href={`/pyme/envios?id=${b.shipmentId}`}>Ver envío</a></Button>}
-                      <Button size="sm" variant="destructive" loading={busy === b.id} disabled={!!busy} onClick={() => cancel(b)}>Cancelar reserva<span className="sr-only"> de {b.originCity} a {b.destinationCity}</span></Button>
+                      {canOperate && <Button size="sm" variant="destructive" loading={busy === b.id} disabled={!!busy} onClick={() => cancel(b)}>Cancelar reserva<span className="sr-only"> de {b.originCity} a {b.destinationCity}</span></Button>}
                     </div>
                   </div>
                 )}

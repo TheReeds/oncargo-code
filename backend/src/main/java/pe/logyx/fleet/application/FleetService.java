@@ -11,6 +11,7 @@ import pe.logyx.identity.application.UserAccounts;
 import pe.logyx.identity.domain.model.Profile;
 import pe.logyx.shared.audit.AuditService;
 import pe.logyx.shared.domain.BusinessException;
+import pe.logyx.shared.security.AccessDenied;
 import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shared.tenancy.TenantContext;
 
@@ -101,13 +102,33 @@ public class FleetService {
         return list.stream().map(d -> account(d, profiles.get(d.profileId()))).toList();
     }
 
-    /** Crea la cuenta del conductor (rol DRIVER) dentro de la organización transportista. */
+    /** Crea la cuenta del conductor (rol DRIVER) dentro de la organización transportista. Solo su ADMIN (F03). */
     public DriverAccount addDriver(AddDriverCommand cmd) {
+        AccessDenied.requireOrgAdmin(tenant);
         Profile p = accounts.createDriverAccount(tenant.orgId(), cmd.fullName(), cmd.email(), cmd.password());
         Driver d = Driver.hire(tenant.orgId(), p.id(), cmd.licenseNumber());
         drivers.save(d);
         audit.record(tenant.profileId(), tenant.orgId(), "DRIVER_CREATED", "driver", d.id(), null);
         return account(d, p);
+    }
+
+    /** Desactiva (pierde el acceso de inmediato) o reactiva la cuenta del conductor (F31). Solo el ADMIN. */
+    public DriverAccount setDriverActive(UUID id, boolean active) {
+        AccessDenied.requireOrgAdmin(tenant);
+        DriverAccount current = ownDriver(id);
+        Profile p = accounts.setDriverActive(current.driver().profileId(), active);
+        audit.record(tenant.profileId(), tenant.orgId(), active ? "DRIVER_REACTIVATED" : "DRIVER_DEACTIVATED",
+                "driver", id, null);
+        return account(current.driver(), p);
+    }
+
+    /** El ADMIN define una contraseña nueva para el conductor (F02); se cierran sus sesiones. */
+    public DriverAccount resetDriverPassword(UUID id, String newPassword) {
+        AccessDenied.requireOrgAdmin(tenant);
+        DriverAccount current = ownDriver(id);
+        Profile p = accounts.resetDriverPassword(current.driver().profileId(), newPassword);
+        audit.record(tenant.profileId(), tenant.orgId(), "DRIVER_PASSWORD_RESET", "driver", id, null);
+        return account(current.driver(), p);
     }
 
     /** Conductor de la organización actual o 404. */
@@ -158,6 +179,7 @@ public class FleetService {
     }
 
     private static DriverAccount account(Driver d, Profile p) {
-        return new DriverAccount(d, p == null ? null : p.fullName(), p == null ? null : p.email());
+        return new DriverAccount(d, p == null ? null : p.fullName(), p == null ? null : p.email(),
+                p != null && p.active());
     }
 }

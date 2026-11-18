@@ -185,7 +185,7 @@ fun TripSearchContent(
                             TripCard(t, showCarrier = true) {
                                 LogyxButton(
                                     stringResource(R.string.trips_reserve), { onReserve(t) },
-                                    variant = ButtonVariant.Primary, size = ButtonSize.Medium,
+                                    variant = ButtonVariant.Primary, size = ButtonSize.Medium, requiresOperate = true,
                                 )
                             }
                         }
@@ -283,7 +283,7 @@ private fun BookSheet(
             }
             LogyxButton(
                 stringResource(R.string.trips_book_submit), onRequestConfirm,
-                variant = ButtonVariant.Primary, loading = form.submitting,
+                variant = ButtonVariant.Primary, loading = form.submitting, requiresOperate = true,
             )
         }
     }

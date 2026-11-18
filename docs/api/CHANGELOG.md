@@ -5,6 +5,154 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-17 — Auditoría del operador, lecturas para paneles y P2/P3 (V15)
+
+Origen: `docs/reviews/2026-11-16-flow-gaps.md` F05, F15, F22, F29, F42, F44, F45, F46, F49, F51, F59 y lo pedido por los
+agentes de dashboards. `scripts/check-contract.sh`: **compatible** (solo paths, parámetros y campos nuevos). Migración
+`V15__audit_and_bidder_read.sql` (índices de `audit_log`, política `requests_bidder_read`, índice parcial de ofertas pendientes).
+
+### ⚠️ Cambios de comportamiento
+1. **`GET /shipment-requests/{id}/bids`** ahora también lo lee el **operador** (solo lectura; antes 403). Sigue siendo 404 para
+   una PYME ajena y 403 para el transportista.
+2. **F15** — un transportista que ofertó sigue viendo la solicitud aunque se adjudique a otro o se cancele: aparece en
+   `GET /shipment-requests/my-bids` (con su `myBid` `REJECTED`/`WITHDRAWN`/`ACCEPTED` y `status` de la solicitud) y
+   `GET /shipment-requests/{id}` ya no da 404. Quien nunca ofertó sigue recibiendo 404. No se expone la oferta ganadora.
+3. **F29** — `GET /operator/requests/{id}/candidates` responde **409 `LOGYX-OPS-001`** si la solicitud no está al alcance
+   de la asignación manual (SLA no vencido, ya adjudicada o cancelada), igual que `assign`. Antes respondía 200.
+4. **F49** — completar una parada sin haber llegado da **`LOGYX-TRK-003`** (antes `TRK-006` en la entrega o `TRK-001`);
+   actuar sobre una parada ya completada da **`LOGYX-TRK-007`** (nuevo, antes `TRK-001`). `TRK-001` queda para "no es la siguiente".
+5. **F42 / F44 / F45** — textos de error: `LOGYX-GEN-404` concuerda el género ("Solicitud no encontrada", "Oferta no
+   encontrada", "Incidencia no encontrada"; "Envío no encontrado"…); las rutas o métodos inexistentes responden
+   `LOGYX-HTTP-404` / `LOGYX-HTTP-405` (y `-406`, `-415`…) con mensaje en español; **todo error es JSON** aunque el endpoint
+   produzca otro tipo (`GET /documents/{id}/file` con `Accept: */*` ya no devuelve `ApiError[...]`), y un cuerpo mayor que
+   el límite HTTP (12 MB) responde **413 `LOGYX-HTTP-413`** con `{error:{code,message,field:"file"}}` (antes cuerpo vacío).
+   El código no cambia, así que los clientes que ya leen `error.code` siguen igual.
+6. **F46** — el cuerpo de la notificación `INCIDENT_RESOLVED` queda "Resolución del operador: «notas». El envío puede continuar."
+   (las notas sin su puntuación final, un solo punto antes del texto fijo).
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /operator/audit` | solo OPERATOR (el resto 403) | `AuditRow[]{id, occurredAt, actorProfileId, actorEmail, actorName, organizationId, organizationName, organizationType, action, entity, entityId, detail}` paginado (`meta.page|size|total`), más recientes primero. Parámetros: `actorId`, `organizationId`, `action` (exacta; repetible `?action=A&action=B` o con comas), `entity` (tipo: `shipment_request`, `bid`, `shipment`, `organization`, `profile`…), `entityId`, `from`/`to` (`yyyy-MM-dd`, inclusive, hora de Lima), `page` (0-based), `size` (1–100, 20). Inválidos: 400 `LOGYX-VAL-001` con `field` |
+| `GET /operator/audit/actions` | solo OPERATOR | `string[]`: acciones distintas, en orden alfabético (para el filtro de la UI) |
+
+### Campos nuevos
+- `RequestView.bestBidAmount`, `bestBidCarrierName`, `bestBidCarrierTrustScore`: la oferta **PENDING** más baja (empate: la más
+  antigua; las `WITHDRAWN`/`REJECTED` no cuentan). **Solo para la PYME dueña** (`GET /shipment-requests/mine`, con o sin
+  paginación, y `GET /shipment-requests/{id}`); nulos para el transportista y el operador y cuando no hay pendientes. Se calculan en la
+  misma consulta que la lista (sin N+1): el panel de la PYME ya no necesita pedir las ofertas de cada solicitud.
+- `RequestView.myBidStanding` (`MyBidStanding`) — **solo en las vistas del transportista** que tiene una oferta no retirada
+  (marketplace, `my-bids`, detalle); nulo si no ofertó o la retiró. **Ofertas selladas (RN04): nunca trae montos ni porcentajes
+  exactos de otras ofertas.**
+  - `rank` (int): 1 = mejor (menor monto; empate: la oferta más antigua) entre las ofertas no retiradas.
+  - `bidCount` (int): ofertas no retiradas de la subasta, incluida la suya.
+  - `isBest` (bool): `rank == 1`.
+  - `vsBest` (`BidStandingBand`): `BEST` (igual a la mejor), `WITHIN_5_PCT` (hasta 5 % por encima), `WITHIN_15_PCT` (5–15 %),
+    `ABOVE_15_PCT` (más de 15 %). **Nulo cuando la solicitud ya se adjudicó o canceló** (no se insinúa el precio del ganador).
+  - `finalStanding` (bool): `true` si la subasta cerró (tiempo, 5 ofertas, adjudicada, cancelada) o la solicitud ya no está
+    publicada: es la posición final. Mientras está abierta puede cambiar (otras ofertas, retiros, contra-ofertas).
+- `AuctionView.closedAt` (cuándo cerró la subasta; nulo si sigue abierta). `closeReason` ya existía (`TIMEOUT`, `MAX_BIDS`,
+  `ACCEPTED`, `CANCELLED`) y llega también en `my-bids` (F51).
+- `GET /driver/shipments?scope=ACTIVE|HISTORY|ALL` (F22): por omisión `ACTIVE` (igual que antes: pendientes y en tránsito);
+  `HISTORY` = entregados y cancelados, recientes primero; `ALL` = activos y luego historial. `scope` inválido: 400 `LOGYX-VAL-001`.
+- `OperatorMetricsView.gmv` y `gmvDelivered` (S/): precio acordado de los envíos no cancelados y de los entregados (F59).
+- Schemas nuevos: `AuditRow`, `MyBidStanding`, `BidStandingBand`.
+
+### Códigos nuevos
+`LOGYX-TRK-007` (409, la parada ya está completada), `LOGYX-HTTP-<status>` (errores del framework en español; `404`, `405`,
+`406`, `413`, `415`…). `LOGYX-OPS-001` ahora también en `candidates`.
+
+### Tareas para los clientes
+- Web: visor `/operador/auditoria` (tabla paginada + filtros; la lista de acciones sale de `/operator/audit/actions`),
+  ofertas de una solicitud en el detalle del operador, "Mis ofertas" con los estados Perdida/Cancelada y la posición
+  (`myBidStanding`: "Vas 2.º de 5", banda cualitativa) con el motivo de cierre de `auction.closeReason`/`closedAt`;
+  "Mis viajes" del conductor con `scope=ALL`; KPI GMV en el panel del operador.
+- Android: posición en `LoadCard`/detalle del transportista, solicitud perdida o cancelada en Mis ofertas, historial del conductor.
+
+## 2026-11-16 — Cuentas, contraseñas y roles (V14)
+
+Origen: `docs/reviews/2026-11-16-flow-gaps.md` F02, F03, F20, F24, F31, F47, F55. Decisiones: ADR-0009.
+`scripts/check-contract.sh`: **compatible** en esquema (paths, schemas y campos nuevos). Migración `V14__accounts_and_roles.sql`.
+
+### ⚠️ Cambios de comportamiento
+1. **Roles de organización (F03).** El claim `role` ahora se hace cumplir:
+   - `VIEWER`: cualquier POST/PUT/PATCH/DELETE responde **403 `LOGYX-AUTH-007`** ("Tu rol Lector solo permite consultar…"),
+     salvo `/auth/*` (cambiar contraseña, cerrar sesión…), `POST /notifications/{id}/read`, `POST /notifications/read-all`
+     y `POST /pricing/calculate`. Las lecturas siguen igual.
+   - `OPS` (y `VIEWER`): **403 `LOGYX-AUTH-008`** en gestión de usuarios, `PATCH /organizations/me` y cuentas de
+     conductores (**`POST /drivers`**, que antes podía cualquier usuario CARRIER, y los endpoints nuevos de conductores).
+     Vehículos, ofertas, viajes, etc. siguen para OPS y ADMIN.
+   - Las cuentas existentes son ADMIN (el registro crea ADMIN): para ellas no cambia nada.
+2. **Sesiones revocables (F55, F31).** Los JWT llevan `sv` (versión de sesión). Si no coincide con la BD o el usuario está
+   desactivado → **401 `LOGYX-AUTH-401`** (mismo flujo que un token vencido: la web ya redirige a `/login?expired=1`).
+   Pasa al cambiar o restablecer la contraseña, cambiar el rol, desactivar al usuario o al conductor, cuando el ADMIN
+   restablece la contraseña del conductor y con `POST /auth/logout-all`. Con varias instancias puede tardar hasta 30 s.
+   Los tokens anteriores a V14 (sin `sv`) siguen valiendo hasta que venzan.
+3. **Conductor desactivado**: no inicia sesión (`LOGYX-AUTH-001`) y no se le puede asignar un envío (**409
+   `LOGYX-FLT-003`**, `field=driverId`).
+
+### Paths nuevos
+Todos con `{data, meta}`. Los tokens van siempre en el body (nunca en el path).
+
+| Método y path | Quién | Body → respuesta |
+|---|---|---|
+| `POST /auth/forgot-password` | público | `{email}` → **202** `AuthMessage{message}`, siempre el mismo, exista o no el correo. 429 `AUTH-429` por IP. Por email: 3 cada 15 min (después responde igual pero no envía) |
+| `POST /auth/password-tokens/inspect` | público | `{token}` → `PasswordTokenInfo{purpose: RESET\|INVITE, expiresAt, email (enmascarado, p. ej. `ju•••@empresa.pe`), organizationName}`; 400 `AUTH-005` |
+| `POST /auth/reset-password` | público | `{token, newPassword (8–72), acceptPrivacyPolicy?}` → `AuthMessage`. Restablece o activa una invitación (esta exige `acceptPrivacyPolicy:true`, si no 400 `AUTH-011`). Token inválido, vencido o usado: 400 `AUTH-005` (`field=token`). Cierra todas las sesiones del usuario; no inicia sesión (ir a login) |
+| `POST /auth/change-password` | autenticado (todos los roles, también DRIVER y VIEWER) | `{currentPassword, newPassword, refresh?}` → `AuthResponse` **nuevo** (reemplaza el token/cookie: los demás dispositivos quedan fuera). 400 `AUTH-006` (`currentPassword`), `AUTH-010` (igual a la actual, `newPassword`); 429 tras 10 fallos |
+| `POST /auth/logout-all` | autenticado | → 204. Invalida todos los tokens del usuario, incluido el actual |
+| `POST /auth/refresh` | público (sin `Authorization`) | `{refreshToken}` → `AuthResponse` con access + refresh **nuevos** (el anterior deja de valer). 401 `AUTH-009` si es inválido, vencido, revocado, reutilizado (revoca toda la sesión del dispositivo), el usuario está inactivo o su sesión fue revocada |
+| `POST /auth/logout` | público | body opcional `{refreshToken}` → 204. Revoca la sesión de ese dispositivo. La web puede seguir sin llamarlo |
+| `GET /organizations/me` | autenticado | → `OrganizationProfile{id, type, legalName, ruc, rucValid, rucVerified, verificationStatus, verificationNote, city, phone, address, legalDataEditable, createdAt}` |
+| `PATCH /organizations/me` | ADMIN | `UpdateOrganizationRequest{legalName?, ruc?, city?, phone?, address?}` (null = sin cambio, `""` borra city/phone/address) → `OrganizationProfile`. `legalName`/`ruc` solo si `legalDataEditable` (PENDING o REJECTED), si no 409 `ORG-007`. Errores: `ORG-001`, `ORG-002` (`ruc`), `NEG-001` (RN07 en `legalName`). Si estaba REJECTED vuelve a **PENDING** y se avisa a los operadores (`ORGANIZATION_VERIFICATION`) |
+| `GET /organizations/me/users` | ADMIN | → `OrganizationUser[]{id, email, fullName, role, active, invitationPending, createdAt, lastLoginAt}` (sin conductores) |
+| `POST /organizations/me/users` | ADMIN | `InviteUserRequest{email, fullName, role: ADMIN\|OPS\|VIEWER}` → 201 `OrganizationUser` (`invitationPending:true`). Envía el correo de invitación (72 h). 409 `AUTH-002` (email ya registrado), 400 `USR-004` (DRIVER) |
+| `POST /organizations/me/users/{id}/resend-invitation` | ADMIN | → `OrganizationUser`. Nuevo enlace (el anterior deja de valer). 409 `USR-003` (ya aceptó), `USR-006` (desactivado) |
+| `PATCH /organizations/me/users/{id}` | ADMIN | `ChangeUserRoleRequest{role}` → `OrganizationUser`. Cierra las sesiones del usuario (también si te cambias a ti mismo). 409 `USR-001` (dejaría sin ADMIN activo), `USR-005` (es conductor) |
+| `POST /organizations/me/users/{id}/deactivate` · `/reactivate` | ADMIN | → `OrganizationUser`. Desactivar corta el acceso de inmediato. 409 `USR-001`, `USR-002` (a ti mismo) |
+| `POST /drivers/{id}/deactivate` · `/reactivate` | CARRIER ADMIN | → `DriverView` (`active`). El conductor pierde el acceso al instante (y su refresh) |
+| `POST /drivers/{id}/reset-password` | CARRIER ADMIN | `DriverPasswordReset{newPassword (8–72)}` → `DriverView`. Cierra las sesiones del conductor |
+
+Usuarios de otra organización: 404 (`LOGYX-GEN-404`). La organización sale siempre del JWT.
+
+### Campos nuevos
+- `LoginRequest.refresh` (boolean, opcional). Con `true` (app Android/conductor): `AuthResponse.refreshToken` y
+  `refreshExpiresIn` (segundos hasta el vencimiento absoluto, 30 días) y `expiresIn` = 3600 (access de 1 h). Sin él, igual
+  que antes (`expiresIn` = 28800, `refreshToken` = null). La web no lo usa.
+- `AuthResponse.refreshToken`, `AuthResponse.refreshExpiresIn` (null sin refresh).
+- `UserInfo.permissions`: `OrgPermission[]` (`READ`, `OPERATE`, `MANAGE_USERS`, `MANAGE_ORGANIZATION`, `MANAGE_DRIVERS`).
+  ADMIN de transportista: los 5; ADMIN de PYME/operador: sin `MANAGE_DRIVERS`; OPS: `READ`, `OPERATE`; VIEWER y DRIVER: `READ`.
+- `DriverView.active`.
+- Schemas nuevos: `AuthMessage`, `ForgotPasswordRequest`, `PasswordTokenRequest`, `PasswordTokenInfo`,
+  `PasswordTokenPurpose`, `ResetPasswordRequest`, `ChangePasswordRequest`, `RefreshRequest`, `LogoutRequest`,
+  `OrgPermission`, `OrganizationProfile`, `UpdateOrganizationRequest`, `OrganizationUser`, `InviteUserRequest`,
+  `ChangeUserRoleRequest`, `DriverPasswordReset`.
+
+### Códigos nuevos
+`LOGYX-AUTH-005` (400, enlace inválido/vencido/usado, `token`), `AUTH-006` (400, contraseña actual, `currentPassword`),
+`AUTH-007` (403, VIEWER solo lectura), `AUTH-008` (403, solo ADMIN), `AUTH-009` (401, refresh), `AUTH-010` (400, nueva =
+actual, `newPassword`), `AUTH-011` (400, invitación sin aceptar la política, `acceptPrivacyPolicy`); `USR-001` (409, último
+ADMIN activo), `USR-002` (409, desactivarte a ti mismo), `USR-003` (409, invitación ya aceptada), `USR-004` (400, rol no
+permitido, `role`), `USR-005` (409, es conductor), `USR-006` (409, reenviar a desactivado); `ORG-007` (409, razón social/RUC
+no editables); `FLT-003` (409, conductor desactivado, `driverId`). `AUTH-429` también en forgot-password, inspect,
+reset-password, refresh y change-password.
+
+### Correos y enlaces
+- Remitente `OnCargo <no-reply@oncargo.tech>` (`MAIL_FROM`). Enlace: `logyx.password-reset.url` + `?token=…`
+  (`PASSWORD_RESET_URL`, por omisión `https://oncargo.tech/restablecer`; en dev `http://localhost:4321/restablecer`). La
+  **misma página** atiende restablecer e invitación: llama a `inspect` para saber el `purpose` y mostrar el texto (en INVITE
+  pide aceptar la política de privacidad).
+- **Dev / e2e**: `GET /api/v1/dev/mailbox?to=<email>` (solo en el perfil dev; fuera del contrato) → últimos correos
+  `{to, subject, text, link, token}` del mailer mock.
+
+### Tareas para los clientes
+- Web: "¿Olvidaste tu contraseña?" en `/login`, página `/restablecer`, "Cambiar contraseña" y "Cerrar sesión en todos los
+  dispositivos" en Cuenta (reemplazar la cookie con la respuesta de change-password), usuarios de la organización y
+  perfil para el ADMIN, ocultar acciones por `permissions` y mostrar el mensaje de `AUTH-007/008`, conductores
+  desactivar/reactivar/restablecer.
+- Android: `login {refresh:true}`, guardar el refresh cifrado, renovar con `/auth/refresh` antes de cerrar sesión ante un
+  401 (si `/auth/refresh` da 401, sí cerrar sesión), `POST /auth/logout {refreshToken}` al salir, cambiar contraseña.
+
 ## 2026-11-16 — Rutas y distancias por carretera (ADR-0008)
 
 `scripts/check-contract.sh`: **compatible** (path y schemas nuevos). Sin migración.

@@ -1,4 +1,4 @@
-import { listBids, listMine } from '@/features/requests/server';
+import { listMine } from '@/features/requests/server';
 import { listShipments } from '@/features/shipments/server';
 import { apiFor } from '@/lib/api/server';
 import { unwrap } from '@/lib/api/client';
@@ -12,12 +12,12 @@ export async function pymeDashboard(token: string) {
   // Subastas con ofertas sin elegir (abiertas o ya cerradas): primero las que cierran antes; las cerradas arriba (urgen más).
   const closesAt = (r: (typeof requests)[number]) => (r.auction?.closesAt ? new Date(r.auction.closesAt).getTime() : Number.MAX_SAFE_INTEGER);
   const attentionRequests = [...withBids].sort((a, b) => Number(closed(b)) - Number(closed(a)) || closesAt(a) - closesAt(b));
-  // Mejor oferta de cada una (endpoint existente `GET /shipment-requests/{id}/bids`); si falla, se omite sin romper el panel.
-  const attention = await Promise.all(attentionRequests.slice(0, 5).map(async (request) => {
-    const bids = await listBids(token, request.id!).catch(() => []);
-    const best = bids.filter((b) => b.status === 'PENDING').sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0))[0] ?? null;
-    return { request, closed: closed(request), best: best ? { amount: best.amount ?? 0, carrierName: best.carrierName ?? '', carrierTrustScore: best.carrierTrustScore ?? null } : null };
-  }));
+  // Mejor oferta pendiente de cada una: viene en `GET /shipment-requests/mine` (`bestBid*`, solo para la PYME dueña),
+  // sin pedir las ofertas de cada solicitud.
+  const attention = attentionRequests.slice(0, 5).map((request) => {
+    const amount = request.bestBidAmount ?? null;
+    return { request, closed: closed(request), best: amount === null ? null : { amount, carrierName: request.bestBidCarrierName ?? '', carrierTrustScore: request.bestBidCarrierTrustScore ?? null } };
+  });
   const inTransit = shipments.filter((s) => s.status === 'IN_TRANSIT');
   const pending = shipments.filter((s) => s.status === 'PENDING');
   const month = new Date().toISOString().slice(0, 7);

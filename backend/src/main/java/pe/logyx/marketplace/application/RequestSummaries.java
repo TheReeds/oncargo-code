@@ -7,6 +7,7 @@ import pe.logyx.identity.application.OrganizationDirectory;
 import pe.logyx.identity.domain.model.Organization;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.BidRepository;
+import pe.logyx.marketplace.domain.BidStandingPolicy;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
@@ -51,13 +52,59 @@ public class RequestSummaries {
                     .collect(Collectors.toMap(b -> b.bid().requestId(), Function.identity()))
                 : Map.of();
         Map<UUID, BigDecimal> trust = reputation.trustScores(requesters.keySet());
+        Map<UUID, BidSummary> best = bestBids(list);
+        Map<UUID, BidStanding> standings = standings(list, byRequest, myBids);
         return list.stream().map(r -> {
             Auction a = byRequest.get(r.id());
             Organization o = requesters.get(r.requesterOrgId());
             return new RequestSummary(r, a, a == null ? 0 : counts.getOrDefault(a.id(), 0L),
                     o == null ? null : o.legalName(), myBids.get(r.id()),
-                    o != null && o.rucVerified(), trust.get(r.requesterOrgId()));
+                    o != null && o.rucVerified(), trust.get(r.requesterOrgId()), best.get(r.id()),
+                    standings.get(r.id()));
         }).toList();
+    }
+
+    /** Mejor oferta pendiente por solicitud, solo para la PYME dueña (en la misma consulta, sin N+1). */
+    private Map<UUID, BidSummary> bestBids(List<ShipmentRequest> list) {
+        if (tenant.orgType() != OrgType.PYME) return Map.of();
+        List<UUID> owned = list.stream().filter(r -> r.isOwnedBy(tenant.orgId())).map(ShipmentRequest::id).toList();
+        Map<UUID, Bid> best = bids.bestPendingByRequests(owned);
+        if (best.isEmpty()) return Map.of();
+        Map<UUID, BidSummary> byBid = bids(List.copyOf(best.values())).stream()
+                .collect(Collectors.toMap(b -> b.bid().id(), Function.identity()));
+        return best.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> byBid.get(e.getValue().id())));
+    }
+
+    /**
+     * Posición del transportista en las solicitudes donde ofertó (RN04: ofertas selladas). La RLS de {@code bids} solo
+     * deja ver las propias, así que los agregados se calculan en contexto de sistema y de ahí sale únicamente la
+     * posición, el conteo y una banda cualitativa: nunca el monto de otra oferta.
+     */
+    private Map<UUID, BidStanding> standings(List<ShipmentRequest> list, Map<UUID, Auction> auctions,
+                                             Map<UUID, BidSummary> myBids) {
+        if (tenant.orgType() != OrgType.CARRIER || myBids.isEmpty()) return Map.of();
+        List<UUID> ids = myBids.values().stream().filter(b -> b.bid().status() != Bid.Status.WITHDRAWN)
+                .map(b -> b.bid().requestId()).toList();
+        if (ids.isEmpty()) return Map.of();
+        UUID me = tenant.orgId();
+        // Sistema: un transportista no puede leer las ofertas ajenas; solo se extraen agregados.
+        Map<UUID, BidRepository.Ranking> rankings = system.call(() -> bids.rankings(ids, me));
+        Map<UUID, ShipmentRequest> byId = list.stream().collect(Collectors.toMap(ShipmentRequest::id, Function.identity()));
+        Map<UUID, BidStanding> out = new java.util.HashMap<>();
+        for (UUID id : ids) {
+            BidRepository.Ranking rk = rankings.get(id);
+            if (rk == null) continue;
+            ShipmentRequest r = byId.get(id);
+            Auction a = auctions.get(id);
+            boolean decided = r.status() != ShipmentRequest.Status.PUBLISHED;
+            boolean closed = decided || a == null || !a.isOpen();
+            int rank = rk.betterCount() + 1;
+            var band = decided ? null
+                    : BidStandingPolicy.band(myBids.get(id).bid().amount(), rk.bestAmount());
+            out.put(id, new BidStanding(rank, rk.bidCount(), rank == 1, band, closed));
+        }
+        return out;
     }
 
     public List<BidSummary> bids(List<Bid> list) {

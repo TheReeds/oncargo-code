@@ -45,9 +45,9 @@
     <string name="requests_accept_carrier_fallback">este transportista</string>
     <string name="requests_dismiss_back">Volver</string>
     <string name="requests_cancel_title">¿Cancelar la solicitud?</string>
-    <string name="requests_cancel_message">Cerraremos la subasta y los transportistas dejarán de ver tu carga. No podrás deshacerlo.</string>
-    <string name="requests_cancel_confirm">Sí, cancelar solicitud</string>
-    <string name="requests_cancel_dismiss">No, mantenerla</string>
+    <string name="requests_cancel_message">Cerraremos la subasta y los transportistas que ofertaron recibirán un aviso con tu motivo. Podrás republicarla después.</string>
+    <string name="requests_cancel_reason_label">Motivo</string>
+    <string name="requests_cancel_confirm">Cancelar solicitud</string>
     <string name="requests_bid_accepted">Oferta aceptada. Creamos tu envío.</string>
     <string name="requests_cancelled">Solicitud cancelada</string>
     <string name="requests_messages">Mensajes</string>
@@ -67,4 +67,45 @@
     <string name="requests_counter_sent">Contraoferta enviada</string>
     <string name="requests_kpi_trip_bookings">Reservas en viajes</string>
     <string name="requests_kpi_trip_bookings_context">Por confirmar o confirmadas</string>
+
+    <!-- Contraoferta del transportista (RF26/RF28) -->
+    <string name="requests_counter_from_carrier">%1$s propone %2$s</string>
+    <string name="requests_counter_from_carrier_generic">El transportista propone %1$s</string>
+    <string name="requests_counter_accept">Aceptar contraoferta</string>
+    <string name="requests_counter_reject">Rechazar contraoferta</string>
+    <string name="requests_counter_waiting">Esperando respuesta: propusiste %1$s</string>
+    <string name="requests_counter_response_accepted_title">¿Aceptar la contraoferta?</string>
+    <string name="requests_counter_response_accepted_message">La oferta de %1$s pasará a %2$s. Después podrás adjudicarla cuando quieras.</string>
+    <string name="requests_counter_response_rejected_title">¿Rechazar la contraoferta?</string>
+    <string name="requests_counter_response_rejected_message">La oferta de %1$s se queda en su monto actual. Puedes proponer otro monto.</string>
+    <string name="requests_counter_response_accepted">Contraoferta aceptada. La oferta ahora es de %1$s</string>
+    <string name="requests_counter_response_rejected">Contraoferta rechazada</string>
+    <string name="requests_counter_by_carrier">Del transportista</string>
+    <string name="requests_counter_by_you">Tuya</string>
+    <string name="requests_counter_message_hint">Máx. %1$d caracteres. No incluyas teléfonos, correos ni enlaces.</string>
+    <string name="requests_bid_withdrawn_note">El transportista retiró esta oferta. Ya no se puede aceptar ni contraofertar.</string>
+
+    <!-- Reabrir y republicar (F07, F06) -->
+    <string name="requests_closed_unassigned_title">La subasta cerró sin adjudicar</string>
+    <string name="requests_closed_unassigned_text">Nadie ganó la carga. Reábrela para volver a recibir ofertas; si lo necesitas, mueve la fecha de recojo.</string>
+    <string name="requests_reopen">Reabrir subasta</string>
+    <string name="requests_reopen_title">Reabrir la subasta</string>
+    <string name="requests_reopen_message">Los transportistas volverán a ver tu carga y podrán ofertar de nuevo. Las ofertas retiradas siguen retiradas.</string>
+    <string name="requests_reopen_confirm">Reabrir subasta</string>
+    <string name="requests_reopened">Subasta reabierta</string>
+    <string name="requests_republish">Republicar solicitud</string>
+    <string name="requests_republish_title">Republicar la solicitud</string>
+    <string name="requests_republish_message">Crearemos una solicitud nueva con la misma carga y recalcularemos el precio. Los transportistas la verán de inmediato.</string>
+    <string name="requests_republish_confirm">Republicar solicitud</string>
+    <string name="requests_republished">Solicitud republicada</string>
+    <string name="requests_reschedule_date_label">Nueva fecha de recojo</string>
+    <string name="requests_reschedule_date_hint">Opcional. Si no eliges una, se mantiene el recojo del %1$s.</string>
+    <string name="requests_reschedule_date_hint_none">Opcional. Si no eliges una, se mantiene la fecha actual.</string>
+    <string name="requests_cancelled_title">Solicitud cancelada</string>
+    <string name="requests_cancelled_reason">Motivo: %1$s</string>
+    <string name="requests_cancelled_no_reason">No indicaste un motivo.</string>
+    <string name="requests_republished_from">Republicada a partir de una solicitud cancelada</string>
+    <string name="requests_open_original">Ver la solicitud original</string>
+    <string name="requests_list_closed_unassigned">Cerró sin adjudicar</string>
+    <string name="requests_list_closed_hint">Toca para reabrirla</string>
 </resources>

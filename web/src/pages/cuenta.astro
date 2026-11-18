@@ -1,0 +1,23 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import Public from '@/layouts/Public.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import AccountView from '@/features/auth/components/AccountView.astro';
+import { me } from '@/features/auth/server';
+const session = Astro.locals.session!;
+const user = await me(session.token);
+const isDriver = session.groups.includes('DRIVER') && !session.groups.includes('PYME') && !session.groups.includes('CARRIER');
+---
+{isDriver ? (
+  <Public title="Mi cuenta" footer="compact">
+    <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-12">
+      <PageHeader title="Mi cuenta" subtitle="Tus datos y la seguridad de tu acceso." breadcrumbs={[{ label: 'Mi viaje', href: '/conductor' }, { label: 'Mi cuenta' }]} />
+      <AccountView user={user} email={session.email} role={session.role} orgType={session.orgType} />
+    </div>
+  </Public>
+) : (
+  <AppShell title="Mi cuenta" active="cuenta">
+    <PageHeader title="Mi cuenta" subtitle="Tus datos y la seguridad de tu acceso." />
+    <AccountView user={user} email={session.email} role={session.role} orgType={session.orgType} />
+  </AppShell>
+)}

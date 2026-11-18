@@ -79,6 +79,9 @@ public class DemoDataSeeder {
     public static final String CARRIER2_EMAIL = "carrier2@logyx.pe";
     public static final String DRIVER_EMAIL = "driver@logyx.pe";
     public static final String OPERATOR_EMAIL = "operator@logyx.pe";
+    /** V14 (F03): usuarios OPS y VIEWER de la PYME demo. */
+    public static final String PYME_OPS_EMAIL = "pyme.ops@logyx.pe";
+    public static final String PYME_VIEWER_EMAIL = "pyme.viewer@logyx.pe";
 
     @Inject AuthService auth;
     @Inject pe.logyx.identity.application.OrganizationVerificationService verification;
@@ -108,9 +111,11 @@ public class DemoDataSeeder {
         if (systemTx.call(() -> accounts.byEmail(PYME_EMAIL).isPresent())) {
             Log.info("Datos demo ya presentes; no se vuelven a crear");
             verifyExistingDemoOrganizations();
+            ensureDemoTeam();
             return;
         }
         seed();
+        ensureDemoTeam();
         Log.infof("Datos demo creados: %s, %s, %s, %s, %s (contraseña %s)",
                 PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL, PASSWORD);
     }
@@ -128,6 +133,20 @@ public class DemoDataSeeder {
                 .setParameter(1, PYME_EMAIL).setParameter(2, CARRIER_EMAIL).setParameter(3, CARRIER2_EMAIL)
                 .executeUpdate());
         if (n > 0) Log.infof("Organizaciones demo verificadas: %d", n);
+    }
+
+    /**
+     * V14 (F03): la PYME demo tiene además un usuario de Operaciones y uno Lector (misma contraseña). Idempotente:
+     * se crean también en bases dev anteriores.
+     */
+    private void ensureDemoTeam() {
+        // SystemTx: arranque sin usuario; busca la organización de la PYME demo.
+        UUID pymeOrg = systemTx.call(() -> accounts.byEmail(PYME_EMAIL).map(p -> p.organizationId()).orElse(null));
+        if (pymeOrg == null) return;
+        auth.provisionUser(pymeOrg, PYME_OPS_EMAIL, PASSWORD, "Rosa Quispe (Operaciones)",
+                pe.logyx.identity.domain.model.Profile.Role.OPS);
+        auth.provisionUser(pymeOrg, PYME_VIEWER_EMAIL, PASSWORD, "Luis Mamani (Lector)",
+                pe.logyx.identity.domain.model.Profile.Role.VIEWER);
     }
 
     /**

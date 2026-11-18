@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
-import { splitActionError } from '@/lib/action-error';
+import { toFormErrors, isVerificationFailure, type ActionFailure } from '@/lib/action-error';
+import { LIMITS } from '@/lib/limits';
+import { VerificationBlock } from '@/components/domain/VerificationBlock';
 import { Sheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
@@ -27,10 +29,11 @@ export default function BookTripSheet({ trip, onClose, defaultWeight }: { trip: 
   const [delivery, setDelivery] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<ActionFailure | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setWeight(defaultWeight ?? ''); setCargo('GENERAL'); setDesc(''); setPickup(''); setDelivery(''); setErrors({}); setError(null); setBusy(false);
+    setWeight(defaultWeight ?? ''); setCargo('GENERAL'); setDesc(''); setPickup(''); setDelivery(''); setErrors({}); setError(null); setBlocked(null); setBusy(false);
   }, [trip?.id]);
 
   const kg = Number(weight);
@@ -42,6 +45,7 @@ export default function BookTripSheet({ trip, onClose, defaultWeight }: { trip: 
     e.preventDefault();
     if (!trip) return;
     setError(null);
+    setBlocked(null);
     const errs: Record<string, string> = {};
     if (!(kg > 0)) errs.weight = 'Ingresa el peso que quieres enviar en kg.';
     else if (kg > remaining) errs.weight = `Solo quedan ${formatNumber(remaining)} kg libres en este viaje. Reduce el peso.`;
@@ -55,9 +59,12 @@ export default function BookTripSheet({ trip, onClose, defaultWeight }: { trip: 
     const { error } = await actions.trips.book({ tripId: trip.id!, weightKg: kg, cargoType: cargo as CargoType, cargoDescription: desc.trim(), pickupAddress: pickup.trim(), deliveryAddress: delivery.trim() });
     if (error) {
       setBusy(false);
-      const { message, field } = splitActionError(error);
-      if (field && FIELD_MAP[field]) setErrors({ [FIELD_MAP[field]]: message });
-      else setError(message);
+      const r = toFormErrors(error, FIELD_MAP);
+      setErrors(r.errors);
+      if (isVerificationFailure(r.failure)) setBlocked(r.failure);
+      else setError(r.formError);
+      const first = Object.keys(r.errors)[0];
+      if (first) requestAnimationFrame(() => document.getElementById(`bk-${first}`)?.focus());
       return;
     }
     flash('Reserva enviada', 'success');
@@ -79,6 +86,7 @@ export default function BookTripSheet({ trip, onClose, defaultWeight }: { trip: 
           </div>
 
           {error && <Alert tone="error" title="No pudimos enviar tu reserva">{error}</Alert>}
+          {blocked && <VerificationBlock failure={blocked} />}
 
           <Field label="Peso a enviar" htmlFor="bk-weight" error={errors.weight} hint={`Hasta ${formatNumber(remaining)} kg disponibles.`} required>
             <NumberInput id="bk-weight" value={weight} onValueChange={(v) => { setWeight(v); clear('weight'); }} suffix="kg" invalid={!!errors.weight} placeholder="2,500" />
@@ -91,14 +99,14 @@ export default function BookTripSheet({ trip, onClose, defaultWeight }: { trip: 
           <Field label="Tipo de carga" htmlFor="bk-cargo" error={errors.cargo} required>
             <Select id="bk-cargo" value={cargo} onValueChange={(v) => { setCargo(v); clear('cargo'); }} options={CARGO_OPTIONS} invalid={!!errors.cargo} />
           </Field>
-          <Field label="Descripción de la carga" htmlFor="bk-desc" error={errors.desc} required>
-            <Textarea id="bk-desc" value={desc} onChange={(e) => { setDesc(e.target.value); clear('desc'); }} maxLength={500} aria-invalid={!!errors.desc || undefined} placeholder="Ej. Mercadería de bazar en cajas" />
+          <Field label="Descripción de la carga" htmlFor="bk-desc" error={errors.desc} required hint={`Hasta ${LIMITS.bookingCargoDescription} caracteres. Sin teléfonos ni correos.`}>
+            <Textarea id="bk-desc" value={desc} onChange={(e) => { setDesc(e.target.value); clear('desc'); }} maxLength={LIMITS.bookingCargoDescription} aria-invalid={!!errors.desc || undefined} placeholder="Ej. Mercadería de bazar en cajas" />
           </Field>
           <Field label="Dirección de recojo" htmlFor="bk-pickup" error={errors.pickup} required>
-            <Input id="bk-pickup" value={pickup} onChange={(e) => { setPickup(e.target.value); clear('pickup'); }} maxLength={300} aria-invalid={!!errors.pickup || undefined} placeholder="Av. Argentina 1234, Callao" />
+            <Input id="bk-pickup" value={pickup} onChange={(e) => { setPickup(e.target.value); clear('pickup'); }} maxLength={LIMITS.bookingAddress} aria-invalid={!!errors.pickup || undefined} placeholder="Av. Argentina 1234, Callao" />
           </Field>
           <Field label="Dirección de entrega" htmlFor="bk-delivery" error={errors.delivery} required>
-            <Input id="bk-delivery" value={delivery} onChange={(e) => { setDelivery(e.target.value); clear('delivery'); }} maxLength={300} aria-invalid={!!errors.delivery || undefined} placeholder="Jr. San Román 456, Juliaca" />
+            <Input id="bk-delivery" value={delivery} onChange={(e) => { setDelivery(e.target.value); clear('delivery'); }} maxLength={LIMITS.bookingAddress} aria-invalid={!!errors.delivery || undefined} placeholder="Jr. San Román 456, Juliaca" />
           </Field>
           <Button type="submit" variant="money" size="lg" className="w-full" loading={busy}>{busy ? 'Enviando reserva…' : 'Reservar espacio'}</Button>
         </form>

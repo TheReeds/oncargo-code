@@ -25,34 +25,37 @@ import kotlin.test.assertTrue
 
 private val user = UserInfo("u1", "c@logyx.pe", "Carla Quispe", Role.ADMIN, "org1", "Andes SAC", OrgType.CARRIER, true, organizationCity = "Lima")
 
-private class FakeAuth : AuthRepository {
+internal class FakeAuth : AuthRepository {
     override val state: StateFlow<SessionState> = MutableStateFlow(SessionState.LoggedIn(user))
     override suspend fun login(email: String, password: String) = Result.success(user)
     override suspend fun logout() {}
 }
 
-private class FakeCatalog(val orgCity: String? = "Lima") : CatalogRepository {
+internal class FakeCatalog(val orgCity: String? = "Lima") : CatalogRepository {
     override suspend fun cities() = Result.success(
         listOf(CityItem("LIMA", "Lima", -12.04, -77.04), CityItem("JULIACA", "Juliaca", -15.5, -70.1), CityItem("AREQUIPA", "Arequipa", -16.4, -71.5)),
     )
     override suspend fun organization(id: String) = Result.success(PublicOrganization(id, OrgType.CARRIER, "Andes SAC", city = orgCity))
 }
 
-private fun req(id: String, origin: String, kg: Double, price: Double, floor: Double = 1000.0, myBid: BidView? = null, created: String = "2026-11-10T10:00:00-05:00") =
+internal fun req(id: String, origin: String, kg: Double, price: Double, floor: Double = 1000.0, myBid: BidView? = null, created: String = "2026-11-10T10:00:00-05:00") =
     RequestView(
         id = id, originCity = origin, destinationCity = "JULIACA", cargoType = CargoType.GENERAL, weightKg = kg,
         suggestedPrice = price, priceFloor = floor, status = RequestStatus.PUBLISHED, createdAt = created, myBid = myBid,
         auction = AuctionView("a$id", AuctionStatus.OPEN, "2099-01-01T00:00:00Z", 5, 1),
     )
 
-private fun truck(id: String, kg: Double) = VehicleView(id, "ABC-$id", VehicleType.TRUCK_MEDIUM, kg, 20.0, VehicleStatus.AVAILABLE)
+internal fun truck(id: String, kg: Double) = VehicleView(id, "ABC-$id", VehicleType.TRUCK_MEDIUM, kg, 20.0, VehicleStatus.AVAILABLE)
 
-private class FakeLoads(
+internal class FakeLoads(
     var market: Result<List<RequestView>> = Result.success(emptyList()),
     var fleet: List<VehicleView> = emptyList(),
     var bids: List<RequestView> = emptyList(),
     var placeResult: Result<BidView>? = null,
 ) : LoadsRepository {
+    var withdrawResult: Result<BidView> = Result.success(BidView("b1", "1", amount = 1000.0, status = BidStatus.WITHDRAWN))
+    val withdrawn = mutableListOf<String>()
+    override suspend fun withdrawBid(bidId: String): Result<BidView> { withdrawn += bidId; return withdrawResult }
     var lastBid: Triple<String, Double, String?>? = null
     var lastFilter: MarketplaceFilter? = null
     var dash: Result<DashboardSummary>? = null
@@ -171,7 +174,7 @@ class LoadsViewModelsTest {
 
     @Test fun `ofertar valida piso localmente y muestra error de la API`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
-        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeRealtime())
+        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeNegotiation(), FakeRealtime())
         assertNotNull(vm.state.value.origin)
         vm.openBidSheet()
         assertEquals("1", vm.state.value.form?.vehicleId, "un solo vehículo compatible se preselecciona")
@@ -195,7 +198,7 @@ class LoadsViewModelsTest {
 
     @Test fun `error de campo de la API se muestra en el campo`() = runTest {
         val repo = FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0)))
-        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeRealtime())
+        val vm = LoadDetailViewModel("1", repo, FakeCatalog(), FakeNegotiation(), FakeRealtime())
         vm.openBidSheet()
         vm.onAmountChange("1200")
         repo.placeResult = Result.failure(ApiException(400, "X", "Monto bajo el piso", "amount"))
@@ -216,7 +219,7 @@ class LoadsViewModelsTest {
     }
 
     @Test fun `sin vehiculo compatible no hay opciones`() = runTest {
-        val vm = LoadDetailViewModel("2", FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0))), FakeCatalog(), FakeRealtime())
+        val vm = LoadDetailViewModel("2", FakeLoads(Result.success(loads), fleet = listOf(truck("1", 5000.0))), FakeCatalog(), FakeNegotiation(), FakeRealtime())
         assertTrue(vm.state.value.compatibleVehicles.isEmpty())
     }
 }
@@ -225,7 +228,7 @@ private class FakeShipments : pe.logyx.core.data.ShipmentsRepository {
     override suspend fun list() = Result.success(emptyList<ShipmentView>())
     override suspend fun detail(id: String) = Result.failure<ShipmentView>(IllegalStateException())
     override suspend fun drivers() = Result.success(emptyList<DriverView>())
-    override suspend fun assignDriver(shipmentId: String, driverId: String) = Result.failure<ShipmentView>(IllegalStateException())
+    override suspend fun assignDriver(shipmentId: String, driverId: String, reason: String?) = Result.failure<ShipmentView>(IllegalStateException())
     override suspend fun driverShipments() = Result.success(emptyList<ShipmentView>())
     override suspend fun arrive(shipmentId: String, stopId: String) = Result.failure<ShipmentView>(IllegalStateException())
     override suspend fun complete(shipmentId: String, stopId: String) = Result.failure<ShipmentView>(IllegalStateException())
@@ -240,7 +243,7 @@ class ParseAmountTest {
     }
 }
 
-private class FakeNegotiation(var counters: Map<String, List<CounterOfferView>> = emptyMap()) : pe.logyx.core.data.NegotiationRepository {
+internal class FakeNegotiation(var counters: Map<String, List<CounterOfferView>> = emptyMap()) : pe.logyx.core.data.NegotiationRepository {
     val queried = mutableListOf<String>()
     var accepted: String? = null
     var rejected: String? = null
@@ -248,7 +251,12 @@ private class FakeNegotiation(var counters: Map<String, List<CounterOfferView>> 
     override suspend fun messages(requestId: String, carrierOrgId: String, before: String?) = Result.success(CursorPage<MessageView>(emptyList(), null))
     override suspend fun send(requestId: String, carrierOrgId: String, body: String) = Result.failure<MessageView>(IllegalStateException())
     override suspend fun counterOffers(bidId: String): Result<List<CounterOfferView>> { queried += bidId; return Result.success(counters[bidId].orEmpty()) }
-    override suspend fun propose(bidId: String, amount: Double, message: String?) = Result.failure<CounterOfferView>(IllegalStateException())
+    var proposeResult: Result<CounterOfferView>? = null
+    var proposed: Triple<String, Double, String?>? = null
+    override suspend fun propose(bidId: String, amount: Double, message: String?): Result<CounterOfferView> {
+        proposed = Triple(bidId, amount, message)
+        return proposeResult ?: Result.success(CounterOfferView("new", bidId, amount = amount, message = message, status = CounterOfferStatus.PENDING, proposedByCarrier = true))
+    }
     override suspend fun accept(counterOfferId: String): Result<CounterOfferView> { accepted = counterOfferId; return Result.success(CounterOfferView(counterOfferId, "b1", amount = 1700.0, status = CounterOfferStatus.ACCEPTED)) }
     override suspend fun reject(counterOfferId: String): Result<CounterOfferView> { rejected = counterOfferId; return Result.success(CounterOfferView(counterOfferId, "b1", amount = 1700.0, status = CounterOfferStatus.REJECTED)) }
 }

@@ -16,21 +16,22 @@ test.describe('Operador', () => {
     await expect(page.getByRole('heading', { name: /Subastas por vencer/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Envíos con incidencias/ })).toBeVisible();
     await expect(page.getByText(/Actualizado/)).toBeVisible();
-    // el operador no entra al área de PYME
-    await page.goto('/pyme');
-    await expect(page).toHaveURL(/\/operador$/);
+    // el operador no entra al área de PYME: 403 con enlace a su panel (F58)
+    expect((await page.goto('/pyme'))?.status()).toBe(403);
+    await expect(page.getByRole('heading', { name: 'No tienes acceso a esta sección' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Ir a mi panel' })).toHaveAttribute('href', '/operador');
 
     // PYME y transportista no entran a /operador
     const pyme = await api.registerAccount('PYME');
     await context.clearCookies();
     await setSession(context, pyme.token, BASE);
-    await page.goto('/operador');
-    await expect(page).toHaveURL(/\/pyme$/);
+    expect((await page.goto('/operador'))?.status()).toBe(403);
+    await expect(page.getByRole('link', { name: 'Ir a mi panel' })).toHaveAttribute('href', '/pyme');
     const carrier = await api.registerAccount('CARRIER');
     await context.clearCookies();
     await setSession(context, carrier.token, BASE);
-    await page.goto('/operador');
-    await expect(page).toHaveURL(/\/transportista\//);
+    expect((await page.goto('/operador'))?.status()).toBe(403);
+    await expect(page.getByRole('link', { name: 'Ir a mi panel' })).toHaveAttribute('href', '/transportista/marketplace');
   });
 
   test('asignación manual: candidatos, confirmación y envío generado', async ({ page, context }) => {

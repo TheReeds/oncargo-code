@@ -1,0 +1,46 @@
+---
+// Contenido de /cuenta (lo usan todos los roles; el conductor lo ve dentro del layout público, sin AppShell).
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DescriptionList } from '@/components/ui/description-list';
+import ChangePasswordForm from './ChangePasswordForm';
+import LogoutAllButton from './LogoutAllButton';
+import { ROLE_LABEL, ROLE_DESCRIPTION, type OrgRole } from '@/lib/permissions';
+import type { UserInfo } from '@/lib/api/server';
+interface Props { user: UserInfo | null; email: string; role: string | null; orgType: string | null }
+const { user, email, role, orgType } = Astro.props;
+const orgLabel = orgType === 'PYME' ? 'PYME' : orgType === 'CARRIER' ? 'Transportista' : orgType === 'OPERATOR' ? 'Operador OnCargo' : '—';
+const roleKey = (user?.role ?? role ?? 'ADMIN') as OrgRole;
+---
+<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+  <div class="min-w-0 space-y-5">
+    <Card>
+      <CardHeader><CardTitle>Tus datos</CardTitle></CardHeader>
+      <CardBody>
+        <DescriptionList cols={1} items={[
+          { label: 'Nombre', value: user?.fullName ?? '—' },
+          { label: 'Correo', value: email || user?.email, mono: true },
+          { label: 'Rol', value: ROLE_LABEL[roleKey] ?? roleKey, hint: roleKey === 'DRIVER' ? 'Ejecutas los envíos que tu transportista te asigna.' : ROLE_DESCRIPTION[roleKey as Exclude<OrgRole, 'DRIVER'>] },
+          { label: 'Organización', value: user?.organizationName ?? '—', hint: orgLabel },
+        ]} />
+      </CardBody>
+    </Card>
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>Sesiones</CardTitle>
+          <CardDescription>Si perdiste un equipo o sospechas que alguien más entró a tu cuenta, cierra todas las sesiones.</CardDescription>
+        </div>
+      </CardHeader>
+      <CardBody><LogoutAllButton client:load /></CardBody>
+    </Card>
+  </div>
+  <Card className="min-w-0">
+    <CardHeader>
+      <div>
+        <CardTitle>Cambiar contraseña</CardTitle>
+        <CardDescription>Al cambiarla, se cierra tu sesión en los demás dispositivos.</CardDescription>
+      </div>
+    </CardHeader>
+    <CardBody><ChangePasswordForm client:load /></CardBody>
+  </Card>
+</div>

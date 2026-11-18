@@ -200,7 +200,7 @@ class RejectBookingReasonFlowTest {
     }
 }
 
-/** Transportista: Home (aviso de sugerencias) -> Smart Load -> aceptar con confirmación. */
+/** Transportista: Home (aviso de sugerencias) -> Smart Load -> ofertar el plan con montos y confirmación. */
 @RunWith(AndroidJUnit4::class)
 class SmartLoadFlowTest {
     private val trips = FakeTrips()
@@ -222,12 +222,14 @@ class SmartLoadFlowTest {
         compose.onNodeWithText("Ver sugerencias").performClick()
         waitFor("Ingreso combinado")
         waitFor("ASA-202")
-        compose.onAllNodesWithText("Aceptar sugerencia").onFirst().performClick()
-        waitFor("¿Aceptar esta sugerencia?")
+        compose.onAllNodesWithText("Ofertar este plan").onFirst().performClick()
+        waitFor("Total ofertado")
+        compose.onAllNodesWithText("Enviar ofertas").onFirst().performClick()
+        waitFor("Es todo o nada")
         assertEquals(0, smart.accepted.size)
-        compose.onAllNodesWithText("Aceptar sugerencia").onLast().performClick()
+        compose.onAllNodesWithText("Enviar ofertas").onLast().performClick()
         compose.waitUntil(10_000) { smart.accepted.size == 1 }
         assertEquals("s1", smart.accepted.single())
-        waitFor("Sugerencia aceptada")
+        waitFor("Ofertas enviadas")
     }
 }

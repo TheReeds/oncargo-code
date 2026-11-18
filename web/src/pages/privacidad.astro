@@ -1,6 +1,6 @@
 ---
 import Public from '@/layouts/Public.astro';
-import { Mail, ShieldCheck, Database, Share2, Scale } from '@lucide/astro';
+import { Mail, ShieldCheck, Database, Share2, Scale, Lock, FileText } from '@lucide/astro';
 const sections = [
   { id: 'responsable', h: 'Responsable del tratamiento', p: 'OnCargo (nombre comercial de la plataforma conocida antes como LOGYX) conecta a empresas (PYMEs) con transportistas del corredor Lima–Sierra Sur. El responsable del tratamiento del banco de datos personales que se genera a partir de tu registro y uso de la plataforma sigue siendo el mismo de siempre: solo cambió el nombre comercial.' },
   { id: 'datos', h: 'Datos que recopilamos', p: 'Datos de la empresa (razón social, RUC, ciudad, teléfono), datos del usuario (nombre, correo electrónico), datos de conductores y vehículos registrados por los transportistas (nombre, licencia, placa) y datos operativos de cada envío (rutas, paradas, horas).' },
@@ -16,50 +16,73 @@ const summary = [
 ];
 ---
 <Public title="Política de privacidad" description="Cómo OnCargo trata tus datos personales conforme a la Ley N.° 29733: qué datos recopilamos, para qué, con quién se comparten y cómo ejercer tus derechos ARCO.">
-  <div class="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 sm:py-14 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-14 lg:px-10">
-    <aside class="print:hidden lg:sticky lg:top-24 lg:self-start" aria-label="En esta página">
-      <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">En esta página</p>
-      <nav class="mt-3" aria-label="Contenido de la política">
-        <ol class="space-y-0.5 border-l border-steel-200 text-sm">
+  <header class="mk-dark relative isolate overflow-hidden">
+    <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
+    <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">
+      <p class="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-chrome/40 px-3 py-1 text-xs font-medium text-white"><ShieldCheck size={13} class="text-emerald-500" aria-hidden="true" /> Ley N.° 29733 · Protección de Datos Personales (Perú)</p>
+      <h1 class="mk-display mt-5 max-w-[14ch] text-white">Política de privacidad</h1>
+      <p class="mk-lead mt-5 text-base text-white/85 sm:text-lg">Qué datos guardamos, para qué los usamos, con quién se comparten y cómo ejercer tus derechos.</p>
+      <p class="mt-6 inline-flex items-center gap-2 text-sm text-white/85"><FileText size={15} class="text-emerald-500" aria-hidden="true" /> Versión borrador para el MVP</p>
+    </div>
+  </header>
+
+  <div class="mx-auto w-full max-w-[1280px] px-4 lg:px-10">
+    <ul class="relative z-10 -mt-20 grid gap-3 sm:-mt-24 sm:grid-cols-3 sm:gap-4" aria-label="En resumen">
+      {summary.map((s) => (
+        <li class="mk-card rounded-card border border-steel-200 bg-surface p-5 shadow-lg shadow-chrome/10">
+          <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><s.icon size={18} aria-hidden="true" /></span>
+          <p class="mt-3 text-[15px] font-semibold text-ink-900">{s.t}</p>
+          <p class="mt-1 text-sm text-ink-500">{s.d}</p>
+        </li>
+      ))}
+    </ul>
+
+    <div class="grid gap-x-10 gap-y-8 py-12 sm:py-16 lg:grid-cols-[210px_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_270px]">
+      <aside class="print:hidden lg:row-span-2 lg:sticky lg:top-24 lg:self-start xl:row-span-1" aria-label="En esta página">
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">En esta página</p>
+        <nav class="mt-3" aria-label="Contenido de la política">
+          <ol class="space-y-0.5 border-l border-steel-200 text-sm">
+            {sections.map((s, i) => (
+              <li><a href={`#${s.id}`} class="-ml-px flex gap-2 border-l-2 border-transparent py-1.5 pl-3 text-ink-700 transition-colors hover:border-petrol-700 hover:text-petrol-700"><span class="font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</span>{s.h}</a></li>
+            ))}
+          </ol>
+        </nav>
+      </aside>
+
+      <article class="min-w-0 max-w-[68ch]">
+        <div class="space-y-9 text-[15px] leading-7 text-ink-700">
           {sections.map((s, i) => (
-            <li><a href={`#${s.id}`} class="-ml-px flex gap-2 border-l-2 border-transparent py-1.5 pl-3 text-ink-700 transition-colors hover:border-petrol-700 hover:text-petrol-700"><span class="font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</span>{s.h}</a></li>
+            <section id={s.id} class="scroll-mt-24" aria-labelledby={`${s.id}-t`}>
+              <h2 id={`${s.id}-t`} class="mb-2 flex items-baseline gap-3 text-lg font-semibold text-ink-900"><span class="font-mono text-sm text-ink-500" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{s.h}</h2>
+              <p class="text-pretty">{s.p}</p>
+            </section>
           ))}
-        </ol>
-      </nav>
-    </aside>
-
-    <article class="min-w-0 max-w-[68ch]">
-      <p class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"><ShieldCheck size={13} aria-hidden="true" /> Ley N.° 29733 · Protección de Datos Personales (Perú)</p>
-      <h1 class="mt-4 text-balance text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">Política de privacidad</h1>
-      <p class="mt-2 text-sm text-ink-500">Versión borrador para el MVP</p>
-
-      <ul class="mt-8 grid gap-3 sm:grid-cols-3" aria-label="En resumen">
-        {summary.map((s) => (
-          <li class="rounded-card border border-steel-200 bg-surface p-4">
-            <span class="grid size-8 place-items-center rounded-full bg-petrol-50 text-petrol-700"><s.icon size={16} aria-hidden="true" /></span>
-            <p class="mt-3 text-sm font-semibold text-ink-900">{s.t}</p>
-            <p class="mt-1 text-xs text-ink-500">{s.d}</p>
-          </li>
-        ))}
-      </ul>
-
-      <div class="mt-10 space-y-9 text-[15px] leading-7 text-ink-700">
-        {sections.map((s, i) => (
-          <section id={s.id} class="scroll-mt-24" aria-labelledby={`${s.id}-t`}>
-            <h2 id={`${s.id}-t`} class="mb-2 flex items-baseline gap-3 text-lg font-semibold text-ink-900"><span class="font-mono text-sm text-ink-500" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{s.h}</h2>
-            <p class="text-pretty">{s.p}</p>
-          </section>
-        ))}
-      </div>
-
-      <div class="mt-10 flex items-start gap-3 rounded-card border border-steel-200 bg-petrol-50 p-5">
-        <Mail size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
-        <div class="text-sm">
-          <p class="font-semibold text-ink-900">¿Quieres ejercer tus derechos?</p>
-          <p class="mt-1 text-ink-700">Escribe a <a href="mailto:privacidad@logyx.pe" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@logyx.pe</a> indicando tu nombre, tu RUC y qué derecho quieres ejercer.</p>
         </div>
-      </div>
-      <p class="mt-6 rounded-input border border-amber-500/40 bg-amber-50 p-3 text-sm leading-6 text-amber-700">Este texto es un borrador para el MVP y debe ser revisado por asesoría legal antes de su publicación.</p>
-    </article>
+
+        <div class="mt-10 flex items-start gap-3 rounded-card border border-steel-200 bg-petrol-50 p-5">
+          <Mail size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
+          <div class="text-sm">
+            <p class="font-semibold text-ink-900">¿Quieres ejercer tus derechos?</p>
+            <p class="mt-1 text-ink-700">Escribe a <a href="mailto:privacidad@logyx.pe" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@logyx.pe</a> indicando tu nombre, tu RUC y qué derecho quieres ejercer.</p>
+          </div>
+        </div>
+        <p class="mt-6 rounded-input border border-amber-500/40 bg-amber-50 p-3 text-sm leading-6 text-amber-700">Este texto es un borrador para el MVP y debe ser revisado por asesoría legal antes de su publicación.</p>
+      </article>
+
+      <aside class="space-y-4 print:hidden lg:col-start-2 xl:col-start-3 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" aria-label="Datos de contacto y resumen">
+        <section class="rounded-card border border-steel-200 bg-surface p-5" aria-labelledby="arco-t">
+          <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Scale size={18} aria-hidden="true" /></span>
+          <h2 id="arco-t" class="mt-3 text-[15px] font-semibold text-ink-900">Derechos ARCO</h2>
+          <p class="mt-1 text-sm text-ink-500">Acceso, rectificación, cancelación y oposición.</p>
+          <a href="mailto:privacidad@logyx.pe" class="mt-3 inline-flex items-center gap-1.5 break-all text-sm font-medium text-petrol-700 underline underline-offset-2"><Mail size={14} aria-hidden="true" />privacidad@logyx.pe</a>
+          <p class="mt-2 text-xs text-ink-500">Indica tu nombre, tu RUC y el derecho que quieres ejercer.</p>
+        </section>
+        <section class="mk-dark rounded-card p-5" aria-labelledby="una-frase-t">
+          <span class="grid size-9 place-items-center rounded-full border border-white/25 bg-chrome/40 text-emerald-500"><Lock size={17} aria-hidden="true" /></span>
+          <h2 id="una-frase-t" class="mt-3 text-[15px] font-semibold text-white">Resumen en una frase</h2>
+          <p class="mt-1 text-sm leading-6 text-white/85">Guardamos lo necesario para operar tus envíos, lo compartimos solo con la otra parte de un envío aceptado y no vendemos tus datos.</p>
+        </section>
+      </aside>
+    </div>
   </div>
 </Public>

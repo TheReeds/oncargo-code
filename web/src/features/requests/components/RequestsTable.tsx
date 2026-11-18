@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, SearchX, Gavel, Eye, Plus, MoreHorizontal, Ban } from 'lucide-react';
+import { Search, SearchX, Gavel, Eye, Plus, MoreHorizontal, Ban, RotateCcw, Repeat2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -17,7 +17,10 @@ import { Countdown } from '@/components/domain/Countdown';
 import { Button } from '@/components/ui/button';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons } from '@/lib/format';
 import type { RequestView } from '@/lib/api/server';
-import { confirmAndCancelRequest } from './CancelRequestButton';
+import { CancelRequestDialog } from './CancelRequestButton';
+import { RescheduleDialog } from './RecoveryDialogs';
+import { useCan } from '@/lib/use-can';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 
 const PAGE_SIZE = 10;
 type SortKey = 'createdAt' | 'pickupDate' | 'bids' | 'price';
@@ -38,13 +41,13 @@ const VALUE: Record<SortKey, (r: RequestView) => number | string> = {
 };
 
 export default function RequestsTable({ requests }: { requests: RequestView[] }) {
+  const canOperate = useCan('OPERATE');
   const [status, setStatus] = useState('');
   const [city, setCity] = useState('');
   const [q, setQ] = useState('');
   const [range, setRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [sort, setSort] = useState<Sort>({ key: 'createdAt', dir: 'desc' });
   const [page, setPage] = useState(1);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const cityOptions = useMemo(() => {
     const codes = new Set<string>();
@@ -83,21 +86,19 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
   const toggle = (key: SortKey, first: 'asc' | 'desc' = 'asc') => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 'asc' ? 'desc' : 'asc') : first }));
   const dirOf = (key: SortKey) => (sort.key === key ? sort.dir : null);
 
-  async function cancel(r: RequestView) {
-    setBusyId(r.id!);
-    if (await confirmAndCancelRequest(r.id!)) window.location.reload();
-    else setBusyId(null);
-  }
+  const [cancelId, setCancelId] = useState<string | null>(null);
+  const [recover, setRecover] = useState<{ mode: 'reopen' | 'republish'; r: RequestView } | null>(null);
 
   if (requests.length === 0)
     return (
       <Card>
-        <EmptyState title="Aún no tienes solicitudes" description="Publica tu primera carga y recibe ofertas de transportistas en minutos." action={<Button asChild><a href="/pyme/solicitudes/nueva"><Plus />Publicar solicitud</a></Button>} />
+        <EmptyState title="Aún no tienes solicitudes" description="Publica tu primera carga y recibe ofertas de transportistas en minutos." action={canOperate ? <Button asChild><a href="/pyme/solicitudes/nueva"><Plus />Publicar solicitud</a></Button> : undefined} />
       </Card>
     );
 
   return (
     <div className="min-w-0 space-y-3">
+      <ReadOnlyNotice>No puedes publicar ni cancelar solicitudes.</ReadOnlyNotice>
       <QuickFilters
         label="Estado de la solicitud"
         value={status}
@@ -163,7 +164,14 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
                       </Td>
                       <Td label="Carga"><div><div>{CARGO_LABELS[r.cargoType!]}</div><div className="font-mono text-xs text-ink-500">{formatTons(r.weightKg)}</div></div></Td>
                       <Td label="Recojo" className="whitespace-nowrap">{formatDate(r.pickupDate)}</Td>
-                      <Td label="Estado"><StatusPill status={r.status!} /></Td>
+                      <Td label="Estado">
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusPill status={r.status!} />
+                          {open && r.auction?.status === 'CLOSED' && r.auction.closeReason === 'TIMEOUT' && <span className="text-xs font-medium text-amber-700">Subasta cerrada por tiempo</span>}
+                          {r.status === 'CANCELLED' && r.cancelReason && <span className="max-w-44 truncate text-xs text-ink-500" title={r.cancelReason}>{r.cancelReason}</span>}
+                          {r.republishedFrom && <span className="text-xs text-ink-500">Republicada</span>}
+                        </div>
+                      </Td>
                       <Td label="Subasta" className="whitespace-nowrap">
                         {open && r.auction ? (
                           <div className="space-y-0.5 text-right">
@@ -175,12 +183,14 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
                       <Td label="Sugerido" className="text-right"><span className="money">{formatMoney(r.suggestedPrice)}</span></Td>
                       <Td actions className="text-right">
                         <Button asChild variant={n > 0 ? 'money' : 'outline'} size="sm"><a href={`/pyme/solicitudes/${r.id}`}>{n > 0 ? <><Gavel />Comparar ofertas</> : <><Eye />Ver detalle</>}<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></a></Button>
-                        {open && (
+                        {canOperate && (open || r.status === 'CANCELLED') && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="flex-none!" loading={busyId === r.id} aria-label={`Más acciones de ${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="flex-none!" aria-label={`Más acciones de ${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onSelect={() => { window.location.href = `/pyme/solicitudes/${r.id}`; }}><Eye />Ver detalle</DropdownMenuItem>
-                              <DropdownMenuItem destructive onSelect={() => cancel(r)}><Ban />Cancelar solicitud</DropdownMenuItem>
+                              {open && r.auction?.status === 'CLOSED' && r.auction.closeReason === 'TIMEOUT' && <DropdownMenuItem onSelect={() => setRecover({ mode: 'reopen', r })}><RotateCcw />Reabrir subasta</DropdownMenuItem>}
+                              {r.status === 'CANCELLED' && <DropdownMenuItem onSelect={() => setRecover({ mode: 'republish', r })}><Repeat2 />Republicar solicitud</DropdownMenuItem>}
+                              {open && <DropdownMenuItem destructive onSelect={() => setCancelId(r.id!)}><Ban />Cancelar solicitud</DropdownMenuItem>}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -194,6 +204,8 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
           </>
         )}
       </Card>
+      {cancelId && <CancelRequestDialog id={cancelId} open onOpenChange={(o) => !o && setCancelId(null)} />}
+      {recover && <RescheduleDialog mode={recover.mode} id={recover.r.id!} open onOpenChange={(o) => !o && setRecover(null)} currentPickup={recover.r.pickupDate} />}
     </div>
   );
 }

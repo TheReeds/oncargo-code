@@ -97,7 +97,7 @@ fun IncidentsListScreen(
                         }
                         items(state.items, key = { it.id }) { IncidentRow(it) { onOpen(it.id) } }
                         if (!state.hasActive && onReport != null) {
-                            item { LogyxButton(stringResource(R.string.incidents_report_button), onReport) }
+                            item { LogyxButton(stringResource(R.string.incidents_report_button), onReport, requiresOperate = true) }
                         }
                     }
                 }

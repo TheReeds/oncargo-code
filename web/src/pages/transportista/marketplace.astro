@@ -6,6 +6,7 @@ import MarketplaceTable from '@/features/marketplace/components/MarketplaceTable
 import { listOpen } from '@/features/marketplace/server';
 import { listVehicles } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
+import { can } from '@/lib/permissions';
 const t = Astro.locals.session!.token;
 const q = Astro.url.searchParams;
 const get = (k: string) => q.get(k) ?? '';
@@ -29,6 +30,11 @@ try {
 ---
 <AppShell title="Cargas disponibles" active="marketplace" wide>
   <PageHeader title="Cargas disponibles" subtitle="Subastas abiertas: elige una carga compatible con tu flota y envía tu mejor oferta." />
+  {vehicles.length === 0 && can(Astro.locals.session, 'OPERATE') && (
+    <Alert tone="info" title="Registra tu primer vehículo" className="mb-4">
+      Para ofertar necesitas al menos un vehículo disponible en tu flota. <a href="/transportista/flota" class="font-medium underline">Registrar un vehículo en Flota</a> y vuelve a las cargas.
+    </Alert>
+  )}
   {loadError && <Alert tone="error" title="No pudimos cargar las cargas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   <MarketplaceTable client:load requests={result.items} page={result.page + 1} size={result.size} total={result.total} filters={filters} vehicles={vehicles} cities={cities} />
 </AppShell>

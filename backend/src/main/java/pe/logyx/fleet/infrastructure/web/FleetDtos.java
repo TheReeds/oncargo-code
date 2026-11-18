@@ -43,10 +43,16 @@ public final class FleetDtos {
         }
     }
 
-    public record DriverView(UUID id, String fullName, String email, String licenseNumber, Driver.Status status) {
+    /** {@code active} (V14): la cuenta del conductor puede iniciar sesión y recibir envíos. */
+    public record DriverView(UUID id, String fullName, String email, String licenseNumber, Driver.Status status,
+                             boolean active) {
         static DriverView of(DriverAccount a) {
             Driver d = a.driver();
-            return new DriverView(d.id(), a.fullName(), a.email(), d.licenseNumber(), d.status());
+            return new DriverView(d.id(), a.fullName(), a.email(), d.licenseNumber(), d.status(), a.active());
         }
     }
+
+    public record DriverPasswordReset(
+            @NotBlank @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+            String newPassword) {}
 }
