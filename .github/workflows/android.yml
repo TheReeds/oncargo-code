@@ -23,7 +23,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # compileSdk 37 requiere platforms;android-37.0 (el runner trae el SDK en ANDROID_HOME)
       - name: SDK Android
         run: |
