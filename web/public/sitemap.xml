@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Páginas públicas indexables. Misma lista que INDEXABLE_PATHS en src/features/landing/seo.ts: si cambia una, cambia la otra. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oncargo.tech/</loc><lastmod>2026-11-18</lastmod></url>
+  <url><loc>https://oncargo.tech/precios</loc><lastmod>2026-11-18</lastmod></url>
+  <url><loc>https://oncargo.tech/contacto</loc><lastmod>2026-11-18</lastmod></url>
+  <url><loc>https://oncargo.tech/registro</loc><lastmod>2026-11-18</lastmod></url>
+  <url><loc>https://oncargo.tech/terminos</loc><lastmod>2026-11-18</lastmod></url>
+  <url><loc>https://oncargo.tech/privacidad</loc><lastmod>2026-11-18</lastmod></url>
+</urlset>

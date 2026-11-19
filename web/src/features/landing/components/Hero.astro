@@ -3,11 +3,12 @@ import { ArrowRight, ShieldCheck, Truck, Building2 } from '@lucide/astro';
 import BgVideo from '@/components/media/BgVideo.astro';
 import AuctionLive from './AuctionLive.astro';
 
+// Reglas reales de la subasta (RN03/RN04) y del corredor: es la única vez que la landing las enuncia como cifras.
 const kpis = [
-  { n: 20, u: 'min', t: 'duración máxima de la subasta' },
-  { n: 5, u: 'ofertas', t: 'tope por solicitud; cierra al completarse' },
-  { n: 75, u: '%', t: 'del sugerido es el piso de cada oferta' },
-  { n: 11, u: 'ciudades', t: 'entre Lima y la sierra sur' },
+  { n: 20, u: 'min', t: 'dura la subasta, como máximo' },
+  { n: 5, u: 'ofertas', t: 'por carga; al llegar a 5, cierra' },
+  { n: 75, u: '%', t: 'del precio sugerido: piso de toda oferta' },
+  { n: 11, u: 'ciudades', t: 'de Lima a Tacna, Puno y Cusco' },
 ];
 const cta = 'inline-flex h-12 whitespace-nowrap items-center justify-center gap-2 rounded-input px-6 text-[15px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 ---
@@ -21,19 +22,18 @@ const cta = 'inline-flex h-12 whitespace-nowrap items-center justify-center gap-
         <span class="relative size-1.5 rounded-full bg-emerald-500 text-emerald-500 mk-ping" aria-hidden="true"></span> Corredor Lima – Arequipa – Cusco – Puno
       </p>
       <h1 id="hero-title" class="mk-display mk-in mt-5 text-[clamp(2.5rem,1.4rem+4.6vw,5rem)]" style="--d:80ms">Contrata fletes. <span class="text-emerald-500">Sin llamadas.</span></h1>
-      <p class="mk-in mt-5 max-w-[34rem] text-pretty text-lg text-white/90 lg:text-xl" style="--d:160ms">Publica tu carga, recibe ofertas de transportistas verificados en una subasta de 20 minutos y sigue tu envío parada por parada.</p>
+      <p class="mk-in mt-5 max-w-[30rem] text-pretty text-lg text-white/90 lg:text-xl" style="--d:160ms">Publica tu carga y recibe ofertas de transportistas verificados entre Lima y la sierra sur.</p>
       <div class="mk-in mt-8 grid gap-3 sm:grid-cols-2 sm:max-w-[34rem]" style="--d:240ms">
         <a href="/registro" class:list={[cta, 'bg-white text-chrome hover:bg-white/90']}><Building2 size={18} class="shrink-0" aria-hidden="true" /> Crear cuenta de empresa <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a>
         <a href="/registro?tipo=transportista" class:list={[cta, 'border border-white/40 bg-chrome/55 text-white backdrop-blur hover:bg-chrome/80']}><Truck size={18} class="shrink-0" aria-hidden="true" /> Soy transportista</a>
       </div>
-      <p class="mk-in mt-4 text-sm text-white/85" style="--d:300ms">¿Ya tienes cuenta? <a href="/login" class="font-semibold text-white underline underline-offset-2 hover:text-white/80">Ingresa</a></p>
-      <p class="mk-in mt-6 inline-flex items-center gap-2 text-sm text-white/90" style="--d:360ms"><ShieldCheck size={16} class="text-emerald-500" aria-hidden="true" /> Empresas verificadas por OnCargo · Datos protegidos (Ley 29733)</p>
+      <p class="mk-in mt-6 inline-flex items-center gap-2 text-sm text-white/90" style="--d:300ms"><ShieldCheck size={16} class="text-emerald-500" aria-hidden="true" /> Publicar es gratis · RUC validado</p>
     </div>
 
     <div class="mk-in lg:pl-2" style="--d:220ms"><AuctionLive /></div>
   </div>
 
-  <ul class="relative mx-auto grid w-full max-w-[1280px] grid-cols-2 border-t border-white/15 bg-chrome/55 backdrop-blur-sm lg:grid-cols-4 lg:px-10" aria-label="La subasta en cifras">
+  <ul class="relative mx-auto grid w-full max-w-[1280px] grid-cols-2 border-t border-white/15 bg-chrome/55 backdrop-blur-sm lg:grid-cols-4 lg:px-10" aria-label="OnCargo en cifras">
     {kpis.map((f, i) => (
       <li class:list={['px-4 py-3.5 lg:py-4', i % 2 === 1 && 'border-l border-white/15', i >= 2 && 'border-t border-white/15 lg:border-t-0', i >= 1 && 'lg:border-l lg:border-white/15', 'lg:px-6 first:lg:pl-0']}>
         <p class="mk-num text-3xl font-semibold tracking-tight sm:text-[36px] sm:leading-none"><span data-count={f.n}>{f.n}</span><span class="ml-1.5 text-base font-medium text-white/80">{f.u}</span></p>
@@ -42,3 +42,11 @@ const cta = 'inline-flex h-12 whitespace-nowrap items-center justify-center gap-
     ))}
   </ul>
 </section>
+
+<style is:global>
+  /* LCP = póster del hero. El primer fotograma del vídeo también es candidato a LCP; en móviles de alta densidad el póster
+     se registra antes del cambio de fuente con unas décimas de px menos y el vídeo (pintado después de `load`) lo reemplaza.
+     Con una escala propia, Chrome deja de tomar el vídeo como candidato (comprobado en Chromium 1254, 412/390/1440 px, DPR 1.75–3).
+     1.01 en vez de < 1: el contenedor `.bgv` recorta el sobrante, así que no aparece ningún borde. */
+  .bgv--hero-lead .bgv__video { scale: 1.01; }
+</style>

@@ -1,6 +1,7 @@
 ---
 import Public from '@/layouts/Public.astro';
 import { Mail, ShieldCheck, Database, Share2, Scale, Lock, FileText } from '@lucide/astro';
+import { breadcrumbJsonLd } from '@/features/landing/seo';
 const sections = [
   { id: 'responsable', h: 'Responsable del tratamiento', p: 'OnCargo (nombre comercial de la plataforma conocida antes como LOGYX) conecta a empresas (PYMEs) con transportistas del corredor Lima–Sierra Sur. El responsable del tratamiento del banco de datos personales que se genera a partir de tu registro y uso de la plataforma sigue siendo el mismo de siempre: solo cambió el nombre comercial.' },
   { id: 'datos', h: 'Datos que recopilamos', p: 'Datos de la empresa (razón social, RUC, ciudad, teléfono), datos del usuario (nombre, correo electrónico), datos de conductores y vehículos registrados por los transportistas (nombre, licencia, placa) y datos operativos de cada envío (rutas, paradas, horas).' },
@@ -15,7 +16,7 @@ const summary = [
   { icon: Scale, t: 'Tus derechos', d: 'Acceso, rectificación, cancelación y oposición (ARCO).' },
 ];
 ---
-<Public title="Política de privacidad" description="Cómo OnCargo trata tus datos personales conforme a la Ley N.° 29733: qué datos recopilamos, para qué, con quién se comparten y cómo ejercer tus derechos ARCO.">
+<Public title="Política de privacidad" description="Cómo OnCargo trata tus datos personales conforme a la Ley N.° 29733: qué datos recopilamos, para qué, con quién se comparten y cómo ejercer tus derechos ARCO." jsonLd={breadcrumbJsonLd('Política de privacidad', '/privacidad')}>
   <header class="mk-dark relative isolate overflow-hidden">
     <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
     <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">

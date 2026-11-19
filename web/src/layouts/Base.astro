@@ -1,15 +1,30 @@
 ---
 import '@/styles/global.css';
 import Overlays from '@/components/ui/toaster';
+import { SITE_URL, INDEXABLE_PATHS } from '@/features/landing/seo';
 interface Props {
-  title: string; description?: string; /** Imagen para redes (1200×630). */ ogImage?: string;
+  /** Título de la página; el `<title>` queda `<title> · OnCargo` (≤ 60 caracteres en total en las páginas públicas). */
+  title: string;
+  /** Meta description única por página (120–160 caracteres). */
+  description?: string;
+  /** Imagen para redes (1200×630). */
+  ogImage?: string;
   /** Páginas con un secreto en la URL (seguimiento público `/s/<token>`): sin indexar, sin `Referer`, sin canónica ni vista previa social. */
   privateUrl?: boolean;
+  /** Datos estructurados JSON-LD (uno o varios nodos; se publican en un `@graph`). Solo en páginas indexables. */
+  jsonLd?: Record<string, unknown>[];
+  /** Hidratación de toasts y confirmaciones: `load` (paneles) o `idle` (páginas públicas: fuera del camino del LCP). */
+  overlays?: 'load' | 'idle';
 }
-const { title, description = 'OnCargo: marketplace de fletes para PYMEs del corredor Lima – Sierra Sur. Publica tu carga, recibe ofertas y sigue tu envío.', ogImage = '/brand/og-oncargo.png', privateUrl = false } = Astro.props;
+const { title, description = 'OnCargo: fletes para PYMEs entre Lima, Arequipa, Cusco, Juliaca y Puno. Publica tu carga y recibe hasta 5 ofertas de transportistas verificados en 20 minutos.', ogImage = '/brand/og-oncargo.png', privateUrl = false, jsonLd, overlays = 'load' } = Astro.props;
 const fullTitle = `${title} · OnCargo`;
-const canonical = Astro.site && !privateUrl ? new URL(Astro.url.pathname, Astro.site).href : undefined;
-const og = new URL(ogImage, Astro.url).href;
+// Solo las páginas públicas de INDEXABLE_PATHS (la misma lista que public/sitemap.xml) llevan canónica y se indexan;
+// el resto (paneles, login, recuperación de contraseña, /dev, /s/<token>) va con noindex.
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const indexable = !privateUrl && INDEXABLE_PATHS.includes(path);
+const canonical = indexable ? new URL(path, SITE_URL).href : undefined;
+const og = new URL(ogImage, SITE_URL).href;
+const ld = indexable && jsonLd?.length ? JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLd }).replace(/</g, '\\u003c') : undefined;
 ---
 <!doctype html>
 <html lang="es-PE" data-perms={Astro.locals.session?.permissions.join(' ')} data-role={Astro.locals.session?.role ?? undefined}>
@@ -25,11 +40,13 @@ const og = new URL(ogImage, Astro.url).href;
     <meta name="theme-color" content="#0e1726" />
     <meta name="application-name" content="OnCargo" />
     {canonical && <link rel="canonical" href={canonical} />}
-    {privateUrl && <meta name="robots" content="noindex, nofollow, noarchive" />}
+    {canonical && <link rel="alternate" hreflang="es-PE" href={canonical} />}
+    {privateUrl ? <meta name="robots" content="noindex, nofollow, noarchive" /> : !indexable && <meta name="robots" content="noindex" />}
     {privateUrl && <meta name="referrer" content="no-referrer" />}
     <meta property="og:site_name" content="OnCargo" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_PE" />
+    {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={og} />
@@ -52,9 +69,10 @@ const og = new URL(ogImage, Astro.url).href;
       })();
     </script>
     <title>{fullTitle}</title>
+    {ld && <script type="application/ld+json" set:html={ld} />}
   </head>
   <body>
     <slot />
-    <Overlays client:load />
+    {overlays === 'idle' ? <Overlays client:idle /> : <Overlays client:load />}
   </body>
 </html>

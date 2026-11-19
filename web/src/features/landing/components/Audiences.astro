@@ -7,16 +7,14 @@ import { km, quote } from '../pricing';
 const dist = km('LIMA', 'CUSCO');
 const q = quote(dist, 2.4);
 const pyme = [
-  'Cotización estimada con desglose antes de publicar',
-  'Hasta 5 ofertas por solicitud, con precio, vehículo y Trust Score',
-  'Seguimiento por parada con foto de evidencia en la entrega',
-  'Calificas al transportista cuando recibes tu carga',
+  'Precio sugerido con desglose antes de publicar',
+  'Ofertas con vehículo y Trust Score de cada transportista',
+  'Aviso en cada parada y foto de la entrega',
 ];
 const carrier = [
-  'Cargas filtradas por ruta, fecha y capacidad de tus vehículos',
-  'Ofertas con tu vehículo y precio, por encima del piso de la subasta',
-  'Cargas de retorno y Smart Load para no viajar vacío',
-  'Tu reputación crece con cada entrega y abre más cargas',
+  'Solo cargas que tu flota puede llevar en esa fecha',
+  'Ves cuánto cobras neto antes de ofertar',
+  'Cada entrega suma a tu Trust Score',
 ];
 const kpis = [['Ofertas por revisar', '4'], ['En tránsito', '2'], ['Entregados del mes', '12']];
 ---
@@ -25,9 +23,8 @@ const kpis = [['Ofertas por revisar', '4'], ['En tránsito', '2'], ['Entregados 
     <div class="grid gap-3 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-12">
       <div class="mk-rv">
         <p class="mk-eyebrow">Para quién</p>
-        <h2 id="para-quien-t" class="mk-h2 mt-3 text-ink-900">Dos lados del mismo envío, <span class="text-petrol-700">un solo lugar</span> para coordinarlo</h2>
+        <h2 id="para-quien-t" class="mk-h2 mt-3 text-ink-900">Para la empresa que envía <span class="text-petrol-700">y para quien la lleva</span></h2>
       </div>
-      <p class="mk-lead mk-rv text-base text-ink-700 lg:text-lg" style="--i:1">Cada rol ve lo que necesita: la empresa decide, el transportista oferta y el conductor ejecuta.</p>
     </div>
 
     <div class="mt-8 grid gap-5 lg:grid-cols-2">
@@ -38,7 +35,6 @@ const kpis = [['Ofertas por revisar', '4'], ['En tránsito', '2'], ['Entregados 
           <p class="mk-eyebrow !tracking-[0.14em]">Para empresas</p>
         </div>
         <h3 class="mt-5 text-balance text-2xl font-semibold tracking-tight text-ink-900 lg:text-[28px] lg:leading-tight">Publica tu carga y compara ofertas</h3>
-        <p class="mt-2 max-w-prose text-pretty text-[15px] text-ink-700">Pensado para PYMEs que envían carga entre Lima y la sierra sur y quieren precio claro, sin cotizar por teléfono.</p>
         <ul class="mt-5 space-y-2.5 text-sm text-ink-700">
           {pyme.map((p) => <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check size={12} stroke-width={3} aria-hidden="true" /></span>{p}</li>)}
         </ul>
@@ -62,8 +58,7 @@ const kpis = [['Ofertas por revisar', '4'], ['En tránsito', '2'], ['Entregados 
             <span class="grid size-12 place-items-center rounded-input bg-emerald-500 text-chrome"><Truck size={24} aria-hidden="true" /></span>
             <p class="mk-eyebrow !tracking-[0.14em]">Para transportistas</p>
           </div>
-          <h3 class="mt-5 text-balance text-2xl font-semibold tracking-tight lg:text-[28px] lg:leading-tight">Encuentra cargas que encajan con tu flota</h3>
-          <p class="mt-2 max-w-prose text-pretty text-[15px] text-white/85">Para empresas de transporte que quieren llenar sus camiones, también en el viaje de regreso.</p>
+          <h3 class="mt-5 text-balance text-2xl font-semibold tracking-tight lg:text-[28px] lg:leading-tight">Encuentra cargas para tu flota</h3>
           <ul class="mt-5 space-y-2.5 text-sm text-white/90">
             {carrier.map((p) => <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-500/20 text-emerald-500"><Check size={12} stroke-width={3} aria-hidden="true" /></span>{p}</li>)}
           </ul>
@@ -75,7 +70,7 @@ const kpis = [['Ofertas por revisar', '4'], ['En tránsito', '2'], ['Entregados 
             </div>
             <div class="mt-3 flex items-center justify-between border-t border-white/15 pt-2.5 text-xs text-white/85"><span class="inline-flex items-center gap-1"><Timer size={12} /> Cierra en <span class="mk-num">8:20</span> min</span><span class="mk-num">2 de 5 ofertas</span></div>
           </div>
-          <div class="mt-auto pt-7"><a href="/registro?tipo=transportista" class="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-input bg-emerald-500 px-6 text-[15px] font-semibold text-chrome transition-colors hover:bg-emerald-500/90 sm:w-auto">Registrarme para ofertar <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a></div>
+          <div class="mt-auto pt-7"><a href="/registro?tipo=transportista" class="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-input bg-emerald-500 px-6 text-[15px] font-semibold text-chrome transition-colors hover:bg-emerald-500/90 sm:w-auto">Registrar mi flota <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a></div>
         </div>
       </article>
     </div>

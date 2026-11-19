@@ -90,7 +90,7 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
         <div className="mk-grid absolute inset-0 opacity-70" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-3 px-1 pb-2 text-xs text-white/80">
           <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.12em]"><RouteIcon className="size-3.5 text-emerald-500" aria-hidden="true" /> Rutas reales del corredor</span>
-          <span className="hidden sm:inline">Toca una ciudad para elegirla como destino</span>
+          <span className="hidden sm:inline">Toca una ciudad para cambiar el destino</span>
         </div>
         <svg viewBox={`0 0 ${MAP_SIZE.w} ${MAP_SIZE.h}`} className="relative mx-auto block h-auto w-full max-w-[620px]" role="group" aria-label="Mapa esquemático del corredor Lima – Sierra Sur con 11 ciudades">
           <g fill="none" stroke="currentColor" className="text-white/25" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -145,7 +145,7 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold tracking-tight">Cotizador del corredor</h3>
-            <p className="mt-0.5 text-xs text-ink-500">Cuánto sale mover tu carga, antes de crear tu cuenta.</p>
+            <p className="mt-0.5 text-xs text-ink-500">Sin crear cuenta.</p>
           </div>
           <span className={'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ' + (live ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{live ? 'Cotización de referencia' : 'Estimación'}</span>
         </div>
@@ -169,7 +169,7 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
         {remoteError && <p className="mt-2 text-xs text-amber-700" role="status">{remoteError} Mostramos una estimación con las tarifas del corredor.</p>}
         <p className="sr-only" role="status">{`${byCode[origin].label} a ${byCode[dest].label}: ${formatNumber(distance, 1)} kilómetros, precio sugerido ${formatMoney(shown.suggested)}, IGV incluido.`}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-[30ch] text-xs text-ink-500"><MapPin className="mr-1 inline size-3 -translate-y-px" aria-hidden="true" />Precio con IGV y km por carretera. Publicar y comparar ofertas no tiene costo para tu empresa. <a href="/precios" className="font-medium text-petrol-700 underline underline-offset-2">Ver precios</a></p>
+          <p className="max-w-[30ch] text-xs text-ink-500"><MapPin className="mr-1 inline size-3 -translate-y-px" aria-hidden="true" />Publicar tu carga es gratis. <a href="/precios" className="font-medium text-petrol-700 underline underline-offset-2">Ver precios</a></p>
           <a href={publishHref} className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-input bg-petrol-700 px-5 text-sm font-semibold text-on-solid transition-colors hover:bg-petrol-800">Publicar esta carga <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></a>
         </div>
       </div>

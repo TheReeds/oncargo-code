@@ -21,14 +21,14 @@ const groups = [
     <CorridorExplorer client:idle>
       <div slot="intro" class="mk-rv">
         <p class="mk-eyebrow">Corredor Lima – Sierra Sur</p>
-        <h2 id="corredor-t" class="mk-h2 mt-3">Hecho para las rutas donde operan las PYMEs del <span class="text-emerald-500">sur</span></h2>
-        <p class="mk-lead mt-4 text-base text-white/85 lg:text-lg">Conocemos las distancias, los peajes y las paradas del corredor: por eso la cotización estimada llega al instante. Prueba una ruta y mira cuánto cambia el precio sugerido.</p>
+        <h2 id="corredor-t" class="mk-h2 mt-3">Cotiza tu flete de Lima a <span class="text-emerald-500">Arequipa, Cusco o Puno</span></h2>
+        <p class="mk-lead mt-4 text-base text-white/85 lg:text-lg">Elige la ruta, el peso y el tipo de carga. El precio usa km por carretera e incluye peajes e IGV.</p>
       </div>
       <div slot="aside" class="mk-rv space-y-6" style="--i:1">
         <dl class="grid grid-cols-3 gap-4 border-t border-white/20 pt-5">
           <div class="flex flex-col-reverse justify-end"><dt class="mt-1 text-[13px] leading-snug text-white/80">ciudades conectadas</dt><dd class="mk-num text-2xl font-semibold sm:text-3xl lg:text-4xl"><span data-count={CITIES.length}>{CITIES.length}</span></dd></div>
-          <div class="flex flex-col-reverse justify-end"><dt class="mt-1 text-[13px] leading-snug text-white/80">rutas entre pares de ciudades</dt><dd class="mk-num text-2xl font-semibold sm:text-3xl lg:text-4xl"><span data-count={pairs}>{pairs}</span></dd></div>
-          <div class="flex flex-col-reverse justify-end"><dt class="mt-1 text-[13px] leading-snug text-white/80">km de {label(far.a)} a {label(far.b)}, la más larga</dt><dd class="mk-num text-2xl font-semibold sm:text-3xl lg:text-4xl"><span data-count={far.km} data-dec="1">{formatNumber(far.km, 1)}</span></dd></div>
+          <div class="flex flex-col-reverse justify-end"><dt class="mt-1 text-[13px] leading-snug text-white/80">rutas cotizables</dt><dd class="mk-num text-2xl font-semibold sm:text-3xl lg:text-4xl"><span data-count={pairs}>{pairs}</span></dd></div>
+          <div class="flex flex-col-reverse justify-end"><dt class="mt-1 text-[13px] leading-snug text-white/80">km de {label(far.a)} a {label(far.b)}</dt><dd class="mk-num text-2xl font-semibold sm:text-3xl lg:text-4xl"><span data-count={far.km} data-dec="1">{formatNumber(far.km, 1)}</span></dd></div>
         </dl>
         <ul class="flex flex-wrap gap-x-8 gap-y-3" aria-label="Ciudades por tramo">
           {groups.map((g) => (

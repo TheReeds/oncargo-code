@@ -1,0 +1,25 @@
+# OnCargo · https://oncargo.tech
+# Solo se indexan las páginas públicas del sitemap. Paneles, enlaces con token y utilidades quedan fuera.
+User-agent: *
+Allow: /
+Disallow: /s/
+Disallow: /app/
+Disallow: /dev/
+Disallow: /exportar/
+Disallow: /documentos/
+Disallow: /eventos
+Disallow: /_actions/
+Disallow: /pyme
+Disallow: /transportista
+Disallow: /operador
+Disallow: /conductor
+Disallow: /organizacion
+Disallow: /organizaciones/
+Disallow: /cuenta
+Disallow: /notificaciones
+Disallow: /incidencias
+Disallow: /sin-acceso
+Disallow: /logout
+Disallow: /restablecer
+
+Sitemap: https://oncargo.tech/sitemap.xml

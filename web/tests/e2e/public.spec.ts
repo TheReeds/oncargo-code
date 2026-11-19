@@ -14,6 +14,38 @@ test.describe('Landing y páginas públicas', () => {
     await expect(page.getByText(/se cierra al llegar a 5 ofertas/).last()).toBeVisible();
   });
 
+  test('SEO: title y description únicos, canónica, JSON-LD válido, noindex fuera del sitemap, robots.txt y sitemap.xml', async ({ page, request }) => {
+    test.slow(); // 8 páginas SSR
+    const seen = new Set<string>();
+    for (const path of ['/', '/precios', '/contacto', '/registro', '/terminos', '/privacidad']) {
+      await page.goto(path);
+      const title = await page.title();
+      const desc = await page.locator('meta[name="description"]').getAttribute('content');
+      expect(title.length, `${path}: title ≤ 60`).toBeLessThanOrEqual(60);
+      expect(desc!.length, `${path}: description 110–160`).toBeGreaterThanOrEqual(110);
+      expect(desc!.length).toBeLessThanOrEqual(160);
+      expect(seen.has(title) || seen.has(desc!), `${path}: title/description repetidos`).toBe(false);
+      seen.add(title); seen.add(desc!);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://oncargo.tech${path}`);
+      await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+      // Solo el DOM de la página: `locator()` atraviesa el shadow DOM (la barra de herramientas de `astro dev` trae sus propios h1).
+      expect(await page.evaluate(() => document.querySelectorAll('h1').length), `${path}: un solo h1`).toBe(1);
+      const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!);
+      const types = ld['@graph'].map((n: { '@type': string }) => n['@type']);
+      expect(types).toEqual(path === '/' ? ['Organization', 'WebSite', 'Service'] : ['BreadcrumbList']);
+    }
+    for (const path of ['/login', '/olvide']) {
+      await page.goto(path);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+      await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+    }
+    const robots = await (await request.get('/robots.txt')).text();
+    for (const rule of ['Disallow: /s/', 'Disallow: /app/', 'Disallow: /dev/', 'Disallow: /exportar/', 'Sitemap: https://oncargo.tech/sitemap.xml']) expect(robots).toContain(rule);
+    const sitemap = await (await request.get('/sitemap.xml')).text();
+    expect(sitemap.match(/<loc>/g)).toHaveLength(6);
+    expect(sitemap).not.toContain('/login');
+  });
+
   test('privacidad: índice lateral y secciones con ancla', async ({ page }) => {
     await goto(page, '/privacidad');
     await expect(page.getByRole('heading', { level: 1, name: 'Política de privacidad' })).toBeVisible();

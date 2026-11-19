@@ -9,6 +9,7 @@ export default defineConfig({
   adapter: node({ mode: 'standalone' }),
   integrations: [react()],
   vite: { cacheDir: process.env.VITE_CACHE_DIR || undefined, plugins: [tailwindcss()], optimizeDeps: { exclude: ['maplibre-gl'] } },
+  site: 'https://oncargo.tech',
   server: { port: 4321 },
   security: { checkOrigin: true },
 });

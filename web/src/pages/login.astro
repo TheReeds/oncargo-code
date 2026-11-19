@@ -6,7 +6,7 @@ import { AuthCard } from '@/components/ui/auth-card';
 const next = Astro.url.searchParams.get('next') ?? undefined;
 const expired = Astro.url.searchParams.has('expired');
 ---
-<Public title="Ingresar" description="Ingresa a tu cuenta de OnCargo para gestionar tus solicitudes, ofertas y envíos." footer="compact">
+<Public title="Ingresar" description="Ingresa a OnCargo para gestionar tus solicitudes, ofertas y envíos de carga." footer="compact">
   <AuthShell variant="login">
     <AuthCard embedded className="mx-auto max-w-[560px] lg:max-w-md" cardClassName="p-5 shadow-lg shadow-chrome/10 sm:p-8" title="Ingresa a tu cuenta" subtitle="Gestiona tus cargas, ofertas y envíos.">
       <LoginForm client:load next={next} expired={expired} demo={import.meta.env.DEV} />

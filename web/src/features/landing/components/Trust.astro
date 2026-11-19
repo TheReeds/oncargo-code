@@ -1,19 +1,15 @@
 ---
-import { BadgeCheck, Star, Camera, MessagesSquare, Lock, Quote } from '@lucide/astro';
+import { BadgeCheck, Star, Camera, MessagesSquare, Lock } from '@lucide/astro';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { Avatar } from '@/components/ui/avatar';
 
+// Sin testimonios: no hay clientes que citar todavía (CONTENT.md, «Prueba social»).
 const items = [
-  { icon: BadgeCheck, t: 'Empresas verificadas', d: 'Validamos el RUC al registrarte y el equipo de OnCargo revisa cada empresa antes de habilitarla. Solo las empresas verificadas publican y ofertan.' },
-  { icon: Star, t: 'Trust Score', d: 'Un puntaje de 0 a 100 según puntualidad, estado de la carga y comunicación. Solo se califica una entrega confirmada y con foto.' },
-  { icon: Camera, t: 'Entrega con evidencia', d: 'Cada entrega se cierra con una foto. Si surge una incidencia, el envío se congela hasta que el equipo de OnCargo la resuelve.' },
-  { icon: MessagesSquare, t: 'Acuerdos a la vista', d: 'El chat de negociación bloquea teléfonos, correos y enlaces: lo que se acuerda queda registrado en la plataforma.' },
-];
-const voices = [
-  { q: 'Antes pasaba la mañana llamando para cotizar. Ahora publico la carga y comparo ofertas con el precio sugerido al lado.', who: 'Responsable de compras', org: 'PYME textil · Arequipa' },
-  { q: 'Ver el sello de verificación y el Trust Score me permite decidir rápido a quién aceptar, sin dudar de la empresa.', who: 'Jefa de logística', org: 'Agroexportadora · Ica' },
-  { q: 'Las cargas de retorno me ayudan a no bajar vacío de Juliaca. Oferto con mi vehículo y listo.', who: 'Gerente de flota', org: 'Transportista · Juliaca' },
+  { icon: BadgeCheck, t: 'Empresas verificadas', d: 'Validamos el RUC y revisamos cada empresa antes de que publique u oferte.' },
+  { icon: Star, t: 'Trust Score de 0 a 100', d: 'Puntualidad, estado de la carga y comunicación, calificados solo tras una entrega con foto.' },
+  { icon: Camera, t: 'Entrega con foto', d: 'Si hay una incidencia, el envío se congela hasta que la resolvemos.' },
+  { icon: MessagesSquare, t: 'Acuerdos registrados', d: 'El chat bloquea teléfonos y enlaces hasta adjudicar: todo lo pactado queda escrito.' },
 ];
 ---
 <section id="confianza" class="border-t border-steel-200 bg-steel-100" aria-labelledby="confianza-t">
@@ -21,9 +17,8 @@ const voices = [
     <div class="grid gap-3 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-12">
       <div class="mk-rv">
         <p class="mk-eyebrow">Confianza</p>
-        <h2 id="confianza-t" class="mk-h2 mt-3 text-ink-900">Sabes con quién trabajas <span class="text-petrol-700">antes de aceptar</span> una oferta</h2>
+        <h2 id="confianza-t" class="mk-h2 mt-3 text-ink-900">Sabes con quién trabajas <span class="text-petrol-700">antes de aceptar</span></h2>
       </div>
-      <p class="mk-lead mk-rv text-base text-ink-700 lg:text-lg" style="--i:1">Verificación, reputación y evidencia en cada tramo, para que contratar un flete sea una decisión informada.</p>
     </div>
 
     <div class="mt-8 grid gap-4 lg:grid-cols-12 lg:gap-5">
@@ -45,7 +40,7 @@ const voices = [
           </ul>
           <ul class="mt-6 flex flex-wrap gap-2 text-xs"><li class="rounded-full bg-steel-100 px-2.5 py-1 text-ink-700">Camión mediano</li><li class="rounded-full bg-steel-100 px-2.5 py-1 text-ink-700">Camión grande</li><li class="rounded-full bg-steel-100 px-2.5 py-1 text-ink-700">Ruta Lima ⇄ Juliaca</li></ul>
         </div>
-        <figcaption class="mt-6 border-t border-steel-200 pt-3 text-xs text-ink-500">Ejemplo ilustrativo del perfil de una empresa transportista.</figcaption>
+        <figcaption class="mt-6 border-t border-steel-200 pt-3 text-xs text-ink-500">Perfil de transportista · ejemplo ilustrativo</figcaption>
       </figure>
 
       <ul class="grid gap-4 sm:grid-cols-2 lg:col-span-7 lg:gap-5">
@@ -59,25 +54,10 @@ const voices = [
       </ul>
     </div>
 
-    <ul class="mt-4 grid gap-4 md:grid-cols-3 lg:mt-5 lg:gap-5" aria-label="Testimonios ilustrativos">
-      {voices.map((v, i) => (
-        <li class="mk-card mk-rv flex flex-col justify-between rounded-card border border-steel-200 bg-surface p-5 sm:p-6" style={`--i:${i}`}>
-          <figure class="flex h-full flex-col justify-between gap-5">
-            <blockquote class="text-pretty text-[15px] leading-relaxed text-ink-900"><Quote size={20} class="mb-2 text-petrol-700" aria-hidden="true" />{v.q}</blockquote>
-            <figcaption class="flex items-center gap-3 border-t border-steel-200 pt-4 text-sm">
-              <Avatar name={v.org} size="md" />
-              <span class="min-w-0"><span class="block font-medium text-ink-900">{v.who}</span><span class="block text-xs text-ink-500">{v.org}</span></span>
-              <span class="ml-auto shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Ilustrativo</span>
-            </figcaption>
-          </figure>
-        </li>
-      ))}
-    </ul>
-
     <div class="mk-rv mt-4 flex items-start gap-4 rounded-card border border-steel-200 bg-petrol-50 p-5 lg:mt-5 lg:items-center">
       <Lock size={22} class="mt-0.5 shrink-0 text-petrol-700 lg:mt-0" aria-hidden="true" />
       <div class="flex flex-1 flex-col gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-        <div><h3 class="font-semibold text-ink-900">Tus datos, protegidos</h3><p class="mt-0.5 max-w-[70ch] text-pretty text-sm text-ink-700">Pedimos tu consentimiento al registrarte (Ley 29733), aislamos los datos de cada empresa y puedes ejercer tus derechos ARCO cuando quieras.</p></div>
+        <div><h3 class="font-semibold text-ink-900">Tus datos, protegidos</h3><p class="mt-0.5 max-w-[70ch] text-pretty text-sm text-ink-700">Cumplimos la Ley 29733 y aislamos los datos de cada empresa.</p></div>
         <a href="/privacidad" class="shrink-0 text-sm font-medium text-petrol-700 underline underline-offset-2">Leer la política de privacidad</a>
       </div>
     </div>

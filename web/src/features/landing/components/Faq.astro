@@ -1,19 +1,14 @@
 ---
-import { ArrowRight } from '@lucide/astro';
-import { PRIVACY_EMAIL, SUPPORT_EMAIL, notifyCityHref } from '@/lib/contact';
+import { SUPPORT_EMAIL, notifyCityHref } from '@/lib/contact';
+// Solo dudas que la landing no responde en otra sección. Respuestas de 1–2 frases (CONTENT.md, «Web pública»).
 const faqs = [
-  { q: '¿Cuánto dura la subasta y qué pasa al terminar?', a: 'Dura hasta 20 minutos o se cierra al llegar a 5 ofertas, lo que ocurra primero. Luego eliges la oferta que prefieras; al aceptarla, las demás se rechazan y se genera tu envío.' },
-  { q: '¿Qué pasa si nadie oferta mi solicitud?', a: 'Si pasan 24 horas sin ofertas, un operador de OnCargo asigna manualmente un transportista compatible con tu carga.' },
-  { q: '¿Cómo se calcula el precio sugerido?', a: 'Estimamos combustible, transporte, peajes y manipuleo según la ruta, el peso y el tipo de carga. Ves el desglose antes de publicar y ninguna oferta puede bajar del 75 % del precio sugerido.' },
-  { q: '¿Cómo sé que un transportista es confiable?', a: 'Ves su sello «Verificado por OnCargo» (el equipo revisó la empresa), su Trust Score (0 a 100) con las calificaciones de otras empresas y los vehículos con los que oferta. Solo se califica una entrega confirmada con foto de evidencia.' },
-  { q: '¿Puedo coordinar fuera de la plataforma?', a: 'El chat de negociación bloquea teléfonos, correos y enlaces para que los acuerdos queden registrados. Cualquier cambio de precio se hace con una contraoferta dentro de OnCargo.' },
-  { q: '¿Quién ve los datos de mi empresa?', a: 'Cuando una oferta es aceptada, la empresa y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos datos personales. Más detalle en la política de privacidad.' },
-  { q: '¿Cuánto cuesta y quién paga la comisión?', a: 'Publicar tu carga y comparar ofertas no tiene costo para tu empresa. OnCargo cobra una comisión al transportista, un porcentaje del precio adjudicado (la tasa vigente está en la página de precios). El precio que aceptas es el final e incluye IGV.' },
-  { q: '¿Cómo se paga el flete?', a: 'El precio adjudicado queda registrado en tu envío. Hoy el pago se coordina entre tu empresa y el transportista con la factura correspondiente; OnCargo todavía no procesa pagos dentro de la plataforma.' },
-  { q: '¿Quién responde si se daña o se pierde la carga?', a: 'El transportista responde por la carga desde el recojo hasta la entrega, según su póliza de seguro. Tu empresa declara la naturaleza, el peso y el valor de la carga al publicar. Si ocurre algo, lo registras como incidencia y el equipo de OnCargo media. Detalle en los términos y condiciones (borrador pendiente de revisión legal).' },
-  { q: '¿Cuánto demora la verificación de mi empresa?', a: 'Normalmente un día hábil. Revisamos el RUC y los datos de tu empresa; mientras tanto puedes explorar la plataforma, y te avisamos cuando puedas publicar u ofertar.' },
-  { q: '¿Qué ciudades cubren?', a: 'Once ciudades del corredor Lima – Sierra Sur: Lima, Ica, Nazca, Arequipa, Moquegua, Tacna, Juliaca, Puno, Cusco, Abancay y Ayacucho. ¿No ves la tuya? Escríbenos y te avisamos cuando lleguemos.', link: true },
-  { q: '¿Cómo me registro como transportista?', a: 'Crea tu cuenta con el RUC de tu empresa, registra tus vehículos y conductores, y podrás ofertar por las cargas compatibles con tu flota.' },
+  { q: '¿Cuánto dura la subasta y qué pasa al terminar?', a: 'Hasta 20 minutos, o se cierra al llegar a 5 ofertas. Aceptas una y las demás se rechazan.' },
+  { q: '¿Cómo se calcula el precio sugerido?', a: 'Con los km por carretera, el peso y el tipo de carga: combustible, transporte, peajes y manipuleo. Ninguna oferta baja del 75 % de ese precio.' },
+  { q: '¿Cuánto cuesta y quién paga la comisión?', a: 'Publicar y comparar ofertas es gratis para tu empresa. La comisión la paga el transportista; la tasa está en Precios. El precio que aceptas incluye IGV.', href: '/precios' },
+  { q: '¿Cómo se paga el flete?', a: 'Directamente al transportista, contra su factura. OnCargo todavía no procesa pagos.' },
+  { q: '¿Quién responde si se daña o se pierde la carga?', a: 'El transportista, según su póliza de seguro. Tú declaras el peso, la naturaleza y el valor de la carga al publicar. Detalle en los términos (borrador).', href: '/terminos#responsabilidad' },
+  { q: '¿Cuánto demora la verificación de mi empresa?', a: 'Normalmente un día hábil. Te avisamos cuando puedas publicar u ofertar.' },
+  { q: '¿Qué ciudades cubren?', a: 'Lima, Ica, Nazca, Arequipa, Moquegua, Tacna, Juliaca, Puno, Cusco, Abancay y Ayacucho.', link: true },
 ];
 ---
 <section id="preguntas" class="border-t border-steel-200 bg-surface" aria-labelledby="preguntas-t">
@@ -21,20 +16,15 @@ const faqs = [
     <div class="lg:sticky lg:top-24 lg:self-start">
       <div class="mk-rv">
         <p class="mk-eyebrow">Preguntas frecuentes</p>
-        <h2 id="preguntas-t" class="mk-h2 mt-3 text-ink-900">Lo que suelen preguntar <span class="text-petrol-700">antes de empezar</span></h2>
+        <h2 id="preguntas-t" class="mk-h2 mt-3 text-ink-900">Antes de <span class="text-petrol-700">publicar tu carga</span></h2>
       </div>
-      <div class="mk-rv mt-6 rounded-card border border-steel-200 bg-steel-100 p-5" style="--i:1">
-        <p class="font-semibold text-ink-900">¿Prefieres verlo en la práctica?</p>
-        <p class="mt-1 text-sm text-ink-700">Crea tu cuenta en minutos y publica tu primera solicitud.</p>
-        <a href="/registro" class="mt-4 inline-flex h-11 items-center gap-2 rounded-input bg-petrol-700 px-5 text-sm font-semibold text-on-solid transition-colors hover:bg-petrol-800">Crear cuenta de empresa <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a>
-        <p class="mt-3 text-xs text-ink-500">¿Dudas sobre tus datos? Escribe a <a href={`mailto:${PRIVACY_EMAIL}`} class="font-medium text-petrol-700 underline underline-offset-2">{PRIVACY_EMAIL}</a>. ¿Otra duda? <a href="/contacto" class="font-medium text-petrol-700 underline underline-offset-2">Contáctanos</a> o escribe a {SUPPORT_EMAIL}.</p>
-      </div>
+      <p class="mk-rv mt-5 text-sm text-ink-700" style="--i:1">¿Otra duda? Escribe a <a href={`mailto:${SUPPORT_EMAIL}`} class="font-medium text-petrol-700 underline underline-offset-2">{SUPPORT_EMAIL}</a> o mira <a href="/contacto" class="font-medium text-petrol-700 underline underline-offset-2">Contacto</a>.</p>
     </div>
     <div class="faq mk-rv-fade divide-y divide-steel-200 border-y border-steel-200">
       {faqs.map((f) => (
         <details>
           <summary>{f.q}</summary>
-          <p>{f.a}{f.link && <> <a href={notifyCityHref()} class="font-medium text-petrol-700 underline underline-offset-2">Avísame cuando lleguen a mi ciudad</a>.</>}</p>
+          <p>{f.a}{f.href && <> <a href={f.href} class="font-medium text-petrol-700 underline underline-offset-2">{f.href === '/precios' ? 'Ver precios' : 'Leer los términos'}</a>.</>}{f.link && <> <a href={notifyCityHref()} class="font-medium text-petrol-700 underline underline-offset-2">Avísame cuando lleguen a mi ciudad</a>.</>}</p>
         </details>
       ))}
     </div>

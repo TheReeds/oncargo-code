@@ -3,19 +3,18 @@ import Public from '@/layouts/Public.astro';
 import Hero from '@/features/landing/components/Hero.astro';
 import Sectors from '@/features/landing/components/Sectors.astro';
 import HowItWorks from '@/features/landing/components/HowItWorks.astro';
-import BeforeAfter from '@/features/landing/components/BeforeAfter.astro';
 import Corridor from '@/features/landing/components/Corridor.astro';
 import Audiences from '@/features/landing/components/Audiences.astro';
 import Returns from '@/features/landing/components/Returns.astro';
 import Trust from '@/features/landing/components/Trust.astro';
 import Faq from '@/features/landing/components/Faq.astro';
 import FinalCta from '@/features/landing/components/FinalCta.astro';
+import { homeJsonLd } from '@/features/landing/seo';
 ---
-<Public title="Fletes entre Lima y la sierra sur" description="Publica tu carga, recibe ofertas de transportistas verificados y sigue tu envío parada por parada en el corredor Lima – Sierra Sur.">
+<Public title="Fletes de Lima a Arequipa, Cusco y Puno" description="Transporte de carga para PYMEs entre Lima, Arequipa, Juliaca, Cusco, Puno y Tacna. Publica tu carga gratis y recibe hasta 5 ofertas en 20 minutos." jsonLd={homeJsonLd()}>
   <Hero />
   <Sectors />
   <HowItWorks />
-  <BeforeAfter />
   <Corridor />
   <Audiences />
   <Returns />

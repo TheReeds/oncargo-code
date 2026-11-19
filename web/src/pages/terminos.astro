@@ -5,6 +5,7 @@ import { FileText, Mail, Scale, ShieldCheck, Truck, Receipt } from '@lucide/astr
 import { TERMS_SECTIONS } from '@/features/legal/terms-content';
 import { getLegal } from '@/features/legal/server';
 import { SUPPORT_EMAIL } from '@/lib/contact';
+import { breadcrumbJsonLd } from '@/features/landing/seo';
 
 const legal = await getLegal();
 const draft = legal.termsStatus !== 'PUBLISHED';
@@ -14,7 +15,7 @@ const summary = [
   { icon: Scale, t: 'Versionados', d: 'Guardamos la versión y la fecha en que los aceptaste.' },
 ];
 ---
-<Public title="Términos y condiciones" description="Términos y condiciones de uso de OnCargo: cuentas, subasta, precios y comisión, y responsabilidad por la carga. Borrador pendiente de revisión legal.">
+<Public title="Términos y condiciones" description="Términos y condiciones de uso de OnCargo: cuentas, subasta, precios y comisión, y responsabilidad por la carga. Borrador pendiente de revisión legal." jsonLd={breadcrumbJsonLd('Términos y condiciones', '/terminos')}>
   <header class="mk-dark relative isolate overflow-hidden">
     <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
     <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">

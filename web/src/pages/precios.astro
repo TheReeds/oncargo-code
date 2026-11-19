@@ -5,6 +5,7 @@ import { getExampleQuote, getPublicCommission } from '@/features/legal/server';
 import { formatMoney } from '@/lib/format';
 import { SUPPORT_EMAIL } from '@/lib/contact';
 import { buttonVariants } from '@/components/ui/button';
+import { breadcrumbJsonLd } from '@/features/landing/seo';
 
 const [commission, example] = await Promise.all([getPublicCommission(), getExampleQuote()]);
 const rate = commission?.commissionRate ?? null;
@@ -18,24 +19,24 @@ const ex = example && rate != null ? (() => {
 })() : null;
 
 const cards = [
-  { icon: Building2, t: 'Para tu empresa (PYME)', big: 'Sin costo', d: 'Publicar tu carga y comparar ofertas no tiene costo. Pagas el precio de la oferta que aceptes, sin recargos de OnCargo.' },
-  { icon: Truck, t: 'Para el transportista', big: pct ? `${pct} del precio` : 'Comisión', d: 'OnCargo retiene una comisión sobre el precio adjudicado. Antes de enviar tu oferta ves cuánto cobras neto.' },
-  { icon: Receipt, t: 'IGV', big: `${vatPct} incluido`, d: 'El precio adjudicado es final e incluye el IGV; lo ves desglosado en tu solicitud y en tu envío.' },
+  { icon: Building2, t: 'Para tu empresa (PYME)', big: 'Sin costo', d: 'Pagas solo el precio de la oferta que aceptas. Sin recargos de OnCargo.' },
+  { icon: Truck, t: 'Para el transportista', big: pct ? `${pct} del precio` : 'Comisión', d: 'Se descuenta del precio adjudicado. Ves tu neto antes de ofertar.' },
+  { icon: Receipt, t: 'IGV', big: `${vatPct} incluido`, d: 'El precio adjudicado es final y muestra el IGV desglosado.' },
 ];
 const steps = [
-  'Publicas tu carga y la plataforma calcula un precio sugerido con km por carretera.',
-  'Los transportistas ofertan; ninguna oferta baja del 75 % del precio sugerido.',
-  'Aceptas una oferta: ese es el precio final, con IGV incluido.',
-  'La comisión se calcula con la tasa vigente y se guarda en tu envío: un cambio futuro no lo altera.',
+  'Publicas tu carga y ves un precio sugerido calculado con km por carretera.',
+  'Los transportistas ofertan desde el 75 % de ese precio.',
+  'Aceptas una oferta: ese es el precio final, con IGV.',
+  'La tasa de comisión queda guardada en el envío; si cambia después, no lo afecta.',
 ];
 ---
-<Public title="Precios y comisión" description="Cuánto cuesta usar OnCargo: publicar es gratis para las empresas, el transportista paga una comisión sobre el precio adjudicado y el precio incluye IGV.">
+<Public title="Precios de fletes y comisión" description="Publicar tu carga en OnCargo es gratis. El transportista paga una comisión sobre el precio adjudicado, que ya incluye IGV. Ejemplo real Lima → Juliaca." jsonLd={breadcrumbJsonLd('Precios y comisión', '/precios')}>
   <header class="mk-dark relative isolate overflow-hidden">
     <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
     <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">
       <p class="mk-eyebrow mk-eyebrow--inv">Precios y comisión</p>
       <h1 class="mk-display mt-4 max-w-[18ch] text-white">Precios claros, antes de registrarte</h1>
-      <p class="mk-lead mt-5 text-base text-white/85 sm:text-lg">Quién paga qué, cuánto es el IGV y cómo se calcula tu precio. Sin letra chica.</p>
+      <p class="mk-lead mt-5 text-base text-white/85 sm:text-lg">Quién paga, cuánto es el IGV y cómo se calcula el precio.</p>
     </div>
   </header>
 
@@ -59,7 +60,7 @@ const steps = [
             <li class="flex gap-3 text-[15px] leading-7 text-ink-700"><span class="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-petrol-50 font-mono text-xs font-semibold text-petrol-700" aria-hidden="true">{i + 1}</span><span>{s}</span></li>
           ))}
         </ol>
-        <p class="mt-6 text-sm text-ink-500">¿Cómo se paga? Hoy el pago se coordina entre la empresa y el transportista con la factura correspondiente; OnCargo todavía no procesa pagos dentro de la plataforma.</p>
+        <p class="mt-6 text-sm text-ink-500">El pago va directo de la empresa al transportista, contra su factura. OnCargo todavía no procesa pagos.</p>
       </section>
 
       <section aria-labelledby="ejemplo-t" class="rounded-card border border-steel-200 bg-surface p-5 sm:p-6">

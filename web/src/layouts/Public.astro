@@ -6,8 +6,12 @@ import { buttonVariants } from '@/components/ui/button';
 import { homeFor } from '@/lib/session';
 import { ShieldCheck, Mail } from '@lucide/astro';
 import { PRIVACY_EMAIL, SUPPORT_EMAIL } from '@/lib/contact';
-interface Props { title: string; description?: string; /** `compact` en login y registro: pie de una línea. */ footer?: 'full' | 'compact' }
-const { title, description, footer = 'full' } = Astro.props;
+interface Props {
+  title: string; description?: string;
+  /** `compact` en login y registro: pie de una línea. */ footer?: 'full' | 'compact';
+  /** JSON-LD de la página (ver `features/landing/seo.ts`). */ jsonLd?: Record<string, unknown>[];
+}
+const { title, description, footer = 'full', jsonLd } = Astro.props;
 const path = Astro.url.pathname;
 const session = Astro.locals.session;
 const nav = [
@@ -41,7 +45,7 @@ const cols = [
   ] },
 ];
 ---
-<Base title={title} description={description}>
+<Base title={title} description={description} jsonLd={jsonLd} overlays="idle">
   <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-surface focus:text-ink-900 focus:px-3 focus:py-2">Saltar al contenido</a>
   <div class="flex min-h-screen flex-col">
     <header class="site-header sticky top-0 z-20 border-b border-steel-200/70 bg-steel-100/90 backdrop-blur">
@@ -51,7 +55,7 @@ const cols = [
           {nav.map((n) => <a href={n.href} class="whitespace-nowrap rounded-input px-2.5 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-surface hover:text-ink-900 xl:px-3">{n.label}</a>)}
         </nav>
         <nav class="flex items-center gap-1.5 sm:gap-2" aria-label="Acceso">
-          <div class="hidden sm:block"><ThemeToggle client:load /></div>
+          <div class="hidden sm:block"><ThemeToggle client:idle /></div>
           {session ? (
             <a href={homeFor(session)} class={buttonVariants({ variant: 'outline' })}>Ir a mi panel</a>
           ) : (
@@ -68,7 +72,7 @@ const cols = [
       <footer class="border-t border-steel-200 bg-surface">
         <div class="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-ink-500 sm:flex-row lg:px-10">
           <span>© 2026 OnCargo · Fletes entre Lima y la sierra sur</span>
-          <div class="sm:hidden"><ThemeToggle client:load /></div>
+          <div class="sm:hidden"><ThemeToggle client:idle /></div>
           <nav class="flex gap-4" aria-label="Información legal">
             <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/terminos">Términos y condiciones</a>
             <a class="rounded underline-offset-2 hover:text-ink-900 hover:underline" href="/privacidad">Política de privacidad</a>
@@ -96,7 +100,7 @@ const cols = [
           </div>
           <div class="mt-10 flex flex-col items-center justify-between gap-2 border-t border-steel-200 pt-5 text-xs text-ink-500 sm:flex-row">
             <span>© 2026 OnCargo · Todos los derechos reservados</span>
-            <div class="sm:hidden"><ThemeToggle client:load /></div>
+            <div class="sm:hidden"><ThemeToggle client:idle /></div>
             <a href={`mailto:${SUPPORT_EMAIL}`} class="inline-flex items-center gap-1.5 rounded underline-offset-2 hover:text-ink-900 hover:underline"><Mail size={13} aria-hidden="true" /> {SUPPORT_EMAIL}</a>
           </div>
         </div>

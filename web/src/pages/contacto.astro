@@ -4,20 +4,21 @@ import { Clock, Mail, MapPin, MessageCircle, ShieldCheck } from '@lucide/astro';
 import { PRIVACY_EMAIL, SUPPORT_EMAIL, SUPPORT_HOURS, notifyCityHref, whatsappUrl } from '@/lib/contact';
 import { buttonVariants } from '@/components/ui/button';
 import { getCatalog } from '@/features/catalog/server';
+import { breadcrumbJsonLd } from '@/features/landing/seo';
 
 const { cities } = await getCatalog().catch(() => ({ cities: [] as { code?: string; name?: string }[] }));
 const wa = whatsappUrl('Hola, quiero información sobre OnCargo.');
 const channels = [
-  ...(wa ? [{ icon: MessageCircle, t: 'WhatsApp', d: 'Escríbenos y te respondemos en horario de atención.', href: wa, label: 'Abrir WhatsApp', external: true }] : []),
-  { icon: Mail, t: 'Soporte', d: 'Verificación de tu empresa, cuenta, envíos y dudas de uso.', href: `mailto:${SUPPORT_EMAIL}`, label: SUPPORT_EMAIL, external: false },
-  { icon: ShieldCheck, t: 'Privacidad y datos', d: 'Derechos de acceso, rectificación, cancelación y oposición (Ley 29733).', href: `mailto:${PRIVACY_EMAIL}`, label: PRIVACY_EMAIL, external: false },
+  ...(wa ? [{ icon: MessageCircle, t: 'WhatsApp', d: 'Respondemos en horario de atención.', href: wa, label: 'Abrir WhatsApp', external: true }] : []),
+  { icon: Mail, t: 'Soporte', d: 'Verificación, cuenta, envíos y dudas de uso.', href: `mailto:${SUPPORT_EMAIL}`, label: SUPPORT_EMAIL, external: false },
+  { icon: ShieldCheck, t: 'Privacidad y datos', d: 'Derechos ARCO (Ley 29733).', href: `mailto:${PRIVACY_EMAIL}`, label: PRIVACY_EMAIL, external: false },
 ];
 ---
-<Public title="Contacto" description="Escríbenos a soporte@oncargo.tech o por WhatsApp. Horario de atención, ciudades que cubrimos y cómo pedir que lleguemos a la tuya.">
+<Public title="Contacto y soporte" description={`Escríbenos a ${SUPPORT_EMAIL}. ${SUPPORT_HOURS}. Empresas y transportistas del corredor Lima – Sierra Sur.`} jsonLd={breadcrumbJsonLd('Contacto', '/contacto')}>
   <section class="mx-auto w-full max-w-[1280px] px-4 py-12 lg:px-10 lg:py-16" aria-labelledby="contacto-t">
     <p class="mk-eyebrow">Contacto</p>
     <h1 id="contacto-t" class="mk-h2 mt-3 max-w-[20ch] text-ink-900">¿Con quién hablo en OnCargo?</h1>
-    <p class="mk-lead mt-4 text-base text-ink-700">Elige el canal que prefieras. Si es sobre un envío en curso, ten a mano el código de la solicitud.</p>
+    <p class="mk-lead mt-4 text-base text-ink-700">Si es sobre un envío, ten a mano el código de la solicitud.</p>
 
     <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Canales de contacto">
       {channels.map((c) => (

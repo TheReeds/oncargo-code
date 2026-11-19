@@ -5,8 +5,8 @@ import { km } from '../pricing';
 
 const back = km('JULIACA', 'LIMA');
 const feats = [
-  { icon: Repeat2, t: 'Cargas de retorno', d: 'Al entregar en una ciudad, te mostramos solicitudes que salen a menos de 50 km, con recojo en los próximos 7 días y que caben en tu vehículo.' },
-  { icon: Layers, t: 'Smart Load', d: 'Agrupamos 2 o más cargas compatibles (orígenes a menos de 50 km, destinos a menos de 80 km, con un día de diferencia) para llenar tu camión desde el 60 %.' },
+  { icon: Repeat2, t: 'Cargas de retorno', d: 'Cargas que salen a menos de 50 km de donde entregas, con recojo en los próximos 7 días.' },
+  { icon: Layers, t: 'Smart Load', d: 'Junta 2 o más cargas de la misma ruta para salir con el camión al 60 % o más.' },
 ];
 ---
 <section id="retornos" class="bg-surface" aria-labelledby="retornos-t">
@@ -15,7 +15,6 @@ const feats = [
       <div class="mk-rv">
         <p class="mk-eyebrow">Para transportistas</p>
         <h2 id="retornos-t" class="mk-h2 mt-3 text-ink-900">Que tu camión <span class="text-petrol-700">no vuelva vacío</span></h2>
-        <p class="mk-lead mt-4 text-base text-ink-700 lg:text-lg">Menos kilómetros sin carga significa más ingreso por viaje. OnCargo te sugiere cómo completar la capacidad de tu vehículo.</p>
       </div>
       <ul class="mt-7 space-y-4">
         {feats.map((f, i) => (
@@ -25,7 +24,7 @@ const feats = [
           </li>
         ))}
       </ul>
-      <a href="/registro?tipo=transportista" class="mt-7 inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-input bg-emerald-700 px-6 text-[15px] font-semibold text-on-solid transition-colors hover:bg-emerald-700/90">Registrar mi flota <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a>
+      <a href="/registro?tipo=transportista" class="mt-7 inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-input bg-emerald-700 px-6 text-[15px] font-semibold text-on-solid transition-colors hover:bg-emerald-700/90">Crear cuenta de transportista <ArrowRight size={16} class="shrink-0" aria-hidden="true" /></a>
     </div>
 
     <div class="relative" role="group" aria-label="Ejemplos ilustrativos de Smart Load y carga de retorno">

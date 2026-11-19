@@ -79,3 +79,31 @@ Anglicismos prohibidos en UI: *marketplace* (en la web decimos "Cargas disponibl
 - Signos de apertura obligatorios (¿ ¡). Comillas latinas o ninguna.
 - Etiquetas de campo: sustantivo ("Peso", "Fecha de recojo"), sin dos puntos. Ayuda bajo el campo, en `ink-500`.
 - Placeholders: ejemplo realista del Perú ("Av. Argentina 1234, Callao"), nunca repiten la etiqueta.
+
+## Web pública (landing, precios, contacto): reglas de copy
+Revisión 2026-11-19: la landing pasó de ~1,520 a ~690 palabras de texto propio. Base: escanear antes que leer
+(NN/g, «How users read on the web») y los referentes B2B (Linear explica todo en ~450 palabras; Uber Freight
+carriers, 5 secciones). Fuentes y detalle en la auditoría de SEO del 2026-11-19 (resumen en `references/web.md`).
+- **Un mensaje por sección, dicho una sola vez.** Las cifras de la subasta (20 min, 5 ofertas, piso 75 %, 11 ciudades)
+  se enuncian **solo** en la franja de KPIs del hero; el resto de la página las muestra en los mocks, no las repite en
+  texto. La verificación de empresas va en «Confianza»; el costo, en el FAQ y en `/precios`.
+- **Largos máximos.** H1 ≤ 8 palabras. H2 ≤ 9 palabras, tema primero. Bajada del hero ≤ 16 palabras, una frase.
+  Bajada de sección: ninguna o una frase ≤ 20 palabras (si el mock lo explica, no hay bajada). Descripción de
+  tarjeta ≤ 15 palabras. Viñetas: máx. 3 por tarjeta, ≤ 9 palabras. Respuesta de FAQ ≤ 30 palabras, máx. 8 preguntas.
+  Hero completo (H1 + bajada + sello) ≤ 30 palabras.
+- **Cifra antes que adjetivo:** «hasta 5 ofertas en 20 minutos», «1,002 km de Lima a Arequipa», «Trust Score de
+  0 a 100». Los km salen de `features/landing/corridor-data.ts` (routes.json), nunca de memoria ni de otra fuente.
+- **Verbo + objeto** en botones y titulares de acción; el CTA dice adónde lleva («Crear cuenta de transportista»
+  lleva al registro, no «Ver cargas»).
+- **Prueba social honesta.** Sin clientes, logos ni testimonios inventados. Lo de muestra se rotula «ejemplo
+  ilustrativo» y usa reglas y km reales. Si un testimonio solo puede ser ilustrativo, no se publica.
+- **Frases prohibidas** (suenan a texto genérico o generado por IA): revoluciona, transforma, potencia, impulsa,
+  optimiza, eleva, redefine, desbloquea; solución integral, ecosistema, sinergia, de principio a fin, de clase mundial,
+  innovador, robusto, líder en; sin complicaciones, sin estrés, sin fricciones, sin letra chica, al alcance de un clic,
+  en minutos (sin dato), fácil y rápido; en un mundo donde, en el panorama actual, hoy más que nunca, cabe destacar,
+  es fundamental, en este sentido; «no solo X, sino Y», «no es X, es Y»; tríadas de adjetivos («rápido, seguro y
+  eficiente»); cierres de sección con frase optimista; raya larga (—) como pausa en el texto corrido (usa punto o coma;
+  la raya solo en rótulos ya existentes, p. ej. «Borrador — pendiente de revisión legal»).
+- **SEO en el copy:** los nombres de ciudad van en texto (H2 del corredor, chips de ciudades, rutas frecuentes, FAQ),
+  no solo en el mapa. `title` ≤ 60 caracteres con la marca al final (` · OnCargo`, lo agrega `Base.astro`) y
+  `description` de 110–160 caracteres, únicos por página. Un solo `h1`.
