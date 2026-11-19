@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # LOGYX Web (Astro SSR, adaptador node standalone). Build: docker build -t logyx-web web/
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 # postinstall copia el worker de MapLibre a public/maplibre
@@ -11,14 +11,14 @@ FROM deps AS build
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine AS prod-deps
+FROM node:26-alpine AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY scripts ./scripts
 # El postinstall necesita maplibre-gl (dependencia de producción); el build ya generó public/maplibre dentro de dist/client
 RUN npm ci --omit=dev
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4321
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
