@@ -42,4 +42,50 @@ final class MarketplaceCsv {
             case CANCELLED -> "Cancelada";
         };
     }
+
+    // ----- Mis ofertas (transportista, roadmap 1.5)
+
+    /** Estado de MI oferta como lo muestran la web y Android: aceptada, retirada, cancelada (la PYME canceló), perdida o pendiente. */
+    static String bidState(RequestSummary s) {
+        var bid = s.myBid().bid();
+        if (bid.status() == pe.logyx.marketplace.domain.model.Bid.Status.ACCEPTED) return "ACCEPTED";
+        if (bid.status() == pe.logyx.marketplace.domain.model.Bid.Status.WITHDRAWN) return "WITHDRAWN";
+        if (s.request().status() == ShipmentRequest.Status.CANCELLED) return "CANCELLED";
+        if (bid.status() == pe.logyx.marketplace.domain.model.Bid.Status.REJECTED
+                || s.request().status() == ShipmentRequest.Status.MATCHED) return "LOST";
+        return "PENDING";
+    }
+
+    private static String bidStateLabel(String state) {
+        return switch (state) {
+            case "ACCEPTED" -> "Aceptada";
+            case "WITHDRAWN" -> "Retirada";
+            case "CANCELLED" -> "Solicitud cancelada";
+            case "LOST" -> "Perdida";
+            default -> "Pendiente";
+        };
+    }
+
+    /**
+     * «Neto estimado» = lo que cobraría el transportista con la comisión vigente (ADR-0010: comisión sobre el valor de venta
+     * sin IGV y con su IGV); en una oferta ya aceptada es una referencia, el desglose real está en el envío.
+     */
+    static byte[] myBids(List<RequestSummary> rows, java.util.function.Function<java.math.BigDecimal, java.math.BigDecimal> carrierNet) {
+        CsvWriter csv = new CsvWriter().header("Código", "Origen", "Destino", "Tipo de carga", "Peso (kg)", "Fecha de recojo",
+                "Mi oferta (S/)", "Neto estimado (S/)", "Vehículo", "Estado de la oferta", "Posición", "Ofertas en la subasta",
+                "Enviada el");
+        for (RequestSummary s : rows) {
+            var r = s.request();
+            var c = r.cargo();
+            var b = s.myBid().bid();
+            String standing = s.myStanding() == null ? null
+                    : s.myStanding().rank() + " de " + s.myStanding().bidCount();
+            csv.row(java.util.Arrays.asList(r.code(), c.originCity().label, c.destinationCity().label,
+                    c.cargoType().name(), CsvWriter.number(c.weightKg()), c.pickupDate().format(DATE),
+                    CsvWriter.number(b.amount()), CsvWriter.number(carrierNet.apply(b.amount())), b.vehiclePlate(),
+                    bidStateLabel(bidState(s)), standing, s.bidCount(),
+                    b.createdAt().atZoneSameInstant(LIMA).format(DATE_TIME)));
+        }
+        return csv.bytes();
+    }
 }

@@ -201,5 +201,37 @@ Contrato: `docs/api/CHANGELOG.md` (zona D, V16) y ADR-0009 §8.
   auditoría). Montado en `/pyme/solicitudes/[id]` y `/incidencias/[id]`.
 - e2e: `roles-v16.spec.ts` (Lector: redirección con aviso, menú con rol, pedir acceso → aviso al ADMIN, avisos por persona, preferencias, autoría; axe claro y oscuro).
 
+## Envíos, contactos y seguimiento público (V19, 2026-11-18, Ola 1 zona B)
+Contrato: `docs/api/CHANGELOG.md` (zona B, V19) y ADR-0011.
+- **Lista en el servidor.** `/pyme/envios` y `/transportista/envios` piden `GET /shipments` con los filtros de la URL (`features/shipments/filters.ts`:
+  `filtersFromUrl`, `apiQuery`, `toUrlQuery`; `estado` vacío = «En curso» = `PENDING,IN_TRANSIT`, `todos` = sin filtro) y 20 por página; la
+  misma traducción la usa el proxy CSV (`/exportar/envios`, entrada `envios` en `pages/exportar/[recurso].ts`). Un `?id=` que no cumple el
+  filtro se agrega al principio (`withSelected`), así los enlaces de avisos abren cualquier envío. `TrackingSplit` refresca su página con la
+  action `shipments.page` (misma consulta) y conserva el envío abierto. Los KPIs del transportista se calculan con consultas aparte (sin los
+  filtros de la lista).
+- **Detalle**: código y referencia, «Duplicar» (PYME, `<Can>`), `ShareTrackingButton` (PYME), `StopContacts` (contacto con `tel:+51…`,
+  ventana, instrucciones; no se pinta si la API no los manda), `StopTimeline` marca «registrado con retraso (sin señal)» con
+  `lateSync(occurredAt, recordedAt)` (> 10 min), `ActivityTrail SHIPMENT`.
+- **Compartir seguimiento** (`ShareTrackingDialog`): actions `shipments.shareLinks|createShareLink|revokeShareLink`; el enlace solo se ve al
+  crearlo (`CopyButton` + WhatsApp `https://wa.me/?text=`); el Lector ve la lista con `<Can readOnly>`.
+- **Página pública `/s/[token]`** (sin sesión, también con sesión): SSR con `features/shipments/server.ts#publicTracking` (reenvía la IP en
+  `X-Forwarded-For`), `Base` con `privateUrl` (`noindex`, `referrer no-referrer`, sin canónica), isla `PublicTracking` (hitos, ETA en
+  ventana, `PublicRouteMap` con la polyline de la propia respuesta: no llama a `/routes`, que exige sesión) y consulta cada 60 s
+  (`/s/[token]/estado`, solo con la pestaña visible). No muestres nada que no venga en `PublicTrackingView`. `middleware.ts`: `isTrackingLink`
+  (pública con y sin sesión, `Referrer-Policy: no-referrer`, `X-Robots-Tag`).
+- **`/conductor`** muestra `StopContacts` de su viaje.
+- e2e: `shipments-b.spec.ts` (contactos y `tel:`, retraso, Duplicar, filtros en la URL, CSV, compartir/copiar/WhatsApp/revocar, página
+  pública sin datos sensibles y con `noindex`, Lector en solo lectura, conductor, axe claro y oscuro incluida la página pública).
+
 ## Pendientes conocidos
 Mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.
+
+## Ola 1 zona C: oferta rápida, precio con IGV, flota y viajes (2026-11-18, agente C)
+Contrato: `docs/api/CHANGELOG.md` (2026-11-18, V20). Reglas: `docs/domain/business-rules.md` (RN02 por fecha, comisión, «apoyo 1.9, 1.10, 1.12»).
+- **`BidSheet` (oferta rápida, 1.10).** Preselecciona el último vehículo usado si es apto y está libre esas fechas (si no, el apto de menor capacidad), recuerda nota y atajo en `localStorage` (`features/marketplace/quick-bid.ts`, siempre `try/catch`), atajos **Sugerido / −5 % / −10 % / Piso** (nunca bajan del piso, RN03; no hay «mejor oferta − paso»: RN04) y **no recarga**: `onPlaced(bid, advance)` deja que `MarketplaceTable` marque la fila «Ofertada» en sitio, mueva el foco a la siguiente carga (`[data-bid-row]`) o abra la siguiente («Enviar y ofertar la siguiente carga», `hasNext`). `ReturnLoadsList` usa la misma hoja y marca «Ya ofertaste» en sitio. Sin `onPlaced` la hoja recarga (compatibilidad).
+- **RN02 por fecha.** `actions.marketplace.eligibility` → `GET /shipment-requests/{id}/vehicle-eligibility` (agenda por vehículo, `CAP-005/007` bloquean, `CAP-006` avisa). `features/fleet/compatibility.ts` ya no bloquea por «en ruta» (solo mantenimiento); `usable` del marketplace, de `PublishTripForm` y de `marketplace.astro` también. Texto corregido: «Tu flota no lleva carga general» (`cargoPhrase`).
+- **«Cobras S/ X neto».** `lib/pricing.ts` espeja `CommissionPolicy` (la comisión es sobre el valor de venta sin IGV y lleva su IGV; ejemplo S/ 1,180 al 8 % → 1,085.60); tasa por `features/marketplace/commission.ts`. Detalle plegable con `<details>`. En Mis ofertas: «Cobrarías S/ X neto» en las pendientes y botón «Historial» (`ActivityTrail subject="BID"` en un `Sheet`).
+- **Precio adjudicado.** `components/domain/PriceBreakdown` (`ShipmentView.priceBreakdown`): IGV desglosado para la PYME (detalle del envío en `TrackingSplit` y tarjeta «Precio adjudicado» en `/pyme/solicitudes/[id]`), comisión y neto para el transportista.
+- **Flota (1.12).** `FleetManager`: Editar (`VehicleDialog` con `vehicle`), Archivar, sin «Marcar en ruta»; errores `FLT-004/005/006` por toast o bajo el campo (`licenseNumber`, `weight`, `volume`).
+- **Viajes.** «Duplicar» (tabla y detalle) → `/transportista/viajes/nuevo?from=<id>` (`PublishTripForm initial`, fecha +7 días a la misma hora de Lima). El detalle del viaje monta `ActivityTrail subject="TRIP"`.
+- Tras añadir actions con el `astro dev` levantado: `touch src/actions/index.ts`. e2e: `tests/e2e/ola1-c.spec.ts` (oferta encadenada sin recargar, agenda, atajo al piso, axe claro y oscuro, precio con IGV, historial, flota, duplicar viaje).

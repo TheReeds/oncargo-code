@@ -21,6 +21,11 @@ export async function listOpen(token: string, query: OpenQuery = {}): Promise<{ 
   return { items, page: body.meta?.page ?? 0, size: body.meta?.size ?? 20, total: body.meta?.total ?? items.length };
 }
 export const listMyBids = (token: string) => unwrap(apiFor(token).GET('/api/v1/shipment-requests/my-bids'));
+/** RN02 por fecha: elegibilidad de cada vehículo de mi flota para la solicitud (agenda, avisos y impedimentos). */
+export const getEligibility = (token: string, id: string) =>
+  unwrap(apiFor(token).GET('/api/v1/shipment-requests/{id}/vehicle-eligibility', { params: { path: { id } } }));
+/** Tasa de comisión vigente (para «cobras S/ X neto»). */
+export const getCommission = (token: string) => unwrap(apiFor(token).GET('/api/v1/pricing/commission', { params: { query: {} } }));
 export const placeBid = (token: string, id: string, body: Schemas['PlaceBid']) =>
   unwrap(apiFor(token).POST('/api/v1/shipment-requests/{id}/bids', { params: { path: { id } }, body }));
 export const withdrawBid = (token: string, id: string) =>

@@ -3,23 +3,36 @@ import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import TrackingSplit from '@/features/shipments/components/TrackingSplit';
-import { listShipments } from '@/features/shipments/server';
+import { listShipmentsPage, withSelected } from '@/features/shipments/server';
+import { SHIPMENTS_PAGE_SIZE, apiQuery, filtersFromUrl, pageFromUrl } from '@/features/shipments/filters';
 import { listDrivers } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
 import { UserRoundX, PackageOpen, Truck, PackageCheck } from 'lucide-react';
 const t = Astro.locals.session!.token;
-const [shipments, drivers, { cities }] = await Promise.all([listShipments(t), listDrivers(t), getCatalog()]);
-const id = Astro.url.searchParams.get('id');
-const open = shipments.filter((s) => s.status === 'PENDING' || s.status === 'IN_TRANSIT');
-const noDriver = open.filter((s) => !s.driverId).length;
-const pickup = shipments.filter((s) => s.status === 'PENDING').length;
-const inTransit = shipments.filter((s) => s.status === 'IN_TRANSIT').length;
+const filters = filtersFromUrl(Astro.url.searchParams);
+const page = pageFromUrl(Astro.url.searchParams);
+// KPIs sobre todos los envíos (sin los filtros de la lista); la lista es la página filtrada en el servidor.
 const month = new Date().toISOString().slice(0, 7);
-const delivered = shipments.filter((s) => s.status === 'DELIVERED' && (s.deliveredAt ?? '').startsWith(month)).length;
+const [result, open, pending, inTransitPage, deliveredPage, any, drivers, { cities }] = await Promise.all([
+  listShipmentsPage(t, { ...apiQuery(filters), page: page - 1, size: SHIPMENTS_PAGE_SIZE }),
+  listShipmentsPage(t, { status: 'PENDING,IN_TRANSIT', page: 0, size: 100 }),
+  listShipmentsPage(t, { status: 'PENDING', page: 0, size: 1 }),
+  listShipmentsPage(t, { status: 'IN_TRANSIT', page: 0, size: 1 }),
+  listShipmentsPage(t, { status: 'DELIVERED', page: 0, size: 100 }),
+  listShipmentsPage(t, { page: 0, size: 1 }),
+  listDrivers(t),
+  getCatalog(),
+]);
+const id = Astro.url.searchParams.get('id');
+const items = await withSelected(t, result.items, id);
+const noDriver = open.items.filter((s) => !s.driverId).length;
+const pickup = pending.meta.total;
+const inTransit = inTransitPage.meta.total;
+const delivered = deliveredPage.items.filter((s) => (s.deliveredAt ?? '').startsWith(month)).length;
 ---
 <AppShell title="Envíos" active="envios" wide>
   <PageHeader title="Envíos" subtitle="Asigna un conductor a cada envío y revisa sus paradas" />
-  {shipments.length > 0 && (
+  {any.meta.total > 0 && (
     <KpiGrid className="mb-5">
       <KpiTile label="Sin conductor" value={noDriver} context={noDriver ? 'asigna uno para que salgan' : 'todos tienen conductor'} icon={UserRoundX} tone={noDriver ? 'warn' : 'default'} />
       <KpiTile label="Por recoger" value={pickup} context="esperan al conductor" icon={PackageOpen} tone="petrol" />
@@ -27,5 +40,5 @@ const delivered = shipments.filter((s) => s.status === 'DELIVERED' && (s.deliver
       <KpiTile label="Entregados del mes" value={delivered} context="este mes" icon={PackageCheck} tone="money" />
     </KpiGrid>
   )}
-  <TrackingSplit client:load shipments={shipments} cities={cities} drivers={drivers} initialId={id} perspective="CARRIER" />
+  <TrackingSplit client:load shipments={items} total={result.meta.total} page={page} filters={filters} anyShipments={any.meta.total > 0} cities={cities} drivers={drivers} initialId={id} perspective="CARRIER" />
 </AppShell>

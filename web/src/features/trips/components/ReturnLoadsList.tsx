@@ -24,6 +24,8 @@ function asRequest(r: ReturnLoadView): RequestView {
 
 export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoadView[]; vehicles: VehicleView[] }) {
   const [active, setActive] = useState<ReturnLoadView | null>(null);
+  // Oferta rápida: tras ofertar no se recarga; la carga pasa a «Ya ofertaste» en sitio.
+  const [placed, setPlaced] = useState<Set<string>>(new Set());
   const canOperate = useCan('OPERATE');
   const [sort, setSort] = useState('match');
   const sorted = useMemo(() => [...loads].sort((a, b) => sort === 'price' ? (b.suggestedPrice ?? 0) - (a.suggestedPrice ?? 0) : sort === 'date' ? (a.pickupDate ?? '').localeCompare(b.pickupDate ?? '') : (b.matchScore ?? 0) - (a.matchScore ?? 0)), [loads, sort]);
@@ -64,7 +66,7 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
                   <div><div className="text-xs text-ink-500">Precio sugerido</div><div className="money text-lg">{formatMoney(r.suggestedPrice)}</div></div>
                   <div><div className="text-xs text-ink-500">Piso</div><div className="font-mono text-lg font-semibold tabular-nums">{formatMoney(r.priceFloor)}</div></div>
                 </div>
-                {r.alreadyBid ? (
+                {r.alreadyBid || placed.has(r.requestId!) ? (
                   <Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ya ofertaste</Badge>
                 ) : canOperate ? (
                   <Button variant="money" className="max-sm:w-full" onClick={() => setActive(r)}><Undo2 />Ofertar<span className="sr-only"> por la carga de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
@@ -74,7 +76,7 @@ export default function ReturnLoadsList({ loads, vehicles }: { loads: ReturnLoad
           </li>
         ))}
       </ul>
-      <BidSheet request={active ? asRequest(active) : null} vehicles={vehicles} defaultVehicleId={active?.vehicleId} onClose={() => setActive(null)} />
+      <BidSheet request={active ? asRequest(active) : null} vehicles={vehicles} defaultVehicleId={active?.vehicleId} onClose={() => setActive(null)} onPlaced={() => { if (active) setPlaced((s) => new Set(s).add(active.requestId!)); setActive(null); }} />
     </>
   );
 }

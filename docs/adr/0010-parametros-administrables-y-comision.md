@@ -1,6 +1,6 @@
 # ADR-0010 — Parámetros de sistema administrables, comisión y términos versionados
 
-**Estado:** aceptado · 2026-11-17 · implementado en backend (V18) y web (ola 1, agente E)
+**Estado:** aceptado · 2026-11-17 · implementado en backend (V18) y web (ola 1, agente E) · base de la comisión y adjudicación: 2026-11-18 (agente C)
 
 ## Contexto
 La hoja de ruta v2 (`docs/product/2026-11-17-roadmap-v2.md`, ítems 1.13, 1.14, 2.14 y 2.17) y las decisiones del dueño del producto piden:
@@ -31,13 +31,23 @@ La hoja de ruta v2 (`docs/product/2026-11-17-roadmap-v2.md`, ítems 1.13, 1.14, 
   cambio de tarifa debe versionar la cotización guardada en cada solicitud.
 
 ### 2. Comisión
-- Es un porcentaje que OnCargo retiene **al transportista** sobre el precio adjudicado; la PYME paga ese precio, **IGV 18 % incluido y
-  desglosado**. `pricing/domain/CommissionPolicy` (puro) calcula valor de venta, IGV, comisión y neto; `CommissionService` expone la tasa
-  vigente y el desglose a otros módulos.
-- La tasa vigente se **guarda en `shipments.commission_rate`** al adjudicar (la columna la crea V18; la rellena `AcceptBidUseCase`). Un
-  cambio posterior del parámetro no altera envíos existentes.
-- **Supuestos por confirmar con el dueño:** (a) el precio ofertado incluye IGV; (b) la comisión se calcula sobre el total. Cambiarlos
-  toca solo `CommissionPolicy`.
+- Es un porcentaje que OnCargo retiene **al transportista**; la PYME paga el precio adjudicado, **IGV 18 % incluido y desglosado**, sin
+  recargo. `pricing/domain/CommissionPolicy` (puro) calcula valor de venta, IGV, comisión, IGV de la comisión y neto;
+  `CommissionService` expone la tasa vigente y el desglose a otros módulos.
+- **Base de la comisión (decisión del dueño, 2026-11-18):** se calcula sobre el **valor de venta sin IGV**, no sobre el total: el IGV es un
+  tributo que el transportista recauda para SUNAT, no un ingreso suyo. OnCargo factura su comisión **con su propio IGV**. Con `monto` (IGV
+  incluido) y `tasa`: `valorVenta = monto / 1.18`, `igv = monto − valorVenta`, `comision = valorVenta × tasa`,
+  `igvComision = comision × 0.18`, `neto = monto − comision − igvComision`. Ejemplo S/ 1,180 al 8 %: 1,000 + 180 de IGV, comisión 80.00,
+  IGV de la comisión 14.40, neto **S/ 1,085.60**. (Reemplaza el supuesto inicial «comisión sobre el total»; coincide en el neto de ese
+  ejemplo pero desglosa la comisión correctamente. Solo cambió `CommissionPolicy`/`AwardedPriceBreakdown`, que ganó `commissionVat`.)
+- La tasa vigente se **guarda en `shipments.commission_rate`** al adjudicar (la columna la crea V18; `AcceptBidUseCase.award` y
+  `DirectContractUseCase` la rellenan con `CommissionService.currentRate()`; el dominio `Shipment` la lleva). Un cambio posterior del
+  parámetro no altera envíos existentes (`CommissionFlowTest`).
+- **Quién ve qué:** `ShipmentView.priceBreakdown` — la PYME ve valor de venta + IGV; el transportista y el operador ven además la tasa
+  guardada, la comisión, su IGV y el neto; la PYME y el conductor reciben esos campos nulos. En la web y en Android el «cobras S/ X neto»
+  de la hoja de oferta se calcula en el cliente con la tasa vigente (misma aritmética en céntimos, probada contra el ejemplo del dueño);
+  la fuente de verdad sigue siendo `GET /pricing/commission?amount=`.
+- Envíos anteriores a V18 (tasa nula): solo IGV, sin comisión.
 
 ### 3. Términos versionados
 - `logyx.terms.version` + `logyx.terms.status` (`DRAFT` hasta la revisión legal). `POST /auth/register` exige `acceptTerms` y acepta

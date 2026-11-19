@@ -87,6 +87,7 @@ import pe.logyx.core.designsystem.components.Refreshable
 import pe.logyx.core.designsystem.components.RouteMap
 import pe.logyx.core.designsystem.components.SkeletonBox
 import pe.logyx.core.designsystem.components.StatusPill
+import pe.logyx.core.designsystem.components.StopContactBlock
 import pe.logyx.core.designsystem.components.StopTimeline
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
@@ -183,10 +184,11 @@ fun DriverTripScreen(
 ) {
     val trip = state.trip
     val snackbar = rememberLogyxSnackbarState()
-    val notice = state.notice?.let {
-        UiMessage.success(
-            stringResource(if (it == DriverNotice.DELIVERED) R.string.driver_notice_delivered else R.string.driver_notice_stop_updated),
-        )
+    val notice = when (state.notice) {
+        DriverNotice.DELIVERED -> UiMessage.success(stringResource(R.string.driver_notice_delivered))
+        DriverNotice.STOP_UPDATED -> UiMessage.success(stringResource(R.string.driver_notice_stop_updated))
+        DriverNotice.QUEUED -> UiMessage.info(stringResource(R.string.driver_notice_queued))
+        null -> null
     }
     MessageEffect(notice, snackbar, onNoticeShown)
     var confirming by remember { mutableStateOf(false) }
@@ -275,6 +277,7 @@ private fun TripContent(
     val done = trip.stops.count { it.status == StopStatus.COMPLETED }
     val current = (done + 1).coerceAtMost(total.coerceAtLeast(1))
     Column(Modifier.fillMaxSize()) {
+        if (state.offline) OfflineBanner(state.cachedAt)
         if (state.incidentBlocked) {
             AlertBanner(
                 stringResource(R.string.driver_incident_banner),
@@ -305,12 +308,14 @@ private fun TripContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 ClosedEvidenceNotice(state.closedEvidence, onDismissClosedEvidence)
+                if (state.pendingSync) PendingSyncNotice()
                 if (state.delivered) DeliveredCard(trip) else trip.nextStop()?.let { NextStopCard(it, current, total) }
                 when (state.evidencePhase) {
                     EvidencePhase.OPEN -> EvidencePanel(state.evidence, onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence)
                     // RN06: la foto y la firma solo se piden entre la llegada y el cierre de la entrega; se explica por qué no hay botones.
                     EvidencePhase.NOT_YET -> EvidenceHint(R.string.driver_evidence_not_yet)
-                    EvidencePhase.CLOSED -> EvidenceHint(R.string.driver_evidence_closed)
+                    // Entrega guardada en el teléfono: la foto y el cierre salen al recuperar señal.
+                    EvidencePhase.CLOSED -> EvidenceHint(if (state.pendingSync) R.string.driver_evidence_pending else R.string.driver_evidence_closed)
                     EvidencePhase.NONE -> Unit
                 }
                 Text(
@@ -342,6 +347,7 @@ private fun TripContent(
                         state.incidentBlocked -> null // ya lo explica el banner de arriba
                         state.photoBlocked && state.photoMissingRejected -> R.string.driver_evidence_missing
                         state.photoBlocked -> R.string.driver_evidence_required_hint
+                        state.needsEvidence && !state.hasUploadedPhoto && state.hasPhotoAwaitingSignal -> R.string.driver_evidence_awaiting_hint
                         else -> null
                     }
                     hint?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -477,7 +483,13 @@ private fun EvidencePanel(
                 }
             }
             shown.forEachIndexed { i, item ->
-                if (item.state == EvidenceState.FAILED) {
+                if (item.awaitingSignal && item.state != EvidenceState.UPLOADING) {
+                    Text(
+                        "${captions[i]}: " + stringResource(R.string.driver_evidence_offline),
+                        style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.onWarningContainer,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                } else if (item.state == EvidenceState.FAILED) {
                     Text(
                         "${captions[i]}: " + (item.error?.let { stringResource(R.string.driver_evidence_failed, it) } ?: stringResource(R.string.driver_evidence_failed_generic)),
                         style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.dangerText,
@@ -537,7 +549,34 @@ private fun NextStopCard(stop: StopView, current: Int, total: Int) {
                 style = MaterialTheme.typography.titleMedium, color = LogyxTheme.colors.moneyText,
             )
         }
+        // Roadmap 1.3: ventana horaria, contacto con «Llamar», «Cómo llegar» e indicaciones (solo lo que venga).
+        Spacer(Modifier.height(12.dp))
+        StopContactBlock(stop, Modifier.fillMaxWidth(), large = true)
     }
+}
+
+/** Sin red: se ve lo último guardado en el teléfono y de cuándo es (hora de Lima). */
+@Composable
+private fun OfflineBanner(cachedAt: String?) {
+    val stamp = cachedAt?.let {
+        if (Fmt.date(it) == Fmt.date(java.time.Instant.now().toString())) Fmt.time(it) else Fmt.dateTime(it)
+    }
+    AlertBanner(
+        stamp?.let { stringResource(R.string.driver_offline_banner, it) } ?: stringResource(R.string.driver_offline_banner_no_time),
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        kind = MessageKind.Warning,
+    )
+}
+
+/** Toques guardados en el teléfono que el servidor aún no confirmó (roadmap 1.11). */
+@Composable
+private fun PendingSyncNotice() {
+    AlertBanner(
+        stringResource(R.string.driver_pending_message),
+        Modifier.fillMaxWidth(),
+        kind = MessageKind.Info,
+        title = stringResource(R.string.driver_pending_title),
+    )
 }
 
 @Composable
@@ -570,6 +609,18 @@ private fun previewTrip(vararg status: StopStatus, shipment: ShipmentStatus = Sh
 @Composable
 private fun DriverTripPreview() {
     LogyxTheme { DriverTripScreen(DriverUiState(loading = false, trip = previewTrip(StopStatus.ARRIVED, StopStatus.PENDING)), {}, {}) }
+}
+
+@Preview(showBackground = true, heightDp = 900)
+@Composable
+private fun DriverOfflinePreview() {
+    val trip = previewTrip(StopStatus.COMPLETED, StopStatus.PENDING).let { t ->
+        t.copy(stops = t.stops.map { if (it.type == StopType.DELIVERY) it.copy(contactName = "Ana Torres", contactPhone = "987654321", windowFrom = "08:00", windowTo = "12:00", instructions = "Descarga por la puerta lateral.") else it })
+    }
+    val pending = listOf(pe.logyx.core.data.PendingStopAction("a", "s1", "st1", pe.logyx.core.data.StopActionOp.ARRIVE, null, "2026-11-10T08:15:00-05:00"))
+    LogyxTheme {
+        DriverTripScreen(DriverUiState(loading = false, trip = trip, offline = true, cachedAt = "2026-11-10T08:10:00-05:00", pendingActions = pending), {}, {})
+    }
 }
 
 @Preview(showBackground = true, heightDp = 900)

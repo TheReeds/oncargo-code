@@ -72,6 +72,10 @@ fun VehicleChoiceList(
     error: String? = null,
     currentId: String? = null,
     enabled: Boolean = true,
+    /** RN02 por fecha: vehículos aptos que la agenda bloquea para esa carga (id → motivo, p. ej. «Ocupado · libre el 23 nov»). */
+    blocked: Map<String, String> = emptyMap(),
+    /** Nota informativa por vehículo (id → texto): «Libre en esas fechas», «1 oferta pendiente en esas fechas». */
+    hints: Map<String, String> = emptyMap(),
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
@@ -84,18 +88,20 @@ fun VehicleChoiceList(
                 title = stringResource(R.string.ds_vehicle_choice_none_title),
             )
         }
-        choices.sortedByDescending { it.fit.isFit }.forEach { (vehicle, fit) ->
-            val reason = fit.reason(vehicle, weightKg, volumeM3, cargoType)
+        choices.sortedByDescending { it.fit.isFit && it.vehicle.id !in blocked }.forEach { (vehicle, fit) ->
+            val agendaBlock = blocked[vehicle.id]
+            val usable = fit.isFit && agendaBlock == null
+            val reason = fit.reason(vehicle, weightKg, volumeM3, cargoType) ?: agendaBlock
             val notApt = stringResource(R.string.ds_vehicle_choice_not_apt)
             RadioCardRow(
-                selected = vehicle.id == selectedId && fit.isFit,
+                selected = vehicle.id == selectedId && usable,
                 onClick = { onSelect(vehicle.id) },
-                enabled = enabled && fit.isFit,
-                modifier = Modifier.semantics { if (!fit.isFit) contentDescription = "${vehicle.plate}. $notApt. $reason" },
+                enabled = enabled && usable,
+                modifier = Modifier.semantics { if (!usable) contentDescription = "${vehicle.plate}. $notApt. $reason" },
             ) {
                 Icon(
-                    if (fit.isFit) Icons.Rounded.LocalShipping else Icons.Rounded.Block, null,
-                    tint = if (fit.isFit) MaterialTheme.colorScheme.primary else LogyxTheme.colors.dangerText,
+                    if (usable) Icons.Rounded.LocalShipping else Icons.Rounded.Block, null,
+                    tint = if (usable) MaterialTheme.colorScheme.primary else LogyxTheme.colors.dangerText,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -107,6 +113,7 @@ fun VehicleChoiceList(
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (reason != null) Text(reason, style = MaterialTheme.typography.labelMedium, color = LogyxTheme.colors.dangerText)
+                    else hints[vehicle.id]?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }

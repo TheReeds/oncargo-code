@@ -1,9 +1,10 @@
 import { useCan } from '@/lib/use-can';
 import { useMemo, useState } from 'react';
-import { CalendarClock, Plus, SearchX } from 'lucide-react';
+import { CalendarClock, Copy, Plus, SearchX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QuickFilters } from '@/components/ui/quick-filters';
+import { ExportButton } from '@/components/ui/export-button';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
@@ -28,13 +29,14 @@ export default function MyTripsTable({ trips }: { trips: TripView[] }) {
         <EmptyState icon={CalendarClock} title="Aún no publicaste viajes" description="Publica una salida con tu capacidad libre y recibe reservas de empresas que ya viajan por tu ruta." action={canOperate ? <Button asChild variant="money"><a href="/transportista/viajes/nuevo"><Plus />Publicar viaje</a></Button> : undefined} />
       ) : (
         <>
-          <div className="border-b border-steel-200 px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-steel-200 px-4 py-3 sm:px-5">
             <QuickFilters label="Estado del viaje" value={filter} onValueChange={(v) => setFilter(v as Filter)} options={[
               { value: '', label: 'Todos', count: trips.length },
               { value: 'active', label: 'Abiertos', count: counts.active },
               { value: 'pending', label: 'Con reservas por confirmar', count: counts.pending },
               { value: 'closed', label: 'Cerrados', count: counts.closed },
             ]} />
+            <ExportButton href="/exportar/viajes" />
           </div>
           {shown.length === 0 ? (
             <EmptyState compact icon={SearchX} title="No hay viajes con este filtro" description="Cambia el filtro para ver el resto de tus viajes." action={<Button size="sm" variant="outline" onClick={() => setFilter('')}>Ver todos los viajes</Button>} />
@@ -58,7 +60,12 @@ export default function MyTripsTable({ trips }: { trips: TripView[] }) {
                         </span>
                       </Td>
                       <Td label="Estado"><StatusPill kind="trip" status={t.status!} /></Td>
-                      <Td actions className="whitespace-nowrap text-right"><Button asChild size="sm" variant={pend > 0 ? 'money' : 'outline'}><a href={`/transportista/viajes/${t.id}`}>{pend > 0 ? 'Responder reservas' : 'Ver detalle'}<span className="sr-only"> del viaje de {route}</span></a></Button></Td>
+                      <Td actions className="whitespace-nowrap text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          <Button asChild size="sm" variant={pend > 0 ? 'money' : 'outline'}><a href={`/transportista/viajes/${t.id}`}>{pend > 0 ? 'Responder reservas' : 'Ver detalle'}<span className="sr-only"> del viaje de {route}</span></a></Button>
+                          {canOperate && <Button asChild size="sm" variant="ghost"><a href={`/transportista/viajes/nuevo?from=${t.id}`}><Copy />Duplicar<span className="sr-only"> el viaje de {route}</span></a></Button>}
+                        </div>
+                      </Td>
                     </Tr>
                   );
                 })}

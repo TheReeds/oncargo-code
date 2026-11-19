@@ -47,6 +47,11 @@ public class TripService {
         City destination = City.require(cmd.destinationCity());
         guard.ensureCanTransact(tenant.orgId());                                   // RN01 (transportista verificado)
         Vehicle vehicle = fleet.ownVehicle(cmd.vehicleId());                       // 404 si no es suyo
+        if (vehicle.isBlockedForBids()) {                                          // archivado o en mantenimiento
+            throw BusinessException.conflict("LOGYX-CAP-002", vehicle.isArchived()
+                    ? "El vehículo está archivado: elige otro" : "El vehículo está en mantenimiento: elige otro",
+                    "vehicleId");
+        }
         CarrierTrip trip = CarrierTrip.publish(tenant.orgId(), vehicle, origin, destination, cmd.departureAt(),
                 cmd.capacityKg(), cmd.pricingMode(), cmd.rate(), cmd.notes(), OffsetDateTime.now());   // RN12
         trips.save(trip);

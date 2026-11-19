@@ -10,4 +10,13 @@ public record CreateShipmentCommand(UUID requestId, UUID bidId, UUID requesterOr
                                     City originCity, String originAddress,
                                     City destinationCity, String destinationAddress,
                                     /** Viaje o plan Smart Load que consolida envíos en el mismo vehículo (o null). */
-                                    UUID loadGroupId) {}
+                                    UUID loadGroupId,
+                                    /** Comisión vigente al adjudicar (nula = sin registrar). */
+                                    BigDecimal commissionRate) {
+    public CreateShipmentCommand(UUID requestId, UUID bidId, UUID requesterOrgId, UUID carrierOrgId, UUID vehicleId,
+                                 BigDecimal agreedPrice, City originCity, String originAddress, City destinationCity,
+                                 String destinationAddress, UUID loadGroupId) {
+        this(requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, agreedPrice, originCity, originAddress,
+                destinationCity, destinationAddress, loadGroupId, null);
+    }
+}

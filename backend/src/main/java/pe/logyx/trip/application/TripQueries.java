@@ -35,6 +35,11 @@ public class TripQueries {
 
     // ----- Transportista
 
+    /** Viajes publicados (abiertos o por llenar) con ese vehículo: bloquean archivarlo (RN12, higiene de flota). */
+    public long openTripsOfVehicle(UUID vehicleId) {
+        return trips.countOpenByVehicle(vehicleId);
+    }
+
     public List<TripSummary> myTrips() {
         return myTrips(TripSort.DEPARTURE);
     }

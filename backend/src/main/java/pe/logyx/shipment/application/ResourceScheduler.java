@@ -49,6 +49,21 @@ public class ResourceScheduler {
         return info == null ? new Window(today, today) : window(info.pickupDate(), info.distanceKm());
     }
 
+    /**
+     * Envíos activos (PENDING / IN_TRANSIT) del vehículo con su ventana de ocupación, para la agenda por fecha
+     * (RN02) y la higiene de flota (no archivar ni dar de baja con compromisos). Solo lectura.
+     */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public List<Commitment> activeOfVehicle(UUID vehicleId) {
+        return system.call(() -> commitments(shipments.listActiveByVehicle(vehicleId)));
+    }
+
+    /** Envíos activos del conductor con su ventana (desactivar un conductor con viajes activos, FLT-006). */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public List<Commitment> activeOfDriver(UUID driverId) {
+        return system.call(() -> commitments(shipments.listActiveByDriver(driverId)));
+    }
+
     @Transactional(Transactional.TxType.MANDATORY)
     public void ensureVehicleFree(UUID vehicleId, Window window, UUID loadGroupId, UUID excludeShipmentId) {
         shipments.lockResource("vehicle:" + vehicleId);

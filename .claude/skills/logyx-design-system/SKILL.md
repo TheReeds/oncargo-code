@@ -82,6 +82,7 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Identidad de empresa o persona | `Avatar` |
 | Contraseña | `PasswordInput` (mostrar/ocultar) |
 | Barra de filtros de un listado | `FilterBar` |
+| Copiar un enlace o un código al portapapeles | `CopyButton` (aviso accesible «Copiado») |
 | Paradas / hitos de un proceso | `Timeline` (`StopTimeline` para envíos) |
 | Sello "Verificado por OnCargo" (`rucVerified`; `rucValid` no es sello) | `VerifiedBadge` (`variant="icon"` en listas densas) |
 | Estado de verificación de la cuenta / bloqueo `ORG-003/004` | `VerificationBanner` (`AppShell`) · `VerificationBlock` / `reportFailure()` |

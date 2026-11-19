@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.logyx.core.data.AuthRepository
+import pe.logyx.core.data.BidPreferences
+import pe.logyx.core.data.BidRecall
 import pe.logyx.core.data.CatalogRepository
 import pe.logyx.core.data.LoadsRepository
 import pe.logyx.core.data.NegotiationRepository
@@ -28,6 +30,7 @@ import pe.logyx.core.data.apiCode
 import pe.logyx.core.data.fieldErrors
 import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
+import pe.logyx.core.designsystem.components.MessageKind
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.designsystem.components.VehicleChoice
@@ -36,6 +39,7 @@ import pe.logyx.core.designsystem.components.parseMoney
 import pe.logyx.core.network.ApiException
 import java.time.LocalDate
 import pe.logyx.core.model.BidOutcome
+import pe.logyx.core.model.BidShortcut
 import pe.logyx.core.model.BidStatus
 import pe.logyx.core.model.BidView
 import pe.logyx.core.model.CargoType
@@ -50,8 +54,13 @@ import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
+import pe.logyx.core.model.PriceBreakdown
+import pe.logyx.core.model.VehicleEligibility
 import pe.logyx.core.model.VehicleView
-import pe.logyx.core.model.canCarry
+import pe.logyx.core.model.amount
+import pe.logyx.core.model.canBid
+import pe.logyx.core.model.fitForBid
+import pe.logyx.core.model.priceBreakdown
 import pe.logyx.core.model.canManageMyBid
 import pe.logyx.core.model.fitFor
 import pe.logyx.core.model.isPendingFor
@@ -376,13 +385,38 @@ data class LoadDetailUiState(
     val confirmWithdraw: Boolean = false,
     /** Acción de escritura en curso (aceptar/rechazar contraoferta o retirar). */
     val busy: Boolean = false,
+    /** Tasa de comisión vigente de OnCargo (0–1) para «cobras S/ X neto»; nula si no se pudo leer. */
+    val commissionRate: Double? = null,
+    /** RN02 por fecha: agenda de cada vehículo para la fecha de recojo (id → elegibilidad). Vacío = aún no cargó. */
+    val eligibility: Map<String, VehicleEligibility> = emptyMap(),
 ) {
+    /** Aptos por tipo, kg y m³ y fuera de mantenimiento (RN02). «En ruta» no impide ofertar: depende de la agenda. */
     val compatibleVehicles: List<VehicleView>
-        get() = request?.let { r -> vehicles.filter { it.canCarry(r) } } ?: emptyList()
+        get() = request?.let { r -> vehicles.filter { it.canBid(r) } } ?: emptyList()
+
+    /** Los aptos que además están libres en esas fechas (la agenda ya cargó; sin agenda se dejan elegir y valida el servidor). */
+    val bookableVehicles: List<VehicleView>
+        get() = compatibleVehicles.filter { eligibility[it.id]?.eligible != false }
 
     /** Toda la flota con su veredicto RN02: los no aptos se muestran deshabilitados con el motivo (F09). */
     val vehicleChoices: List<VehicleChoice>
-        get() = request?.let { r -> vehicles.map { VehicleChoice(it, it.fitFor(r)) } } ?: emptyList()
+        get() = request?.let { r -> vehicles.map { VehicleChoice(it, it.fitForBid(r)) } } ?: emptyList()
+
+    /** Atajo de monto que coincide con el monto escrito (se recuerda para la próxima oferta). */
+    val matchingShortcut: BidShortcut?
+        get() = request?.let { r ->
+            val amount = form?.amount ?: return null
+            BidShortcut.entries.firstOrNull { it.amount(r.suggestedPrice, r.priceFloor) == amount }
+        }
+
+    /** Desglose «cobras neto» del monto escrito; nulo sin tasa o con un monto inválido o bajo el piso. */
+    val netBreakdown: PriceBreakdown?
+        get() {
+            val rate = commissionRate ?: return null
+            val amount = form?.amount?.takeIf { it > 0 } ?: return null
+            if (request?.priceFloor?.let { amount < it } == true) return null
+            return priceBreakdown(amount, rate)
+        }
 
     /** Contraoferta de la PYME que espera mi respuesta. */
     val counterFromPyme: CounterOfferView? get() = counters.firstOrNull { it.isPendingFor(viewerIsCarrier = true) }
@@ -404,6 +438,7 @@ class LoadDetailViewModel(
     private val negotiation: NegotiationRepository,
     private val realtime: RealtimeRepository,
     private val routes: RoutesRepository = RoutesRepository.NONE,
+    private val prefs: BidPreferences = BidPreferences.NONE,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoadDetailUiState())
     val state: StateFlow<LoadDetailUiState> = _state.asStateFlow()
@@ -459,18 +494,44 @@ class LoadDetailViewModel(
 
     private fun List<CityItem>.find(code: String) = firstOrNull { normalizeCity(it.code) == normalizeCity(code) }
 
+    /**
+     * Abre la hoja de oferta. Oferta rápida (roadmap 1.10): preselecciona el último vehículo usado si sigue apto y libre en esas
+     * fechas (si no, el apto de menor capacidad), recuerda la nota y el atajo de monto; además pide la agenda (RN02 por fecha) y
+     * la comisión para «cobras neto».
+     */
     fun openBidSheet() {
         val s = _state.value
-        // Con un solo vehículo apto se preselecciona; con varios (o ninguno) el transportista elige.
-        val only = s.compatibleVehicles.singleOrNull()
-        _state.update { it.copy(form = BidFormState(vehicleId = only?.id)) }
+        val request = s.request ?: return
+        // Con un solo vehículo apto se preselecciona; con varios (o ninguno) se afina al cargar la agenda y lo recordado.
+        _state.update { it.copy(form = BidFormState(vehicleId = it.compatibleVehicles.singleOrNull()?.id)) }
+        viewModelScope.launch {
+            val recall = prefs.recall()
+            val fleet = loads.eligibility(request.id).getOrNull()
+            val rate = _state.value.commissionRate ?: loads.commissionRate().getOrNull()
+            _state.update { st ->
+                val form = st.form ?: return@update st
+                val withAgenda = st.copy(commissionRate = rate, eligibility = fleet?.vehicles?.associateBy { it.vehicleId } ?: st.eligibility)
+                val pool = withAgenda.bookableVehicles
+                val pick = form.vehicleId?.takeIf { id -> pool.any { it.id == id } }
+                    ?: pool.firstOrNull { it.id == recall.vehicleId }?.id
+                    ?: pool.minByOrNull { it.maxWeightKg }?.id
+                val remembered = pool.any { it.id == recall.vehicleId }
+                withAgenda.copy(
+                    form = form.copy(
+                        vehicleId = pick,
+                        amountText = form.amountText.ifBlank { recall.shortcut?.amount(request.suggestedPrice, request.priceFloor)?.let(::moneyToInput).orEmpty() },
+                        notes = form.notes.ifBlank { if (remembered) recall.notes.take(MAX_BID_NOTES) else "" },
+                    ),
+                )
+            }
+        }
     }
 
     fun dismissBidSheet() = _state.update { if (it.form?.submitting == true) it else it.copy(form = null) }
 
     /** Solo se elige un vehículo apto (RN02); los demás aparecen deshabilitados en la hoja. */
     fun selectVehicle(id: String) {
-        if (_state.value.compatibleVehicles.none { it.id == id }) return
+        if (_state.value.bookableVehicles.none { it.id == id }) return
         updateForm { it.copy(vehicleId = id, error = null, vehicleError = null) }
     }
     fun onAmountChange(text: String) = updateForm { it.copy(amountText = text.filter { c -> c.isDigit() || c == '.' || c == ',' }, error = null, amountError = null) }
@@ -523,8 +584,14 @@ class LoadDetailViewModel(
         updateForm { it.copy(submitting = true, error = null, vehicleError = null, amountError = null) }
         viewModelScope.launch {
             loads.placeBid(request.id, form.vehicleId!!, amount!!, form.notes).fold(
-                onSuccess = {
-                    _state.update { st -> st.copy(form = null, message = UiMessage.success(R.string.loads_bid_sent)) }
+                onSuccess = { placed ->
+                    val shortcut = s.matchingShortcut
+                    viewModelScope.launch { prefs.remember(BidRecall(form.vehicleId, form.notes, shortcut)) }
+                    // CAP-006: la oferta se envió, pero el vehículo ya tiene otras para esas fechas.
+                    val warning = placed.warnings.firstOrNull()?.message
+                    _state.update { st ->
+                        st.copy(form = null, message = if (warning != null) UiMessage(kind = MessageKind.Info, textRes = R.string.loads_bid_sent_warning, args = listOf(warning)) else UiMessage.success(R.string.loads_bid_sent))
+                    }
                     load(initial = false)
                 },
                 // Se muestra el mensaje de la API (p. ej. monto bajo el piso, subasta cerrada, ya ofertaste).

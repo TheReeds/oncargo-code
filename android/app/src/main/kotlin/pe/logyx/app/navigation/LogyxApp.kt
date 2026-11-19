@@ -257,12 +257,13 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 CarrierTripsRoute(
                     onBack = { nav.popBackStack() },
                     onOpenTrip = { nav.navigate(CarrierTripDetail(it)) },
-                    onPublish = { nav.navigate(PublishTrip) },
+                    onPublish = { nav.navigate(PublishTrip()) },
                 )
             }
-            composable<PublishTrip> {
+            composable<PublishTrip> { e ->
                 PublishTripRoute(
                     onBack = { nav.popBackStack() },
+                    fromTripId = e.toRoute<PublishTrip>().from,
                     onPublished = { id ->
                         // Reemplaza el formulario por el detalle del viaje recién publicado.
                         nav.navigate(CarrierTripDetail(id, published = true)) { popUpTo<PublishTrip> { inclusive = true } }
@@ -274,6 +275,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 CarrierTripDetailRoute(
                     d.id, d.published, onBack = { nav.popBackStack() },
                     onOpenShipment = { nav.navigate(ShipmentDetail(it)) },
+                    onDuplicate = { nav.navigate(PublishTrip(from = it)) },
                 )
             }
             composable<PymeTripDetail> { e ->

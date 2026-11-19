@@ -132,6 +132,14 @@ class RowLevelSecurityTest {
         assertEquals(1, countAs(a, "CARRIER", bidsOfRequest));
         assertEquals(0, countAs(b, "CARRIER", bidsOfRequest), "B no ve la oferta de A");
         assertEquals(1, countAs(pyme, "PYME", bidsOfRequest), "la PYME ve las ofertas de su solicitud");
+
+        // V20 / RN02 por fecha: la agenda de ofertas (pendientes por vehículo) solo la ve su transportista
+        String pendingOfVehicle = "SELECT count(*) FROM bids WHERE vehicle_id = '" + va + "' AND status = 'PENDING'";
+        assertEquals(1, countAs(a, "CARRIER", pendingOfVehicle));
+        assertEquals(0, countAs(b, "CARRIER", pendingOfVehicle), "B no ve las ofertas pendientes del vehículo de A");
+        // y un transportista no archiva (ni edita) el vehículo de otro
+        assertEquals(0, executeAs(b, "CARRIER", "UPDATE vehicles SET archived_at = now() WHERE id = '" + va + "'"));
+        assertEquals(1, executeAs(a, "CARRIER", "UPDATE vehicles SET archived_at = NULL WHERE id = '" + va + "'"));
     }
 
     /** V15 (F15): quien ofertó sigue viendo la solicitud (solo lectura) aunque se adjudique a otro o se cancele. */
@@ -525,5 +533,51 @@ class RowLevelSecurityTest {
         assertThrows(Exception.class, () -> executeAs(a, "PYME", "UPDATE terms_acceptances SET terms_version = 'x'"));
         assertThrows(Exception.class, () -> executeAs(a, "PYME", "DELETE FROM terms_acceptances"));
         assertThrows(Exception.class, () -> executeAs(op, "OPERATOR", "DELETE FROM terms_acceptances"));
+    }
+
+    // ----- V19 (Ola 1 zona B): paradas por conductor y enlaces públicos de seguimiento
+
+    @Test
+    void unConductorSoloVeYTocaLasParadasDeSusEnvios() {
+        Flows.Awarded a = Flows.awarded("RLS Paradas");
+        String[] other = driver(a.carrier(), "Otro conductor RLS");
+        Session otherDriver = login(other[1], "Chofer1234");
+        String stops = "SELECT count(*) FROM shipment_stops WHERE shipment_id = '" + a.shipmentId() + "'";
+        assertEquals(2L, countAs(a.driver(), "CARRIER", stops));
+        assertEquals(2L, countAs(a.carrier(), "CARRIER", stops), "la oficina del transportista sigue viendo todo");
+        assertEquals(0L, countAs(otherDriver, "CARRIER", stops), "otro conductor de la misma flota no");
+        assertEquals(0L, countAs(otherDriver, "CARRIER", "SELECT count(*) FROM shipment_stops"));
+        assertEquals(0, executeAs(otherDriver, "CARRIER", "UPDATE shipment_stops SET status = 'ARRIVED' "
+                + "WHERE shipment_id = '" + a.shipmentId() + "'"));
+        assertEquals(2L, countAs(a.pyme(), "PYME", stops));
+    }
+
+    @Test
+    void enlacesPublicosSonDeLaPymeDuenaYSoloSeRevocan() {
+        Flows.Awarded a = Flows.awarded("RLS Enlaces");
+        Session otherPyme = register("PYME", "RLS Enlaces otra");
+        Session op = operator();
+        as(a.pyme()).post("/api/v1/shipments/" + a.shipmentId() + "/share-links").then().statusCode(201);
+        String all = "SELECT count(*) FROM shipment_share_links WHERE shipment_id = '" + a.shipmentId() + "'";
+        assertEquals(1L, countAs(a.pyme(), "PYME", all));
+        assertEquals(0L, countAs(otherPyme, "PYME", all));
+        assertEquals(0L, countAs(a.carrier(), "CARRIER", all), "el transportista no ve los enlaces de la PYME");
+        assertEquals(0L, countAs(a.driver(), "CARRIER", all));
+        assertEquals(1L, countAs(op, "OPERATOR", all));
+        // Ni otra PYME revoca, ni la dueña cambia otra cosa que la revocación, ni nadie borra
+        assertEquals(0, executeAs(otherPyme, "PYME", "UPDATE shipment_share_links SET revoked_at = now()"));
+        assertThrows(Exception.class, () -> executeAs(a.pyme(), "PYME", "UPDATE shipment_share_links SET views = 999"));
+        assertThrows(Exception.class, () -> executeAs(a.pyme(), "PYME",
+                "UPDATE shipment_share_links SET token_hash = repeat('0', 64)"));
+        assertThrows(Exception.class, () -> executeAs(a.pyme(), "PYME", "DELETE FROM shipment_share_links"));
+        assertEquals(1, executeAs(a.pyme(), "PYME", "UPDATE shipment_share_links SET revoked_at = now() "
+                + "WHERE shipment_id = '" + a.shipmentId() + "'"));
+        // Nadie crea un enlace para un envío ajeno (WITH CHECK: el envío debe ser de su organización)
+        assertThrows(Exception.class, () -> executeAs(otherPyme, "PYME", "INSERT INTO shipment_share_links "
+                + "(id, shipment_id, requester_org_id, token_hash, token_hint) VALUES (gen_random_uuid(), '"
+                + a.shipmentId() + "', '" + otherPyme.orgId() + "', repeat('a', 64), 'abcd')"));
+        assertThrows(Exception.class, () -> executeAs(a.carrier(), "CARRIER", "INSERT INTO shipment_share_links "
+                + "(id, shipment_id, requester_org_id, token_hash, token_hint) VALUES (gen_random_uuid(), '"
+                + a.shipmentId() + "', '" + a.carrier().orgId() + "', repeat('b', 64), 'abcd')"));
     }
 }

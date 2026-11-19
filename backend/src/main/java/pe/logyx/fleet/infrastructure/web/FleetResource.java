@@ -35,6 +35,24 @@ public class FleetResource {
     }
 
     @PATCH
+    @Path("/vehicles/{id}")
+    @Operation(summary = "Corrige tipo, kg y m³ de un vehículo (la placa no cambia)",
+            description = "Con envíos activos, ofertas pendientes o viajes publicados solo se admite el volumen "
+                    + "(409 LOGYX-FLT-004). Un vehículo archivado no se edita.")
+    public ApiResponse<VehicleView> update(@PathParam("id") UUID id, @Valid VehiclePatch req) {
+        return ApiResponse.of(VehicleView.of(fleet.updateVehicle(id, req.toCommand())));
+    }
+
+    @POST
+    @Path("/vehicles/{id}/archive")
+    @Operation(summary = "Da de baja (archiva) un vehículo",
+            description = "Sin envíos activos, ofertas pendientes ni viajes publicados (409 LOGYX-FLT-004). Un vehículo "
+                    + "archivado no aparece en las listas ni puede ofertar; la placa sigue registrada.")
+    public ApiResponse<VehicleView> archive(@PathParam("id") UUID id) {
+        return ApiResponse.of(VehicleView.of(fleet.archiveVehicle(id)));
+    }
+
+    @PATCH
     @Path("/vehicles/{id}/status")
     public ApiResponse<VehicleView> status(@PathParam("id") UUID id, @Valid StatusChange req) {
         return ApiResponse.of(VehicleView.of(fleet.setVehicleStatus(id, req.status())));
@@ -59,7 +77,8 @@ public class FleetResource {
     @Path("/drivers/{id}/deactivate")
     @OrgAdminOnly
     @Operation(summary = "Desactivar la cuenta del conductor", description = "Pierde el acceso de inmediato y no se "
-            + "le puede asignar envíos (409 LOGYX-FLT-003). Solo ADMIN.")
+            + "le puede asignar envíos (409 LOGYX-FLT-003). Con envíos activos o por salir no se desactiva "
+            + "(409 LOGYX-FLT-006: reasigna primero). Solo ADMIN.")
     public ApiResponse<DriverView> deactivateDriver(@PathParam("id") UUID id) {
         return ApiResponse.of(DriverView.of(fleet.setDriverActive(id, false)));
     }

@@ -15,14 +15,22 @@ public final class Vehicle {
     private final UUID id;
     private final UUID organizationId;
     private final String plate;
-    private final Type type;
-    private final BigDecimal maxWeightKg;
-    private final BigDecimal maxVolumeM3;
+    private Type type;
+    private BigDecimal maxWeightKg;
+    private BigDecimal maxVolumeM3;
     private Status status;
     private final OffsetDateTime createdAt;
+    /** Archivado (V20): fuera de las listas y sin poder ofertar; los envíos históricos lo siguen referenciando. */
+    private OffsetDateTime archivedAt;
 
     public Vehicle(UUID id, UUID organizationId, String plate, Type type, BigDecimal maxWeightKg,
                    BigDecimal maxVolumeM3, Status status, OffsetDateTime createdAt) {
+        this(id, organizationId, plate, type, maxWeightKg, maxVolumeM3, status, createdAt, null);
+    }
+
+    public Vehicle(UUID id, UUID organizationId, String plate, Type type, BigDecimal maxWeightKg,
+                   BigDecimal maxVolumeM3, Status status, OffsetDateTime createdAt, OffsetDateTime archivedAt) {
+        this.archivedAt = archivedAt;
         this.id = id;
         this.organizationId = organizationId;
         this.plate = plate;
@@ -53,7 +61,29 @@ public final class Vehicle {
         status = newStatus;
     }
 
-    public boolean isAvailable() { return status == Status.AVAILABLE; }
+    public boolean isAvailable() { return status == Status.AVAILABLE && archivedAt == null; }
+
+    /** Solo el mantenimiento y el archivo bloquean ofertar (RN02 por fecha): "en ruta" depende de la agenda. */
+    public boolean isBlockedForBids() { return status == Status.MAINTENANCE || archivedAt != null; }
+
+    public boolean isArchived() { return archivedAt != null; }
+
+    /** Corrige tipo, capacidad y volumen (la placa no cambia). */
+    public void revise(Type newType, BigDecimal newMaxWeightKg, BigDecimal newMaxVolumeM3) {
+        if (newType != null) type = newType;
+        if (newMaxWeightKg != null) maxWeightKg = newMaxWeightKg;
+        if (newMaxVolumeM3 != null) maxVolumeM3 = newMaxVolumeM3;
+    }
+
+    /** Solo cambia el volumen (el vehículo ya tiene compromisos). */
+    public void reviseVolume(BigDecimal newMaxVolumeM3) { maxVolumeM3 = newMaxVolumeM3; }
+
+    public void archive(OffsetDateTime now) {
+        if (status == Status.IN_ROUTE) {
+            throw BusinessException.conflict("LOGYX-FLT-004", "El vehículo está en ruta: no se puede archivar");
+        }
+        if (archivedAt == null) archivedAt = now;
+    }
 
     /** El envío salió del punto de recojo. */
     public void startRoute() { status = Status.IN_ROUTE; }
@@ -69,4 +99,5 @@ public final class Vehicle {
     public BigDecimal maxVolumeM3() { return maxVolumeM3; }
     public Status status() { return status; }
     public OffsetDateTime createdAt() { return createdAt; }
+    public OffsetDateTime archivedAt() { return archivedAt; }
 }

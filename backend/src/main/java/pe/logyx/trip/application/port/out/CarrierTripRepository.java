@@ -21,6 +21,8 @@ public interface CarrierTripRepository {
     List<CarrierTrip> listByCarrier(UUID carrierOrgId);
     /** OPEN/FILLING con salida futura, capacidad restante suficiente y que cumplen el filtro; salida más próxima primero. */
     Paged<CarrierTrip> searchOpen(TripFilter filter, OffsetDateTime now, PageRequest page);
+    /** Viajes OPEN/FILLING del vehículo (RN12: bloquean archivarlo). */
+    long countOpenByVehicle(UUID vehicleId);
     long countByCarrierAndStatus(UUID carrierOrgId, List<TripStatus> statuses);
     /** Con estado en {@code statuses} y salida anterior a {@code cutoff} (mantenimiento programado). */
     List<CarrierTrip> listByStatusDepartedBefore(List<TripStatus> statuses, OffsetDateTime cutoff);

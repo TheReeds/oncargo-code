@@ -26,6 +26,8 @@ import io.ktor.client.statement.readRawBytes
 import io.ktor.client.statement.request
 import pe.logyx.core.model.AuthMessage
 import pe.logyx.core.model.ChangePasswordRequest
+import pe.logyx.core.model.CommissionInfo
+import pe.logyx.core.model.FleetEligibility
 import pe.logyx.core.model.DriverShipmentScope
 import pe.logyx.core.model.ForgotPasswordRequest
 import pe.logyx.core.model.LogoutRequest
@@ -80,6 +82,9 @@ import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.RouteView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.UserInfo
+import pe.logyx.core.model.StopEventRequest
+import pe.logyx.core.model.CreateShareLinkRequest
+import pe.logyx.core.model.ShareLinkCreated
 import pe.logyx.core.model.VehicleView
 import java.io.IOException
 
@@ -160,6 +165,13 @@ class LogyxApi(
     suspend fun placeBid(requestId: String, body: PlaceBidRequest): BidView =
         post("api/v1/shipment-requests/$requestId/bids", body)
 
+    /** RN02 por fecha: qué vehículos de mi flota pueden ofertar a esta carga, su agenda y los avisos (`CAP-006`). */
+    suspend fun vehicleEligibility(requestId: String): FleetEligibility =
+        get("api/v1/shipment-requests/$requestId/vehicle-eligibility")
+
+    /** Tasa de comisión vigente (para «cobras S/ X neto»). */
+    suspend fun commission(): CommissionInfo = get("api/v1/pricing/commission")
+
     /**
      * Retira mi oferta `PENDING` mientras la subasta acepta ofertas (V13, F08). Errores: `LOGYX-BID-005` (ya no se puede);
      * después no puedo volver a ofertar en esa subasta (`BID-003`). Las contraofertas pendientes pasan a `EXPIRED`.
@@ -214,11 +226,27 @@ class LogyxApi(
 
     // --- Dashboard ---
     suspend fun dashboardSummary(): DashboardSummary = get("api/v1/dashboard/summary")
-    suspend fun arriveAtStop(shipmentId: String, stopId: String): ShipmentView =
-        post("api/v1/shipments/$shipmentId/stops/$stopId/arrive")
+    /**
+     * Llegada a la parada. [occurredAt] (opcional, roadmap 1.11) = hora del dispositivo ISO-8601 con offset; sin él cuenta la
+     * hora del servidor. Idempotente: repetirla sobre una parada ya ARRIVED devuelve 200 con el envío. `TRK-008` (400,
+     * `field = occurredAt`) si la hora no es aceptable: repite sin ella.
+     */
+    suspend fun arriveAtStop(shipmentId: String, stopId: String, occurredAt: String? = null): ShipmentView =
+        stopEvent("api/v1/shipments/$shipmentId/stops/$stopId/arrive", occurredAt)
 
-    suspend fun completeStop(shipmentId: String, stopId: String): ShipmentView =
-        post("api/v1/shipments/$shipmentId/stops/$stopId/complete")
+    /** Cierra la parada (recojo o entrega). Mismas reglas que [arriveAtStop]; también idempotente con el envío ya DELIVERED. */
+    suspend fun completeStop(shipmentId: String, stopId: String, occurredAt: String? = null): ShipmentView =
+        stopEvent("api/v1/shipments/$shipmentId/stops/$stopId/complete", occurredAt)
+
+    private suspend fun stopEvent(path: String, occurredAt: String?): ShipmentView =
+        if (occurredAt == null) post(path) else post(path, StopEventRequest(occurredAt))
+
+    /**
+     * Enlace público de seguimiento para el cliente final (PYME ADMIN/OPS; el Lector recibe 403 `AUTH-007`). 201 con la `url`.
+     * 409 `SHL-002` (cancelado), `SHL-003` (entregado hace más de 7 días), `SHL-004` (10 enlaces activos).
+     */
+    suspend fun createShareLink(shipmentId: String, expiresInDays: Int? = null): ShareLinkCreated =
+        post("api/v1/shipments/$shipmentId/share-links", CreateShareLinkRequest(expiresInDays))
 
     // --- Documentos y evidencia ---
     /**

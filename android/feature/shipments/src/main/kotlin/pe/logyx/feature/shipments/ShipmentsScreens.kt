@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ReportProblem
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -84,7 +85,11 @@ import pe.logyx.core.designsystem.components.RouteMap
 import pe.logyx.core.designsystem.components.SkeletonList
 import pe.logyx.core.designsystem.components.RadioCardRow
 import pe.logyx.core.designsystem.components.StatusPill
+import pe.logyx.core.designsystem.components.StopContactBlock
 import pe.logyx.core.designsystem.components.StopTimeline
+import pe.logyx.core.designsystem.components.Can
+import pe.logyx.core.designsystem.label
+import pe.logyx.core.model.hasContactInfo
 import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.pill
@@ -168,11 +173,18 @@ private fun ShipmentCard(s: ShipmentView, isCarrier: Boolean, onClick: () -> Uni
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     LogyxCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            StatusPill(s.status.pill())
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusPill(s.status.pill())
+                s.code?.let { Text(it, style = LogyxText.mono, color = muted) }
+            }
             Text(Fmt.money(s.agreedPrice), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
         }
         Spacer(Modifier.height(16.dp))
         RouteLine(cityLabel(s.originCity), cityLabel(s.destinationCity))
+        s.customerReference?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.shipments_reference_format, it), style = MaterialTheme.typography.bodyMedium, color = muted)
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             stringResource(
@@ -239,6 +251,7 @@ fun ShipmentDetailRoute(
             onOpenVehicles = viewModel::openVehicleSheet, onDismissVehicles = viewModel::dismissVehicleSheet,
             onSelectVehicle = viewModel::selectVehicle, onVehicleReason = viewModel::onVehicleReason,
             onConfirmVehicle = viewModel::confirmVehicle,
+            onShare = viewModel::share, onShareHandled = viewModel::onShareHandled,
         ),
     )
 }
@@ -268,6 +281,9 @@ class ShipmentActions(
     val onSelectVehicle: (String) -> Unit = {},
     val onVehicleReason: (String) -> Unit = {},
     val onConfirmVehicle: () -> Unit = {},
+    /** «Compartir seguimiento» (PYME con OPERATE). */
+    val onShare: () -> Unit = {},
+    val onShareHandled: () -> Unit = {},
 )
 
 @Composable
@@ -281,8 +297,12 @@ fun ShipmentDetailScreen(
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
+    ShareTrackingEffect(state, actions.onShareHandled)
 
-    LogyxScreen(stringResource(R.string.shipments_detail_title), onBack = onBack, snackbar = snackbar) { padding ->
+    LogyxScreen(
+        stringResource(R.string.shipments_detail_title), onBack = onBack, snackbar = snackbar,
+        subtitle = state.shipment?.code,
+    ) { padding ->
         val s = state.shipment
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
@@ -390,6 +410,8 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actio
                 style = LogyxText.mono, color = muted,
             )
             Spacer(Modifier.height(16.dp))
+            s.code?.let { InfoRow(stringResource(R.string.shipments_detail_code), it, mono = true) }
+            s.customerReference?.takeIf { it.isNotBlank() }?.let { InfoRow(stringResource(R.string.shipments_detail_reference), it) }
             InfoRow(stringResource(R.string.shipments_detail_pickup_date), s.pickupDate?.let { Fmt.date(it) } ?: dash)
             InfoRow(stringResource(R.string.shipments_detail_requester), s.requesterName ?: dash)
             InfoRow(stringResource(R.string.shipments_detail_carrier), s.carrierName ?: dash)
@@ -425,6 +447,28 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actio
                 Text(stringResource(R.string.shipments_detail_no_stops), style = MaterialTheme.typography.bodyMedium, color = muted)
             } else {
                 StopTimeline(s.stops)
+            }
+        }
+        // Roadmap 1.3: contacto, ventana e instrucciones por parada (solo las partes los reciben; sin datos no se pinta).
+        val withContact = s.stops.sortedBy { it.sequence }.filter { it.hasContactInfo }
+        if (withContact.isNotEmpty()) {
+            LogyxCard(Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.shipments_detail_contacts), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                withContact.forEach { stop ->
+                    Spacer(Modifier.height(16.dp))
+                    Text("${stop.type.label} · ${cityLabel(stop.city)}", style = MaterialTheme.typography.titleSmall)
+                    stop.address?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = muted) }
+                    Spacer(Modifier.height(8.dp))
+                    StopContactBlock(stop, Modifier.fillMaxWidth(), showDirections = false)
+                }
+            }
+        }
+        if (state.canShare) {
+            Can {
+                LogyxButton(
+                    stringResource(R.string.shipments_share_action), actions.onShare,
+                    variant = ButtonVariant.Secondary, icon = Icons.Rounded.Share, loading = state.sharing, requiresOperate = true,
+                )
             }
         }
         s.deliveredAt?.let {
@@ -477,11 +521,33 @@ private fun CancellationBanner(s: ShipmentView, canceller: Canceller) {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun InfoRow(label: String, value: String, mono: Boolean = false) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
-        Text(value, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+        Text(value, style = if (mono) LogyxText.mono else MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+    }
+}
+
+/** Con la URL recién creada abre la hoja de compartir de Android (`ACTION_SEND`, texto) una sola vez. */
+@Composable
+private fun ShareTrackingEffect(state: ShipmentDetailUiState, onHandled: () -> Unit) {
+    val url = state.shareUrl ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val s = state.shipment
+    val route = s?.let { "${cityLabel(it.originCity)} → ${cityLabel(it.destinationCity)}" }.orEmpty()
+    val text = if (s?.code != null) stringResource(R.string.shipments_share_text_code, s.code!!, route, url)
+    else stringResource(R.string.shipments_share_text, route, url)
+    val chooserTitle = stringResource(R.string.shipments_share_chooser)
+    val subject = stringResource(R.string.shipments_share_subject)
+    LaunchedEffect(url) {
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
+            putExtra(android.content.Intent.EXTRA_TEXT, text)
+        }
+        runCatching { context.startActivity(android.content.Intent.createChooser(send, chooserTitle)) }
+        onHandled()
     }
 }
 

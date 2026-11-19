@@ -89,4 +89,14 @@
     <string name="shipments_documents_action">Ver documentos</string>
     <string name="shipments_incidents_action">Ver incidencias</string>
     <string name="shipments_report_action">Reportar incidencia</string>
+    <!-- Ola 1 zona B: código, referencia, contactos y compartir seguimiento -->
+    <string name="shipments_reference_format">Ref. %1$s</string>
+    <string name="shipments_detail_code">Código</string>
+    <string name="shipments_detail_reference">Tu referencia</string>
+    <string name="shipments_detail_contacts">Contactos y horarios</string>
+    <string name="shipments_share_action">Compartir seguimiento</string>
+    <string name="shipments_share_chooser">Compartir seguimiento</string>
+    <string name="shipments_share_subject">Seguimiento de tu envío</string>
+    <string name="shipments_share_text_code">Sigue tu envío %1$s (%2$s) en tiempo real con OnCargo: %3$s</string>
+    <string name="shipments_share_text">Sigue tu envío (%1$s) en tiempo real con OnCargo: %2$s</string>
 </resources>

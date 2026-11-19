@@ -1324,7 +1324,7 @@ export interface paths {
         put?: never;
         /**
          * Desactivar la cuenta del conductor
-         * @description Pierde el acceso de inmediato y no se le puede asignar envíos (409 LOGYX-FLT-003). Solo ADMIN.
+         * @description Pierde el acceso de inmediato y no se le puede asignar envíos (409 LOGYX-FLT-003). Con envíos activos o por salir no se desactiva (409 LOGYX-FLT-006: reasigna primero). Solo ADMIN.
          */
         post: {
             parameters: {
@@ -4185,7 +4185,7 @@ export interface paths {
         };
         /**
          * Comisión vigente de OnCargo (porcentaje que retiene al transportista) y desglose de un monto
-         * @description El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre ese total y el transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. Cualquier rol autenticado (también VIEWER: es lectura).
+         * @description El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre el valor de venta sin IGV, lleva su propio IGV (commissionVat) y el transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. Cualquier rol autenticado (también VIEWER: es lectura).
          */
         get: {
             parameters: {
@@ -4354,6 +4354,47 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tracking/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Seguimiento público de un envío por su enlace (sin cuenta)
+         * @description Sin JWT. Solo estado, ciudades, fecha de recojo, hitos con hora, ETA aproximada (ventana) y ruta por carretera: nunca precio, contactos, direcciones, placa, conductor ni datos de las organizaciones. 404 LOGYX-SHL-001 si el enlace no existe, se revocó o venció (misma respuesta). Límite por IP: 429 LOGYX-AUTH-429 con Retry-After.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePublicTrackingView"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4921,6 +4962,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipment-requests/my-bids/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) mis ofertas con los mismos datos que /my-bids
+         * @description Filtros opcionales: status (PENDING, ACCEPTED, LOST, CANCELLED, WITHDRAWN), originCity, destinationCity, fromDate y toDate (fecha de recojo, inclusive). «Neto estimado» usa la comisión vigente (ADR-0010). Máximo 10 000 filas: si hay más, LOGYX-EXP-001. Pasa por la misma consulta y RLS que el listado JSON.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    destinationCity?: string;
+                    fromDate?: string;
+                    originCity?: string;
+                    status?: string;
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv;charset=UTF-8": unknown;
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipment-requests/{id}": {
         parameters: {
             query?: never;
@@ -5419,6 +5519,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipment-requests/{id}/vehicle-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * RN02 por fecha: qué vehículos de mi flota pueden ofertar a esta solicitud
+         * @description Por vehículo: eligible, el impedimento (CAP-001 kg, 002 mantenimiento, 003 tipo, 004 m³, 005 envío activo solapado, 007 demasiadas ofertas solapadas), desde cuándo está libre y su agenda en la ventana de la carga (envíos activos y ofertas pendientes, recojo + ⌈km/500⌉ días). warnings trae LOGYX-CAP-006 si ya tiene ofertas pendientes solapadas (se puede ofertar). La validación dura sigue al aceptar (CAP-005).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseEligibilityView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipments": {
         parameters: {
             query?: never;
@@ -5426,14 +5581,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mine */
+        /**
+         * Mis envíos (PYME o transportista), recientes primero, con filtros en el servidor
+         * @description Filtros opcionales: status (uno o varios separados por coma, p. ej. PENDING,IN_TRANSIT), originCity, destinationCity, fromDate/toDate (fecha de recojo, yyyy-MM-dd, inclusive) y q (código OC-…, referencia propia, placa, conductor o carga). Con page/size: meta.total. Sin page ni size devuelve todos los que cumplan (compatibilidad; tope 10 000).
+         */
         get: {
             parameters: {
                 query?: {
+                    destinationCity?: string;
+                    fromDate?: string;
+                    originCity?: string;
                     /** @description Página 0-based. Si se omite page y size, se devuelven todos. */
                     page?: number;
+                    q?: string;
                     /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
                     size?: number;
+                    status?: string;
+                    toDate?: string;
                 };
                 header?: never;
                 path?: never;
@@ -5448,6 +5612,63 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseListShipmentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) los envíos que cumplen los mismos filtros que GET /shipments. Máximo 10 000 filas: si hay más, LOGYX-EXP-001 */
+        get: {
+            parameters: {
+                query?: {
+                    destinationCity?: string;
+                    fromDate?: string;
+                    originCity?: string;
+                    q?: string;
+                    status?: string;
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv;charset=UTF-8": unknown;
                     };
                 };
                 /** @description Not Authorized */
@@ -5952,23 +6173,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/shipments/{id}/stops/{stopId}/arrive": {
+    "/api/v1/shipments/{id}/share-links": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Arrive */
-        post: {
+        /** Enlaces públicos del envío (sin el token): estado, caducidad, visitas. También el Lector */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
                     id: components["schemas"]["UUID"];
-                    stopId: components["schemas"]["UUID"];
                 };
                 cookie?: never;
             };
@@ -5980,8 +6198,180 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
+                        "application/json": components["schemas"]["ApiResponseListShareLinkView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Crea un enlace público de seguimiento para el cliente final (ADMIN y OPS de la PYME dueña)
+         * @description El token y la URL se devuelven UNA sola vez (en la BD solo queda su SHA-256). Errores: LOGYX-SHL-002 envío cancelado, LOGYX-SHL-003 entregado hace más de 7 días, LOGYX-SHL-004 ya hay 10 vigentes, LOGYX-VAL-001 expiresInDays fuera de 1–30.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateShareLink"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShareLinkCreated"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/share-links/{linkId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoca un enlace público: deja de funcionar al instante (idempotente) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                    linkId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShareLinkView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/stops/{stopId}/arrive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * «Llegué» a la parada (RN08, en orden). Idempotente: repetirlo responde 200 con el envío
+         * @description Cuerpo opcional {occurredAt}: hora del dispositivo (ISO-8601 con zona). Debe ser como mucho 2 min futura, de las últimas 48 h y no anterior al paso previo; si no, 400 LOGYX-TRK-008 (field occurredAt; la app reintenta sin ella). Sin cuerpo vale la hora del servidor.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                    stopId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StopEvent"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
                         "application/json": components["schemas"]["ApiResponseShipmentView"];
                     };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Not Authorized */
                 401: {
@@ -6014,7 +6404,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Complete */
+        /**
+         * Completa la parada («Carga recogida» / «Entregado», con foto en la entrega). Idempotente
+         * @description Repetirlo sobre una parada ya completada responde 200 con el envío (aunque ya esté entregado). Cuerpo opcional {occurredAt} con las mismas reglas que arrive (LOGYX-TRK-008).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -6025,7 +6418,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StopEvent"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -6035,6 +6432,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseShipmentView"];
                     };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Not Authorized */
                 401: {
@@ -6726,6 +7130,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trips/mine/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) mis viajes publicados
+         * @description Filtros opcionales: status (OPEN, FILLING, CLOSED, COMPLETED, CANCELLED), originCity, destinationCity, fromDate y toDate (fecha de salida, inclusive). Máximo 10 000 filas (LOGYX-EXP-001).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    destinationCity?: string;
+                    fromDate?: string;
+                    originCity?: string;
+                    status?: string;
+                    toDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv;charset=UTF-8": unknown;
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trips/{id}": {
         parameters: {
             query?: never;
@@ -7076,6 +7539,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Corrige tipo, kg y m³ de un vehículo (la placa no cambia)
+         * @description Con envíos activos, ofertas pendientes o viajes publicados solo se admite el volumen (409 LOGYX-FLT-004). Un vehículo archivado no se edita.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VehiclePatch"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVehicleView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/vehicles/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Da de baja (archiva) un vehículo
+         * @description Sin envíos activos, ofertas pendientes ni viajes publicados (409 LOGYX-FLT-004). Un vehículo archivado no aparece en las listas ni puede ofertar; la placa sigue registrada.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVehicleView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles/{id}/status": {
         parameters: {
             query?: never;
@@ -7216,6 +7793,10 @@ export interface components {
             data?: components["schemas"]["DriverView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseEligibilityView: {
+            data?: components["schemas"]["EligibilityView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseIncidentView: {
             data?: components["schemas"]["IncidentView"];
             meta?: components["schemas"]["Meta"];
@@ -7332,6 +7913,10 @@ export interface components {
             data?: components["schemas"]["SearchResultView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListShareLinkView: {
+            data?: components["schemas"]["ShareLinkView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListShipmentView: {
             data?: components["schemas"]["ShipmentView"][];
             meta?: components["schemas"]["Meta"];
@@ -7420,6 +8005,10 @@ export interface components {
             data?: components["schemas"]["PublicQuote"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponsePublicTrackingView: {
+            data?: components["schemas"]["PublicTrackingView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseQuote: {
             data?: components["schemas"]["Quote"];
             meta?: components["schemas"]["Meta"];
@@ -7442,6 +8031,14 @@ export interface components {
         };
         ApiResponseRouteView: {
             data?: components["schemas"]["RouteView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseShareLinkCreated: {
+            data?: components["schemas"]["ShareLinkCreated"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseShareLinkView: {
+            data?: components["schemas"]["ShareLinkView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseShipmentReviewsView: {
@@ -7545,6 +8142,11 @@ export interface components {
             vehiclePlate?: string;
             carrierTrustScore?: number;
             assignedByOperator?: boolean;
+            warnings?: components["schemas"]["BidWarningView"][];
+        };
+        BidWarningView: {
+            code?: string;
+            message?: string;
         };
         /** @enum {string} */
         BookingStatus: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
@@ -7553,7 +8155,14 @@ export interface components {
             netOfVat?: number;
             vat?: number;
             commission?: number;
+            commissionVat?: number;
             carrierNet?: number;
+        };
+        BusySlot: {
+            kind?: string;
+            label?: string;
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
         };
         CancelRequestBody: {
             reason?: string;
@@ -7660,6 +8269,10 @@ export interface components {
             originPlaceId?: components["schemas"]["UUID"];
             destinationPlaceId?: components["schemas"]["UUID"];
         };
+        CreateShareLink: {
+            /** Format: int32 */
+            expiresInDays?: number;
+        };
         CreateTripBookingRequest: {
             weightKg: number;
             cargoDescription: string;
@@ -7736,6 +8349,13 @@ export interface components {
             licenseNumber?: string;
             status?: components["schemas"]["Status1"];
             active?: boolean;
+        };
+        EligibilityView: {
+            windowFrom?: components["schemas"]["LocalDate"];
+            windowTo?: components["schemas"]["LocalDate"];
+            /** Format: int32 */
+            maxOverlappingBids?: number;
+            vehicles?: components["schemas"]["VehicleEligibilityView"][];
         };
         ForgotPasswordRequest: {
             email: string;
@@ -8141,6 +8761,16 @@ export interface components {
         PostMessage: {
             body: string;
         };
+        PriceBreakdownView: {
+            amount?: number;
+            vatRate?: number;
+            netOfVat?: number;
+            vat?: number;
+            commissionRate?: number;
+            commission?: number;
+            commissionVat?: number;
+            carrierNet?: number;
+        };
         ProposeCounterOffer: {
             amount: number;
             message?: string;
@@ -8178,6 +8808,39 @@ export interface components {
             destinationCity: string;
             weightKg: number;
             cargoType: components["schemas"]["CargoType"];
+        };
+        PublicTrackingRoute: {
+            polyline?: string;
+            /** Format: int32 */
+            polylinePrecision?: number;
+            /** Format: double */
+            distanceKm?: number;
+            /** Format: double */
+            durationMin?: number;
+            attribution?: string;
+        };
+        PublicTrackingStop: {
+            /** Format: int32 */
+            sequence?: number;
+            type?: components["schemas"]["Type1"];
+            city?: components["schemas"]["City"];
+            status?: components["schemas"]["Status6"];
+            arrivedAt?: components["schemas"]["OffsetDateTime"];
+            completedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        PublicTrackingView: {
+            code?: string;
+            status?: components["schemas"]["Status5"];
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            pickupDate?: components["schemas"]["LocalDate"];
+            deliveredAt?: components["schemas"]["OffsetDateTime"];
+            stops?: components["schemas"]["PublicTrackingStop"][];
+            etaFrom?: components["schemas"]["OffsetDateTime"];
+            etaTo?: components["schemas"]["OffsetDateTime"];
+            route?: components["schemas"]["PublicTrackingRoute"];
+            updatedAt?: components["schemas"]["OffsetDateTime"];
+            linkExpiresAt?: components["schemas"]["OffsetDateTime"];
         };
         Quote: {
             distanceKm?: number;
@@ -8404,6 +9067,23 @@ export interface components {
             subtitle?: string;
             href?: string;
         };
+        ShareLinkCreated: {
+            link?: components["schemas"]["ShareLinkView"];
+            token?: string;
+            url?: string;
+        };
+        ShareLinkView: {
+            id?: components["schemas"]["UUID"];
+            tokenHint?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "EXPIRED" | "REVOKED";
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            expiresAt?: components["schemas"]["OffsetDateTime"];
+            revokedAt?: components["schemas"]["OffsetDateTime"];
+            lastViewedAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int32 */
+            views?: number;
+        };
         ShipmentReviewsView: {
             canReview?: boolean;
             blockedCode?: string;
@@ -8434,6 +9114,11 @@ export interface components {
             cancellationReason?: string;
             cancelledAt?: components["schemas"]["OffsetDateTime"];
             cancelledByOrgId?: components["schemas"]["UUID"];
+            priceBreakdown?: components["schemas"]["PriceBreakdownView"];
+            code?: string;
+            customerReference?: string;
+            requesterOrgId?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
         };
         SimilarRequest: {
             id?: components["schemas"]["UUID"];
@@ -8521,6 +9206,9 @@ export interface components {
         StatusChange: {
             status: components["schemas"]["Status"];
         };
+        StopEvent: {
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+        };
         /** @enum {string} */
         StopType: "PICKUP" | "DELIVERY";
         StopView: {
@@ -8533,6 +9221,13 @@ export interface components {
             status?: components["schemas"]["Status6"];
             arrivedAt?: components["schemas"]["OffsetDateTime"];
             completedAt?: components["schemas"]["OffsetDateTime"];
+            arrivedRecordedAt?: components["schemas"]["OffsetDateTime"];
+            completedRecordedAt?: components["schemas"]["OffsetDateTime"];
+            contactName?: string;
+            contactPhone?: string;
+            windowFrom?: string;
+            windowTo?: string;
+            instructions?: string;
         };
         SubmitReview: {
             /** Format: int32 */
@@ -8637,6 +9332,25 @@ export interface components {
             verificationNote?: string;
             /** @description Permisos por rol de organización (V14): READ, OPERATE, MANAGE_USERS, MANAGE_ORGANIZATION, MANAGE_DRIVERS. Úsalos para mostrar u ocultar acciones; el backend los hace cumplir igual */
             permissions?: components["schemas"]["OrgPermission"][];
+        };
+        VehicleEligibilityView: {
+            vehicleId?: components["schemas"]["UUID"];
+            plate?: string;
+            type?: components["schemas"]["Type"];
+            maxWeightKg?: number;
+            maxVolumeM3?: number;
+            status?: components["schemas"]["Status"];
+            eligible?: boolean;
+            blockerCode?: string;
+            blockerMessage?: string;
+            freeFrom?: components["schemas"]["LocalDate"];
+            busy?: components["schemas"]["BusySlot"][];
+            warnings?: components["schemas"]["BidWarningView"][];
+        };
+        VehiclePatch: {
+            type?: components["schemas"]["Type"];
+            maxWeightKg?: number;
+            maxVolumeM3?: number;
         };
         VehicleRequest: {
             plate: string;

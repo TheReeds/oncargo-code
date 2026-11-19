@@ -76,6 +76,25 @@ public final class VehicleCargoCompatibility {
         ensureTypeAndVolume(v.type(), v.maxVolumeM3(), cargo, volumeM3);
     }
 
+    /**
+     * RN02 por fecha (decisión del dueño, 2026-11-17): para <b>ofertar</b> el vehículo no tiene que estar libre "ahora"
+     * sino en la fecha de recojo. Aquí solo bloquea el mantenimiento o el archivo (LOGYX-CAP-002); "en ruta" se
+     * resuelve con la agenda (envíos activos, {@code ResourceSchedulePolicy}). Después, kg, tipo y volumen como en
+     * {@link #ensureSuitable}.
+     */
+    public static void ensureSuitableOnDate(Vehicle v, CargoType cargo, BigDecimal weightKg, BigDecimal volumeM3) {
+        if (v.isBlockedForBids()) {
+            throw BusinessException.conflict("LOGYX-CAP-002", v.isArchived()
+                    ? "El vehículo está archivado y no puede ofertar"
+                    : "El vehículo está en mantenimiento: márcalo disponible para ofertar", "vehicleId");
+        }
+        if (weightKg != null && v.maxWeightKg().compareTo(weightKg) < 0) {
+            throw BusinessException.badRequest("LOGYX-CAP-001", "El vehículo no tiene capacidad suficiente (RN02)",
+                    "vehicleId");
+        }
+        ensureTypeAndVolume(v.type(), v.maxVolumeM3(), cargo, volumeM3);
+    }
+
     /** LOGYX-CAP-003 (tipo de vehículo no apto) y LOGYX-CAP-004 (volumen), con {@code field = vehicleId}. */
     public static void ensureTypeAndVolume(Vehicle.Type type, BigDecimal maxVolumeM3, CargoType cargo,
                                            BigDecimal volumeM3) {

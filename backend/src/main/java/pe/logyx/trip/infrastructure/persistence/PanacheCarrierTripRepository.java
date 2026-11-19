@@ -60,6 +60,12 @@ public class PanacheCarrierTripRepository implements CarrierTripRepository {
     }
 
     @Override
+    public long countOpenByVehicle(UUID vehicleId) {
+        return CarrierTripEntity.count("vehicleId = ?1 and status in ?2", vehicleId,
+                List.of(TripStatus.OPEN, TripStatus.FILLING));
+    }
+
+    @Override
     public long countByCarrierAndStatus(UUID carrierOrgId, List<TripStatus> statuses) {
         return CarrierTripEntity.count("carrierOrgId = ?1 and status in ?2", carrierOrgId, statuses);
     }

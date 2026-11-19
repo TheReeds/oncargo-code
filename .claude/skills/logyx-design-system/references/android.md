@@ -91,6 +91,7 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - **Avisos por persona (V16)**: `NotificationView.mine` → etiqueta «Tuyo»; filtro `SegmentedControl` Todas / Sin leer / **Solo míos** en `:feature:notifications`.
 - `VerifiedBadge()` dice **"Verificado por OnCargo"** (solo con `rucVerified`, es decir, verificada por el operador).
 - Errores: `Throwable.userMessage()` (ya trae el texto de `ORG-003/004` y `AUTH-007/008`), `Throwable.accessBlock`, y `FieldErrors` para `NEG-001`/400 con `field` (`:core:data`; ver `android/AGENTS.md`).
+- **`StopContactBlock(stop, modifier, large = false, showDirections = true)`** (roadmap 1.3, `components/StopContact.kt`) — ventana horaria («Recibe de 08:00 a 12:00» / «Atiende…» en recojo), contacto («Ana Torres · 987 654 321»), botones «Llamar» (`ACTION_DIAL`) y «Cómo llegar» (`geo:0,0?q=dirección, ciudad`, respaldo Google Maps web) con descripción TalkBack, e «Indicaciones: …». Solo pinta lo que no es null; sin app de teléfono/mapas lo dice debajo. `large = true` en el conductor (56 dp), `showDirections = false` en el seguimiento de oficina. Helpers: `Context.dialPhone(phone)`, `Context.openDirections(query)`, `formatPhone`, `stopWindowText(stop)`, `StopView.directionsQuery()`. No abras intents `tel:`/`geo:` a mano en un feature.
 - Conductor: `EvidencePhase` (`OPEN` panel de foto/firma · `NOT_YET`/`CLOSED` tarjeta que explica por qué no se pide) y aviso de evidencia descartada (`ClosedEvidenceNotice`, `AlertBanner` ámbar con "Entendido"); "Viajes anteriores" con `StatusPill`.
 
 ### Negociación, motivos y flota (V13–V15)
@@ -137,3 +138,9 @@ LogyxScreen(title = "Detalle", onBack = onBack, snackbar = snackbar) { padding -
 - El producto se llama **OnCargo** (antes LOGYX); el tema/paquetes conservan el nombre técnico `Logyx*`/`pe.logyx`. Ver `docs/brand.md`.
 - Logotipo: `pe.logyx.core.designsystem.R.drawable.oncargo_logo` (cambia solo a la variante oscura con `drawable-night-nodpi`) y `oncargo_logo_on_dark` para cabeceras siempre oscuras (login). Símbolo/ícono de app: `mipmap/ic_launcher*` (fondo `#081F46`).
 - Copy visible: "OnCargo" (p. ej. "Coordina todo por el chat de OnCargo").
+
+## Oferta rápida y «cobras neto» (Ola 1 zona C, 2026-11-18)
+- Hoja de oferta (`:feature:loads` `BidSheet`): chips de **atajos de monto** (`BidShortcut`: Sugerido, −5 %, −10 %, Piso; `amount()` nunca baja del piso) con `LogyxFilterChip`; `NetBox` = «Cobras S/ X neto» (`Text` con `liveRegion = Polite`) y un `TextButton` que despliega el desglose (valor de venta, IGV, comisión, IGV de la comisión). El cálculo es `priceBreakdown()` de `:core:model` (misma aritmética en céntimos que el backend).
+- `VehicleChoiceList(blocked = …, hints = …)`: los vehículos que la agenda bloquea para esas fechas salen deshabilitados con el motivo («Ocupado · libre el 23 nov») y los demás con «Libre en esas fechas» / «N ofertas pendientes en esas fechas»; `CAP-006` se muestra con `AlertBanner(MessageKind.Warning)` antes de enviar.
+- Lo recordado vive en `BidPreferences` (DataStore `logyx_bid_prefs`): último vehículo, nota y atajo; la nota solo se usa si el vehículo sigue en la flota de la sesión.
+- Duplicar viaje: `PublishTrip(from)` + `PublishTripRoute(fromTripId)`; `AlertBanner` informativo «Copia de un viaje anterior».

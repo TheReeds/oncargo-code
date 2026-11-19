@@ -34,6 +34,7 @@ public class MarketplaceResource {
     @Inject CancelRequestUseCase cancelRequest;
     @Inject MarketplaceQueries queries;
     @Inject AuctionRecoveryUseCase recovery;
+    @Inject pe.logyx.pricing.application.CommissionService commission;
 
     // ----- PYME
     @POST
@@ -213,12 +214,63 @@ public class MarketplaceResource {
         return ApiResponse.of(RequestView.of(queries.myBidRequests()));
     }
 
+    @GET
+    @Path("/shipment-requests/my-bids/export")
+    @Produces(CsvWriter.MEDIA_TYPE)
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) mis ofertas con los mismos datos que /my-bids",
+            description = "Filtros opcionales: status (PENDING, ACCEPTED, LOST, CANCELLED, WITHDRAWN), originCity, destinationCity, "
+                    + "fromDate y toDate (fecha de recojo, inclusive). «Neto estimado» usa la comisión vigente (ADR-0010). "
+                    + "Máximo 10 000 filas: si hay más, LOGYX-EXP-001. Pasa por la misma consulta y RLS que el listado JSON.")
+    public Response exportMyBids(@QueryParam("status") String status, @QueryParam("originCity") String originCity,
+                                 @QueryParam("destinationCity") String destinationCity,
+                                 @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
+                                 @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate) {
+        java.time.LocalDate from = MarketplaceFilter.date(fromDate, "fromDate"), to = MarketplaceFilter.date(toDate, "toDate");
+        String wanted = status == null || status.isBlank() ? null : status.trim().toUpperCase();
+        if (wanted != null && !java.util.Set.of("PENDING", "ACCEPTED", "LOST", "CANCELLED", "WITHDRAWN").contains(wanted)) {
+            throw pe.logyx.shared.domain.BusinessException.badRequest("LOGYX-VAL-001", "Estado inválido: " + status, "status");
+        }
+        var rows = queries.myBidSummaries().stream()
+                .filter(s -> wanted == null || MarketplaceCsv.bidState(s).equals(wanted))
+                .filter(s -> originCity == null || originCity.isBlank() || s.request().cargo().originCity().name().equalsIgnoreCase(originCity.trim()))
+                .filter(s -> destinationCity == null || destinationCity.isBlank() || s.request().cargo().destinationCity().name().equalsIgnoreCase(destinationCity.trim()))
+                .filter(s -> from == null || !s.request().cargo().pickupDate().isBefore(from))
+                .filter(s -> to == null || !s.request().cargo().pickupDate().isAfter(to))
+                .toList();
+        if (rows.size() > MarketplaceQueries.EXPORT_MAX_ROWS) {
+            throw pe.logyx.shared.domain.BusinessException.badRequest("LOGYX-EXP-001",
+                    "Hay más de " + MarketplaceQueries.EXPORT_MAX_ROWS + " ofertas: acota por estado, ciudad o fechas", "status");
+        }
+        byte[] body = MarketplaceCsv.myBids(rows, amount -> commission.breakdown(amount).carrierNet());
+        String name = "mis-ofertas-" + java.time.LocalDate.now(java.time.ZoneId.of("America/Lima")) + ".csv";
+        return Response.ok(body, CsvWriter.MEDIA_TYPE)
+                .header("Content-Disposition", "attachment; filename=\"" + name + "\"").build();
+    }
+
     @POST
     @Path("/shipment-requests/{id}/bids")
     @RolesAllowed(Roles.CARRIER)
     @ResponseStatus(201)
     public ApiResponse<BidView> bid(@PathParam("id") UUID id, @Valid PlaceBid req) {
-        return ApiResponse.of(BidView.of(placeBid.placeBid(id, req.toCommand())));
+        var placed = placeBid.placeBidWithWarnings(id, req.toCommand());
+        return ApiResponse.of(BidView.of(placed.summary(),
+                placed.warnings().stream().map(w -> new BidWarningView(w.code(), w.message())).toList()));
+    }
+
+    @GET
+    @Path("/shipment-requests/{id}/vehicle-eligibility")
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "RN02 por fecha: qué vehículos de mi flota pueden ofertar a esta solicitud",
+            description = "Por vehículo: eligible, el impedimento (CAP-001 kg, 002 mantenimiento, 003 tipo, 004 m³, "
+                    + "005 envío activo solapado, 007 demasiadas ofertas solapadas), desde cuándo está libre y su agenda "
+                    + "en la ventana de la carga (envíos activos y ofertas pendientes, recojo + ⌈km/500⌉ días). "
+                    + "warnings trae LOGYX-CAP-006 si ya tiene ofertas pendientes solapadas (se puede ofertar). "
+                    + "La validación dura sigue al aceptar (CAP-005).")
+    public ApiResponse<EligibilityView> eligibility(@PathParam("id") UUID id) {
+        var e = queries.vehicleEligibility(id);
+        return ApiResponse.of(new EligibilityView(e.window().from(), e.window().to(), e.maxOverlapping(),
+                e.vehicles().stream().map(VehicleEligibilityView::of).toList()));
     }
 
     // ----- Común

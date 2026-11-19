@@ -48,9 +48,9 @@ public class PricingResource {
 
     /** Desglose de un precio adjudicado (IGV incluido en {@code amount}); ver {@code CommissionPolicy}. */
     public record Breakdown(BigDecimal amount, BigDecimal netOfVat, BigDecimal vat, BigDecimal commission,
-                            BigDecimal carrierNet) {
+                            BigDecimal commissionVat, BigDecimal carrierNet) {
         static Breakdown of(AwardedPriceBreakdown b) {
-            return new Breakdown(b.amount(), b.netOfVat(), b.vat(), b.commission(), b.carrierNet());
+            return new Breakdown(b.amount(), b.netOfVat(), b.vat(), b.commission(), b.commissionVat(), b.carrierNet());
         }
     }
 
@@ -68,8 +68,8 @@ public class PricingResource {
     @GET
     @Path("/commission")
     @Operation(summary = "Comisión vigente de OnCargo (porcentaje que retiene al transportista) y desglose de un monto",
-            description = "El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre ese total y el "
-                    + "transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. "
+            description = "El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre el valor de venta "
+                    + "sin IGV, lleva su propio IGV (commissionVat) y el transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. "
                     + "Cualquier rol autenticado (también VIEWER: es lectura).")
     public ApiResponse<CommissionInfo> commission(
             @Parameter(description = "Monto en soles a desglosar (opcional, > 0).") @QueryParam("amount") BigDecimal amount) {

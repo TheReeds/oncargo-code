@@ -36,6 +36,8 @@ Especificación funcional completa: repo hermano `../ProyectoEPE-LOGYX/docs/soft
    **Tiempo real (ADR-0007):** `GET /api/v1/events/stream` (SSE) proyecta el outbox con destinatario explícito por fila;
    sus eventos son avisos con payload mínimo (ids/estados): los clientes vuelven a pedir por REST y conservan un polling
    lento de respaldo. Web: proxy `/eventos` + `web/src/lib/realtime.ts`; Android: cliente SSE en `:core:network`.
+   **Superficies públicas sin JWT** (cotizador `/public/pricing/*`, seguimiento por enlace `/public/tracking/{token}` → web `/s/<token>`,
+   ADR-0011): límite por IP, `SystemTx` acotado y **lista blanca** de campos; nunca reutilices un DTO autenticado ahí.
 3. **Respuestas** siempre `{ data, meta }`; errores `{ error: { code, message, field }, meta }` con códigos `LOGYX-XXX-NNN`.
 4. **Idioma:** dominio, UI y mensajes en español; identificadores de código en inglés.
 5. **Una carpeta por feature/módulo**, con la misma forma interna en todo el monorepo (ver guías locales).

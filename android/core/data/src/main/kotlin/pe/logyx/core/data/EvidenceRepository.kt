@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import pe.logyx.core.model.DocumentType
+import pe.logyx.core.network.ApiException
 import pe.logyx.core.network.LogyxApi
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -52,9 +53,15 @@ data class EvidenceItem(
     val error: String? = null,
     val documentId: String? = null,
     val bytes: ByteArray? = null,
+    /** El último intento falló por falta de red (no por el servidor): la foto sigue en la cola y se enviará al recuperar señal. */
+    val offline: Boolean = false,
 ) {
+    /** Guardada en el equipo y pendiente de subir por falta de señal (o aún sin intentar): cuenta para el envío diferido de la entrega. */
+    val awaitingSignal: Boolean
+        get() = state == EvidenceState.QUEUED || state == EvidenceState.UPLOADING || (state == EvidenceState.FAILED && offline)
+
     override fun equals(other: Any?) = other is EvidenceItem && id == other.id && state == other.state &&
-        progress == other.progress && error == other.error && documentId == other.documentId
+        progress == other.progress && error == other.error && documentId == other.documentId && offline == other.offline
     override fun hashCode() = id.hashCode() * 31 + state.hashCode()
 }
 
@@ -181,7 +188,7 @@ class DefaultEvidenceRepository(
         val item = lock.withLock {
             val cur = _items.value.firstOrNull { it.id == id } ?: return
             if (cur.state == EvidenceState.UPLOADING || cur.state == EvidenceState.UPLOADED || cur.state == EvidenceState.CLOSED) return
-            patch(id) { it.copy(state = EvidenceState.UPLOADING, progress = 0f, error = null) }
+            patch(id) { it.copy(state = EvidenceState.UPLOADING, progress = 0f, error = null, offline = false) }
             cur
         }
         val file = File(dir, id)
@@ -206,7 +213,7 @@ class DefaultEvidenceRepository(
                     withContext(Dispatchers.IO) { file.delete() }
                     patch(id) { it.copy(state = EvidenceState.CLOSED, progress = 0f, error = closed, bytes = null) }
                 } else {
-                    patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage()) }
+                    patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage(), offline = (e as? ApiException)?.isNetwork == true) }
                 }
             },
         )

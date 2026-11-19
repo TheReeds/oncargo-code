@@ -82,7 +82,9 @@ import java.time.LocalTime
 fun PublishTripRoute(
     onBack: () -> Unit,
     onPublished: (String) -> Unit,
-    viewModel: PublishTripViewModel = koinViewModel(),
+    /** Viaje que se duplica (roadmap 1.10): el formulario arranca con sus datos y la salida una semana después. */
+    fromTripId: String? = null,
+    viewModel: PublishTripViewModel = koinViewModel { parametersOf(fromTripId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.publishedId) { state.publishedId?.let(onPublished) }
@@ -128,6 +130,12 @@ fun PublishTripScreen(
                 ) {
                     val f = state.form
                     val e = state.errors
+                    if (state.duplicated) {
+                        AlertBanner(
+                            stringResource(R.string.trips_duplicate_text), kind = MessageKind.Info,
+                            title = stringResource(R.string.trips_duplicate_title),
+                        )
+                    }
                     LogyxCombobox(
                         stringResource(R.string.trips_f_origin), state.cities, f.origin, onOrigin, { it.name },
                         error = e.origin?.asString(),
@@ -247,12 +255,14 @@ fun CarrierTripDetailRoute(
     justPublished: Boolean,
     onBack: () -> Unit,
     onOpenShipment: (String) -> Unit,
+    onDuplicate: (String) -> Unit = {},
     viewModel: CarrierTripDetailViewModel = koinViewModel { parametersOf(tripId, justPublished) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LiveEffect(viewModel) { viewModel.liveLoop() }
     CarrierTripDetailScreen(
         state, onBack, viewModel::refresh, onOpenShipment,
+        onDuplicate = { state.trip?.let { onDuplicate(it.id) } },
         onConfirm = viewModel::askConfirm, onReject = viewModel::askReject, onClose = viewModel::askClose, onCancel = viewModel::askCancel,
         onPerform = viewModel::perform, onRejectReason = viewModel::onRejectReason, onDismissConfirm = viewModel::dismissConfirm, onMessageShown = viewModel::onMessageShown,
     )
@@ -264,6 +274,7 @@ fun CarrierTripDetailScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onOpenShipment: (String) -> Unit,
+    onDuplicate: () -> Unit = {},
     onConfirm: (TripBookingView) -> Unit,
     onReject: (TripBookingView) -> Unit,
     onClose: () -> Unit,
@@ -284,6 +295,12 @@ fun CarrierTripDetailScreen(
                 else -> Refreshable(state.refreshing, onRefresh) {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         item { TripCard(trip, showCarrier = false) }
+                        item {
+                            LogyxButton(
+                                stringResource(R.string.trips_duplicate_action), onDuplicate,
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true,
+                            )
+                        }
                         if (trip.isManageable) {
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

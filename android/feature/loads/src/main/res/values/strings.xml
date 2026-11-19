@@ -134,6 +134,28 @@
     <string name="loads_kpi_delivered">Entregados</string>
     <string name="loads_kpi_delivered_context">este mes</string>
     <string name="loads_bid_sent">Oferta enviada</string>
+    <string name="loads_bid_sent_warning">Oferta enviada · %1$s</string>
+    <string name="loads_quick_suggested">Sugerido %1$s</string>
+    <string name="loads_quick_m5">−5 %% · %1$s</string>
+    <string name="loads_quick_m10">−10 %% · %1$s</string>
+    <string name="loads_quick_floor_short">Piso · %1$s</string>
+    <string name="loads_quick_label">Atajos de monto</string>
+    <string name="loads_net_title">Cobras %1$s neto</string>
+    <string name="loads_net_toggle_show">Ver cómo se calcula</string>
+    <string name="loads_net_toggle_hide">Ocultar el cálculo</string>
+    <string name="loads_net_sale">Valor de venta (sin IGV)</string>
+    <string name="loads_net_vat" formatted="false">IGV (18 %)</string>
+    <string name="loads_net_total">Tu oferta (con IGV)</string>
+    <string name="loads_net_commission">Comisión de OnCargo (%1$s del valor de venta)</string>
+    <string name="loads_net_commission_vat" formatted="false">IGV de la comisión (18 %)</string>
+    <string name="loads_net_final">Cobras neto</string>
+    <string name="loads_agenda_free">Libre en esas fechas</string>
+    <string name="loads_agenda_bids">%1$d ofertas pendientes en esas fechas</string>
+    <string name="loads_agenda_bid_one">1 oferta pendiente en esas fechas</string>
+    <string name="loads_agenda_busy">Ocupado en esas fechas</string>
+    <string name="loads_agenda_busy_free_from">Ocupado · libre el %1$s</string>
+    <string name="loads_agenda_warning_title">%1$s</string>
+    <string name="loads_agenda_warning_text">Puedes ofertar igual, pero si la PYME acepta una, no podrás cumplir las demás con ese vehículo.</string>
     <string name="loads_error_vehicle_required">Elige el vehículo con el que harás el viaje.</string>
     <string name="loads_error_amount_invalid">Ingresa un monto válido, por ejemplo 1,850.00.</string>
     <string name="loads_error_amount_below_floor">Tu oferta es menor al piso de %1$s. Sube el monto para poder enviarla.</string>

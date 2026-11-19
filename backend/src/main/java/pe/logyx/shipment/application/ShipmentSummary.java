@@ -8,10 +8,17 @@ import java.util.List;
 
 /**
  * Envío con sus paradas, nombres de las partes y datos de la carga. {@code activeIncident}: hay una incidencia
- * activa que congela el avance de paradas (RN11).
+ * activa que congela el avance de paradas (RN11). {@code contactsVisible}: quien consulta puede ver el contacto, la
+ * ventana y las instrucciones de las paradas (RN07 post-adjudicación: las partes, el conductor asignado y el operador).
  */
 public record ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName,
-                              String carrierName, RequestInfo request, boolean activeIncident) {
+                              String carrierName, RequestInfo request, boolean activeIncident,
+                              boolean contactsVisible) {
+
+    public ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName, String carrierName,
+                           RequestInfo request, boolean activeIncident) {
+        this(shipment, stops, requesterName, carrierName, request, activeIncident, false);
+    }
 
     /** "Lima → Juliaca", para textos de notificaciones. */
     public String routeLabel() {

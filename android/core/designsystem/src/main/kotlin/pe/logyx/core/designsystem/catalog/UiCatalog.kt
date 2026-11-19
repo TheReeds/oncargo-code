@@ -305,6 +305,13 @@ private fun Domain() {
             StopView("2", 2, StopType.DELIVERY, "JULIACA", "Jr. Lima 456", StopStatus.PENDING),
         ),
     )
+    pe.logyx.core.designsystem.components.StopContactBlock(
+        StopView(
+            "2", 2, StopType.DELIVERY, "JULIACA", "Jr. Lima 456", StopStatus.PENDING,
+            contactName = "Ana Torres", contactPhone = "987654321", windowFrom = "08:00", windowTo = "12:00",
+            instructions = "Descarga por la puerta lateral.",
+        ),
+    )
 }
 
 @Composable

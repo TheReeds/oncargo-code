@@ -63,11 +63,15 @@ public class ShipmentEntity extends PanacheEntityBase {
     @Column(name = "cancelled_by_org_id")
     public UUID cancelledByOrgId;
 
+    @Column(name = "commission_rate")
+    public BigDecimal commissionRate;
+
     Shipment toDomain() {
         return new Shipment(id, requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, driverId, agreedPrice,
                 vehiclePlate, driverName, status, createdAt, deliveredAt, loadGroupId,
                 cancelledAt == null && cancelReason == null ? null
-                        : new Shipment.Cancellation(cancelledByOrgId, cancelReason, cancelledAt));
+                        : new Shipment.Cancellation(cancelledByOrgId, cancelReason, cancelledAt),
+                commissionRate);
     }
 
     void apply(Shipment s) {
@@ -85,6 +89,7 @@ public class ShipmentEntity extends PanacheEntityBase {
         createdAt = s.createdAt();
         deliveredAt = s.deliveredAt();
         loadGroupId = s.loadGroupId();
+        commissionRate = s.commissionRate();
         var c = s.cancellation();
         cancelReason = c == null ? null : c.reason();
         cancelledAt = c == null ? null : c.at();

@@ -19,7 +19,7 @@ import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { useRealtime } from '@/lib/realtime';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
-import type { CityItem, RequestView, VehicleView } from '@/lib/api/server';
+import type { BidView, CityItem, RequestView, VehicleView } from '@/lib/api/server';
 import { TrustScore } from '@/components/domain/TrustScore';
 import NegotiationSheet from '@/features/negotiation/components/NegotiationSheet';
 import { MessageSquare } from 'lucide-react';
@@ -42,7 +42,8 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
   const [chat, setChat] = useState<RequestView | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const usable = vehicles.filter((v) => v.status === 'AVAILABLE');
+  // RN02 por fecha: «en ruta» no impide ofertar (depende de la agenda); solo el mantenimiento.
+  const usable = vehicles.filter((v) => v.status !== 'MAINTENANCE');
   const maxCap = Math.max(0, ...usable.map((v) => v.maxWeightKg ?? 0));
   // Misma matriz que la hoja de oferta (RN02): tipo de carga, kg y m³ contra la flota. Ver `features/fleet/compatibility.ts`.
   const isCompatible = (r: RequestView) => fleetCanCarry(vehicles, r);
@@ -80,9 +81,34 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
     if (!id) return;
     setLive((l) => ({ ...l, [id]: { bidCount: typeof e.data.bidCount === 'number' ? e.data.bidCount : l[id]?.bidCount, closed: !!e.data.auctionClosed } }));
   });
-  const rows0 = requests.filter((r) => !live[r.id!]?.closed).map((r) => (live[r.id!]?.bidCount != null && r.auction ? { ...r, auction: { ...r.auction, bidCount: live[r.id!]!.bidCount } } : r));
+  // Oferta rápida: tras ofertar no se recarga; la fila pasa a «Ofertada» en sitio y el foco va a la siguiente carga.
+  const [placed, setPlaced] = useState<Record<string, BidView>>({});
+  const rows0 = requests.filter((r) => !live[r.id!]?.closed).map((r) => {
+    const withLive = live[r.id!]?.bidCount != null && r.auction ? { ...r, auction: { ...r.auction, bidCount: live[r.id!]!.bidCount } } : r;
+    const mine = placed[r.id!];
+    return mine ? { ...withLive, myBid: mine, auction: withLive.auction ? { ...withLive.auction, bidCount: Math.max(withLive.auction.bidCount ?? 0, (r.auction?.bidCount ?? 0) + 1) } : withLive.auction } : withLive;
+  });
   // Con "Mi vehículo", las cargas que la flota sí puede llevar van primero (orden estable dentro de la página).
   const rows = f.compat ? [...rows0].sort((a, b) => Number(isCompatible(b)) - Number(isCompatible(a))) : rows0;
+
+  /** Siguiente carga de la lista (después de `afterId`) a la que todavía puedo ofertar. */
+  const nextBiddable = (afterId: string) => {
+    const i = rows.findIndex((r) => r.id === afterId);
+    return rows.slice(i + 1).find((r) => !r.myBid && !placed[r.id!] && isCompatible(r)) ?? null;
+  };
+  function afterBid(bid: BidView, advance: boolean) {
+    const current = active;
+    if (!current) return;
+    setPlaced((p) => ({ ...p, [current.id!]: bid }));
+    const next = nextBiddable(current.id!);
+    if (advance && next) { setActive(next); return; }
+    setActive(null);
+    // Radix devuelve el foco al botón que abrió la hoja (que ya no existe): se pasa a la siguiente carga.
+    window.setTimeout(() => {
+      const target = next ? document.querySelector<HTMLElement>(`[data-bid-row="${next.id}"]`) : null;
+      (target ?? document.getElementById('m-filters'))?.focus?.();
+    }, 150);
+  }
 
   // El peso máximo se aplica al dejar de escribir.
   useEffect(() => {
@@ -185,7 +211,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
                         {mine ? (
                           <div className="flex flex-col items-end gap-0.5 @max-[720px]:flex-1 @max-[720px]:flex-row @max-[720px]:items-center @max-[720px]:gap-2"><Badge tone="petrol"><CheckCircle2 className="size-3" aria-hidden="true" />Ofertada</Badge><span className="font-mono text-xs tabular-nums text-ink-700">{formatMoney(r.myBid!.amount)}</span>{standingText(r.myBidStanding) && <span className="max-w-44 whitespace-normal text-xs font-medium text-ink-700" data-testid="market-standing">{standingText(r.myBidStanding)!.headline}</span>}</div>
                         ) : canOperate ? (
-                          <Button size="sm" variant="money" className="@max-[720px]:flex-1" onClick={() => setActive(r)}>Ofertar</Button>
+                          <Button size="sm" variant="money" className="@max-[720px]:flex-1" data-bid-row={r.id} onClick={() => setActive(r)}>Ofertar</Button>
                         ) : null}
                         {(canOperate || mine) && <Button size="sm" variant="ghost" className="@max-[720px]:flex-1" onClick={() => setChat(r)}><MessageSquare />{mine ? 'Conversar' : 'Preguntar'}<span className="sr-only"> al solicitante de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>}
                       </div>
@@ -198,7 +224,7 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
         )}
       {total > size && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={size} total={total} onPageChange={(p) => go(f, p)} /></div>}
       </Card>
-      <BidSheet request={active} vehicles={vehicles} onClose={() => setActive(null)} onAsk={(r) => { setActive(null); setChat(r); }} />
+      <BidSheet request={active} vehicles={vehicles} onClose={() => setActive(null)} onAsk={(r) => { setActive(null); setChat(r); }} onPlaced={afterBid} hasNext={!!active && !!nextBiddable(active.id!)} />
       {chat && <NegotiationSheet open onOpenChange={(o) => !o && setChat(null)} requestId={chat.id!} bid={chat.myBid?.id ? { id: chat.myBid.id, amount: chat.myBid.amount, status: chat.myBid.status } : null} title={chat.myBid ? 'Conversar con la PYME' : 'Preguntar al solicitante'} description={`${CITY_LABELS[chat.originCity!]} → ${CITY_LABELS[chat.destinationCity!]} · ${chat.requesterName ?? ''}`} />}
     </>
   );

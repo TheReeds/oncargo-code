@@ -42,6 +42,11 @@ public class PanacheBidRepository implements BidRepository {
     }
 
     @Override
+    public List<Bid> listPendingByVehicle(UUID vehicleId) {
+        return map(BidEntity.list("vehicleId = ?1 and status = ?2 order by createdAt", vehicleId, Bid.Status.PENDING));
+    }
+
+    @Override
     public List<Bid> listByRequestsAndCarrier(Collection<UUID> requestIds, UUID carrierOrgId) {
         if (requestIds.isEmpty()) return List.of();
         return map(BidEntity.list("requestId in ?1 and carrierOrgId = ?2", requestIds, carrierOrgId));

@@ -87,6 +87,9 @@ private class FakeShipments(var current: ShipmentView) : ShipmentsRepository {
     override suspend fun driverShipments() = Result.success(emptyList<ShipmentView>())
     override suspend fun arrive(shipmentId: String, stopId: String) = Result.success(current)
     override suspend fun complete(shipmentId: String, stopId: String) = Result.success(current)
+    var shareResult: Result<ShareLinkCreated> = Result.success(ShareLinkCreated(ShareLinkView("l1"), "tok", "https://oncargo.pe/seguimiento/tok"))
+    var shareCalls = 0
+    override suspend fun createShareLink(shipmentId: String, expiresInDays: Int?): Result<ShareLinkCreated> { shareCalls++; return shareResult }
 }
 
 private fun apiError(code: String, field: String? = null, message: String = "Error del servidor") = ApiException(409, code, message, field)
@@ -290,5 +293,37 @@ class ShipmentDetailViewModelTest {
         val vm = vm(FakeShipments(shipment()))
         vm.openCancel(); vm.onCancelReason("a".repeat(600))
         assertEquals(500, vm.state.value.cancel?.reason?.length)
+    }
+
+    // ── Compartir seguimiento (PYME) ──
+
+    @Test fun `la PYME comparte el seguimiento y la url queda lista una sola vez`() = runTest {
+        val repo = FakeShipments(shipment().copy(code = "OC-7K2QX"))
+        val vm = vm(repo, OrgType.PYME)
+        assertTrue(vm.state.value.canShare)
+        vm.share()
+        assertEquals("https://oncargo.pe/seguimiento/tok", vm.state.value.shareUrl)
+        assertFalse(vm.state.value.sharing)
+        vm.onShareHandled()
+        assertNull(vm.state.value.shareUrl)
+        assertEquals(1, repo.shareCalls)
+    }
+
+    @Test fun `el transportista y los envios cancelados no comparten`() = runTest {
+        assertFalse(vm(FakeShipments(shipment())).state.value.canShare)
+        val repo = FakeShipments(shipment(ShipmentStatus.CANCELLED))
+        val cancelled = vm(repo, OrgType.PYME)
+        assertFalse(cancelled.state.value.canShare)
+        cancelled.share()
+        assertEquals(0, repo.shareCalls)
+    }
+
+    @Test fun `SHL-004 se muestra con el mensaje del servidor`() = runTest {
+        val repo = FakeShipments(shipment()).apply { shareResult = Result.failure(apiError("LOGYX-SHL-004", message = "Ya tienes 10 enlaces activos")) }
+        val vm = vm(repo, OrgType.PYME)
+        vm.share()
+        assertNull(vm.state.value.shareUrl)
+        assertEquals("Ya tienes 10 enlaces activos", vm.state.value.message?.text)
+        assertFalse(vm.state.value.sharing)
     }
 }

@@ -167,7 +167,7 @@ test.describe('Ofertar: compatibilidad de vehículos (RN02, F09/F35/F50)', () =>
     await expect(sheet.getByRole('link', { name: 'Registrar un vehículo' })).toHaveAttribute('href', '/transportista/flota');
   });
 
-  test('CAP-005 (vehículo comprometido) queda inline en el campo Vehículo', async ({ page }) => {
+  test('CAP-005 (vehículo comprometido): la agenda lo bloquea antes de ofertar y el servidor lo sigue exigiendo', async ({ page }) => {
     const pyme = await api.registerAccount('PYME');
     const carrier = await api.registerAccount('CARRIER');
     const vehicle = await api.addVehicle(carrier.token);
@@ -180,9 +180,12 @@ test.describe('Ofertar: compatibilidad de vehículos (RN02, F09/F35/F50)', () =>
     await goto(page, '/transportista/marketplace?origen=ICA&destino=NAZCA');
     await page.getByRole('button', { name: 'Ofertar' }).first().click();
     const sheet = page.getByRole('dialog', { name: 'Enviar oferta' });
+    // RN02 por fecha: la hoja ya sabe que el vehículo está comprometido esas fechas y no lo ofrece
+    await expect(sheet.getByTestId('agenda-blocked')).toContainText(vehicle.plate);
     await sheet.getByLabel('Tu oferta').fill(String(Math.ceil(b.priceFloor) + 10));
     await sheet.getByRole('button', { name: 'Enviar oferta' }).click();
-    await expect(sheet.getByText(/ya está comprometido en otro envío/)).toBeVisible();
-    await expect(sheet.getByRole('combobox', { name: 'Vehículo' })).toHaveAttribute('aria-invalid', 'true');
+    await expect(sheet.getByText('Selecciona el vehículo que hará el envío.')).toBeVisible();
+    // y el servidor lo sigue exigiendo (validación dura)
+    await expect(api.placeBid(carrier.token, b.id, vehicle.id, Math.ceil(b.priceFloor) + 10)).rejects.toThrow(/LOGYX-CAP-005/);
   });
 });

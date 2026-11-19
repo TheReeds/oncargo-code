@@ -3,7 +3,9 @@ package pe.logyx.shipment.infrastructure.persistence;
 import jakarta.enterprise.context.ApplicationScoped;
 import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.domain.Paged;
+import pe.logyx.shared.domain.LikePatterns;
 import pe.logyx.shipment.application.OperatorShipmentFilter;
+import pe.logyx.shipment.application.ShipmentFilter;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.domain.model.Shipment;
 
@@ -112,6 +114,45 @@ public class PanacheShipmentRepository implements ShipmentRepository {
         }
         if (f.fromDate() != null) where.append(" and createdAt >= ?").append(add(params, f.fromDate().atStartOfDay(LIMA).toOffsetDateTime()));
         if (f.toDate() != null) where.append(" and createdAt < ?").append(add(params, f.toDate().plusDays(1).atStartOfDay(LIMA).toOffsetDateTime()));
+        var query = ShipmentEntity.<ShipmentEntity>find(where + " order by createdAt desc, id", params.toArray())
+                .page(page.page(), page.size());
+        long total = ShipmentEntity.count(where.toString(), params.toArray());
+        return new Paged<>(map(query.list()), page, total);
+    }
+
+    @Override
+    public Paged<Shipment> searchMine(UUID orgId, boolean asCarrier, ShipmentFilter f, PageRequest page) {
+        List<Object> params = new ArrayList<>();
+        StringBuilder where = new StringBuilder(asCarrier ? "carrierOrgId = ?" : "requesterOrgId = ?")
+                .append(add(params, orgId));
+        if (!f.statuses().isEmpty()) where.append(" and status in ?").append(add(params, List.copyOf(f.statuses())));
+        // Ciudades, fecha de recojo, código y referencia viven en la solicitud de origen (JPQL por nombre de entidad,
+        // como searchAll). La subconsulta corre bajo la misma RLS: el transportista lee las solicitudes que ganó.
+        List<String> onRequest = new ArrayList<>();
+        if (f.originCity() != null) onRequest.add("r.originCity = ?" + add(params, f.originCity()));
+        if (f.destinationCity() != null) onRequest.add("r.destinationCity = ?" + add(params, f.destinationCity()));
+        if (f.pickupFrom() != null) onRequest.add("r.pickupDate >= ?" + add(params, f.pickupFrom()));
+        if (f.pickupTo() != null) onRequest.add("r.pickupDate <= ?" + add(params, f.pickupTo()));
+        if (!onRequest.isEmpty()) {
+            where.append(" and requestId in (select r.id from ShipmentRequestEntity r where ")
+                    .append(String.join(" and ", onRequest)).append(")");
+        }
+        if (f.q() != null) {
+            int like = add(params, LikePatterns.contains(f.q()));
+            String compact = f.q().replaceAll("[^A-Za-z0-9]", "");
+            if (compact.toLowerCase().startsWith("oc")) compact = compact.substring(2);
+            where.append(" and (lower(vehiclePlate) like ?").append(like).append(" escape '\\'")
+                    .append(" or lower(driverName) like ?").append(like).append(" escape '\\'")
+                    .append(" or requestId in (select r.id from ShipmentRequestEntity r where")
+                    .append(" lower(r.customerReference) like ?").append(like).append(" escape '\\'")
+                    .append(" or lower(r.cargoDescription) like ?").append(like).append(" escape '\\'")
+                    .append(" or lower(r.code) like ?").append(like).append(" escape '\\'");
+            if (compact.length() >= 2) {
+                where.append(" or lower(replace(r.code, '-', '')) like ?")
+                        .append(add(params, "%oc" + LikePatterns.prefix(compact))).append(" escape '\\'");
+            }
+            where.append("))");
+        }
         var query = ShipmentEntity.<ShipmentEntity>find(where + " order by createdAt desc, id", params.toArray())
                 .page(page.page(), page.size());
         long total = ShipmentEntity.count(where.toString(), params.toArray());

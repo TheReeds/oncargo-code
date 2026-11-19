@@ -57,11 +57,23 @@ fun VehicleView.fitFor(weightKg: Double, volumeM3: Double?, suitableTypes: List<
     else -> VehicleFit.FITS
 }
 
-/** Un vehículo puede ofertar si está disponible y es apto en kg, tipo de carga y volumen (RN02, F09/F35). */
+/** Un vehículo puede llevar la carga si está disponible **ahora** y es apto en kg, tipo y volumen (cambio de vehículo del envío). */
 fun VehicleView.canCarry(request: RequestView): Boolean = fitFor(request).isFit
 
+/**
+ * RN02 por fecha de recojo (decisión del dueño, 2026-11-17): para **ofertar** no importa que el vehículo esté en ruta hoy;
+ * solo el mantenimiento bloquea (`CAP-002`). Que esté libre esa fecha lo dice la agenda
+ * (`GET /shipment-requests/{id}/vehicle-eligibility`) y lo exige el servidor.
+ */
+fun VehicleView.fitForBid(request: RequestView): VehicleFit =
+    if (status == VehicleStatus.MAINTENANCE) VehicleFit.UNAVAILABLE
+    else copy(status = VehicleStatus.AVAILABLE).fitFor(request)
+
+/** Puede ofertar a esa carga (tipo, kg, m³ y no está en mantenimiento). */
+fun VehicleView.canBid(request: RequestView): Boolean = fitForBid(request).isFit
+
 /** Alguno de los vehículos de la flota puede ofertar (chip "Compatible" del feed, RF16/F35). */
-fun RequestView.isCompatibleWith(fleet: List<VehicleView>): Boolean = fleet.any { it.canCarry(this) }
+fun RequestView.isCompatibleWith(fleet: List<VehicleView>): Boolean = fleet.any { it.canBid(this) }
 
 /** Normaliza ciudades para comparar códigos (`AREQUIPA`) con nombres libres (`Arequipa`, `Lima `). */
 fun normalizeCity(value: String?): String =

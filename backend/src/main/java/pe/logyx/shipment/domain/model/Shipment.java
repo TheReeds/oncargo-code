@@ -32,6 +32,11 @@ public final class Shipment {
     /** Viaje publicado o plan Smart Load que consolida varios envíos en el mismo vehículo (null = carga suelta). */
     private final UUID loadGroupId;
     private Cancellation cancellation;
+    /**
+     * Tasa de comisión de OnCargo vigente al adjudicar (V18, {@code commission_rate}); nula en envíos anteriores.
+     * Un cambio posterior del parámetro no la altera.
+     */
+    private final BigDecimal commissionRate;
 
     /** Quién canceló, cuándo y por qué (F06). */
     public record Cancellation(UUID byOrgId, String reason, OffsetDateTime at) {}
@@ -39,6 +44,15 @@ public final class Shipment {
     public Shipment(UUID id, UUID requestId, UUID bidId, UUID requesterOrgId, UUID carrierOrgId, UUID vehicleId,
                     UUID driverId, BigDecimal agreedPrice, String vehiclePlate, String driverName, Status status,
                     OffsetDateTime createdAt, OffsetDateTime deliveredAt, UUID loadGroupId, Cancellation cancellation) {
+        this(id, requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, driverId, agreedPrice, vehiclePlate,
+                driverName, status, createdAt, deliveredAt, loadGroupId, cancellation, null);
+    }
+
+    public Shipment(UUID id, UUID requestId, UUID bidId, UUID requesterOrgId, UUID carrierOrgId, UUID vehicleId,
+                    UUID driverId, BigDecimal agreedPrice, String vehiclePlate, String driverName, Status status,
+                    OffsetDateTime createdAt, OffsetDateTime deliveredAt, UUID loadGroupId, Cancellation cancellation,
+                    BigDecimal commissionRate) {
+        this.commissionRate = commissionRate;
         this.id = id;
         this.requestId = requestId;
         this.bidId = bidId;
@@ -58,8 +72,17 @@ public final class Shipment {
 
     public static Shipment contract(UUID requestId, UUID bidId, UUID requesterOrgId, UUID carrierOrgId,
                                     UUID vehicleId, String vehiclePlate, BigDecimal agreedPrice, UUID loadGroupId) {
+        return contract(requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, vehiclePlate, agreedPrice,
+                loadGroupId, null);
+    }
+
+    /** {@code commissionRate}: la tasa vigente al adjudicar (se guarda y no cambia después). */
+    public static Shipment contract(UUID requestId, UUID bidId, UUID requesterOrgId, UUID carrierOrgId,
+                                    UUID vehicleId, String vehiclePlate, BigDecimal agreedPrice, UUID loadGroupId,
+                                    BigDecimal commissionRate) {
         return new Shipment(UUID.randomUUID(), requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, null,
-                agreedPrice, vehiclePlate, null, Status.PENDING, OffsetDateTime.now(), null, loadGroupId, null);
+                agreedPrice, vehiclePlate, null, Status.PENDING, OffsetDateTime.now(), null, loadGroupId, null,
+                commissionRate);
     }
 
     public boolean isParty(UUID orgId) {
@@ -173,4 +196,5 @@ public final class Shipment {
     public OffsetDateTime deliveredAt() { return deliveredAt; }
     public UUID loadGroupId() { return loadGroupId; }
     public Cancellation cancellation() { return cancellation; }
+    public BigDecimal commissionRate() { return commissionRate; }
 }

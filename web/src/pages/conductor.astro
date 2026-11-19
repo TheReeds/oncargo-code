@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { StopTimeline } from '@/features/shipments/components/StopTimeline';
+import { StopContacts } from '@/features/shipments/components/StopContacts';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { activeShipment, shipmentHistory } from '@/features/driver/server';
@@ -84,6 +85,9 @@ const nextLabel = next ? `${next.type === 'PICKUP' ? 'Recojo' : 'Entrega'} · ${
               <h3 class="mb-3 text-sm font-semibold text-ink-900">Paradas <span class="font-normal text-ink-500">· {doneCount} de {stops.length} completadas</span></h3>
               <StopTimeline stops={active.stops ?? []} orientation="vertical" />
             </div>
+            {(active.stops ?? []).some((s) => s.contactName || s.contactPhone || s.windowFrom || s.instructions) && (
+              <div class="border-t border-steel-200 p-5"><StopContacts stops={active.stops ?? []} /></div>
+            )}
             <p class="border-t border-steel-200 bg-steel-100/50 px-5 py-3 text-xs text-ink-500">Registra tus llegadas y la entrega desde la app móvil.</p>
           </section>
         ) : (

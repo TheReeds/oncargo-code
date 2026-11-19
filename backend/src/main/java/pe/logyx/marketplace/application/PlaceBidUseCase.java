@@ -47,8 +47,20 @@ public class PlaceBidUseCase {
     @Inject Event<BidPlaced> bidPlaced;
     @Inject Event<BidWithdrawn> bidWithdrawn;
 
+    @Inject VehicleAgenda agenda;
+
+    /** Oferta sin avisos de agenda (Smart Load, viajes): los avisos solo importan a quien ofertó a mano. */
     @Transactional
     public BidSummary placeBid(UUID requestId, PlaceBidCommand cmd) {
+        return placeBidWithWarnings(requestId, cmd).summary();
+    }
+
+    /**
+     * Oferta con RN01–RN04, RN02 por fecha de recojo y RN07. {@code warnings}: la agenda del vehículo ya tiene ofertas
+     * pendientes solapadas (LOGYX-CAP-006); el tope es {@code logyx.bids.max-overlapping-per-vehicle} (CAP-007).
+     */
+    @Transactional
+    public PlacedBid placeBidWithWarnings(UUID requestId, PlaceBidCommand cmd) {
         UUID me = tenant.orgId();
         guard.ensureCanTransact(me);                                                             // RN01
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
@@ -65,10 +77,12 @@ public class PlaceBidUseCase {
         });
         BidEligibilityPolicy.ensureAboveFloor(cmd.amount(), r.pricing().priceFloor());          // RN03
         Vehicle v = fleet.ownVehicle(cmd.vehicleId());                                           // RN02: propio
-        BidEligibilityPolicy.ensureVehicleEligible(v, r.cargo());                                // RN02: kg, tipo, m³
+        BidEligibilityPolicy.ensureVehicleEligibleOnDate(v, r.cargo());                          // RN02: mantenimiento, kg, tipo, m³
         var c = r.cargo();
         schedule.ensureVehicleFree(v.id(), schedule.window(c.pickupDate(), r.pricing().distanceKm()),
-                cmd.loadGroupId(), null);                                                         // F11
+                cmd.loadGroupId(), null);                                                         // F11 / CAP-005 (con el bloqueo)
+        VehicleAgenda.Assessment agendaCheck = agenda.assess(v, r, cmd.loadGroupId());           // CAP-007 y aviso CAP-006
+        VehicleAgenda.requireEligible(agendaCheck);
 
         Bid b = Bid.place(a, r, me, v, cmd.amount(), cmd.notes(), cmd.loadGroupId());            // RN07 en notas
         bids.save(b);
@@ -88,7 +102,7 @@ public class PlaceBidUseCase {
         // Notificación a la PYME (módulo notification) tras el commit
         bidPlaced.fire(new BidPlaced(b.id(), r.id(), r.requesterOrgId(), me, summary.carrierName(), b.amount(),
                 r.routeLabel(), (int) total, closed));
-        return summary;
+        return new PlacedBid(summary, agendaCheck.warnings());
     }
 
     /** F08: retira la oferta propia (pendiente) mientras la subasta acepta ofertas; no se puede volver a ofertar. */

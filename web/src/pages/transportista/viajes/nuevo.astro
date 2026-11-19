@@ -8,13 +8,32 @@ import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { can } from '@/lib/permissions';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getTrip } from '@/features/trips/server';
+import type { TripInitial } from '@/features/trips/components/PublishTripForm';
 const t = Astro.locals.session!.token;
 const canOperate = can(Astro.locals.session, 'OPERATE');
 const [vehicles, { cities }] = await Promise.all([listVehicles(t), getCatalog()]);
+
+// Duplicar (`?from=<id>`): mismos datos, salida una semana después (o la primera semana futura) a la misma hora.
+let initial: TripInitial | undefined;
+const from = Astro.url.searchParams.get('from');
+if (from && canOperate) {
+  try {
+    const src = await getTrip(t, from);
+    let when = new Date(src.departureAt!);
+    do { when = new Date(when.getTime() + 7 * 24 * 3600 * 1000); } while (when.getTime() <= Date.now());
+    const lima = (opts: Intl.DateTimeFormatOptions, loc: string) => new Intl.DateTimeFormat(loc, { timeZone: 'America/Lima', ...opts }).format(when);
+    initial = {
+      originCity: src.originCity, destinationCity: src.destinationCity, vehicleId: src.vehicleId, capacityKg: src.capacityKg,
+      pricingMode: src.pricingMode, rate: src.rate, notes: src.notes ?? undefined,
+      date: lima({}, 'en-CA'), time: lima({ hour: '2-digit', minute: '2-digit', hour12: false }, 'en-GB'),
+    };
+  } catch { /* viaje ajeno o inexistente: formulario vacío */ }
+}
 ---
 <AppShell title="Publicar viaje" active="viajes">
   <PageHeader title="Publicar viaje" subtitle="Ofrece el espacio libre de uno de tus vehículos. Las empresas reservan y tú confirmas." breadcrumbs={[{ label: 'Viajes', href: '/transportista/viajes' }, { label: 'Publicar viaje' }]} />
   {canOperate
-    ? <PublishTripForm client:load vehicles={vehicles} cities={cities} />
+    ? <PublishTripForm client:load vehicles={vehicles} cities={cities} initial={initial} />
     : <div class="space-y-4"><ReadOnlyNotice client:load>No puedes publicar viajes.</ReadOnlyNotice><a href="/transportista/viajes" class={cn(buttonVariants({ variant: 'outline' }))}>Volver a mis viajes</a></div>}
 </AppShell>

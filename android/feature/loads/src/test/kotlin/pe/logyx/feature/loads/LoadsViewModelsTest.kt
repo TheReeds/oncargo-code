@@ -56,6 +56,11 @@ internal class FakeLoads(
     var withdrawResult: Result<BidView> = Result.success(BidView("b1", "1", amount = 1000.0, status = BidStatus.WITHDRAWN))
     val withdrawn = mutableListOf<String>()
     override suspend fun withdrawBid(bidId: String): Result<BidView> { withdrawn += bidId; return withdrawResult }
+    /** RN02 por fecha: agenda de la flota para la carga (por omisión no responde, como una API sin el endpoint). */
+    var eligibilityResult: Result<FleetEligibility> = Result.failure(UnsupportedOperationException())
+    var rateResult: Result<Double> = Result.failure(UnsupportedOperationException())
+    override suspend fun eligibility(requestId: String) = eligibilityResult
+    override suspend fun commissionRate() = rateResult
     var lastBid: Triple<String, Double, String?>? = null
     var lastFilter: MarketplaceFilter? = null
     var dash: Result<DashboardSummary>? = null

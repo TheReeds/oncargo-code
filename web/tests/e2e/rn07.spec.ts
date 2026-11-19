@@ -116,7 +116,8 @@ test.describe('RN07: datos de contacto rechazados inline en cada texto libre', (
     await page.getByLabel('Tu nombre').fill('Ana Quispe');
     await page.getByLabel('Correo electrónico').fill(`e2e-${api.uid()}@prueba.pe`);
     await page.getByLabel('Contraseña', { exact: true }).fill(api.PASSWORD);
-    await page.getByRole('checkbox').check();
+    await page.getByLabel(/Acepto la/).check();
+    await page.getByLabel(/Acepto los términos/).check();
     await page.getByRole('button', { name: /Crear cuenta/ }).click();
     await expect(page.locator('#legalName-error')).toContainText('La razón social no puede incluir teléfonos');
   });

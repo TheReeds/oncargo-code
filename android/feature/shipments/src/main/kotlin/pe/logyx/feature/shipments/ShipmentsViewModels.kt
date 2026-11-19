@@ -134,6 +134,12 @@ data class ShipmentDetailUiState(
     /** Calificación (RN06): null = aún no se sabe / no aplica. */
     val canReview: Boolean? = null,
     val hasReviews: Boolean = false,
+    /** Usuario de una PYME: puede compartir el seguimiento con su cliente final (si además puede operar, ver `Can`). */
+    val isPyme: Boolean = false,
+    /** Creando el enlace público de seguimiento. */
+    val sharing: Boolean = false,
+    /** URL recién creada: la pantalla abre la hoja de compartir una vez y llama a `onShareHandled()`. */
+    val shareUrl: String? = null,
 ) {
     private val status: ShipmentStatus? get() = shipment?.status
 
@@ -152,6 +158,12 @@ data class ShipmentDetailUiState(
     val reasonRequired: Boolean get() = status == ShipmentStatus.IN_TRANSIT
 
     val canceller: Canceller get() = shipment?.cancelledBy(userOrgId) ?: Canceller.UNKNOWN
+
+    /**
+     * «Compartir seguimiento» (PYME ADMIN/OPS; la pantalla además lo envuelve en `Can(OPERATE)`): no para envíos cancelados;
+     * los entregados hace más de 7 días los rechaza el servidor (`SHL-003`).
+     */
+    val canShare: Boolean get() = isPyme && shipment != null && status != ShipmentStatus.CANCELLED
 }
 
 class ShipmentDetailViewModel(
@@ -166,7 +178,10 @@ class ShipmentDetailViewModel(
 ) : ViewModel() {
     private val user = (auth.state.value as? SessionState.LoggedIn)?.user
     private val _state = MutableStateFlow(
-        ShipmentDetailUiState(isCarrier = user?.organizationType == OrgType.CARRIER && user.role != Role.DRIVER, userOrgId = user?.organizationId),
+        ShipmentDetailUiState(
+            isCarrier = user?.organizationType == OrgType.CARRIER && user.role != Role.DRIVER, userOrgId = user?.organizationId,
+            isPyme = user?.organizationType == OrgType.PYME,
+        ),
     )
     val state: StateFlow<ShipmentDetailUiState> = _state.asStateFlow()
 
@@ -206,6 +221,24 @@ class ShipmentDetailViewModel(
     }
 
     fun onMessageShown() = _state.update { it.copy(message = null) }
+
+    // ── Compartir seguimiento con el cliente final (roadmap 1.3/1.4) ──
+
+    /** Crea un enlace público (`POST /shipments/{id}/share-links`) y deja la URL lista para la hoja de compartir. */
+    fun share() {
+        val s = _state.value
+        if (s.sharing || !s.canShare) return
+        _state.update { it.copy(sharing = true) }
+        viewModelScope.launch {
+            repo.createShareLink(shipmentId).fold(
+                onSuccess = { created -> _state.update { it.copy(sharing = false, shareUrl = created.url) } },
+                // SHL-002 (cancelado), SHL-003 (entregado hace más de 7 días), SHL-004 (10 enlaces activos), AUTH-007 (Lector).
+                onFailure = { e -> _state.update { it.copy(sharing = false, message = UiMessage.error(e.userMessage())) } },
+            )
+        }
+    }
+
+    fun onShareHandled() = _state.update { it.copy(shareUrl = null) }
 
     // ── Conductor: asignar (sin conductor) o relevar (con motivo, obligatorio en ruta) ──
 

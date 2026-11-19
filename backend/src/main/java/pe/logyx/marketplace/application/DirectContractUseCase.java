@@ -40,6 +40,7 @@ public class DirectContractUseCase {
     @Inject PricingService pricing;
     @Inject SystemTx system;
     @Inject RequestCodes codes;
+    @Inject pe.logyx.pricing.application.CommissionService commission;
 
     public Contract create(DirectContractCommand cmd) {
         PriceQuote quote = pricing.quote(cmd.originCity(), cmd.destinationCity(), cmd.weightKg(), cmd.cargoType());
@@ -66,7 +67,7 @@ public class DirectContractUseCase {
             UUID shipmentId = shipments.createFromAcceptedBid(new CreateShipmentCommand(
                     r.id(), b.id(), cmd.requesterOrgId(), cmd.carrierOrgId(), cmd.vehicleId(), cmd.agreedPrice(),
                     cmd.originCity(), cmd.originAddress(), cmd.destinationCity(), cmd.destinationAddress(),
-                    cmd.loadGroupId()));
+                    cmd.loadGroupId(), commission.currentRate()));        // tasa vigente guardada (ADR-0010)
             return new Contract(r.id(), shipmentId);
         });
     }

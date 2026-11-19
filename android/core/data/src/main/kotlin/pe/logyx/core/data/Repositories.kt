@@ -6,11 +6,13 @@ import pe.logyx.core.model.CityItem
 import pe.logyx.core.model.DashboardSummary
 import pe.logyx.core.model.DriverShipmentScope
 import pe.logyx.core.model.DriverView
+import pe.logyx.core.model.FleetEligibility
 import pe.logyx.core.model.MarketplaceFilter
 import pe.logyx.core.model.Page
 import pe.logyx.core.model.PlaceBidRequest
 import pe.logyx.core.model.PublicOrganization
 import pe.logyx.core.model.RequestView
+import pe.logyx.core.model.ShareLinkCreated
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.VehicleView
 import pe.logyx.core.network.LogyxApi
@@ -32,6 +34,10 @@ interface LoadsRepository {
     suspend fun myBids(): Result<List<RequestView>>
     suspend fun vehicles(): Result<List<VehicleView>>
     suspend fun placeBid(requestId: String, vehicleId: String, amount: Double, notes: String?): Result<BidView>
+    /** RN02 por fecha: elegibilidad de cada vehículo de mi flota para la carga (agenda y avisos). */
+    suspend fun eligibility(requestId: String): Result<FleetEligibility> = Result.failure(UnsupportedOperationException())
+    /** Tasa de comisión vigente de OnCargo (0–1), para «cobras S/ X neto». */
+    suspend fun commissionRate(): Result<Double> = Result.failure(UnsupportedOperationException())
     /** Retira mi oferta pendiente con la subasta abierta (`BID-005`). Después no se puede volver a ofertar (`BID-003`). */
     suspend fun withdrawBid(bidId: String): Result<BidView> = Result.failure(UnsupportedOperationException())
 }
@@ -69,6 +75,15 @@ interface ShipmentsRepository {
     suspend fun driverActive(): Result<ShipmentView?> = Result.failure(UnsupportedOperationException())
     suspend fun arrive(shipmentId: String, stopId: String): Result<ShipmentView>
     suspend fun complete(shipmentId: String, stopId: String): Result<ShipmentView>
+    /**
+     * Con la hora del dispositivo (roadmap 1.11; null = hora del servidor). Por omisión delega en la versión sin hora para
+     * no romper fakes antiguos. Idempotentes: repetir una acción ya aplicada devuelve 200 con el envío.
+     */
+    suspend fun arrive(shipmentId: String, stopId: String, occurredAt: String?): Result<ShipmentView> = arrive(shipmentId, stopId)
+    suspend fun complete(shipmentId: String, stopId: String, occurredAt: String?): Result<ShipmentView> = complete(shipmentId, stopId)
+    /** Enlace público de seguimiento (PYME ADMIN/OPS). `SHL-002/003/004`, `AUTH-007` por `userMessage()`. */
+    suspend fun createShareLink(shipmentId: String, expiresInDays: Int? = null): Result<ShareLinkCreated> =
+        Result.failure(UnsupportedOperationException())
 }
 
 class DefaultCatalogRepository(private val api: LogyxApi) : CatalogRepository {
@@ -90,6 +105,8 @@ class DefaultLoadsRepository(private val api: LogyxApi) : LoadsRepository {
     override suspend fun placeBid(requestId: String, vehicleId: String, amount: Double, notes: String?) =
         apiCall { api.placeBid(requestId, PlaceBidRequest(vehicleId, amount, notes?.takeIf { it.isNotBlank() })) }
     override suspend fun withdrawBid(bidId: String) = apiCall { api.withdrawBid(bidId) }
+    override suspend fun eligibility(requestId: String) = apiCall { api.vehicleEligibility(requestId) }
+    override suspend fun commissionRate() = apiCall { api.commission().commissionRate }
 }
 
 class DefaultRequestsRepository(private val api: LogyxApi) : RequestsRepository {
@@ -120,4 +137,9 @@ class DefaultShipmentsRepository(private val api: LogyxApi) : ShipmentsRepositor
         }
     override suspend fun arrive(shipmentId: String, stopId: String) = apiCall { api.arriveAtStop(shipmentId, stopId) }
     override suspend fun complete(shipmentId: String, stopId: String) = apiCall { api.completeStop(shipmentId, stopId) }
+    override suspend fun arrive(shipmentId: String, stopId: String, occurredAt: String?) =
+        apiCall { api.arriveAtStop(shipmentId, stopId, occurredAt) }
+    override suspend fun complete(shipmentId: String, stopId: String, occurredAt: String?) =
+        apiCall { api.completeStop(shipmentId, stopId, occurredAt) }
+    override suspend fun createShareLink(shipmentId: String, expiresInDays: Int?) = apiCall { api.createShareLink(shipmentId, expiresInDays) }
 }

@@ -70,12 +70,15 @@ sobre los objetos de dominio.
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
 | `shared/config` (V18) | **parámetros de sistema editables por el operador**: `SystemParameters` (lectura cacheada 10 s por `SystemTx`, escritura del operador con versión, motivo, historial y auditoría; sin fila rige la configuración) + `domain/ParameterKey` (tipos y límites: `commission_rate`, `assignment_sla_hours`, `incident_warn_hours`, `incident_breach_hours`) | `system_parameters`, `system_parameter_history` (V18) |
 | `pricing` (ola 1) | además del cálculo: **comisión** (`CommissionPolicy` puro + `CommissionService.currentRate()/breakdown()`), `GET /pricing/commission`, **cotizador público** `POST /public/pricing/quote` y `GET /public/pricing/commission` (sin JWT, `AuthRateLimits.beforePublicQuote`) | `shipments.commission_rate` (V18) |
+| `fleet` (V20) | vehículos y conductores + **higiene de flota**: `PATCH /vehicles/{id}`, `POST /vehicles/{id}/archive` (`vehicles.archived_at`), licencia única por organización (`FLT-005`), no desactivar un conductor ni poner en mantenimiento un vehículo con envíos activos (`FLT-006`/`FLT-004`). Los compromisos (envíos activos, ofertas pendientes, viajes publicados) los lee por el puerto `application/port/out/FleetCommitments`, implementado en `infrastructure/integration/FleetCommitmentsAdapter` (así `fleet` no depende de `shipment`/`marketplace`/`trip`, que ya dependen de él) | `vehicles.archived_at`, `ux_drivers_org_license` (V20) |
+| `marketplace` · RN02 por fecha (V20) | `application/VehicleAgenda` es **la única fuente** de la elegibilidad de un vehículo para una carga (mantenimiento, kg/tipo/m³, envíos activos solapados `CAP-005`, ofertas pendientes solapadas: aviso `CAP-006` y tope `CAP-007` = `logyx.bids.max-overlapping-per-vehicle`); la usan `PlaceBidUseCase` (`placeBidWithWarnings`) y `GET /shipment-requests/{id}/vehicle-eligibility`. `AcceptBidUseCase.award` guarda `CommissionService.currentRate()` en el envío y mantiene `CAP-005` como validación dura | `ix_bids_vehicle_pending` (V20) |
 | `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
 | `realtime` | stream SSE `GET /api/v1/events/stream` alimentado por el outbox (ADR-0007) | `realtime_events` (V12) |
 | `routing` | rutas y km por carretera entre ciudades del catálogo, orden óptimo de paradas, desvíos, `GET /api/v1/routes` (ADR-0008) | sin tablas: dataset `resources/routing/routes.json` |
 | (varios) | huecos de flujo 2026-11-16: verificación de organizaciones, retiro de ofertas, cancelación/reasignación de envíos, estado final RF55, grupos de carga | columnas y políticas en V13 (sin tablas nuevas) |
 | `places` (V17) | libreta de direcciones y almacenes frecuentes por organización (`SavedPlace`, `PlaceService`; archivo, sin borrado; orden por uso) | `saved_places` (V17, RLS por organización) |
 | `search` (V17) | búsqueda global Ctrl+K: solicitudes, envíos y contrapartes por código, referencia, ruta, placa o RUC (`SearchQuery`, `SearchService`, `NativeSearchReader` con SQL nativo **bajo RLS, nunca `SystemTx`**) | sin tablas; índices `lower(code)`, `lower(customer_reference)` (V17) |
+| `shipment` (V19, Ola 1 zona B, ADR-0011) | además del envío: **contactos de parada** copiados al adjudicar (`StopContact`), **conductor con mala señal** (idempotencia + `StopEventTimePolicy`), **listado filtrado y CSV** (`ShipmentFilter`, `searchMine`, `ShipmentCsv`), **enlaces públicos de seguimiento** (`ShareLink`, `ShareToken`, `ShareLinkPolicy`, `EtaPolicy`, `ShareLinkService`, `PublicTrackingService`, `PublicTrackingResource`) | columnas de `shipment_stops`, `shipment_share_links` (V19) |
 | `identity` (V14, ADR-0009) | contraseñas (olvidé/restablecer, cambio, invitaciones), sesiones revocables (`sv`), refresh del móvil, usuarios y roles de la organización, perfil editable | `password_tokens`, `refresh_tokens` + columnas de `profiles`/`organizations` (V14) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
@@ -84,6 +87,9 @@ Dependencias entre módulos nuevos (todas por `application`): `negotiation → m
 `dashboard → trip`; `pricing → routing` y `trip → routing` (km por carretera, `RoutePlanner`; trip los pasa a su dominio como `RoadDistances`); `notification` observa eventos de `trip`. `marketplace` y `shipment` no dependen de `trip`. `shipment` no depende de ellos: usa los puertos
 `IncidentHoldProvider` (RN11) y `DeliveryEvidenceProvider` (foto de entrega), implementados en
 `shipment/infrastructure/integration` (igual que `RequestInfoProvider`).
+
+### Comisión y precio adjudicado (ADR-0010)
+`pricing/domain/CommissionPolicy` (puro): la comisión es sobre el **valor de venta sin IGV** y lleva su propio IGV; `AwardedPriceBreakdown` trae `commission`, `commissionVat` y `carrierNet` (S/ 1,180 al 8 %: 80.00 + 14.40, neto 1,085.60). `AcceptBidUseCase.award` y `DirectContractUseCase` guardan la tasa vigente en `Shipment.commissionRate` (columna V18 `shipments.commission_rate`). `ShipmentView.priceBreakdown` (`shipment/infrastructure/web/PriceBreakdownView`) la arma según el rol del JWT: la PYME y el conductor no ven la comisión. Tests: `CommissionPolicyTest`, `CommissionFlowTest`.
 
 ### Eventos de dominio (ADR-0004)
 Records en `<modulo>/application/event/` que implementan `shared.outbox.OutboxEvent`, publicados con `@Inject Event<X>` +
@@ -140,7 +146,7 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
 (RN01) · `StopSequencePolicy` (RN08, shipment) · `RucValidator` (identity)
 · `ThreadAccessPolicy` (chat) · `ReviewEligibilityPolicy` (RN06) y `TrustScoreCalculator` (RN09, reputation)
 · `ManualAssignmentPolicy` (RN10, marketplace) · `VehicleCargoCompatibility` (RN02 por tipo de carga, fleet)
-· `ResourceSchedulePolicy` (F11, shipment) · `IncidentOutcomePolicy` (RF55, incident) · `Organization.ensureCanTransact`
+· `ResourceSchedulePolicy` (F11, shipment; ventana de la agenda de RN02 por fecha) · `VehicleAgenda` (RN02 por fecha, marketplace) · `IncidentOutcomePolicy` (RF55, incident) · `Organization.ensureCanTransact`
 + `OrganizationGuard` (RN01, identity) · `ContactInfoPolicy` (RN07, ahora en `shared.domain`) · `IncidentStatusPolicy` (RN11, incident) · `DeliveryEvidencePolicy`
 (shipment) · `DocumentUploadPolicy` (documents) · `TripCapacityPolicy` (RN12), `TripPricingPolicy`, `TripStatusPolicy`,
 `ReturnLoadPolicy`, `SmartLoadPlanner`, `CityProximityPolicy`, `VehicleCargoRules` (trip) · `StopOrderOptimizer`, `RouteCalculator`
@@ -305,6 +311,7 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
     nuevo, en una transacción) y `resendInvitation` (token); `OrganizationProfileService.update` (volver de REJECTED a
     PENDING toca columnas que el trigger de V13 reserva al operador/plataforma; solo la organización del JWT y tras
     comprobar ADMIN).
+  - `shipment/application/PublicTrackingService.resolve` (V19, ADR-0011): el seguimiento público `GET /public/tracking/{token}` no tiene usuario; busca el enlace por el SHA-256 del token, comprueba su vigencia, cuenta la visita y arma solo la lista blanca `PublicTracking`. Nada más de esa superficie usa `SystemTx`.
   - `BookingService.cancelByRequester`: la PYME devuelve la capacidad en `carrier_trips` (solo lectura para ella); se bloquea
     la fila y se resta el peso de esa reserva.
 - Auditoría del operador (`GET /api/v1/operator/audit`, `/audit/actions`; V15): `NativeAuditLogReader` lee `audit_log` con `audit_operator` y hace LEFT JOIN a `profiles`/`organizations` (el operador las lee enteras: `profiles_operator`, `orgs_read`). Filtros en `AuditFilter` (`LOGYX-VAL-001` con `field`; `action` exacta, repetible o con comas; `from`/`to` de Lima, inclusive). Índices por fecha, organización, actor y acción. Acción nueva auditada = nada que hacer: aparece sola en `/audit/actions`.
@@ -357,7 +364,8 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | BID | `001` bajo el piso (RN03), `003` ya ofertó (o retiró), `004` no admite aceptar, `005` no se puede retirar |
 | CAP | `001` sin capacidad (RN02), `002` vehículo no disponible, `003` tipo de vehículo no apto para la carga, `004` volumen, `005` vehículo comprometido en otro envío solapado (F11) |
 | SHP | `001` envío cerrado: no se reasigna (antes: "solo antes del recojo"), `002` (404) el conductor no tiene envío activo, `004` conductor con otro envío solapado (`driverId`), `006` falta motivo (`reason`), `007` mismo vehículo |
-| TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada (se comprueba antes que la foto), `004` envío cerrado, `005` incidencia activa (RN11), `006` entrega sin foto, `007` la parada ya está completada |
+| TRK | `001` orden de paradas (RN08), `002` ya llegó, `003` falta llegada (se comprueba antes que la foto), `004` envío cerrado, `005` incidencia activa (RN11), `006` entrega sin foto, `007` la parada ya está completada (`002`/`007` ya no salen al **repetir**: arrive/complete son idempotentes desde V19), `008` hora del evento (`occurredAt`) fuera de límites |
+| SHL | `001` (404) enlace público no disponible (inexistente, revocado o vencido: misma respuesta), `002` envío cancelado, `003` entregado hace más de 7 días, `004` 10 enlaces vigentes |
 | NEG | `001` datos de contacto (RN07, `body`/`message`), `002` hilo cerrado, `003` mismo monto, `004` contra-oferta pendiente, `005` oferta no negociable, `007` ya respondida |
 | DOC | `001` tipo no permitido, `002` muy grande, `003` vacío (`file`), `004` falta parada de entrega, `005` sin llegada (`stopId`), `006` envío cancelado, `007` (403) evidencia solo del conductor asignado, `008` evidencia cerrada (parada completada o envío entregado), `500` fallo de almacenamiento |
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
@@ -417,3 +425,26 @@ en cada arranque, así que el seed corre cada vez.
 - **Libreta** (`places`): `PlaceService.markUsed` lo llama `PublishRequestUseCase` con `originPlaceId`/`destinationPlaceId`. Un recurso nuevo que necesite una dirección guardada la lee por `PlaceService`, nunca por su repositorio.
 - **Búsqueda** (`search`): el lector nativo cruza `shipment_requests`, `shipments`, `bids` y `organizations` y confía en la RLS; la referencia propia solo se busca para PYME/operador (o el transportista adjudicado). Tipo de resultado nuevo → `SearchHitType`, `SearchReader`, `SearchService` (href por rol) y test en `SearchFlowTest`.
 - **Listados filtrados y CSV**: `MyRequestFilter` → `searchMine` (JPQL con `?n`, comodines de usuario escapados con `LikePatterns`); el CSV usa la **misma consulta** que el JSON (`MarketplaceQueries.exportMine`) y `shared/api/CsvWriter`. Otros módulos que exporten: reutiliza `CsvWriter` y el tope `EXPORT_MAX_ROWS`.
+
+## Envíos, seguimiento público y conductor con mala señal (V19, Ola 1 zona B, ADR-0011)
+- **Contactos de parada (RN07 post-adjudicación):** `CreateShipmentUseCase` (el único lugar que crea paradas) lee los `StopDetails` de la
+  solicitud por `RequestInfoProvider` (`RequestInfo.pickupContact/deliveryContact`, `code`, `customerReference`) y los guarda en
+  `ShipmentStop.contact` (`StopContact`). `ShipmentSummary.contactsVisible` (calculado en `ShipmentQueries`: partes, operador y, entre
+  conductores, solo el asignado) decide si `StopView`/`ShipmentView.customerReference` los llevan. En la BD, `stops_driver_scope`
+  (RESTRICTIVA, `app_driver_id()`) acota a un conductor a las paradas de sus envíos. `AcceptBidUseCase` no se tocó.
+- **arrive/complete:** `TrackStopsUseCase` toma un candado consultivo por envío (`lockResource("shipment-track:" + id)`) **antes** de leer;
+  si la acción ya estaba aplicada devuelve el envío sin efectos (idempotente, incluso cerrado o con incidencia); si no, valida orden,
+  incidencia y foto como antes y resuelve la hora con `StopEventTimePolicy.resolve(occurredAt, now, pasoPrevio)` (`TRK-008`). Guarda la hora
+  del evento en `arrived_at/completed_at` y la del servidor en `*_recorded_at`. La entrega (`delivered_at`) usa la hora del evento.
+- **Listado y CSV:** `ShipmentFilter.of(status, originCity, destinationCity, fromDate, toDate, q)` → `ShipmentRepository.searchMine`
+  (JPQL con subconsultas a `ShipmentRequestEntity` por nombre de entidad, bajo RLS) → `ShipmentQueries.mine(filter, page)` y
+  `exportMine` (por páginas de 100, tope `EXPORT_MAX_ROWS`). El CSV (`ShipmentCsv`) sale de **la misma consulta**.
+- **Enlaces públicos:** `ShareLinkService` (bajo la RLS de la PYME: `create` muestra el token una vez, `list`, `revoke` con UPDATE por
+  columna) y `PublicTrackingService` (`SystemTx`, lista blanca). Campo nuevo para el cliente final = agrégalo a `PublicTracking` **y** a
+  `PublicTrackingView`, y actualiza el conjunto exacto de claves de `ShipmentTrackingFlowTest`; nunca mapees un `ShipmentView` ahí.
+  Límite por IP: `AuthRateLimits.beforePublicTracking` (`logyx.rate-limit.public-tracking.per-ip`). La URL que se devuelve usa
+  `logyx.web.url` + `/s/<token>`.
+- Tests: `ShipmentTrackingFlowTest` (contactos y visibilidad, idempotencia sin efectos dobles, hora del dispositivo, filtros y CSV, lista
+  blanca del enlace público y no filtración, permisos, vencimiento), `StopEventTimePolicyTest`, `ShareLinkPolicyTest`, `EtaPolicyTest`,
+  `RowLevelSecurityTest.unConductorSoloVeYTocaLasParadasDeSusEnvios` y `.enlacesPublicosSonDeLaPymeDuenaYSoloSeRevocan`.
+

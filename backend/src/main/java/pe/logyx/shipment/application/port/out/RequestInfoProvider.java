@@ -1,6 +1,7 @@
 package pe.logyx.shipment.application.port.out;
 
 import pe.logyx.catalog.domain.City;
+import pe.logyx.shipment.domain.model.StopContact;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -14,9 +15,23 @@ import java.util.UUID;
  */
 public interface RequestInfoProvider {
 
+    /**
+     * {@code code}: código legible que el envío hereda (V17). {@code customerReference} y los contactos son datos
+     * privados de la solicitud: el adaptador los entrega tal como los devuelve marketplace bajo la RLS de quien
+     * llama; el envío solo los muestra a sus partes.
+     */
     record RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
                        BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
-                       java.time.LocalDate pickupDate, BigDecimal distanceKm) {}
+                       java.time.LocalDate pickupDate, BigDecimal distanceKm, String code, String customerReference,
+                       StopContact pickupContact, StopContact deliveryContact) {
+
+        public RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
+                           BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
+                           java.time.LocalDate pickupDate, BigDecimal distanceKm) {
+            this(id, originCity, destinationCity, cargoDescription, weightKg, cargoType, volumeM3, pickupDate,
+                    distanceKm, null, null, StopContact.NONE, StopContact.NONE);
+        }
+    }
 
     Map<UUID, RequestInfo> byIds(Collection<UUID> requestIds);
 }

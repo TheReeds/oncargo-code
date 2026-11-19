@@ -176,6 +176,30 @@ class TripsViewModelsTest {
         assertEquals("v1", s.form.vehicleId)
     }
 
+    @Test fun `duplicar un viaje copia los datos con la salida una semana despues a la misma hora de Lima`() = runTest {
+        // 14 nov 2099 08:00 Lima (13:00 UTC) → 21 nov 2099 08:00
+        val trips = FakeTrips().apply { tripResult = Result.success(aTrip(departure = "2099-11-14T13:00:00Z").copy(notes = "Salida puntual", rate = 0.61)) }
+        val vm = PublishTripViewModel(trips, FakeLoads(), FakeCatalog(), fromTripId = "t1")
+        val s = vm.state.value
+        assertTrue(s.duplicated)
+        assertEquals(java.time.LocalDate.of(2099, 11, 21), s.form.date)
+        assertEquals(LocalTime.of(8, 0), s.form.time)
+        assertEquals("v1", s.form.vehicleId)
+        assertEquals("LIMA", s.form.origin?.code)
+        assertEquals("JULIACA", s.form.destination?.code)
+        assertEquals("12000", s.form.capacityText.replace(",", ""))
+        assertEquals("Salida puntual", s.form.notes)
+    }
+
+    @Test fun `duplicar un viaje ya pasado salta a la primera semana futura`() {
+        val trip = aTrip(departure = "2026-10-01T13:00:00Z")
+        val now = OffsetDateTime.parse("2026-11-18T12:00:00-05:00")
+        val form = duplicateForm(trip, listOf(lima, juliaca), now)
+        assertTrue(form.departure!!.isAfter(now), "la copia sale en el futuro")
+        assertTrue(form.departure!!.isBefore(now.plusDays(8)), "la primera semana futura, no mucho después")
+        assertEquals(LocalTime.of(8, 0), form.time)
+    }
+
     @Test fun `publicar invalido no llama al API`() = runTest {
         val trips = FakeTrips()
         val vm = PublishTripViewModel(trips, FakeLoads(), FakeCatalog())

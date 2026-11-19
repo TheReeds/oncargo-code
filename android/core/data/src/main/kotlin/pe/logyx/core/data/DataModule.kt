@@ -56,6 +56,7 @@ fun dataModule(baseUrl: String) = module {
     single<RealtimeRepository> {
         DefaultRealtimeRepository(get(), CoroutineScope(SupervisorJob() + Dispatchers.IO))
     }
+    single<BidPreferences> { DataStoreBidPreferences(androidContext()) }
     single<CatalogRepository> { DefaultCatalogRepository(get()) }
     single<LoadsRepository> { DefaultLoadsRepository(get()) }
     single<RequestsRepository> { DefaultRequestsRepository(get()) }
@@ -70,4 +71,17 @@ fun dataModule(baseUrl: String) = module {
     single<SmartLoadsRepository> { DefaultSmartLoadsRepository(get()) }
     single<RoutesRepository> { DefaultRoutesRepository(get<LogyxApi>()) }
     single<EvidenceRepository> { DefaultEvidenceRepository(get(), java.io.File(androidContext().filesDir, "evidence")) }
+    // Conductor sin señal (roadmap 1.11): último viaje y cola de arrive/complete en filesDir/driver (sobreviven al cierre).
+    single {
+        val auth = get<AuthRepository>()
+        DriverTripCache(TextStore.InFile(java.io.File(androidContext().filesDir, "driver/active-trip.json")), { auth.sessionUser?.id })
+    }
+    single {
+        val auth = get<AuthRepository>()
+        val evidence = get<EvidenceRepository>()
+        DriverActionQueue(
+            repo = get(), store = TextStore.InFile(java.io.File(androidContext().filesDir, "driver/actions.json")),
+            evidence = { evidence.items.value }, currentUserId = { auth.sessionUser?.id },
+        )
+    }
 }

@@ -5,6 +5,108 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-18 — Ola 1, zona B: contactos de parada, seguimiento público, conductor con mala señal y CSV de envíos (V19)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.3 (paradas), 1.5 (envíos), 1.6 y 1.11, y la decisión del dueño sobre RN07
+(revelar contactos tras adjudicar). `scripts/check-contract.sh`: **compatible** (todo aditivo). Migración
+`V19__stop_contacts_tracking_links.sql`: columnas de contacto/ventana/instrucciones y `*_recorded_at` en `shipment_stops` (con respaldo
+desde las solicitudes), función `app_driver_id()` + política **restrictiva** `stops_driver_scope`, tabla `shipment_share_links` con RLS e
+índices por estado de `shipments`. ADR nuevo: `docs/adr/0011-enlace-publico-de-seguimiento.md`.
+
+### ⚠️ Cambios de comportamiento
+1. **`POST /shipments/{id}/stops/{stopId}/arrive` y `/complete` son idempotentes.** Repetir una acción ya aplicada responde **200** con el
+   envío (antes 409 `LOGYX-TRK-002` / `LOGYX-TRK-007`), también si el envío ya está entregado (antes `TRK-004`) o tiene una incidencia. Las
+   transiciones inválidas de verdad siguen igual: `TRK-001` (orden), `TRK-003` (falta la llegada), `TRK-005` (incidencia), `TRK-006`
+   (sin foto). Los códigos `TRK-002`/`TRK-007` siguen en el contrato pero ya no salen al repetir.
+2. **`arrivedAt` / `completedAt` (y `deliveredAt`) son la hora en que ocurrió el evento**: la del dispositivo si la app la manda
+   (`occurredAt`), si no la del servidor. La hora de recepción va en los campos nuevos `*RecordedAt`.
+3. Un conductor ya no lee en la BD las paradas de envíos de su transportista que no tiene asignados (RLS `stops_driver_scope`); la API ya
+   no se las mostraba.
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /shipments/export` | PYME, transportista (también Lector) | `text/csv` (UTF-8 con BOM, `;`, fechas de Lima, fórmulas neutralizadas) con los **mismos filtros** que `GET /shipments`. Columnas: Código, Referencia, Origen, Destino, Carga, Peso (kg), Fecha de recojo, Creado el, Estado, Transportista (PYME) / PYME (transportista), Placa, Conductor, Precio acordado (S/), Recogido el, Entregado el, Motivo de cancelación. Más de 10 000 filas: 400 `LOGYX-EXP-001` |
+| `POST /shipments/{id}/share-links` (201) | PYME dueña: ADMIN y OPS (Lector 403 `AUTH-007`; transportista 403; otra PYME 404) | Cuerpo opcional `CreateShareLink{expiresInDays: 1..30}` → `ShareLinkCreated{link: ShareLinkView, token, url}`. **`token` y `url` solo en esta respuesta** (en la BD queda el SHA-256). `409 LOGYX-SHL-002` envío cancelado, `409 LOGYX-SHL-003` entregado hace más de 7 días, `409 LOGYX-SHL-004` ya hay 10 vigentes, `400 LOGYX-VAL-001` (`expiresInDays`). En el contrato figura como `200` (limitación del generador); la API responde **201** |
+| `GET /shipments/{id}/share-links` | PYME dueña (también Lector) | `ShareLinkView[]{id, tokenHint, status: ACTIVE\|EXPIRED\|REVOKED, createdAt, expiresAt (efectiva: la elegida o la entrega + 7 días; null = mientras siga abierto), revokedAt, lastViewedAt, views}`, recientes primero. Sin token |
+| `POST /shipments/{id}/share-links/{linkId}/revoke` | PYME dueña: ADMIN y OPS | `ShareLinkView` (idempotente). 404 si el enlace no es de ese envío |
+| `GET /public/tracking/{token}` | **público** (sin JWT), límite por IP `logyx.rate-limit.public-tracking.per-ip` (120 / 15 min) → 429 `LOGYX-AUTH-429` + `Retry-After` | `PublicTrackingView{code, status, originCity, destinationCity, pickupDate, deliveredAt, stops: PublicTrackingStop[]{sequence, type, city, status, arrivedAt, completedAt}, etaFrom, etaTo, route: PublicTrackingRoute{polyline, polylinePrecision, distanceKm, durationMin, attribution}, updatedAt, linkExpiresAt}`. **Lista blanca**: sin precio, contactos, direcciones, placa, conductor ni datos o ids de organizaciones, del envío o de las paradas. Cabeceras `X-Robots-Tag: noindex, nofollow`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. Inexistente, mal formado, revocado o vencido: **la misma** respuesta 404 `LOGYX-SHL-001` «Este enlace ya no está disponible». ETA solo en tránsito (ventana aproximada, `EtaPolicy`) |
+
+### Endpoints ampliados
+- **`GET /shipments`** (PYME y transportista): filtros `status` (uno o varios separados por coma: `PENDING,IN_TRANSIT` = en curso),
+  `originCity`, `destinationCity`, `fromDate`/`toDate` (**fecha de recojo**, inclusive), `q` (código `OC-…` con o sin guion, referencia
+  propia, placa, conductor o descripción de la carga), con `page`/`size` y `meta.total`. Sin `page` ni `size` devuelve todos los que
+  cumplan (compatibilidad con Android; tope 10 000). Errores `LOGYX-VAL-001` (`status`, `fromDate`, `q`), `LOGYX-PRC-001` (ciudad).
+- **`POST …/arrive` y `…/complete`**: cuerpo opcional **`StopEvent{occurredAt}`** (ISO-8601 con zona, hora del dispositivo). Como mucho
+  2 min en el futuro, no más de 48 h atrás y no anterior al paso previo; si no, **400 `LOGYX-TRK-008`** (`field = occurredAt`): la app
+  reintenta sin `occurredAt` (vale la hora del servidor). Sin cuerpo, igual que antes.
+
+### Campos nuevos
+- `ShipmentView`: **`code`** (heredado de la solicitud), **`customerReference`** (referencia propia de la PYME; solo las partes),
+  **`requesterOrgId`**, **`carrierOrgId`** (enlaces del operador a la organización y a sus incidencias, pedido de E).
+- `StopView`: **`arrivedRecordedAt`**, **`completedRecordedAt`** (hora del servidor), y **`contactName`, `contactPhone` (9 dígitos),
+  `windowFrom`, `windowTo` (`HH:mm`), `instructions`**: RN07 post-adjudicación, copiados de la solicitud al adjudicar; **solo** para las
+  dos partes, el conductor asignado y el operador (nulos para cualquier otro).
+
+### Códigos nuevos
+`LOGYX-TRK-008` (400, `occurredAt`: hora del evento fuera de los límites) · `LOGYX-SHL-001` (404: enlace no disponible) ·
+`LOGYX-SHL-002` (409: envío cancelado) · `LOGYX-SHL-003` (409: entregado hace más de 7 días) · `LOGYX-SHL-004` (409: 10 enlaces vigentes).
+
+### Para los demás agentes y clientes
+- **Web:** `npm run gen:api`. Detalle del envío (`TrackingSplit`) con código, referencia, contactos de las paradas, «Duplicar», «Compartir
+  seguimiento» y `ActivityTrail`; lista filtrada en el servidor con la URL como estado y «Exportar CSV» (`/exportar/envios`). Página
+  pública `/s/[token]`.
+- **Android:** `StopView`/`ShipmentView` nuevos, `arrive/complete(occurredAt)` con reintento sin hora ante `TRK-008`, idempotencia
+  (200 al repetir), contacto con «Llamar» y «Cómo llegar», compartir seguimiento (PYME).
+- **Agente C:** la copia de contactos vive en `shipment/application/CreateShipmentUseCase` (lee la solicitud por `RequestInfoProvider`);
+  `AcceptBidUseCase` no se tocó.
+
+## 2026-11-18 — Ola 1, zona C: disponibilidad por fecha, comisión sobre el valor de venta, oferta rápida y flota (V20)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.9, 1.10 y 1.12 y las decisiones del dueño (RN02 por fecha; base de la comisión).
+`scripts/check-contract.sh`: **compatible**. Migración `V20__fleet_hygiene_and_bid_agenda.sql` (`vehicles.archived_at`, índice único
+`drivers(organization_id, upper(license_number))` tras renombrar duplicados, índice `bids(vehicle_id) WHERE status = 'PENDING'`).
+
+### ⚠️ Cambios de comportamiento
+1. **RN02 por fecha de recojo.** Ofertar ya no exige que el vehículo esté `AVAILABLE` ahora: «en ruta» no bloquea; **mantenimiento o
+   archivado** sigue dando `409 LOGYX-CAP-002`. La disponibilidad la decide la agenda (envíos activos y ofertas pendientes con la ventana
+   recojo + ⌈km/500⌉ días): solape con un envío activo → `409 LOGYX-CAP-005` (como antes); solape con ofertas pendientes → se acepta y trae
+   `BidView.warnings` (`LOGYX-CAP-006`); con `logyx.bids.max-overlapping-per-vehicle` (3) ofertas solapadas → `409 LOGYX-CAP-007`. Al
+   aceptar, `CAP-005` sigue siendo la validación dura. La asignación manual del operador, el cambio de vehículo y Smart Load siguen
+   pidiendo «disponible ahora».
+2. **Comisión sobre el valor de venta sin IGV** y con su propio IGV: `GET /pricing/commission?amount=` ya no devuelve `commission = monto × tasa`
+   sino `valorVenta × tasa`; `carrierNet = monto − commission − commissionVat`. (S/ 1,180 al 8 %: `commission 80.00`, `commissionVat 14.40`,
+   `carrierNet 1085.60`.) `PublicQuote` no cambia.
+3. **Cargas de retorno:** «disponible desde» de un envío no entregado (en tránsito **o pendiente**) es el día siguiente al fin de su ventana
+   (antes: hoy, y solo en tránsito).
+4. **Desactivar** un conductor con envíos activos → `409 LOGYX-FLT-006` (antes se desactivaba y dejaba el envío huérfano). Poner un vehículo en
+   `MAINTENANCE` con envíos activos → `409 LOGYX-FLT-004`. Un vehículo archivado o en mantenimiento no publica viajes (`LOGYX-CAP-002`).
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /shipment-requests/{id}/vehicle-eligibility` | transportista (cualquier rol) | `EligibilityView{windowFrom, windowTo, maxOverlappingBids, vehicles: VehicleEligibilityView[]{vehicleId, plate, type, maxWeightKg, maxVolumeM3, status, eligible, blockerCode, blockerMessage, freeFrom, busy: BusySlot[]{kind: SHIPMENT\|BID, label, from, to}, warnings: BidWarningView[]{code, message}}}`: por vehículo activo de **mi** flota, si puede ofertar a esa carga y por qué no (`CAP-001/002/003/004/005/007`); `busy` es mi propia agenda en la ventana de la carga (envíos activos y ofertas pendientes), `freeFrom` desde cuándo queda libre por envíos activos. Nada de otras organizaciones (RN04) |
+| `PATCH /vehicles/{id}` | transportista (ADMIN, OPS) | `VehicleView`. Cuerpo `VehiclePatch{type?, maxWeightKg?, maxVolumeM3?}` (la placa no cambia). Con envíos activos, ofertas pendientes o viajes publicados solo se admite el volumen (`409 LOGYX-FLT-004`); archivado → `409 FLT-004` |
+| `POST /vehicles/{id}/archive` | transportista (ADMIN, OPS) | `VehicleView`. Sin envíos activos, ofertas pendientes ni viajes publicados (`409 LOGYX-FLT-004`); el vehículo deja de listarse y de ofertar; la placa sigue registrada |
+| `GET /shipment-requests/my-bids/export` | transportista | CSV (UTF-8 con BOM, `;`, fechas de Lima) de mis ofertas: código, ruta, recojo, mi oferta, **neto estimado** (comisión vigente, ADR-0010), vehículo, estado, posición, enviada el. Filtros `status` (PENDING, ACCEPTED, LOST, CANCELLED, WITHDRAWN), `originCity`, `destinationCity`, `fromDate`, `toDate`. Máx. 10 000 filas (`LOGYX-EXP-001`). Roadmap 1.5 |
+| `GET /trips/mine/export` | transportista | CSV de mis viajes (ruta, salida, vehículo, capacidad y reservado, tarifa, estado, reservas). Filtros `status`, `originCity`, `destinationCity`, `fromDate`, `toDate` (salida). Roadmap 1.5 |
+
+### Campos nuevos
+- `BidView.warnings` (`BidWarningView[]{code, message}`): solo en la respuesta de `POST /shipment-requests/{id}/bids`; `LOGYX-CAP-006` («ASA-202 ya tiene 2 ofertas para esas fechas»).
+- `ShipmentView.priceBreakdown` (`PriceBreakdownView{amount, vatRate, netOfVat, vat, commissionRate?, commission?, commissionVat?, carrierNet?}`): precio
+  adjudicado con IGV desglosado. Los cuatro últimos (tasa **guardada** al adjudicar, comisión sin IGV, su IGV y el neto del transportista) solo
+  los ven el transportista (no el conductor) y el operador; para la PYME y el conductor esos cuatro campos son `null`.
+- `Breakdown.commissionVat` (`GET /pricing/commission?amount=`).
+
+### Códigos nuevos
+`LOGYX-CAP-006` (aviso, no error) · `LOGYX-CAP-007` (409, `vehicleId`: demasiadas ofertas pendientes solapadas) · `LOGYX-FLT-004` (409: vehículo con
+compromisos) · `LOGYX-FLT-005` (409, `licenseNumber`: licencia ya registrada en tu flota) · `LOGYX-FLT-006` (409, `driverId`: conductor con envíos activos).
+
+### Para los demás agentes y clientes
+- `ShipmentView` es de B: solo se agregó el campo final `priceBreakdown` (construido por `shipment/infrastructure/web/PriceBreakdownView`, según el rol del JWT).
+- `CreateShipmentCommand` y `Shipment` ganaron `commissionRate` con constructores sobrecargados (los anteriores siguen válidos).
+- Web: `lib/pricing.ts` (desglose en céntimos), `components/domain/PriceBreakdown`, `features/marketplace/{quick-bid.ts,commission.ts}`. Android: `Pricing.kt`, `BidPreferences`.
+
 ## 2026-11-17 — Ola 1, zona D: roles en la interfaz, avisos por persona, preferencias de aviso y autoría (V16)
 
 Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.7, 1.15 y 1.8, más la matriz evento × canal de 2.2 (adelantada).

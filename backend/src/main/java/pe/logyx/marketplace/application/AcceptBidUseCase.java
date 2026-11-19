@@ -19,6 +19,7 @@ import pe.logyx.shipment.application.CreateShipmentUseCase;
 import pe.logyx.shipment.application.ResourceScheduler;
 import pe.logyx.fleet.domain.VehicleCargoCompatibility;
 import pe.logyx.identity.application.OrganizationGuard;
+import pe.logyx.pricing.application.CommissionService;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,6 +39,7 @@ public class AcceptBidUseCase {
     @Inject Event<BidAccepted> bidAccepted;
     @Inject OrganizationGuard guard;
     @Inject ResourceScheduler schedule;
+    @Inject CommissionService commission;
 
     @Transactional
     public AcceptOutcome accept(UUID bidId) {
@@ -79,7 +81,8 @@ public class AcceptBidUseCase {
         var c = r.cargo();
         UUID shipmentId = shipments.createFromAcceptedBid(new CreateShipmentCommand(
                 r.id(), bid.id(), r.requesterOrgId(), bid.carrierOrgId(), bid.vehicleId(), bid.amount(),
-                c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress(), bid.loadGroupId()));
+                c.originCity(), c.originAddress(), c.destinationCity(), c.destinationAddress(), bid.loadGroupId(),
+                commission.currentRate()));        // la tasa vigente queda guardada en el envío (ADR-0010)
         audit.record(tenant.profileId(), tenant.orgId(), auditAction, "bid", bid.id(),
                 "monto=" + bid.amount() + " envio=" + shipmentId);
         bidAccepted.fire(new BidAccepted(bid.id(), r.id(), shipmentId, r.requesterOrgId(), bid.carrierOrgId(),

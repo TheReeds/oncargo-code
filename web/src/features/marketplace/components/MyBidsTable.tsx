@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Gavel, SearchX, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Gavel, History, SearchX, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QuickFilters } from '@/components/ui/quick-filters';
@@ -8,6 +8,11 @@ import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
+import { Sheet } from '@/components/ui/sheet';
+import { ExportButton } from '@/components/ui/export-button';
+import ActivityTrail from '@/features/activity/components/ActivityTrail';
+import { formatRate, priceBreakdown } from '@/lib/pricing';
+import { loadCommissionRate } from '../commission';
 import NegotiateCell from '@/features/negotiation/components/NegotiateCell';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import type { RequestView } from '@/lib/api/server';
@@ -35,10 +40,14 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
   const count = (s: Filter) => rows.filter((r) => bidState(r) === s).length;
   const shown = useMemo(() => (filter ? rows.filter((r) => bidState(r) === filter) : rows), [rows, filter]);
   const slice = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [rate, setRate] = useState<number | null>(null);
+  useEffect(() => { loadCommissionRate().then(setRate); }, []);
+  // Autoría y rastro de la oferta (quién del equipo la envió y qué se hizo): hoja lateral con `ActivityTrail`.
+  const [trail, setTrail] = useState<{ bidId: string; route: string } | null>(null);
 
   return (
     <Card>
-      <div className="border-b border-steel-200 px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-steel-200 px-4 py-3 sm:px-5">
         <QuickFilters
           label="Estado de la oferta"
           value={filter}
@@ -52,6 +61,7 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
             ...(count('WITHDRAWN') > 0 ? [{ value: 'WITHDRAWN', label: 'Retiradas', count: count('WITHDRAWN') }] : []),
           ]}
         />
+        {rows.length > 0 && <ExportButton href={`/exportar/mis-ofertas${filter ? `?estado=${filter}` : ''}`} />}
       </div>
       {rows.length === 0 ? (
         <EmptyState icon={Gavel} title="Todavía no has enviado ofertas" description="Revisa las cargas disponibles y oferta por las compatibles con tu flota." action={<Button asChild><a href="/transportista/marketplace">Ver cargas disponibles</a></Button>} />
@@ -81,6 +91,7 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
                     <Td label="Mi oferta" className="whitespace-nowrap text-right">
                       <div className="@max-[720px]:text-right">
                         <div className="money text-base">{formatMoney(b.amount)}</div>
+                        {pending && rate != null && b.amount ? <div className="text-xs text-ink-500" data-testid="bid-net">Cobrarías <span className="font-mono tabular-nums text-ink-700">{formatMoney(priceBreakdown(b.amount, rate).carrierNet)}</span> neto <span className="sr-only">(después de la comisión del {formatRate(rate)} y su IGV)</span></div> : null}
                         {d != null && <div className={cn('font-mono text-xs tabular-nums', d <= 0 ? 'text-emerald-700' : 'text-amber-700')}>{`${d > 0 ? '+' : ''}${d.toFixed(1)}%`}<span className="font-sans text-ink-500"> vs. sugerido {formatMoney(r.suggestedPrice)}</span></div>}
                         {standing && (
                           <div className="mt-1 max-w-52 whitespace-normal text-xs" data-testid="bid-standing">
@@ -105,6 +116,7 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
                     <Td actions className="whitespace-nowrap text-right">
                       <div className="flex flex-col items-end gap-1 @max-[720px]:w-full @max-[720px]:items-stretch @max-[720px]:[&>div]:items-stretch">
                         <NegotiateCell requestId={r.id!} route={`${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`} bid={{ id: b.id!, amount: b.amount, status: b.status }} closed={r.status === 'CANCELLED' || (r.status === 'MATCHED' && b.status !== 'ACCEPTED')} floor={r.priceFloor} canWithdraw={open && r.status === 'PUBLISHED'} autoOpen={openRequestId === r.id} />
+                        <Button size="sm" variant="ghost" onClick={() => setTrail({ bidId: b.id!, route: `${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}` })}><History />Historial<span className="sr-only"> de la oferta de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
                         {b.status === 'ACCEPTED' && <Button asChild size="sm" variant="ghost"><a href="/transportista/envios"><Truck />Ver envío<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></a></Button>}
                       </div>
                     </Td>
@@ -116,6 +128,9 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
           {shown.length > PAGE_SIZE && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={PAGE_SIZE} total={shown.length} onPageChange={setPage} /></div>}
         </>
       )}
+      <Sheet open={!!trail} onOpenChange={(o) => !o && setTrail(null)} title="Historial de la oferta" description={trail?.route}>
+        {trail && <div className="p-5"><ActivityTrail key={trail.bidId} subject="BID" id={trail.bidId} title="Actividad de la oferta" liveTypes={['bid.accepted', 'bid.rejected', 'bid.placed', 'counter_offer.updated']} /></div>}
+      </Sheet>
     </Card>
   );
 }

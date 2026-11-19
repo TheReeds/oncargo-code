@@ -39,6 +39,13 @@ public interface ShipmentRepository {
     pe.logyx.shared.domain.Paged<Shipment> searchAll(pe.logyx.shipment.application.OperatorShipmentFilter filter,
                                                       pe.logyx.shared.domain.PageRequest page);
     List<Shipment> listByIds(Collection<UUID> ids);
+    /**
+     * «Mis envíos» filtrados en el servidor (roadmap 1.5), como transportista o como solicitante, más recientes primero.
+     * Corre bajo la RLS de quien llama: las mismas filas que la vista JSON y el CSV.
+     */
+    pe.logyx.shared.domain.Paged<Shipment> searchMine(UUID orgId, boolean asCarrier,
+                                                       pe.logyx.shipment.application.ShipmentFilter filter,
+                                                       pe.logyx.shared.domain.PageRequest page);
     /** Inserta o actualiza. */
     void save(Shipment shipment);
 }

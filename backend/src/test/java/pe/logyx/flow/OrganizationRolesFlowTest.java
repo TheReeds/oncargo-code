@@ -200,6 +200,12 @@ class OrganizationRolesFlowTest {
     void cuentasDeConductoresSoloElAdmin() {
         Flows.Awarded a = Flows.awarded("Roles Chofer");
         String driverId = as(a.carrier()).get("/api/v1/drivers").then().extract().path("data[0].id");
+        // Higiene de flota (V20): con un envío activo no se desactiva hasta reasignarlo
+        as(a.carrier()).post("/api/v1/drivers/" + driverId + "/deactivate").then().statusCode(409)
+                .body("error.code", is("LOGYX-FLT-006"));
+        String[] relief = driver(a.carrier(), "Chofer Relevo Roles");
+        as(a.carrier()).body(Map.of("driverId", relief[0])).put("/api/v1/shipments/" + a.shipmentId() + "/driver")
+                .then().statusCode(200);
         as(a.carrier()).post("/api/v1/drivers/" + driverId + "/deactivate").then().statusCode(200)
                 .body("data.active", is(false));
         as(a.driver()).get("/api/v1/driver/shipments/active").then().statusCode(401);

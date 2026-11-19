@@ -26,6 +26,9 @@ import pe.logyx.core.model.CreateTripRequest
 import pe.logyx.core.model.TripBookingView
 import pe.logyx.core.model.TripPricingMode
 import pe.logyx.core.model.TripView
+import pe.logyx.core.designsystem.components.moneyToInput
+import pe.logyx.core.model.normalizeCity
+import pe.logyx.core.model.VehicleStatus
 import pe.logyx.core.model.VehicleView
 import pe.logyx.core.model.isManageable
 import pe.logyx.core.network.ApiException
@@ -77,6 +80,8 @@ data class PublishTripUiState(
     val vehicles: List<VehicleView> = emptyList(),
     val form: PublishTripForm = PublishTripForm(),
     val errors: PublishTripErrors = PublishTripErrors(),
+    /** El formulario viene de duplicar un viaje: se avisa que se revise la fecha y la tarifa. */
+    val duplicated: Boolean = false,
     val submitting: Boolean = false,
     val message: UiMessage? = null,
     /** Id del viaje publicado: la pantalla navega al detalle. */
@@ -119,10 +124,34 @@ internal fun validateTrip(form: PublishTripForm, vehicles: List<VehicleView>, no
     )
 }
 
+/**
+ * Duplicar un viaje (roadmap 1.10): mismos datos con la salida una semana después, a la misma hora de Lima; si esa fecha ya pasó,
+ * la primera semana futura. Función pura para poder probarla con una hora fija.
+ */
+internal fun duplicateForm(trip: TripView, cities: List<CityItem>, now: OffsetDateTime): PublishTripForm {
+    var departure = runCatching { OffsetDateTime.parse(trip.departureAt) }.getOrNull()?.withOffsetSameInstant(LIMA)
+    if (departure != null) {
+        do { departure = departure!!.plusDays(7) } while (!departure!!.isAfter(now))
+    }
+    return PublishTripForm(
+        origin = cities.firstOrNull { normalizeCity(it.code) == normalizeCity(trip.originCity) },
+        destination = cities.firstOrNull { normalizeCity(it.code) == normalizeCity(trip.destinationCity) },
+        date = departure?.toLocalDate(),
+        time = departure?.toLocalTime()?.withSecond(0)?.withNano(0),
+        vehicleId = trip.vehicleId,
+        capacityText = sanitizeKgInput(trip.capacityKg.toLong().toString()),
+        pricingMode = trip.pricingMode,
+        rateText = moneyToInput(trip.rate),
+        notes = trip.notes.orEmpty(),
+    )
+}
+
 class PublishTripViewModel(
     private val trips: TripsRepository,
     private val loads: LoadsRepository,
     private val catalog: CatalogRepository,
+    /** Viaje que se duplica (`PublishTrip(from)`); nulo = formulario vacío. */
+    private val fromTripId: String? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PublishTripUiState())
     val state: StateFlow<PublishTripUiState> = _state.asStateFlow()
@@ -133,13 +162,20 @@ class PublishTripViewModel(
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             val cities = async { catalog.cities() }
+            val source = async { fromTripId?.let { trips.trip(it).getOrNull() } }
             val fleet = loads.vehicles()
             fleet.fold(
                 onSuccess = { vehicles ->
+                    val cityList = cities.await().getOrDefault(emptyList())
+                    val copied = source.await()?.let { duplicateForm(it, cityList, OffsetDateTime.now()) }
                     _state.update { s ->
+                        val base = copied?.takeIf { s.form == PublishTripForm() } ?: s.form
+                        // Un vehículo archivado o en mantenimiento ya no es una opción (la copia se queda sin vehículo).
+                        val usable = base.vehicleId?.takeIf { id -> vehicles.any { it.id == id && it.status != VehicleStatus.MAINTENANCE } }
                         s.copy(
-                            loading = false, vehicles = vehicles, cities = cities.await().getOrDefault(emptyList()),
-                            form = s.form.copy(vehicleId = s.form.vehicleId ?: vehicles.singleOrNull()?.id),
+                            loading = false, vehicles = vehicles, cities = cityList,
+                            form = base.copy(vehicleId = usable ?: base.vehicleId.takeIf { copied == null } ?: vehicles.singleOrNull()?.id),
+                            duplicated = copied != null,
                         )
                     }
                 },

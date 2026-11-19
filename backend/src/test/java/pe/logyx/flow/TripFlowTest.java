@@ -346,7 +346,8 @@ class TripFlowTest {
 
         // En tránsito también cuenta (sugerencia anticipada)
         Flows.Awarded transit = Flows.inTransit("Retorno Transito");
-        publishRoute(pyme, "JULIACA", "LIMA", 1500, 2).statusCode(201);
+        // RN02 por fecha: el vehículo queda libre tras la ventana del envío (recojo en 2 días + 3 de viaje = día 5), o sea el 6.º
+        publishRoute(pyme, "JULIACA", "LIMA", 1500, 7).statusCode(201);
         as(transit.carrier()).get("/api/v1/return-loads").then().body("data", hasSize(greaterThanOrEqualTo(1)))
                 .body("data[0].shipmentDelivered", is(false));
     }

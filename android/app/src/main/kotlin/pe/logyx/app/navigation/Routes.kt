@@ -28,7 +28,8 @@ import kotlinx.serialization.Serializable
 
 // Fase 4: viajes publicados, retornos y Smart Load
 @Serializable data object CarrierTrips
-@Serializable data object PublishTrip
+/** [from] = viaje que se duplica (formulario precargado). */
+@Serializable data class PublishTrip(val from: String? = null)
 @Serializable data class PymeTripDetail(val id: String)
 @Serializable data class CarrierTripDetail(val id: String, val published: Boolean = false)
 @Serializable data object ReturnLoads

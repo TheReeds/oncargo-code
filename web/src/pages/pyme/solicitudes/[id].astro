@@ -19,6 +19,7 @@ import { ApiError } from '@/lib/api/client';
 import { CARGO_LABELS, CITY_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
 import { can } from '@/lib/permissions';
 import { Copy } from '@lucide/astro';
+import { PriceBreakdown } from '@/components/domain/PriceBreakdown';
 
 const { id } = Astro.params;
 const session = Astro.locals.session!;
@@ -95,6 +96,16 @@ const hasContacts = [...pickupRows, ...deliveryRows].some((x) => x.value);
           <div class="border-t border-steel-200 pt-5"><DescriptionList cols={3} items={summary} /></div>
         </CardBody>
       </Card>
+
+      {shipment?.priceBreakdown && (
+        <Card className="max-lg:order-2" data-testid="awarded-price">
+          <CardHeader><CardTitle>Precio adjudicado</CardTitle><span class="money text-xl">{formatMoney(shipment.priceBreakdown.amount)}</span></CardHeader>
+          <CardBody className="space-y-1 text-sm text-ink-700">
+            <p>Pagas el precio adjudicado, sin recargos. Incluye IGV ({formatMoney(shipment.priceBreakdown.vat)}).</p>
+            <PriceBreakdown breakdown={shipment.priceBreakdown} />
+          </CardBody>
+        </Card>
+      )}
 
       {hasContacts && (
         <Card className="max-lg:order-2">

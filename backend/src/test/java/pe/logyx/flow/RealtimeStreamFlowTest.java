@@ -180,10 +180,11 @@ class RealtimeStreamFlowTest {
     void reanudacionDemasiadoAntiguaPideResincronizar() {
         Session pyme = register("PYME", "RT Resync");
         Session carrier = register("CARRIER", "RT Resync Carrier");
-        String v = vehicle(carrier, plate(), 30000);
-        // replay-limit en test = 20: 11 solicitudes con oferta = 22 eventos (bid.placed + notification.created)
+        // replay-limit en test = 20: 11 solicitudes con oferta = 22 eventos (bid.placed + notification.created).
+        // Un vehículo por oferta: con las mismas fechas, más de 3 ofertas pendientes del mismo vehículo dan CAP-007.
         String last = null;
         for (int i = 0; i < 11; i++) {
+            String v = vehicle(carrier, plate(), 30000);
             var r = publish(pyme, 1000).statusCode(201).extract();
             float floor = r.path("data.priceFloor");
             last = Api.as(carrier).body(Map.of("vehicleId", v, "amount", (float) Math.ceil(floor) + 100))

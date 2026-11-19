@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
-import { createDriver, createVehicle, deactivateDriver, reactivateDriver, resetDriverPassword, setVehicleStatus } from './server';
+import { archiveVehicle, createDriver, createVehicle, updateVehicle, deactivateDriver, reactivateDriver, resetDriverPassword, setVehicleStatus } from './server';
 
 export const fleet = {
   createVehicle: defineAction({
@@ -22,6 +22,18 @@ export const fleet = {
     }),
     handler: (input, ctx) => run(() => createDriver(requireToken(ctx), input)),
   }),
+  /** Corrige tipo, kg y m³ (la placa no cambia). Con envíos, ofertas pendientes o viajes solo el volumen (409 `LOGYX-FLT-004`). */
+  updateVehicle: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.uuid(),
+      type: z.enum(['VAN', 'TRUCK_SMALL', 'TRUCK_MEDIUM', 'TRUCK_LARGE', 'PLATFORM', 'REFRIGERATED', 'TANKER']).optional(),
+      maxWeightKg: z.number().min(100, 'La capacidad mínima es 100 kg').optional(),
+      maxVolumeM3: z.number().min(0.1, 'El volumen mínimo es 0.1 m³').optional(),
+    }),
+    handler: ({ id, ...body }, ctx) => run(() => updateVehicle(requireToken(ctx), id, body)),
+  }),
+  archiveVehicle: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => archiveVehicle(requireToken(ctx), id)) }),
   setVehicleStatus: defineAction({
     accept: 'json',
     input: z.object({ id: z.uuid(), status: z.enum(['AVAILABLE', 'IN_ROUTE', 'MAINTENANCE']) }),

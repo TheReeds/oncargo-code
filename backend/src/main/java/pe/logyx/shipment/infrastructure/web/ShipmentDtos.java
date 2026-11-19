@@ -6,7 +6,9 @@ import jakarta.validation.constraints.Size;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.shipment.application.ShipmentSummary;
 import pe.logyx.shipment.domain.model.Shipment;
+import pe.logyx.shared.domain.TimeOfDay;
 import pe.logyx.shipment.domain.model.ShipmentStop;
+import pe.logyx.shipment.domain.model.StopContact;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,11 +28,28 @@ public final class ShipmentDtos {
     /** Cancelación con motivo (F06). */
     public record CancelShipment(@NotBlank(message = "Indica el motivo") @Size(max = 500) String reason) {}
 
+    /**
+     * Cuerpo opcional de «Llegué» / «Carga recogida» / «Entregado» (roadmap 1.11). {@code occurredAt}: hora del
+     * dispositivo en que ocurrió (ISO-8601 con zona). Sin cuerpo o sin el campo vale la hora del servidor.
+     */
+    public record StopEvent(OffsetDateTime occurredAt) {}
+
+    /**
+     * {@code arrivedAt}/{@code completedAt}: cuándo ocurrió (hora del dispositivo, acotada); {@code *RecordedAt}: cuándo
+     * lo recibió el servidor. Contacto, ventana ({@code HH:mm}) e instrucciones: RN07 post-adjudicación, solo para las
+     * partes, el conductor asignado y el operador (null para cualquier otro).
+     */
     public record StopView(UUID id, int sequence, ShipmentStop.Type type, City city, String address,
-                           ShipmentStop.Status status, OffsetDateTime arrivedAt, OffsetDateTime completedAt) {
-        static StopView of(ShipmentStop s) {
+                           ShipmentStop.Status status, OffsetDateTime arrivedAt, OffsetDateTime completedAt,
+                           OffsetDateTime arrivedRecordedAt, OffsetDateTime completedRecordedAt,
+                           String contactName, String contactPhone, String windowFrom, String windowTo,
+                           String instructions) {
+        static StopView of(ShipmentStop s, boolean withContact) {
+            StopContact c = withContact ? s.contact() : StopContact.NONE;
             return new StopView(s.id(), s.sequence(), s.type(), s.city(), s.address(), s.status(),
-                    s.arrivedAt(), s.completedAt());
+                    s.arrivedAt(), s.completedAt(), s.arrivedRecordedAt(), s.completedRecordedAt(),
+                    c.name(), c.phone(), TimeOfDay.format(c.windowFrom()), TimeOfDay.format(c.windowTo()),
+                    c.instructions());
         }
     }
 
@@ -49,18 +68,30 @@ public final class ShipmentDtos {
                                /** Viaje o plan Smart Load que consolida este envío con otros en el mismo vehículo. */
                                UUID loadGroupId,
                                /** Motivo, fecha y organización que canceló (solo si CANCELLED con motivo). */
-                               String cancellationReason, OffsetDateTime cancelledAt, UUID cancelledByOrgId) {
+                               String cancellationReason, OffsetDateTime cancelledAt, UUID cancelledByOrgId,
+                               /** Precio adjudicado con IGV desglosado; el transportista y el operador ven además la comisión (ADR-0010). */
+                               PriceBreakdownView priceBreakdown,
+                               /** Código legible heredado de la solicitud (OC-XXXXX). */
+                               String code,
+                               /** Referencia propia de la PYME (OC o pedido); solo las partes la ven. */
+                               String customerReference,
+                               /** Organizaciones de las partes (enlaces del operador). */
+                               UUID requesterOrgId, UUID carrierOrgId) {
         static ShipmentView of(ShipmentSummary sum) {
             Shipment s = sum.shipment();
             var r = sum.request();
+            boolean contacts = sum.contactsVisible();
             return new ShipmentView(s.id(), s.requestId(), sum.requesterName(), sum.carrierName(),
                     r.originCity(), r.destinationCity(), r.cargoDescription(), r.weightKg(), s.agreedPrice(),
                     s.vehiclePlate(), s.driverId(), s.driverName(), s.status(), s.createdAt(), s.deliveredAt(),
-                    sum.stops().stream().map(StopView::of).toList(), sum.activeIncident(),
+                    sum.stops().stream().map(st -> StopView.of(st, contacts)).toList(), sum.activeIncident(),
                     r == null ? null : r.pickupDate(), s.vehicleId(), s.loadGroupId(),
                     s.cancellation() == null ? null : s.cancellation().reason(),
                     s.cancellation() == null ? null : s.cancellation().at(),
-                    s.cancellation() == null ? null : s.cancellation().byOrgId());
+                    s.cancellation() == null ? null : s.cancellation().byOrgId(),
+                    PriceBreakdownView.of(s.agreedPrice(), s.commissionRate()),
+                    r == null ? null : r.code(), contacts && r != null ? r.customerReference() : null,
+                    s.requesterOrgId(), s.carrierOrgId());
         }
 
         static List<ShipmentView> of(List<ShipmentSummary> list) {

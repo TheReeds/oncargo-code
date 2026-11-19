@@ -11,6 +11,8 @@ public interface DriverRepository {
     Optional<Driver> findOwned(UUID id, UUID organizationId);
     Optional<Driver> findByProfile(UUID profileId);
     List<Driver> listByOrganization(UUID organizationId);
+    /** La licencia (sin distinguir mayúsculas ni espacios en los bordes) ya existe en la organización. */
+    boolean licenseExists(UUID organizationId, String licenseNumber);
     /** Inserta o actualiza. */
     void save(Driver driver);
 }

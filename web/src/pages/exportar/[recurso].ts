@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { API_URL } from '@/lib/api/client';
 import { apiQuery, filtersFromUrl } from '@/features/requests/filters';
+import { apiQuery as shipmentsApiQuery, filtersFromUrl as shipmentsFiltersFromUrl } from '@/features/shipments/filters';
 
 export const prerender = false;
 const text = (status: number, message: string) => new Response(message, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' } });
@@ -10,6 +11,12 @@ const text = (status: number, message: string) => new Response(message, { status
  * que la página del listado (`estado`, `origen`, `destino`, `desde`, `hasta`, `q`, `orden`) y los traduce a la API, así
  * el CSV es exactamente lo que se ve. Para exportar otro recurso agrega su entrada a `RESOURCES`.
  */
+const passthrough = (p: URLSearchParams) => {
+  const out = new URLSearchParams();
+  const map: Record<string, string> = { estado: 'status', origen: 'originCity', destino: 'destinationCity', desde: 'fromDate', hasta: 'toDate' };
+  for (const [from, to] of Object.entries(map)) if (p.get(from)) out.set(to, p.get(from)!);
+  return out;
+};
 const RESOURCES: Record<string, { path: string; query: (p: URLSearchParams) => URLSearchParams }> = {
   solicitudes: {
     path: '/api/v1/shipment-requests/mine/export',
@@ -20,6 +27,19 @@ const RESOURCES: Record<string, { path: string; query: (p: URLSearchParams) => U
       return out;
     },
   },
+  /** «Envíos» de la PYME o del transportista (roadmap 1.5): mismos parámetros que `/pyme/envios` y `/transportista/envios`. */
+  envios: {
+    path: '/api/v1/shipments/export',
+    query: (p) => {
+      const q = shipmentsApiQuery(shipmentsFiltersFromUrl(p));
+      const out = new URLSearchParams();
+      for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '') out.set(k, String(v));
+      return out;
+    },
+  },
+  // Ola 1 zona C (roadmap 1.5): mis ofertas y mis viajes del transportista. `estado` = estado de la oferta o del viaje.
+  'mis-ofertas': { path: '/api/v1/shipment-requests/my-bids/export', query: passthrough },
+  viajes: { path: '/api/v1/trips/mine/export', query: passthrough },
 };
 
 export const GET: APIRoute = async ({ params, url, locals }) => {

@@ -34,6 +34,7 @@ public class MarketplaceQueries {
     @Inject BidRepository bids;
     @Inject RequestSummaries summaries;
     @Inject FleetService fleet;
+    @Inject VehicleAgenda agenda;
     @Inject TenantContext tenant;
 
     // ----- PYME
@@ -130,7 +131,7 @@ public class MarketplaceQueries {
     public DashboardCounts dashboardCounts() {
         UUID org = tenant.orgId();
         if (tenant.orgType() == OrgType.CARRIER) {
-            BigDecimal biggest = fleet.vehicles().stream().filter(Vehicle::isAvailable)
+            BigDecimal biggest = fleet.vehicles().stream().filter(v -> !v.isBlockedForBids())
                     .map(Vehicle::maxWeightKg).max(BigDecimal::compareTo).orElse(null);
             long compatible = biggest == null ? 0 : requests.searchOpenMarketplace(
                     new MarketplaceFilter(null, null, null, null, biggest, null, MarketplaceFilter.Sort.PICKUP),
@@ -138,6 +139,26 @@ public class MarketplaceQueries {
             return new DashboardCounts(0, 0, compatible, bids.countByCarrierAndStatus(org, Bid.Status.PENDING));
         }
         return new DashboardCounts(requests.countPublishedByRequester(org), bids.countPendingToReview(org), 0, 0);
+    }
+
+    /** Resultado de {@link #vehicleEligibility}: ventana de la carga, tope de ofertas solapadas y un veredicto por vehículo. */
+    public record FleetEligibility(pe.logyx.shipment.domain.ResourceSchedulePolicy.Window window, int maxOverlapping,
+                                   List<VehicleAgenda.Assessment> vehicles) {}
+
+    /** RN02 por fecha: elegibilidad de cada vehículo activo del transportista actual para la solicitud (404 si no la ve). */
+    public FleetEligibility vehicleEligibility(UUID requestId) {
+        ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
+        return new FleetEligibility(agenda.windowOf(r), agenda.maxOverlapping(), agenda.assessFleet(r));
+    }
+
+    /** Ofertas PENDING del vehículo (de la organización actual, por RLS): bloquean archivarlo (higiene de flota). */
+    public int pendingBidsOfVehicle(UUID vehicleId) {
+        return bids.listPendingByVehicle(vehicleId).size();
+    }
+
+    /** Mis ofertas con su solicitud, como resumen (para la exportación CSV: misma consulta y RLS que /my-bids). */
+    public List<RequestSummary> myBidSummaries() {
+        return myBidRequests().stream().filter(s -> s.myBid() != null).toList();
     }
 
     public List<RequestSummary> myBidRequests() {

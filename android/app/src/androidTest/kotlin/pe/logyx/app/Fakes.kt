@@ -137,11 +137,15 @@ class FakeKoinRule(
         overrides = module {
             single<AuthRepository> { auth }
             single<CatalogRepository> { FakeCatalog() }
+            single<pe.logyx.core.data.BidPreferences> { pe.logyx.core.data.BidPreferences.NONE }
             single<LoadsRepository> { loads }
             single<RequestsRepository> { FakeRequests() }
             single<ShipmentsRepository> { shipments }
             single<EvidenceRepository> { evidence }
             single<RealtimeRepository> { OfflineRealtime }
+            // Conductor sin señal (zona B): caché y cola en memoria, ligadas a los fakes de este test.
+            single { pe.logyx.core.data.DriverTripCache.inMemory() }
+            single { pe.logyx.core.data.DriverActionQueue.inMemory(shipments, { evidence.items.value }) }
         }.also { loadKoinModules(it) }
     }
     override fun finished(description: Description) { overrides?.let { unloadKoinModules(it) } }

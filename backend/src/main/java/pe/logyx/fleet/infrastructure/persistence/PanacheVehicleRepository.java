@@ -24,7 +24,7 @@ public class PanacheVehicleRepository implements VehicleRepository {
 
     @Override
     public List<Vehicle> listByOrganization(UUID organizationId) {
-        return VehicleEntity.<VehicleEntity>list("organizationId = ?1 order by plate", organizationId)
+        return VehicleEntity.<VehicleEntity>list("organizationId = ?1 and archivedAt is null order by plate", organizationId)
                 .stream().map(VehicleEntity::toDomain).toList();
     }
 
@@ -35,7 +35,7 @@ public class PanacheVehicleRepository implements VehicleRepository {
 
     @Override
     public List<Vehicle> listAvailableWithCapacity(java.math.BigDecimal minKg) {
-        return VehicleEntity.<VehicleEntity>list("status = ?1 and maxWeightKg >= ?2 order by maxWeightKg, plate",
+        return VehicleEntity.<VehicleEntity>list("status = ?1 and archivedAt is null and maxWeightKg >= ?2 order by maxWeightKg, plate",
                 Vehicle.Status.AVAILABLE, minKg).stream().map(VehicleEntity::toDomain).toList();
     }
 

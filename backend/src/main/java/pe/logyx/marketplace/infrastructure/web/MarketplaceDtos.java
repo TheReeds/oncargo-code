@@ -1,5 +1,6 @@
 package pe.logyx.marketplace.infrastructure.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.*;
 import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
@@ -200,15 +201,56 @@ public final class MarketplaceDtos {
                           /** Trust Score 0–100 del transportista (RN09; 75 sin calificaciones). */
                           BigDecimal carrierTrustScore,
                           /** true si la registró el operador al asignar manualmente (RN10). */
-                          boolean assignedByOperator) {
+                          boolean assignedByOperator,
+                          /** Solo al ofertar (POST): avisos de agenda del vehículo, p. ej. LOGYX-CAP-006. Nulo en listados. */
+                          @JsonInclude(JsonInclude.Include.NON_NULL) List<BidWarningView> warnings) {
 
         static BidView of(BidSummary s) {
+            return of(s, null);
+        }
+
+        static BidView of(BidSummary s, List<BidWarningView> warnings) {
             Bid b = s.bid();
             return new BidView(b.id(), b.requestId(), b.carrierOrgId(), s.carrierName(), s.carrierRucVerified(),
                     b.vehicleId(), b.amount(), b.notes(), b.status(), b.createdAt(),
-                    b.vehicleType(), b.vehiclePlate(), s.carrierTrustScore(), b.assignedByOperator());
+                    b.vehicleType(), b.vehiclePlate(), s.carrierTrustScore(), b.assignedByOperator(), warnings);
         }
     }
+
+    /**
+     * Elegibilidad de un vehículo del transportista para ofertar a una solicitud (RN02 por fecha de recojo).
+     * {@code eligible=false}: {@code blockerCode}/{@code blockerMessage} dicen por qué (CAP-001..005, CAP-007) y
+     * {@code freeFrom} desde cuándo estaría libre por envíos activos. {@code busy}: lo que ocupa la ventana
+     * ({@code SHIPMENT}: envío activo, bloquea; {@code BID}: oferta pendiente, solo avisa). {@code warnings}: CAP-006.
+     */
+    public record VehicleEligibilityView(UUID vehicleId, String plate, Vehicle.Type type, BigDecimal maxWeightKg,
+                                         BigDecimal maxVolumeM3, Vehicle.Status status, boolean eligible,
+                                         String blockerCode, String blockerMessage, LocalDate freeFrom,
+                                         List<BusySlot> busy, List<BidWarningView> warnings) {
+        static VehicleEligibilityView of(pe.logyx.marketplace.application.VehicleAgenda.Assessment a) {
+            var v = a.vehicle();
+            var all = new java.util.ArrayList<BusySlot>();
+            a.shipmentConflicts().forEach(s -> all.add(BusySlot.of(s)));
+            a.bidOverlaps().forEach(s -> all.add(BusySlot.of(s)));
+            return new VehicleEligibilityView(v.id(), v.plate(), v.type(), v.maxWeightKg(), v.maxVolumeM3(),
+                    v.status(), a.eligible(), a.blocker() == null ? null : a.blocker().code(),
+                    a.blocker() == null ? null : a.blocker().getMessage(), a.freeFrom(), all,
+                    a.warnings().stream().map(w -> new BidWarningView(w.code(), w.message())).toList());
+        }
+    }
+
+    public record BusySlot(String kind, String label, LocalDate from, LocalDate to) {
+        static BusySlot of(pe.logyx.marketplace.application.VehicleAgenda.Slot s) {
+            return new BusySlot(s.kind().name(), s.label(), s.from(), s.to());
+        }
+    }
+
+    /** Elegibilidad de toda la flota para una solicitud y la ventana de ocupación de la carga. */
+    public record EligibilityView(LocalDate windowFrom, LocalDate windowTo, int maxOverlappingBids,
+                                  List<VehicleEligibilityView> vehicles) {}
+
+    /** Aviso de agenda al ofertar (no bloquea). */
+    public record BidWarningView(String code, String message) {}
 
     public record AcceptResult(UUID shipmentId, BidView acceptedBid, List<UUID> rejectedBidIds) {
         static AcceptResult of(AcceptOutcome o) {

@@ -27,17 +27,22 @@ function todayLima() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 }
 
-export default function PublishTripForm({ vehicles, cities }: { vehicles: VehicleView[]; cities: CityItem[] }) {
-  const usable = vehicles.filter((v) => v.status === 'AVAILABLE');
-  const [origin, setOrigin] = useState('');
-  const [dest, setDest] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [vehicleId, setVehicleId] = useState('');
-  const [capacity, setCapacity] = useState('');
-  const [mode, setMode] = useState<'PER_KG' | 'PER_TRIP'>('PER_KG');
-  const [rate, setRate] = useState('');
-  const [notes, setNotes] = useState('');
+/** Valores iniciales al duplicar un viaje (`/transportista/viajes/nuevo?from=<id>`): fecha +7 días, misma hora. */
+export type TripInitial = { originCity?: string; destinationCity?: string; date?: string; time?: string; vehicleId?: string; capacityKg?: number; pricingMode?: 'PER_KG' | 'PER_TRIP'; rate?: number; notes?: string };
+
+export default function PublishTripForm({ vehicles, cities, initial }: { vehicles: VehicleView[]; cities: CityItem[]; initial?: TripInitial }) {
+  // RN02 por fecha: un vehículo en ruta hoy puede publicar un viaje futuro; solo el mantenimiento lo impide.
+  const usable = vehicles.filter((v) => v.status !== 'MAINTENANCE');
+  const startVehicle = initial?.vehicleId && usable.some((v) => v.id === initial.vehicleId) ? initial.vehicleId : '';
+  const [origin, setOrigin] = useState(initial?.originCity ?? '');
+  const [dest, setDest] = useState(initial?.destinationCity ?? '');
+  const [date, setDate] = useState(initial?.date ?? '');
+  const [time, setTime] = useState(initial?.time ?? '');
+  const [vehicleId, setVehicleId] = useState(startVehicle);
+  const [capacity, setCapacity] = useState(initial?.capacityKg ? String(initial.capacityKg) : '');
+  const [mode, setMode] = useState<'PER_KG' | 'PER_TRIP'>(initial?.pricingMode ?? 'PER_KG');
+  const [rate, setRate] = useState(initial?.rate != null ? String(initial.rate) : '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<ActionFailure | null>(null);
@@ -91,7 +96,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
   if (usable.length === 0) {
     return (
       <Alert tone="warning" title="Necesitas un vehículo disponible" action={<Button asChild size="sm" variant="outline"><a href="/transportista/flota">Ir a Flota</a></Button>}>
-        Para publicar un viaje, agrega o libera un vehículo en tu flota.
+        Para publicar un viaje, agrega un vehículo a tu flota o sácalo de mantenimiento.
       </Alert>
     );
   }
@@ -104,6 +109,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
       <Card>
         <CardHeader><CardTitle>Datos del viaje</CardTitle></CardHeader>
         <CardBody className="space-y-5">
+          {initial && <Alert tone="info" title="Copia de un viaje anterior">Revisa la fecha (una semana después) y la tarifa antes de publicar.</Alert>}
           {error && <Alert tone="error" title="No pudimos publicar el viaje">{error}</Alert>}
           {blocked && <VerificationBlock failure={blocked} />}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -120,7 +126,7 @@ export default function PublishTripForm({ vehicles, cities }: { vehicles: Vehicl
               <TimeSelect id="t-time" value={time} onValueChange={(v) => { setTime(v); clear('time'); }} invalid={!!errors.time} placeholder="Selecciona la hora" />
             </Field>
           </div>
-          <Field label="Vehículo" htmlFor="t-vehicle" error={errors.vehicle} hint="Solo ves vehículos disponibles de tu flota." required>
+          <Field label="Vehículo" htmlFor="t-vehicle" error={errors.vehicle} hint="Un vehículo en ruta hoy puede publicar un viaje para otra fecha; solo el mantenimiento lo impide." required>
             <Combobox id="t-vehicle" value={vehicleId} onValueChange={pickVehicle} invalid={!!errors.vehicle} placeholder="Selecciona un vehículo" searchPlaceholder="Buscar por placa…"
               options={usable.map((v) => ({ value: v.id!, label: `${v.plate} · ${VEHICLE_LABELS[v.type!] ?? v.type}`, hint: `${formatNumber(v.maxWeightKg)} kg` }))} />
           </Field>

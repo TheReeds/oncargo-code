@@ -10,6 +10,8 @@ const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/terminos', '/precio
 const OPEN_WITH_SESSION = ['/privacidad', '/terminos', '/precios', '/contacto', '/olvide', '/restablecer'];
 /** Páginas con un token en la URL: sin `Referer` hacia ningún sitio. */
 const NO_REFERRER = ['/restablecer', '/olvide'];
+/** Seguimiento público por enlace (roadmap 1.6, ADR-0011): `/s/<token>` y su consulta `/s/<token>/estado`, sin sesión y con o sin ella. */
+const isTrackingLink = (p: string) => p.startsWith('/s/');
 const isAsset = (p: string) => !p.startsWith('/_actions') && (p.startsWith('/_') || p.startsWith('/favicon') || p.includes('.'));
 
 const handle = defineMiddleware(async (ctx, next) => {
@@ -25,7 +27,7 @@ const handle = defineMiddleware(async (ctx, next) => {
   // Stream en tiempo real (proxy SSE): sin sesión responde 401 (no redirige) y lo usan todos los roles, incluido el conductor.
   if (pathname === '/eventos') return next();
 
-  const isPublic = PUBLIC.includes(pathname);
+  const isPublic = PUBLIC.includes(pathname) || isTrackingLink(pathname);
   if (!session) {
     if (isPublic) return next();
     return ctx.redirect(`/login?next=${encodeURIComponent(pathname)}`);
@@ -34,7 +36,7 @@ const handle = defineMiddleware(async (ctx, next) => {
   const home = homeFor(session);
   if (isPublic) {
     // Usuarios con sesión: / y /login van a su home (privacidad y el restablecimiento de contraseña se ven siempre).
-    if (OPEN_WITH_SESSION.includes(pathname)) return runWithSession(session, next);
+    if (OPEN_WITH_SESSION.includes(pathname) || isTrackingLink(pathname)) return runWithSession(session, next);
     return ctx.redirect(home);
   }
 
@@ -88,12 +90,13 @@ const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'production';
 function secure(res: Response, url: URL, req: Request): Response {
   const set: Record<string, string> = {
     'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': NO_REFERRER.includes(url.pathname) ? 'no-referrer' : 'strict-origin-when-cross-origin',
+    'Referrer-Policy': NO_REFERRER.includes(url.pathname) || isTrackingLink(url.pathname) ? 'no-referrer' : 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'X-Frame-Options': 'DENY',
   };
   // En dev Vite inyecta scripts y un websocket de HMR: CSP solo en producción.
   if (isProd) set['Content-Security-Policy'] = CSP;
+  if (isTrackingLink(url.pathname)) set['X-Robots-Tag'] = 'noindex, nofollow, noarchive';
   const https = url.protocol === 'https:' || req.headers.get('x-forwarded-proto')?.split(',')[0].trim() === 'https';
   if (isProd && (https || process.env.HSTS === 'true')) set['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
   try {

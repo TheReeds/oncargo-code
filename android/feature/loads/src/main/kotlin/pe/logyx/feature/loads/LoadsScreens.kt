@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -42,7 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -113,6 +116,8 @@ import pe.logyx.core.model.RequestView
 import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.RequestStatus
+import pe.logyx.core.model.BidShortcut
+import pe.logyx.core.model.amount
 import pe.logyx.core.model.isCompatibleWith
 import pe.logyx.core.model.myBidOutcome
 import java.time.LocalDate
@@ -653,8 +658,21 @@ private fun BidSheet(
     onConfirm: () -> Unit,
 ) {
     val form = state.form ?: return
-    val vehicles = state.compatibleVehicles
+    val vehicles = state.bookableVehicles
     val selected = vehicles.firstOrNull { it.id == form.vehicleId }
+    // RN02 por fecha: lo que la agenda dice de cada vehículo para esas fechas (bloqueos y notas informativas).
+    val agendaBlocked = state.eligibility.values.filter { !it.eligible }.associate { e ->
+        e.vehicleId to (if (e.blockerCode == "LOGYX-CAP-005") e.freeFrom?.let { stringResource(R.string.loads_agenda_busy_free_from, Fmt.date(it)) } ?: stringResource(R.string.loads_agenda_busy)
+        else e.blockerMessage ?: stringResource(R.string.loads_agenda_busy))
+    }
+    val agendaHints = state.eligibility.values.filter { it.eligible }.associate { e ->
+        val bids = e.busy.count { it.kind == "BID" }
+        e.vehicleId to when (bids) {
+            0 -> stringResource(R.string.loads_agenda_free)
+            1 -> stringResource(R.string.loads_agenda_bid_one)
+            else -> stringResource(R.string.loads_agenda_bids, bids)
+        }
+    }
     LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.loads_sheet_title)) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
@@ -670,15 +688,33 @@ private fun BidSheet(
                 choices = state.vehicleChoices, selectedId = form.vehicleId, onSelect = onSelectVehicle,
                 weightKg = request.weightKg, volumeM3 = request.volumeM3, cargoType = request.cargoType,
                 error = form.vehicleError?.asString(), enabled = !form.submitting,
+                blocked = agendaBlocked, hints = agendaHints,
             )
+            // CAP-006: el vehículo elegido ya tiene ofertas pendientes para esas fechas; se puede ofertar, pero se avisa antes.
+            state.eligibility[form.vehicleId]?.warnings?.firstOrNull()?.let { w ->
+                AlertBanner(
+                    stringResource(R.string.loads_agenda_warning_text), kind = MessageKind.Warning,
+                    title = w.message ?: stringResource(R.string.loads_agenda_busy),
+                )
+            }
             MoneyField(
                 value = form.amountText, onValueChange = onAmountChange, label = stringResource(R.string.loads_sheet_amount),
                 hint = bidHint(request), error = form.amountError?.asString(),
             )
+            // Atajos de monto (oferta rápida): sugerido, −5 %, −10 % y piso; ninguno baja del piso (RN03).
             ChipRow {
-                request.priceFloor?.let { QuickAmount(stringResource(R.string.loads_quick_floor, Fmt.moneyShort(it)), it, form.amountText, onAmountChange) }
-                request.suggestedPrice?.let { QuickAmount(stringResource(R.string.loads_quick_reference, Fmt.moneyShort(it)), it, form.amountText, onAmountChange) }
+                BidShortcut.entries.forEach { shortcut ->
+                    val value = shortcut.amount(request.suggestedPrice, request.priceFloor) ?: return@forEach
+                    val label = when (shortcut) {
+                        BidShortcut.SUGGESTED -> stringResource(R.string.loads_quick_suggested, Fmt.moneyShort(value))
+                        BidShortcut.MINUS_5 -> stringResource(R.string.loads_quick_m5, Fmt.moneyShort(value))
+                        BidShortcut.MINUS_10 -> stringResource(R.string.loads_quick_m10, Fmt.moneyShort(value))
+                        BidShortcut.FLOOR -> stringResource(R.string.loads_quick_floor_short, Fmt.moneyShort(value))
+                    }
+                    QuickAmount(label, value, form.amountText, onAmountChange)
+                }
             }
+            state.netBreakdown?.let { NetBox(it) }
             LogyxTextField(
                 value = form.notes, onValueChange = onNotesChange, label = stringResource(R.string.loads_sheet_notes),
                 optional = true, singleLine = false, minLines = 2, maxLines = 4,
@@ -714,6 +750,40 @@ private fun bidHint(request: RequestView): String? = when {
     request.priceFloor != null -> stringResource(R.string.loads_sheet_amount_hint_floor, Fmt.money(request.priceFloor))
     request.suggestedPrice != null -> stringResource(R.string.loads_sheet_amount_hint_ref, Fmt.money(request.suggestedPrice))
     else -> null
+}
+
+/** «Cobras S/ X neto» con el desglose (valor de venta, IGV, comisión e IGV de la comisión) en un detalle plegable. */
+@Composable
+private fun NetBox(b: pe.logyx.core.model.PriceBreakdown) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(
+            stringResource(R.string.loads_net_title, Fmt.money(b.carrierNet)),
+            style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        TextButton(onClick = { open = !open }) {
+            Text(stringResource(if (open) R.string.loads_net_toggle_hide else R.string.loads_net_toggle_show))
+        }
+        if (open) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                NetRow(stringResource(R.string.loads_net_sale), Fmt.money(b.netOfVat))
+                NetRow(stringResource(R.string.loads_net_vat), Fmt.money(b.vat))
+                NetRow(stringResource(R.string.loads_net_total), Fmt.money(b.amount), strong = true)
+                NetRow(stringResource(R.string.loads_net_commission, "${(b.commissionRate * 100).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} %"), "− " + Fmt.money(b.commission))
+                NetRow(stringResource(R.string.loads_net_commission_vat), "− " + Fmt.money(b.commissionVat))
+                NetRow(stringResource(R.string.loads_net_final), Fmt.money(b.carrierNet), strong = true)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetRow(label: String, value: String, strong: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(end = 12.dp))
+        Text(value, style = if (strong) LogyxText.mono.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) else LogyxText.mono)
+    }
 }
 
 @Composable

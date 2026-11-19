@@ -187,4 +187,18 @@
     <string name="ds_vehicle_choice_none_text">Revisa el motivo de cada vehículo. Puedes registrar o liberar vehículos desde la web de OnCargo.</string>
     <string name="ds_vehicle_choice_empty_title">Aún no tienes vehículos</string>
     <string name="ds_vehicle_choice_empty_text">Registra un vehículo en la web de OnCargo para poder ofertar.</string>
+    <!-- Contacto de parada (roadmap v2 1.3) -->
+    <string name="ds_contact_window_delivery">Recibe de %1$s a %2$s</string>
+    <string name="ds_contact_window_delivery_from">Recibe desde las %1$s</string>
+    <string name="ds_contact_window_delivery_to">Recibe hasta las %1$s</string>
+    <string name="ds_contact_window_pickup">Atiende de %1$s a %2$s</string>
+    <string name="ds_contact_window_pickup_from">Atiende desde las %1$s</string>
+    <string name="ds_contact_window_pickup_to">Atiende hasta las %1$s</string>
+    <string name="ds_contact_call">Llamar</string>
+    <string name="ds_contact_call_a11y">Llamar a %1$s</string>
+    <string name="ds_contact_directions">Cómo llegar</string>
+    <string name="ds_contact_directions_a11y">Cómo llegar a %1$s</string>
+    <string name="ds_contact_instructions">Indicaciones: %1$s</string>
+    <string name="ds_contact_no_dialer">No encontramos una app de teléfono en este equipo. Marca el número a mano.</string>
+    <string name="ds_contact_no_maps">No encontramos una app de mapas ni un navegador. Busca la dirección a mano.</string>
 </resources>

@@ -10,6 +10,7 @@ import pe.logyx.marketplace.application.RequestSummary;
 import pe.logyx.shipment.application.ShipmentQueries;
 import pe.logyx.shipment.application.ShipmentSummary;
 import pe.logyx.routing.application.RoutePlanner;
+import pe.logyx.shipment.domain.ResourceSchedulePolicy;
 import pe.logyx.shipment.domain.model.Shipment;
 import pe.logyx.trip.domain.CityProximityPolicy;
 import pe.logyx.trip.domain.ReturnLoadPolicy;
@@ -40,10 +41,15 @@ public class ReturnLoadService {
         for (ShipmentSummary s : shipments.mine()) {
             Shipment sh = s.shipment();
             boolean delivered = sh.status() == Shipment.Status.DELIVERED;
-            if ((!delivered && sh.status() != Shipment.Status.IN_TRANSIT) || s.request() == null) continue;
+            boolean active = sh.status() == Shipment.Status.IN_TRANSIT || sh.status() == Shipment.Status.PENDING;
+            if ((!delivered && !active) || s.request() == null) continue;
             Vehicle v = vehicles.get(sh.vehicleId());
             if (v == null) continue;
-            LocalDate from = delivered && sh.deliveredAt() != null ? sh.deliveredAt().atZoneSameInstant(LIMA).toLocalDate() : today;
+            // RN02 por fecha: un envío no entregado libera el vehículo tras su ventana (recojo + ⌈km/500⌉ días,
+            // ResourceSchedulePolicy): el retorno se busca desde el día siguiente, no desde hoy.
+            LocalDate from = delivered && sh.deliveredAt() != null ? sh.deliveredAt().atZoneSameInstant(LIMA).toLocalDate()
+                    : ResourceSchedulePolicy.window(s.request().pickupDate(), s.request().distanceKm(),
+                            today).to().plusDays(1);
             legs.add(new ReturnLoadPolicy.Leg(sh.id(), v.id(), v.plate(), v.type(), v.maxWeightKg(),
                     s.request().destinationCity(), delivered, from));
         }

@@ -35,6 +35,28 @@ public final class BidEligibilityPolicy {
         VehicleCargoCompatibility.ensureSuitable(v, cargo.cargoType(), cargo.weightKg(), cargo.volumeM3());
     }
 
+    /**
+     * RN02 por fecha de recojo (ofertar): el mantenimiento bloquea, "en ruta" no; la agenda
+     * ({@code ResourceSchedulePolicy}, ofertas pendientes) la resuelve {@code marketplace.application.VehicleAgenda}.
+     */
+    public static void ensureVehicleEligibleOnDate(Vehicle v, ShipmentRequest.Cargo cargo) {
+        VehicleCargoCompatibility.ensureSuitableOnDate(v, cargo.cargoType(), cargo.weightKg(), cargo.volumeM3());
+    }
+
+    /** Tope de ofertas PENDING solapadas por vehículo: con {@code overlapping} ya en la agenda, la nueva sería la siguiente (CAP-007). */
+    public static void ensureBelowOverlapLimit(String plate, int overlapping, int max) {
+        if (overlapping >= max) {
+            throw BusinessException.conflict("LOGYX-CAP-007", plate + " ya tiene " + overlapping
+                    + " ofertas pendientes para esas fechas (máximo " + max + "): retira una o usa otro vehículo",
+                    "vehicleId");
+        }
+    }
+
+    /** Aviso (no error) cuando el vehículo ya tiene ofertas pendientes solapadas (CAP-006). */
+    public static String overlapWarning(String plate, int overlapping) {
+        return plate + " ya tiene " + overlapping + (overlapping == 1 ? " oferta" : " ofertas") + " para esas fechas";
+    }
+
     public static void ensureVehicleEligible(boolean vehicleAvailable, BigDecimal vehicleMaxWeightKg,
                                              BigDecimal cargoWeightKg) {
         if (!vehicleAvailable) {

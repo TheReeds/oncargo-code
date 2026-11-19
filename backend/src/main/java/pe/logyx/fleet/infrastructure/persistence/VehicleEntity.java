@@ -35,8 +35,11 @@ public class VehicleEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
+    @Column(name = "archived_at")
+    public OffsetDateTime archivedAt;
+
     Vehicle toDomain() {
-        return new Vehicle(id, organizationId, plate, type, maxWeightKg, maxVolumeM3, status, createdAt);
+        return new Vehicle(id, organizationId, plate, type, maxWeightKg, maxVolumeM3, status, createdAt, archivedAt);
     }
 
     void apply(Vehicle v) {
@@ -48,5 +51,6 @@ public class VehicleEntity extends PanacheEntityBase {
         maxVolumeM3 = v.maxVolumeM3();
         status = v.status();
         createdAt = v.createdAt();
+        archivedAt = v.archivedAt();
     }
 }

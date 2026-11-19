@@ -17,6 +17,9 @@
     <!-- Mis viajes (transportista) -->
     <string name="trips_my_title">Mis viajes</string>
     <string name="trips_publish_action">Publicar viaje</string>
+    <string name="trips_duplicate_action">Duplicar viaje</string>
+    <string name="trips_duplicate_title">Copia de un viaje anterior</string>
+    <string name="trips_duplicate_text">Revisa la fecha (una semana después) y la tarifa antes de publicar.</string>
     <string name="trips_empty_title">Aún no publicas viajes</string>
     <string name="trips_empty_message">Publica un viaje con tu capacidad libre y las PYMEs podrán reservar espacio.</string>
 

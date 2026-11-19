@@ -89,8 +89,11 @@ class PublicQuoteFlowTest {
         float rate = r.path("data.commissionRate");
         float net = r.path("data.breakdown.carrierNet");
         float commission = r.path("data.breakdown.commission");
-        org.junit.jupiter.api.Assertions.assertEquals(1180f, net + commission, 0.011f);
-        org.junit.jupiter.api.Assertions.assertEquals(1180f * rate, commission, 0.011f);
+        float commissionVat = r.path("data.breakdown.commissionVat");
+        org.junit.jupiter.api.Assertions.assertEquals(1180f, net + commission + commissionVat, 0.011f);
+        // la comisión es sobre el valor de venta sin IGV (1 000) y lleva su propio IGV (18 %)
+        org.junit.jupiter.api.Assertions.assertEquals(1000f * rate, commission, 0.011f);
+        org.junit.jupiter.api.Assertions.assertEquals(commission * 0.18f, commissionVat, 0.011f);
         as(carrier).get("/api/v1/pricing/commission?amount=0").then().statusCode(400);
         as(carrier).get("/api/v1/pricing/commission").then().statusCode(200).body("data.breakdown", nullValue());
     }

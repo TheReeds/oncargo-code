@@ -139,6 +139,8 @@ data class BidView(
     /** Trust Score 0-100 del transportista (RN09; 75 sin calificaciones). */
     val carrierTrustScore: Double? = null,
     val assignedByOperator: Boolean = false,
+    /** Solo al ofertar (POST): avisos de agenda del vehículo, p. ej. `LOGYX-CAP-006`. */
+    val warnings: List<BidWarning> = emptyList(),
 )
 
 @Serializable
@@ -202,8 +204,22 @@ data class StopView(
     val city: String,
     val address: String? = null,
     val status: StopStatus,
+    /** Hora en que ocurrió la llegada (hora del dispositivo del conductor, roadmap 1.11). */
     val arrivedAt: String? = null,
+    /** Hora en que ocurrió el cierre de la parada (hora del dispositivo). */
     val completedAt: String? = null,
+    // V16–V19 (roadmap 1.3 y 1.11). Todo opcional: un backend anterior no los manda.
+    /** Hora del servidor al recibir la llegada (puede ser posterior a [arrivedAt] si el conductor estaba sin señal). */
+    val arrivedRecordedAt: String? = null,
+    val completedRecordedAt: String? = null,
+    /** Contacto en la parada: solo lo ven las partes, el conductor asignado y el operador (null para el resto). */
+    val contactName: String? = null,
+    /** 9 dígitos, p. ej. `987654321`. */
+    val contactPhone: String? = null,
+    /** Ventana horaria de atención `HH:mm` (hora local de la parada). */
+    val windowFrom: String? = null,
+    val windowTo: String? = null,
+    val instructions: String? = null,
 )
 
 @Serializable
@@ -234,6 +250,13 @@ data class ShipmentView(
     val cancellationReason: String? = null,
     val cancelledAt: String? = null,
     val cancelledByOrgId: String? = null,
+    // V16 (roadmap 1.3/1.4)
+    /** Código legible heredado de la solicitud (`OC-7K2QX`); se muestra en lugar del id. */
+    val code: String? = null,
+    /** Referencia propia de la PYME (OC o pedido, máx. 40). */
+    val customerReference: String? = null,
+    val requesterOrgId: String? = null,
+    val carrierOrgId: String? = null,
 )
 
 /** `reason` (V13, F06): opcional; obligatorio al reasignar el conductor con el envío en ruta (`LOGYX-SHP-006`). */

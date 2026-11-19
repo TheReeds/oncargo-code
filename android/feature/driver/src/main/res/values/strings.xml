@@ -72,4 +72,13 @@
         <item quantity="other">%1$d firmas</item>
     </plurals>
     <string name="driver_history_title">Viajes anteriores</string>
+    <!-- Sin señal (roadmap 1.11) -->
+    <string name="driver_offline_banner">Sin conexión · datos de %1$s</string>
+    <string name="driver_offline_banner_no_time">Sin conexión · mostramos los últimos datos guardados</string>
+    <string name="driver_pending_title">Guardado en tu teléfono</string>
+    <string name="driver_pending_message">Se enviará al recuperar señal.</string>
+    <string name="driver_notice_queued">Guardado. Se enviará al recuperar señal</string>
+    <string name="driver_evidence_offline">Se enviará al recuperar señal</string>
+    <string name="driver_evidence_awaiting_hint">Tu foto se enviará al recuperar señal. Ya puedes marcar la entrega.</string>
+    <string name="driver_evidence_pending">La entrega y su evidencia están guardadas en tu teléfono. Se enviarán al recuperar señal.</string>
 </resources>

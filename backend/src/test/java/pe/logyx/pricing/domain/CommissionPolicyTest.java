@@ -19,8 +19,9 @@ class CommissionPolicyTest {
         assertEquals(d("1000.00"), b.netOfVat());
         assertEquals(d("180.00"), b.vat());
         assertEquals(d("0.18"), b.vatRate());
-        assertEquals(d("94.40"), b.commission());       // 8 % de 1 180.00
-        assertEquals(d("1085.60"), b.carrierNet());     // cobras neto
+        assertEquals(d("80.00"), b.commission());       // 8 % del valor de venta (1 000.00), sin IGV
+        assertEquals(d("14.40"), b.commissionVat());    // IGV de la comisión
+        assertEquals(d("1085.60"), b.carrierNet());     // 1 180 - 80 - 14.40
         assertEquals(d("0.08"), b.commissionRate());
     }
 
@@ -29,24 +30,32 @@ class CommissionPolicyTest {
         for (String amount : new String[]{"1.00", "99.99", "1850.00", "3333.33", "12345.67"}) {
             AwardedPriceBreakdown b = CommissionPolicy.breakdown(d(amount), d("0.08"));
             assertEquals(b.amount(), b.netOfVat().add(b.vat()), "IGV " + amount);
-            assertEquals(b.amount(), b.carrierNet().add(b.commission()), "comisión " + amount);
+            assertEquals(b.amount(), b.carrierNet().add(b.commission()).add(b.commissionVat()), "comisión " + amount);
+            assertEquals(2, b.commissionVat().scale());
             assertEquals(2, b.commission().scale());
         }
     }
 
     @Test
     void redondeaMitadHaciaArribaALosCentimos() {
-        // 8 % de 10.06 = 0.8048 → 0.80 ; 8 % de 10.07 = 0.8056 → 0.81
-        assertEquals(d("0.80"), CommissionPolicy.breakdown(d("10.06"), d("0.08")).commission());
-        assertEquals(d("0.81"), CommissionPolicy.breakdown(d("10.07"), d("0.08")).commission());
-        // 8.25 % de 100.00 = 8.25
-        assertEquals(d("8.25"), CommissionPolicy.breakdown(d("100"), d("0.0825")).commission());
+        // valor de venta de 11.80 = 10.00 → 8 % = 0.80 (IGV de la comisión 0.144 → 0.14)
+        AwardedPriceBreakdown b = CommissionPolicy.breakdown(d("11.80"), d("0.08"));
+        assertEquals(d("0.80"), b.commission());
+        assertEquals(d("0.14"), b.commissionVat());
+        // valor de venta de 10.06 / 1.18 = 8.52 → 8 % = 0.6816 → 0.68 ; 10.30 / 1.18 = 8.73 → 0.6984 → 0.70
+        assertEquals(d("0.68"), CommissionPolicy.breakdown(d("10.06"), d("0.08")).commission());
+        assertEquals(d("0.70"), CommissionPolicy.breakdown(d("10.30"), d("0.08")).commission());
+        // 8.25 % de 1 000.00 (valor de venta de 1 180.00) = 82.50 e IGV 14.85
+        AwardedPriceBreakdown c = CommissionPolicy.breakdown(d("1180"), d("0.0825"));
+        assertEquals(d("82.50"), c.commission());
+        assertEquals(d("14.85"), c.commissionVat());
     }
 
     @Test
     void conTasaCeroElTransportistaCobraTodo() {
         AwardedPriceBreakdown b = CommissionPolicy.breakdown(d("2500"), BigDecimal.ZERO);
         assertEquals(d("0.00"), b.commission());
+        assertEquals(d("0.00"), b.commissionVat());
         assertEquals(d("2500.00"), b.carrierNet());
     }
 

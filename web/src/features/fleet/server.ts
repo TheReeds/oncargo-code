@@ -6,6 +6,9 @@ export const listVehicles = (token: string) => unwrap(apiFor(token).GET('/api/v1
 export const listDrivers = (token: string) => unwrap(apiFor(token).GET('/api/v1/drivers'));
 export const createVehicle = (token: string, body: Schemas['VehicleRequest']) => unwrap(apiFor(token).POST('/api/v1/vehicles', { body }));
 export const createDriver = (token: string, body: Schemas['DriverRequest']) => unwrap(apiFor(token).POST('/api/v1/drivers', { body }));
+export const updateVehicle = (token: string, id: string, body: Schemas['VehiclePatch']) =>
+  unwrap(apiFor(token).PATCH('/api/v1/vehicles/{id}', { params: { path: { id } }, body }));
+export const archiveVehicle = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/vehicles/{id}/archive', { params: { path: { id } } }));
 export const setVehicleStatus = (token: string, id: string, status: Schemas['StatusChange']['status']) =>
   unwrap(apiFor(token).PATCH('/api/v1/vehicles/{id}/status', { params: { path: { id } }, body: { status } }));
 

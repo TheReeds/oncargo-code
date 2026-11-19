@@ -2,12 +2,21 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import TrackingSplit from '@/features/shipments/components/TrackingSplit';
-import { listShipments } from '@/features/shipments/server';
+import { listShipmentsPage, withSelected } from '@/features/shipments/server';
+import { SHIPMENTS_PAGE_SIZE, apiQuery, filtersFromUrl, pageFromUrl } from '@/features/shipments/filters';
 import { getCatalog } from '@/features/catalog/server';
-const [shipments, { cities }] = await Promise.all([listShipments(Astro.locals.session!.token), getCatalog()]);
+const t = Astro.locals.session!.token;
+const filters = filtersFromUrl(Astro.url.searchParams);
+const page = pageFromUrl(Astro.url.searchParams);
+const [result, any, { cities }] = await Promise.all([
+  listShipmentsPage(t, { ...apiQuery(filters), page: page - 1, size: SHIPMENTS_PAGE_SIZE }),
+  listShipmentsPage(t, { page: 0, size: 1 }),
+  getCatalog(),
+]);
 const id = Astro.url.searchParams.get('id');
+const items = await withSelected(t, result.items, id);
 ---
 <AppShell title="Envíos" active="envios" wide>
   <PageHeader title="Envíos" subtitle="Seguimiento de tus cargas, parada por parada" />
-  <TrackingSplit client:load shipments={shipments} cities={cities} initialId={id} perspective="PYME" />
+  <TrackingSplit client:load shipments={items} total={result.meta.total} page={page} filters={filters} anyShipments={any.meta.total > 0} cities={cities} initialId={id} perspective="PYME" />
 </AppShell>

@@ -34,6 +34,12 @@ public class PanacheDriverRepository implements DriverRepository {
     }
 
     @Override
+    public boolean licenseExists(UUID organizationId, String licenseNumber) {
+        return DriverEntity.count("organizationId = ?1 and upper(licenseNumber) = ?2", organizationId,
+                licenseNumber.trim().toUpperCase()) > 0;
+    }
+
+    @Override
     public void save(Driver driver) {
         DriverEntity e = DriverEntity.findById(driver.id());
         if (e == null) {

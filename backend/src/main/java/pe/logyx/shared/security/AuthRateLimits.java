@@ -19,6 +19,8 @@ import java.util.Locale;
  *       excede la respuesta es la misma, 202, pero no se envía correo; así no se revela si el email existe);</li>
  *   <li>canje de tokens de contraseña por IP ({@code reset.per-ip}) y refresh por IP ({@code refresh.per-ip});</li>
  *   <li>cotizador público por IP ({@code public-quote.per-ip}, 30 por ventana);</li>
+ *   <li>seguimiento público ({@code /public/tracking/{token}}) por IP ({@code public-tracking.per-ip}, 120 por ventana:
+ *       la página consulta cada 60 s);</li>
  *   <li>cambio de contraseña: tras {@code change-password.failures-per-user} contraseñas actuales incorrectas, 429.</li>
  * </ul>
  * La IP sale de la conexión o, detrás de un proxy confiable ({@code quarkus.http.proxy.*}), de X-Forwarded-For
@@ -39,6 +41,7 @@ public class AuthRateLimits {
     @ConfigProperty(name = "logyx.rate-limit.reset.per-ip", defaultValue = "30") int resetPerIp;
     @ConfigProperty(name = "logyx.rate-limit.refresh.per-ip", defaultValue = "300") int refreshPerIp;
     @ConfigProperty(name = "logyx.rate-limit.public-quote.per-ip", defaultValue = "30") int publicQuotePerIp;
+    @ConfigProperty(name = "logyx.rate-limit.public-tracking.per-ip", defaultValue = "120") int publicTrackingPerIp;
     @ConfigProperty(name = "logyx.rate-limit.change-password.failures-per-user", defaultValue = "10")
     int changePasswordFailures;
 
@@ -82,6 +85,11 @@ public class AuthRateLimits {
     /** Cotizador público (sin cuenta): por IP, {@code logyx.rate-limit.public-quote.per-ip} por ventana → 429. */
     public void beforePublicQuote(String ip) {
         acquireOr429("public-quote-ip:" + ip, publicQuotePerIp);
+    }
+
+    /** Enlace público de seguimiento (sin cuenta, ADR-0011): por IP → 429. Cuenta también los tokens inválidos. */
+    public void beforePublicTracking(String ip) {
+        acquireOr429("public-tracking-ip:" + ip, publicTrackingPerIp);
     }
 
     public void beforeRefresh(String ip) {

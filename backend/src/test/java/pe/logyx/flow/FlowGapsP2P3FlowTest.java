@@ -120,11 +120,11 @@ class FlowGapsP2P3FlowTest {
                 .body("error.code", is("LOGYX-TRK-003"));
         as(a.driver()).post(a.stop(a.pickupStopId(), "arrive")).then().statusCode(200);
         as(a.driver()).post(a.stop(a.pickupStopId(), "complete")).then().statusCode(200);
-        // Parada ya completada: TRK-007 (antes TRK-001 "orden")
-        as(a.driver()).post(a.stop(a.pickupStopId(), "complete")).then().statusCode(409)
-                .body("error.code", is("LOGYX-TRK-007")).body("error.message", containsString("ya está completada"));
-        as(a.driver()).post(a.stop(a.pickupStopId(), "arrive")).then().statusCode(409)
-                .body("error.code", is("LOGYX-TRK-007"));
+        // Parada ya completada: desde la Ola 1 (roadmap 1.11) repetir es idempotente y responde 200 con el envío
+        // (antes TRK-007). Ver ShipmentTrackingFlowTest.
+        as(a.driver()).post(a.stop(a.pickupStopId(), "complete")).then().statusCode(200)
+                .body("data.stops[0].status", is("COMPLETED"));
+        as(a.driver()).post(a.stop(a.pickupStopId(), "arrive")).then().statusCode(200);
         // Entrega: sin llegada TRK-003 aunque falte la foto; con llegada y sin foto TRK-006
         as(a.driver()).post(a.stop(a.deliveryStopId(), "complete")).then().statusCode(409)
                 .body("error.code", is("LOGYX-TRK-003"));

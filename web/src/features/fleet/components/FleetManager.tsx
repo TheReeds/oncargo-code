@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
-import { Ban, CheckCircle2, KeyRound, MoreHorizontal, Plus, RotateCcw, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
+import { Archive, Ban, CheckCircle2, KeyRound, MoreHorizontal, Pencil, Plus, RotateCcw, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,17 +26,19 @@ import { useCan } from '@/lib/use-can';
 import { formatNumber, VEHICLE_LABELS } from '@/lib/format';
 import type { DriverView, VehicleView } from '@/lib/api/server';
 /** campo de la API → clave de error local */
-const FIELD_MAP: Record<string, string> = { plate: 'plate', email: 'email' };
+const FIELD_MAP: Record<string, string> = { plate: 'plate', email: 'email', licenseNumber: 'licenseNumber', maxWeightKg: 'weight', maxVolumeM3: 'volume' };
 
 
 const TYPE_OPTIONS = Object.entries(VEHICLE_LABELS).map(([value, label]) => ({ value, label }));
 type VType = 'VAN' | 'TRUCK_SMALL' | 'TRUCK_MEDIUM' | 'TRUCK_LARGE' | 'PLATFORM' | 'REFRIGERATED' | 'TANKER';
 
-function VehicleDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [plate, setPlate] = useState('');
-  const [type, setType] = useState('TRUCK_MEDIUM');
-  const [weight, setWeight] = useState('');
-  const [volume, setVolume] = useState('');
+/** Alta de un vehículo o, con `vehicle`, corrección de tipo, capacidad y volumen (la placa no cambia). */
+function VehicleDialog({ open, onClose, vehicle }: { open: boolean; onClose: () => void; vehicle?: VehicleView | null }) {
+  const editing = !!vehicle;
+  const [plate, setPlate] = useState(vehicle?.plate ?? '');
+  const [type, setType] = useState<string>(vehicle?.type ?? 'TRUCK_MEDIUM');
+  const [weight, setWeight] = useState(vehicle?.maxWeightKg != null ? String(vehicle.maxWeightKg) : '');
+  const [volume, setVolume] = useState(vehicle?.maxVolumeM3 != null ? String(vehicle.maxVolumeM3) : '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,28 +47,30 @@ function VehicleDialog({ open, onClose }: { open: boolean; onClose: () => void }
     e.preventDefault();
     setError(null);
     const errs: Record<string, string> = {};
-    if (plate.trim().length < 5) errs.plate = 'Ingresa la placa del vehículo.';
+    if (!editing && plate.trim().length < 5) errs.plate = 'Ingresa la placa del vehículo.';
     if (!(Number(weight) > 0)) errs.weight = 'Ingresa la capacidad en kg.';
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true);
     const vol = Number(volume);
-    const { error } = await actions.fleet.createVehicle({ plate: plate.trim().toUpperCase(), type: type as VType, maxWeightKg: Number(weight), maxVolumeM3: vol > 0 ? vol : undefined });
+    const { error } = editing
+      ? await actions.fleet.updateVehicle({ id: vehicle!.id!, type: type as VType, maxWeightKg: Number(weight), maxVolumeM3: vol > 0 ? vol : undefined })
+      : await actions.fleet.createVehicle({ plate: plate.trim().toUpperCase(), type: type as VType, maxWeightKg: Number(weight), maxVolumeM3: vol > 0 ? vol : undefined });
     if (error) { const { message, field } = splitActionError(error); if (field && field in FIELD_MAP) setErrors({ [FIELD_MAP[field]]: message }); else setError(message); setBusy(false); return; }
-    flash('Vehículo agregado');
+    flash(editing ? 'Vehículo actualizado' : 'Vehículo agregado');
     window.location.reload();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()} title="Agregar vehículo" description="Los vehículos disponibles te permiten enviar ofertas según su capacidad."
-      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="vehicle-form" loading={busy}>{busy ? 'Agregando vehículo…' : 'Agregar vehículo'}</Button></>}>
+    <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()} title={editing ? `Editar ${vehicle!.plate}` : 'Agregar vehículo'} description={editing ? 'Corrige el tipo, la capacidad o el volumen. La placa no se puede cambiar.' : 'Los vehículos disponibles te permiten enviar ofertas según su capacidad.'}
+      footer={<><Button variant="outline" onClick={onClose} disabled={busy}>Volver</Button><Button type="submit" form="vehicle-form" loading={busy}>{editing ? (busy ? 'Guardando…' : 'Guardar cambios') : (busy ? 'Agregando vehículo…' : 'Agregar vehículo')}</Button></>}>
       <form id="vehicle-form" onSubmit={submit} noValidate className="space-y-4">
-        {error && <Alert tone="error" title="No pudimos agregar el vehículo">{error}</Alert>}
+        {error && <Alert tone="error" title={editing ? 'No pudimos guardar los cambios' : 'No pudimos agregar el vehículo'}>{error}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Placa" htmlFor="v-plate" error={errors.plate}><Input id="v-plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-123" maxLength={10} aria-invalid={!!errors.plate} className="font-mono uppercase" /></Field>
+          <Field label="Placa" htmlFor="v-plate" error={errors.plate}><Input id="v-plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-123" maxLength={10} aria-invalid={!!errors.plate} className="font-mono uppercase" readOnly={editing} disabled={editing} /></Field>
           <Field label="Tipo de vehículo" htmlFor="v-type"><Select id="v-type" value={type} onValueChange={setType} options={TYPE_OPTIONS} /></Field>
           <Field label="Capacidad de carga" htmlFor="v-w" error={errors.weight}><NumberInput id="v-w" value={weight} onValueChange={setWeight} suffix="kg" placeholder="8,000" invalid={!!errors.weight} /></Field>
-          <Field label="Volumen" htmlFor="v-vol" hint="Opcional"><NumberInput id="v-vol" value={volume} onValueChange={setVolume} decimals={1} suffix="m³" placeholder="30" /></Field>
+          <Field label="Volumen" htmlFor="v-vol" hint="Opcional" error={errors.volume}><NumberInput id="v-vol" value={volume} onValueChange={setVolume} decimals={1} suffix="m³" placeholder="30" invalid={!!errors.volume} /></Field>
         </div>
       </form>
     </Dialog>
@@ -173,28 +177,40 @@ function DriverActions({ d, onReset }: { d: DriverView; onReset: (d: DriverView)
 
 const STATUS_ACTIONS = [
   { status: 'AVAILABLE', label: 'Marcar como disponible', icon: CheckCircle2 },
-  { status: 'IN_ROUTE', label: 'Marcar en ruta', icon: Route },
   { status: 'MAINTENANCE', label: 'Enviar a mantenimiento', icon: Wrench },
 ] as const;
 
-function VehicleActions({ v }: { v: VehicleView }) {
+function VehicleActions({ v, onEdit }: { v: VehicleView; onEdit: (v: VehicleView) => void }) {
   const [busy, setBusy] = useState(false);
   async function change(status: (typeof STATUS_ACTIONS)[number]['status']) {
     setBusy(true);
     const { error } = await actions.fleet.setVehicleStatus({ id: v.id!, status });
-    if (error) { toast.error(error.message); setBusy(false); return; }
+    if (error) { toast.error(splitActionError(error).message); setBusy(false); return; }
     flash('Estado actualizado');
+    window.location.reload();
+  }
+  async function archive() {
+    const ok = await confirm({ title: `¿Archivar ${v.plate}?`, description: 'Dejará de aparecer en tu flota y no podrá ofertar. Solo se puede archivar sin envíos activos, ofertas pendientes ni viajes publicados. La placa sigue registrada.', confirmLabel: 'Archivar vehículo', tone: 'destructive' });
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await actions.fleet.archiveVehicle({ id: v.id! });
+    if (error) { toast.error(splitActionError(error).message); setBusy(false); return; }
+    flash('Vehículo archivado');
     window.location.reload();
   }
   return (
     <DropdownMenu>
       <Tooltip content="Cambiar estado"><DropdownMenuTrigger asChild><Button variant="outline" size="sm" loading={busy} aria-label={`Acciones de ${v.plate}`} className="@min-[720px]:border-transparent @min-[720px]:px-2"><MoreHorizontal /><span className="@min-[720px]:sr-only">Acciones</span></Button></DropdownMenuTrigger></Tooltip>
       <DropdownMenuContent>
-        <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+        <DropdownMenuLabel>{v.plate}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => onEdit(v)}><Pencil aria-hidden="true" /> Editar vehículo</DropdownMenuItem>
+        {/* «En ruta» lo controla el envío (F33): no se ofrece marcarlo a mano. */}
         {STATUS_ACTIONS.filter((a) => a.status !== v.status).map((a) => (
           <DropdownMenuItem key={a.status} onSelect={() => change(a.status)}><a.icon aria-hidden="true" /> {a.label}</DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem destructive onSelect={archive}><Archive aria-hidden="true" /> Archivar vehículo</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -205,6 +221,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
   const canDrivers = useCan('MANAGE_DRIVERS');
   const [resetFor, setResetFor] = useState<DriverView | null>(null);
   const [dialog, setDialog] = useState<'vehicle' | 'driver' | null>(null);
+  const [editing, setEditing] = useState<VehicleView | null>(null);
   const [vf, setVf] = useState('');
   const count = (s: string) => vehicles.filter((v) => v.status === s).length;
   const close = () => setDialog(null);
@@ -252,7 +269,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
                       <Td label="Capacidad" className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
                       <Td label="Volumen" className="whitespace-nowrap text-right font-mono tabular-nums">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
                       <Td label="Estado"><StatusPill status={v.status!} /></Td>
-                      <Td actions className="text-right">{canOperate && <VehicleActions v={v} />}</Td>
+                      <Td actions className="text-right">{canOperate && <VehicleActions v={v} onEdit={setEditing} />}</Td>
                     </Tr>
                   ))}
                 </tbody>
@@ -289,6 +306,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
       </Card>
 
       <VehicleDialog open={dialog === 'vehicle'} onClose={close} />
+      {editing && <VehicleDialog key={editing.id} open vehicle={editing} onClose={() => setEditing(null)} />}
       <DriverDialog open={dialog === 'driver'} onClose={close} />
       <ResetPasswordDialog driver={resetFor} onClose={() => setResetFor(null)} />
     </div>

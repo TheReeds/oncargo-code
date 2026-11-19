@@ -29,6 +29,7 @@ import { KpiTile, KpiGrid } from '@/components/domain/KpiTile';
 import { DescriptionList } from '@/components/ui/description-list';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { ExportButton } from '@/components/ui/export-button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/domain/EmptyState';
@@ -346,7 +347,7 @@ export default function UiCatalog() {
           </Card>
         </Section>
 
-        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; ExportButton (exportar CSV con aviso de error); EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
+        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; ExportButton (exportar CSV con aviso de error); CopyButton (copiar al portapapeles con aviso accesible); EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
           <KpiGrid>
             <KpiTile label="Solicitudes activas" value={10} context="3 con subasta abierta" icon={Truck} href="#paneles" tone="petrol" />
             <KpiTile label="Ahorro vs sugerido" value="S/ 1,240" context="en 4 envíos" icon={Gavel} tone="money" delta={{ value: '+8%', direction: 'up', good: true }} />
@@ -354,7 +355,7 @@ export default function UiCatalog() {
             <KpiTile label="Incidencias abiertas" value={1} context="requiere atención" tone="alert" loading />
           </KpiGrid>
           <Card>
-            <CardHeader><div><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Redimensiona la ventana: bajo 720 px del contenedor las filas pasan a tarjetas.</CardDescription></div><div className="flex flex-wrap items-center gap-2"><ExportButton href="/exportar/solicitudes" /><QuickFilters label="Estado" value={quick} onValueChange={setQuick} options={[{ value: '', label: 'Todas', count: 13 }, { value: 'PUBLISHED', label: 'Publicadas', count: 10 }, { value: 'MATCHED', label: 'Adjudicadas', count: 3 }]} /></div></CardHeader>
+            <CardHeader><div><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Redimensiona la ventana: bajo 720 px del contenedor las filas pasan a tarjetas.</CardDescription></div><div className="flex flex-wrap items-center gap-2"><ExportButton href="/exportar/solicitudes" /><CopyButton text="https://oncargo.tech/s/ejemplo" label="Copiar enlace" /><QuickFilters label="Estado" value={quick} onValueChange={setQuick} options={[{ value: '', label: 'Todas', count: 13 }, { value: 'PUBLISHED', label: 'Publicadas', count: 10 }, { value: 'MATCHED', label: 'Adjudicadas', count: 3 }]} /></div></CardHeader>
             <Table label="Solicitudes recientes" stack sticky>
               <thead><tr><Th>Ruta</Th><Th sort={dir} onSort={() => setDir(dir === 'asc' ? 'desc' : 'asc')}>Recojo</Th><Th>Estado</Th><Th className="text-right">Sugerido</Th><Th><span className="sr-only">Acciones</span></Th></tr></thead>
               <tbody>

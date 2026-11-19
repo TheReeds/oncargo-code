@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import pe.logyx.fleet.application.port.out.DriverRepository;
+import pe.logyx.fleet.application.port.out.FleetCommitments;
 import pe.logyx.fleet.application.port.out.VehicleRepository;
 import pe.logyx.fleet.domain.model.Driver;
 import pe.logyx.fleet.domain.model.Vehicle;
@@ -34,6 +35,7 @@ public class FleetService {
     @Inject TenantContext tenant;
     @Inject AuditService audit;
     @Inject SystemTx system;
+    @Inject FleetCommitments commitments;
 
     // ------------------------------------------------------------ Vehículos
 
@@ -54,9 +56,69 @@ public class FleetService {
 
     public Vehicle setVehicleStatus(UUID id, Vehicle.Status status) {
         Vehicle v = ownVehicle(id);
+        if (status == Vehicle.Status.MAINTENANCE && v.status() != Vehicle.Status.MAINTENANCE) {
+            // Higiene de flota: no se da de baja un vehículo que tiene envíos activos o por salir.
+            var active = commitments.activeShipmentsOfVehicle(v.id());
+            if (!active.isEmpty()) {
+                throw BusinessException.conflict("LOGYX-FLT-004", v.plate() + " tiene " + describe(active.size(),
+                        "envío activo", "envíos activos") + " (" + span(active) + "): reasígnalo antes de ponerlo en "
+                        + "mantenimiento", "vehicleId");
+            }
+        }
         v.changeStatus(status);
         vehicles.save(v);
         return v;
+    }
+
+    /**
+     * Corrige tipo, capacidad y volumen (roadmap 1.12). Con envíos activos, ofertas pendientes o viajes publicados solo
+     * se puede cambiar el volumen: tipo y kg sustentan RN02 y RN12 de esos compromisos (LOGYX-FLT-004).
+     */
+    public Vehicle updateVehicle(UUID id, UpdateVehicleCommand cmd) {
+        Vehicle v = ownVehicle(id);
+        if (v.isArchived()) {
+            throw BusinessException.conflict("LOGYX-FLT-004", "El vehículo está archivado y no se edita", "vehicleId");
+        }
+        boolean changesCore = (cmd.type() != null && cmd.type() != v.type())
+                || (cmd.maxWeightKg() != null && cmd.maxWeightKg().compareTo(v.maxWeightKg()) != 0);
+        if (changesCore && hasCommitments(v)) {
+            throw BusinessException.conflict("LOGYX-FLT-004", v.plate() + " tiene envíos, ofertas pendientes o viajes "
+                    + "publicados: solo puedes corregir su volumen (m³)", "vehicleId");
+        }
+        v.revise(changesCore ? cmd.type() : null, changesCore ? cmd.maxWeightKg() : null, cmd.maxVolumeM3());
+        vehicles.save(v);
+        audit.record(tenant.profileId(), tenant.orgId(), "VEHICLE_UPDATED", "vehicle", v.id(), v.plate());
+        return v;
+    }
+
+    /** Da de baja (archiva) el vehículo: sin envíos activos, ofertas pendientes ni viajes publicados (LOGYX-FLT-004). */
+    public Vehicle archiveVehicle(UUID id) {
+        Vehicle v = ownVehicle(id);
+        if (v.isArchived()) return v;
+        if (hasCommitments(v)) {
+            throw BusinessException.conflict("LOGYX-FLT-004", v.plate() + " tiene envíos activos, ofertas pendientes o "
+                    + "viajes publicados: resuélvelos antes de archivarlo", "vehicleId");
+        }
+        v.archive(java.time.OffsetDateTime.now());
+        vehicles.save(v);
+        audit.record(tenant.profileId(), tenant.orgId(), "VEHICLE_ARCHIVED", "vehicle", v.id(), v.plate());
+        return v;
+    }
+
+    private boolean hasCommitments(Vehicle v) {
+        return !commitments.activeShipmentsOfVehicle(v.id()).isEmpty()
+                || commitments.pendingBidsOfVehicle(v.id()) > 0
+                || commitments.openTripsOfVehicle(v.id()) > 0;
+    }
+
+    private static String describe(int n, String one, String many) {
+        return n + " " + (n == 1 ? one : many);
+    }
+
+    private static String span(java.util.List<FleetCommitments.ActiveShipment> list) {
+        var from = list.stream().map(FleetCommitments.ActiveShipment::from).min(java.util.Comparator.naturalOrder()).orElseThrow();
+        var to = list.stream().map(FleetCommitments.ActiveShipment::to).max(java.util.Comparator.naturalOrder()).orElseThrow();
+        return from.equals(to) ? from.toString() : from + " a " + to;
     }
 
     /** Vehículo de la organización actual o 404. */
@@ -105,6 +167,10 @@ public class FleetService {
     /** Crea la cuenta del conductor (rol DRIVER) dentro de la organización transportista. Solo su ADMIN (F03). */
     public DriverAccount addDriver(AddDriverCommand cmd) {
         AccessDenied.requireOrgAdmin(tenant);
+        if (drivers.licenseExists(tenant.orgId(), cmd.licenseNumber())) {
+            throw BusinessException.conflict("LOGYX-FLT-005", "Ya hay un conductor con esa licencia en tu flota",
+                    "licenseNumber");
+        }
         Profile p = accounts.createDriverAccount(tenant.orgId(), cmd.fullName(), cmd.email(), cmd.password());
         Driver d = Driver.hire(tenant.orgId(), p.id(), cmd.licenseNumber());
         drivers.save(d);
@@ -116,6 +182,15 @@ public class FleetService {
     public DriverAccount setDriverActive(UUID id, boolean active) {
         AccessDenied.requireOrgAdmin(tenant);
         DriverAccount current = ownDriver(id);
+        if (!active) {
+            // Higiene de flota: un conductor con envíos activos o por salir no se desactiva (queda un envío huérfano).
+            var running = commitments.activeShipmentsOfDriver(current.driver().id());
+            if (!running.isEmpty()) {
+                throw BusinessException.conflict("LOGYX-FLT-006", current.fullName() + " tiene "
+                        + describe(running.size(), "envío activo", "envíos activos") + " (" + span(running)
+                        + "): reasigna primero el conductor de esos envíos", "driverId");
+            }
+        }
         Profile p = accounts.setDriverActive(current.driver().profileId(), active);
         audit.record(tenant.profileId(), tenant.orgId(), active ? "DRIVER_REACTIVATED" : "DRIVER_DEACTIVATED",
                 "driver", id, null);

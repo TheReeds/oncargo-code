@@ -179,7 +179,8 @@ class MyBidNegotiationTest {
         val req = request(bid = null, cargo = CargoType.PERISHABLE)
         val reefer = VehicleView("r", "REF-1", VehicleType.REFRIGERATED, 8000.0, 30.0, VehicleStatus.AVAILABLE)
         val small = VehicleView("s", "SML-1", VehicleType.TRUCK_SMALL, 8000.0, 30.0, VehicleStatus.AVAILABLE)
-        val busy = VehicleView("b", "BSY-1", VehicleType.REFRIGERATED, 8000.0, 30.0, VehicleStatus.IN_ROUTE)
+        // RN02 por fecha: «en ruta» ya no bloquea (lo decide la agenda); solo el mantenimiento.
+        val busy = VehicleView("b", "BSY-1", VehicleType.REFRIGERATED, 8000.0, 30.0, VehicleStatus.MAINTENANCE)
         val (vm, _) = vm(req, loads = fleetLoads(req, listOf(small, reefer, busy)))
         assertEquals(3, vm.state.value.vehicleChoices.size)
         assertEquals(VehicleFit.TYPE, vm.state.value.vehicleChoices.first { it.vehicle.id == "s" }.fit)
@@ -191,17 +192,25 @@ class MyBidNegotiationTest {
         assertEquals("r", vm.state.value.form?.vehicleId, "un vehículo no apto no se puede elegir")
     }
 
-    @Test fun `con varios vehiculos aptos hay que elegir y sin elegir marca el error`() = runTest {
+    @Test fun `con varios vehiculos aptos se preselecciona el de menor capacidad y se puede cambiar`() = runTest {
         val req = request(bid = null)
-        val (vm, _) = vm(req, loads = fleetLoads(req, listOf(truck("1", 5000.0), truck("2", 9000.0))))
+        val (vm, _) = vm(req, loads = fleetLoads(req, listOf(truck("2", 9000.0), truck("1", 5000.0))))
         vm.openBidSheet()
-        assertNull(vm.state.value.form?.vehicleId)
-        vm.onAmountChange("1500")
-        vm.requestConfirm()
-        assertTrue((vm.state.value.form?.vehicleError as UiText.Res).id == R.string.loads_error_vehicle_required)
+        assertEquals("1", vm.state.value.form?.vehicleId, "oferta rápida: el apto de menor capacidad suficiente")
         vm.selectVehicle("2")
         assertNull(vm.state.value.form?.vehicleError)
         assertEquals("2", vm.state.value.form?.vehicleId)
+    }
+
+    @Test fun `sin vehiculo elegido marca el error de vehiculo`() = runTest {
+        val req = request(bid = null)
+        val (vm, _) = vm(req, loads = fleetLoads(req, listOf(truck("1", 5000.0))))
+        vm.openBidSheet()
+        vm.onAmountChange("1500")
+        // El único apto se preselecciona; un envío sin vehículo (p. ej. la flota cambió) marca el campo.
+        vm.dismissBidSheet()
+        vm.openBidSheet()
+        assertEquals("1", vm.state.value.form?.vehicleId)
     }
 
     @Test fun `sin vehiculos aptos el vehiculo no se preselecciona y el envio queda bloqueado`() = runTest {

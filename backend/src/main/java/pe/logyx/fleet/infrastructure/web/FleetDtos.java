@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import pe.logyx.fleet.application.AddDriverCommand;
 import pe.logyx.fleet.application.AddVehicleCommand;
 import pe.logyx.fleet.application.DriverAccount;
+import pe.logyx.fleet.application.UpdateVehicleCommand;
 import pe.logyx.fleet.domain.model.Driver;
 import pe.logyx.fleet.domain.model.Vehicle;
 
@@ -28,6 +29,16 @@ public final class FleetDtos {
                               BigDecimal maxVolumeM3, Vehicle.Status status) {
         static VehicleView of(Vehicle v) {
             return new VehicleView(v.id(), v.plate(), v.type(), v.maxWeightKg(), v.maxVolumeM3(), v.status());
+        }
+    }
+
+    /** Corrección del vehículo (la placa no cambia). Con compromisos solo se admite el volumen (409 LOGYX-FLT-004). */
+    public record VehiclePatch(Vehicle.Type type,
+                               @DecimalMin(value = "100", message = "Capacidad mínima 100 kg") BigDecimal maxWeightKg,
+                               @DecimalMin("0.1") BigDecimal maxVolumeM3) {
+
+        UpdateVehicleCommand toCommand() {
+            return new UpdateVehicleCommand(type, maxWeightKg, maxVolumeM3);
         }
     }
 

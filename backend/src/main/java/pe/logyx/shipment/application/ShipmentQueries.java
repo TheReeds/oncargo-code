@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 public class ShipmentQueries {
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
+    /** Tope de filas de una exportación CSV (mismo que las solicitudes, roadmap 1.5). */
+    public static final int EXPORT_MAX_ROWS = 10_000;
 
     @Inject ShipmentRepository shipments;
     @Inject ShipmentStopRepository stops;
@@ -54,6 +56,32 @@ public class ShipmentQueries {
                 ? shipments.listByCarrier(org)
                 : shipments.listByRequester(org), page);
         return new Paged<>(summaries(p.items()), page, p.total());
+    }
+
+    /**
+     * «Mis envíos» con filtros en el servidor (roadmap 1.5): misma RLS y misma consulta para la vista JSON y el CSV.
+     */
+    public Paged<ShipmentSummary> mine(ShipmentFilter filter, PageRequest page) {
+        Paged<Shipment> p = shipments.searchMine(tenant.orgId(), tenant.orgType() == OrgType.CARRIER, filter, page);
+        return new Paged<>(summaries(p.items()), page, p.total());
+    }
+
+    /** Lo que exporta el CSV: todos los que cumplen el filtro, hasta {@link #EXPORT_MAX_ROWS} (si no, LOGYX-EXP-001). */
+    public List<ShipmentSummary> exportMine(ShipmentFilter filter) {
+        UUID org = tenant.orgId();
+        boolean carrier = tenant.orgType() == OrgType.CARRIER;
+        Paged<Shipment> p = shipments.searchMine(org, carrier, filter, new PageRequest(0, 1));
+        if (p.total() > EXPORT_MAX_ROWS) {
+            throw BusinessException.badRequest("LOGYX-EXP-001", "Hay " + p.total() + " envíos: el máximo para exportar es "
+                    + EXPORT_MAX_ROWS + ". Acota por estado, ciudad o fechas", "status");
+        }
+        List<Shipment> all = new ArrayList<>();
+        for (int page = 0; all.size() < p.total(); page++) {
+            var chunk = shipments.searchMine(org, carrier, filter, new PageRequest(page, PageRequest.MAX_SIZE)).items();
+            if (chunk.isEmpty()) break;
+            all.addAll(chunk);
+        }
+        return summaries(all);
     }
 
     /** KPIs de envíos; "del mes" cuenta desde el día 1 a las 00:00 en hora de Lima. */
@@ -142,10 +170,23 @@ public class ShipmentQueries {
         list.forEach(s -> { orgIds.add(s.requesterOrgId()); orgIds.add(s.carrierOrgId()); });
         Map<UUID, Organization> orgs = organizations.byIds(orgIds);
         Set<UUID> onHold = holds.withActiveIncident(list.stream().map(Shipment::id).toList());
+        UUID driverId = tenant.isDriver() ? fleet.driverForProfile(tenant.profileId()).map(Driver::id).orElse(null) : null;
         return list.stream().map(s -> new ShipmentSummary(s, byShipment.getOrDefault(s.id(), List.of()),
                 name(orgs.get(s.requesterOrgId())), name(orgs.get(s.carrierOrgId())), infos.get(s.requestId()),
-                onHold.contains(s.id())))
+                onHold.contains(s.id()), contactsVisible(s, driverId)))
                 .toList();
+    }
+
+    /**
+     * RN07 post-adjudicación: el contacto de las paradas lo ven las dos partes, el operador y, entre los conductores,
+     * solo el asignado (la RLS {@code stops_driver_scope} ya oculta las paradas ajenas; esto es la segunda barrera).
+     */
+    private boolean contactsVisible(Shipment s, UUID currentDriverId) {
+        if (!tenant.isAuthenticated()) return false;
+        if (tenant.orgType() == OrgType.OPERATOR) return true;
+        if (!s.isParty(tenant.orgId())) return false;
+        if (tenant.isDriver()) return currentDriverId != null && currentDriverId.equals(s.driverId());
+        return true;
     }
 
     private static String name(Organization o) {

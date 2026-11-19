@@ -17,6 +17,8 @@ public interface BidRepository {
     List<Bid> listPendingByRequest(UUID requestId);
     /** Más recientes primero. */
     List<Bid> listByCarrier(UUID carrierOrgId);
+    /** Ofertas PENDING del vehículo (de su transportista, por RLS): la agenda de ofertas (RN02 por fecha). */
+    List<Bid> listPendingByVehicle(UUID vehicleId);
     List<Bid> listByRequestsAndCarrier(Collection<UUID> requestIds, UUID carrierOrgId);
     boolean existsForCarrier(UUID auctionId, UUID carrierOrgId);
     /** La oferta del transportista en la subasta (cualquier estado, incluida la retirada). */

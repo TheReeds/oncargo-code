@@ -26,6 +26,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   COUNTER_OFFER_ACCEPTED: 'Contra-oferta aceptada',
   SHIPMENT_CANCELLED: 'Envío cancelado',
   SHIPMENT_DELIVERED: 'Envío entregado',
+  SHARE_LINK_CREATED: 'Enlace de seguimiento creado',
+  SHARE_LINK_REVOKED: 'Enlace de seguimiento revocado',
   SHIPMENT_VEHICLE_CHANGED: 'Vehículo del envío cambiado',
   DRIVER_ASSIGNED: 'Conductor asignado',
   DRIVER_CREATED: 'Conductor registrado',

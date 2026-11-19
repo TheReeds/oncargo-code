@@ -4,6 +4,10 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import pe.logyx.shared.api.CsvWriter;
+import pe.logyx.trip.domain.model.TripStatus;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -35,6 +39,51 @@ public class TripResource {
     @ResponseStatus(201)
     public ApiResponse<TripView> publish(@Valid CreateTripRequest req) {
         return ApiResponse.of(TripView.of(trips.publish(req.toCommand())));
+    }
+
+    @GET
+    @Path("/trips/mine/export")
+    @Produces(CsvWriter.MEDIA_TYPE)
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) mis viajes publicados",
+            description = "Filtros opcionales: status (OPEN, FILLING, CLOSED, COMPLETED, CANCELLED), originCity, destinationCity, "
+                    + "fromDate y toDate (fecha de salida, inclusive). Máximo 10 000 filas (LOGYX-EXP-001).")
+    public Response exportMine(@QueryParam("status") String status, @QueryParam("originCity") String originCity,
+                               @QueryParam("destinationCity") String destinationCity,
+                               @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate) {
+        TripStatus wanted = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                wanted = TripStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw BusinessException.badRequest("LOGYX-VAL-001", "Estado inválido: " + status, "status");
+            }
+        }
+        java.time.LocalDate from = parseDate(fromDate, "fromDate"), to = parseDate(toDate, "toDate");
+        java.time.ZoneId lima = java.time.ZoneId.of("America/Lima");
+        final TripStatus st = wanted;
+        var rows = queries.myTrips(TripSort.DEPARTURE).stream()
+                .filter(s -> st == null || s.trip().status() == st)
+                .filter(s -> originCity == null || originCity.isBlank() || s.trip().originCity().name().equalsIgnoreCase(originCity.trim()))
+                .filter(s -> destinationCity == null || destinationCity.isBlank() || s.trip().destinationCity().name().equalsIgnoreCase(destinationCity.trim()))
+                .filter(s -> from == null || !s.trip().departureAt().atZoneSameInstant(lima).toLocalDate().isBefore(from))
+                .filter(s -> to == null || !s.trip().departureAt().atZoneSameInstant(lima).toLocalDate().isAfter(to))
+                .toList();
+        if (rows.size() > 10_000) {
+            throw BusinessException.badRequest("LOGYX-EXP-001", "Hay más de 10 000 viajes: acota por estado, ciudad o fechas", "status");
+        }
+        String name = "mis-viajes-" + java.time.LocalDate.now(lima) + ".csv";
+        return Response.ok(TripCsv.trips(rows), CsvWriter.MEDIA_TYPE)
+                .header("Content-Disposition", "attachment; filename=\"" + name + "\"").build();
+    }
+
+    private static java.time.LocalDate parseDate(String v, String field) {
+        if (v == null || v.isBlank()) return null;
+        try {
+            return java.time.LocalDate.parse(v.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw BusinessException.badRequest("LOGYX-VAL-001", "Fecha inválida (yyyy-MM-dd): " + v, field);
+        }
     }
 
     @GET
