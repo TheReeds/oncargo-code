@@ -111,6 +111,8 @@
         <configuration>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            <!-- Las fechas de negocio son de Lima: los tests no deben depender de la zona de la máquina (CI en UTC). -->
+            <user.timezone>America/Lima</user.timezone>
           </systemPropertyVariables>
         </configuration>
       </plugin>
