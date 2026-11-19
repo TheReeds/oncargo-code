@@ -140,7 +140,10 @@ fun LogyxApp(auth: AuthRepository = koinInject(), config: AppConfig = koinInject
 /** Chips de cuentas demo: solo si el build trae su contraseña (`AppConfig.demoPassword`). */
 private fun demoAccounts(password: String) = if (password.isEmpty()) emptyList() else listOf(
     DemoAccount("PYME", "pyme@logyx.pe", password),
+    DemoAccount("PYME · Operaciones", "pyme.ops@logyx.pe", password),
+    DemoAccount("PYME · Lector", "pyme.viewer@logyx.pe", password),
     DemoAccount("Transportista", "carrier@logyx.pe", password),
+    DemoAccount("Transportista 2", "carrier2@logyx.pe", password),
     DemoAccount("Conductor", "driver@logyx.pe", password),
 )
 
