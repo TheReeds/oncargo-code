@@ -61,6 +61,7 @@ public class DocumentService {
         boolean assignedDriver = tenant.isDriver() && me.equals(s.carrierOrgId());
         DocumentUploadPolicy.ensureCanAttach(cmd.type(), assignedDriver, stop,
                 s.status() == Shipment.Status.DELIVERED);
+        DocumentUploadPolicy.ensureSettlementSide(cmd.type(), me.equals(s.requesterOrgId()), tenant.isDriver());
         FileFormat format = DocumentUploadPolicy.ensureValidFile(cmd.type(), cmd.sizeBytes(), maxBytes, header(cmd));
 
         UUID id = UUID.randomUUID();

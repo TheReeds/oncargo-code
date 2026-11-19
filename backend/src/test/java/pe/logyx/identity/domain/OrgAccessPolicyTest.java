@@ -22,6 +22,10 @@ class OrgAccessPolicyTest {
         // V16: sus preferencias de aviso y «Pedir acceso»
         assertTrue(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/notifications/preferences"));
         assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/organizations/me/access-requests"));
+        // V24 (2.2, 2.17): sus preferencias de correo y aceptar los términos vigentes; no las de la organización
+        assertTrue(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/notifications/email-settings"));
+        assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/auth/terms/accept"));
+        assertFalse(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/organizations/me/preferences"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/organizations/me/users"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/shipment-requests"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/shipments/x/driver"));

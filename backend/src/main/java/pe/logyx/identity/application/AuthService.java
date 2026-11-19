@@ -31,6 +31,7 @@ public class AuthService {
     @Inject RefreshSessions refreshSessions;
     @Inject AccountSessions sessions;
     @Inject LegalTerms legalTerms;
+    @Inject TermsService termsService;
     @Inject pe.logyx.identity.application.port.out.TermsAcceptanceRepository termsAcceptances;
 
     /** Registra organización + usuario administrador. No hay usuario aún: corre sin RLS. */
@@ -57,7 +58,7 @@ public class AuthService {
             audit.record(admin.id(), org.id(), "REGISTER", "organization", org.id(),
                     terms == null ? "consentimiento Ley 29733 aceptado"
                             : "consentimiento Ley 29733 y términos " + terms + " aceptados");
-            return issue(new UserAccount(admin, org));
+            return issue(termsService.account(admin, org));
         });
     }
 
@@ -80,7 +81,7 @@ public class AuthService {
                     OffsetDateTime.now());
             profiles.insert(admin);
             audit.record(admin.id(), org.id(), "OPERATOR_PROVISIONED", "organization", org.id(), null);
-            return issue(new UserAccount(admin, org));
+            return issue(termsService.account(admin, org));
         });
     }
 
@@ -120,7 +121,7 @@ public class AuthService {
             Organization org = organizations.findById(p.organizationId()).orElseThrow();
             p.recordLogin(OffsetDateTime.now());
             profiles.update(p);
-            return refresh ? refreshSessions.start(p, org, userAgent) : issue(new UserAccount(p, org));
+            return refresh ? refreshSessions.start(p, org, userAgent) : issue(termsService.account(p, org));
         });
     }
 
@@ -145,7 +146,7 @@ public class AuthService {
         audit.record(p.id(), p.organizationId(), "PASSWORD_CHANGED", "profile", p.id(), null);
         sessions.revoked(p.id());
         Organization org = organizations.findById(p.organizationId()).orElseThrow();
-        return refresh ? refreshSessions.start(p, org, userAgent) : issue(new UserAccount(p, org));
+        return refresh ? refreshSessions.start(p, org, userAgent) : issue(termsService.account(p, org));
     }
 
     /** "Cerrar sesión en todos los dispositivos" (F55): sube la versión de sesión; todos los tokens dejan de valer. */
@@ -163,7 +164,7 @@ public class AuthService {
         Profile p = profiles.findById(tenant.profileId())
                 .orElseThrow(() -> BusinessException.notFound("Usuario"));
         Organization org = organizations.findById(p.organizationId()).orElseThrow();
-        return new UserAccount(p, org);
+        return termsService.account(p, org);
     }
 
     private AuthResult issue(UserAccount account) {

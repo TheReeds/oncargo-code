@@ -34,6 +34,7 @@ public class RefreshSessions {
     @Inject OrganizationRepository organizations;
     @Inject TokenIssuer tokens;
     @Inject AuditService audit;
+    @Inject TermsService terms;
 
     @ConfigProperty(name = "logyx.refresh.family-ttl", defaultValue = "P30D")
     Duration familyTtl;
@@ -47,7 +48,7 @@ public class RefreshSessions {
         // SystemTx: refresh_tokens solo lo escribe la plataforma (V14). Se une a la transacción de sistema del login.
         system.run(() -> refreshTokens.insert(t));
         Duration access = tokens.refreshAccessTtl();
-        return new AuthResult(tokens.issue(p, org, access), access.toSeconds(), new UserAccount(p, org), raw,
+        return new AuthResult(tokens.issue(p, org, access), access.toSeconds(), terms.account(p, org), raw,
                 Duration.between(now, t.familyExpiresAt()).toSeconds());
     }
 
@@ -82,7 +83,7 @@ public class RefreshSessions {
             RefreshToken next = t.next(OpaqueTokens.hash(nextRaw), p.sessionVersion(), now);
             refreshTokens.insert(next);
             Duration access = tokens.refreshAccessTtl();
-            return new Outcome(new AuthResult(tokens.issue(p, org, access), access.toSeconds(), new UserAccount(p, org),
+            return new Outcome(new AuthResult(tokens.issue(p, org, access), access.toSeconds(), terms.account(p, org),
                     nextRaw, Duration.between(now, next.familyExpiresAt()).toSeconds()), false);
         });
         if (out.reuse()) Log.warn("Refresh token reutilizado: familia revocada");

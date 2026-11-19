@@ -21,3 +21,10 @@ export const deactivateUser = (token: string, id: string) =>
   unwrap(apiFor(token).POST('/api/v1/organizations/me/users/{id}/deactivate', { params: { path: { id } } }));
 export const reactivateUser = (token: string, id: string) =>
   unwrap(apiFor(token).POST('/api/v1/organizations/me/users/{id}/reactivate', { params: { path: { id } } }));
+
+// ----- V24 (Ola 2 zona F, 2.2): preferencias de la organización (el ADMIN escribe; todos leen)
+export type OrganizationPreferencesView = Schemas['OrganizationPreferencesView'];
+export type UpdateOrganizationPreferences = Schemas['UpdateOrganizationPreferences'];
+export const getOrganizationPreferences = (token: string) => unwrap(apiFor(token).GET('/api/v1/organizations/me/preferences'));
+export const updateOrganizationPreferences = (token: string, body: UpdateOrganizationPreferences) =>
+  unwrap(apiFor(token).PUT('/api/v1/organizations/me/preferences', { body }));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
-import { FileWarning, Gauge, Pencil, Percent, Timer, TriangleAlert } from 'lucide-react';
+import { CalendarClock, FileWarning, Gauge, Gavel, Hash, Pencil, Percent, Scale, Timer, TriangleAlert } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,13 @@ import { LIMITS } from '@/lib/limits';
 import { formatParam, percentToRate, toInput } from '../parameters';
 import type { ParameterRow } from '../server';
 
-const ICON: Record<string, typeof Gauge> = { commission_rate: Percent, assignment_sla_hours: Timer, incident_warn_hours: TriangleAlert, incident_breach_hours: TriangleAlert, fleet_docs_block: FileWarning };
+const ICON: Record<string, typeof Gauge> = { commission_rate: Percent, assignment_sla_hours: Timer, incident_warn_hours: TriangleAlert, incident_breach_hours: TriangleAlert, fleet_docs_block: FileWarning, auction_duration_minutes: Gavel, auction_max_bids: Hash, price_floor_ratio: Scale, payment_terms_days: CalendarClock };
+
+/** Unidad y texto de ayuda de los parámetros enteros (V24). */
+const INTEGER: Record<string, { suffix: string; unit: string }> = {
+  HOURS: { suffix: 'h', unit: 'horas' }, MINUTES: { suffix: 'min', unit: 'minutos' }, COUNT: { suffix: '', unit: 'ofertas' },
+  DAYS: { suffix: 'días', unit: 'días' },
+};
 
 /**
  * Parámetros de sistema editables (V18). Una tarjeta por parámetro: valor vigente, de dónde viene y "Cambiar" con motivo
@@ -42,8 +48,9 @@ export default function ParametersEditor({ rows, now }: { rows: ParameterRow[]; 
     const min = Number(editing.min), max = Number(editing.max);
     const lo = isRate ? min * 100 : min, hi = isRate ? max * 100 : max;
     if (!value || Number.isNaN(n)) { setFieldError('Indica el valor.'); return false; }
-    if (isAmount ? !/^\d+(\.\d{1,2})?$/.test(value) : isRate ? percentToRate(value) === null : !/^\d+$/.test(value)) { setFieldError(isAmount ? 'Usa soles con hasta 2 decimales.' : isRate ? 'Usa un porcentaje con hasta 2 decimales, como 8 o 8.25.' : 'Indica horas enteras.'); return false; }
-    if (n < lo || n > hi) { setFieldError(isAmount ? `Debe estar entre S/ ${lo} y S/ ${hi}.` : isRate ? `Debe estar entre ${lo} % y ${hi} %.` : `Debe estar entre ${lo} y ${hi} horas.`); return false; }
+    const unit = INTEGER[editing.kind ?? 'HOURS']?.unit ?? 'horas';
+    if (isAmount ? !/^\d+(\.\d{1,2})?$/.test(value) : isRate ? percentToRate(value) === null : !/^\d+$/.test(value)) { setFieldError(isAmount ? 'Usa soles con hasta 2 decimales.' : isRate ? 'Usa un porcentaje con hasta 2 decimales, como 8 o 8.25.' : editing.kind === 'HOURS' ? 'Indica horas enteras.' : 'Indica un número entero.'); return false; }
+    if (n < lo || n > hi) { setFieldError(isAmount ? `Debe estar entre S/ ${lo} y S/ ${hi}.` : isRate ? `Debe estar entre ${lo} % y ${hi} %.` : `Debe estar entre ${lo} y ${hi} ${unit}.`); return false; }
     setFieldError(null);
     return true;
   }
@@ -98,6 +105,8 @@ export default function ParametersEditor({ rows, now }: { rows: ParameterRow[]; 
         title={editing ? `Cambiar: ${editing.label}` : 'Cambiar parámetro'}
         description={editing?.key === 'commission_rate'
           ? 'Rige para las adjudicaciones desde ahora. Los envíos ya creados conservan la tasa con la que se adjudicaron.'
+          : editing?.key?.startsWith('auction_') || editing?.key === 'price_floor_ratio'
+          ? 'Rige para las solicitudes que se publiquen desde ahora. Las subastas abiertas siguen con sus valores.'
           : 'El cambio se aplica de inmediato y queda en el historial y en la auditoría.'}
         required minLength={3} maxLength={LIMITS.parameterReason}
         label="Motivo del cambio" hint="Obligatorio. Queda en el historial junto con tu nombre y la fecha."
@@ -119,8 +128,10 @@ export default function ParametersEditor({ rows, now }: { rows: ParameterRow[]; 
               <MoneyInput id="param-value-input" value={value} onValueChange={(v) => { setValue(v); if (fieldError) setFieldError(null); }} invalid={!!fieldError} />
             </Field>
           ) : (
-          <Field label={isRate ? 'Nueva comisión' : 'Nuevo valor'} htmlFor="param-value-input" error={fieldError} hint={isRate ? `Porcentaje del precio adjudicado, entre ${Number(editing.min) * 100} % y ${Number(editing.max) * 100} %.` : `Horas enteras, entre ${editing.min} y ${editing.max}.`}>
-            <NumberInput id="param-value-input" value={value} onValueChange={(v) => { setValue(v); if (fieldError) setFieldError(null); }} decimals={isRate ? 2 : 0} suffix={isRate ? '%' : 'h'} invalid={!!fieldError} aria-describedby={fieldError ? 'param-value-input-error' : undefined} />
+          <Field label={editing.key === 'commission_rate' ? 'Nueva comisión' : 'Nuevo valor'} htmlFor="param-value-input" error={fieldError} hint={isRate
+              ? `${editing.key === 'commission_rate' ? 'Porcentaje del precio adjudicado' : 'Porcentaje del precio sugerido'}, entre ${Number(editing.min) * 100} % y ${Number(editing.max) * 100} %.`
+              : `${INTEGER[editing.kind ?? 'HOURS']?.unit ?? 'horas'} (número entero), entre ${editing.min} y ${editing.max}.`.replace(/^./, (c) => c.toUpperCase())}>
+            <NumberInput id="param-value-input" value={value} onValueChange={(v) => { setValue(v); if (fieldError) setFieldError(null); }} decimals={isRate ? 2 : 0} suffix={isRate ? '%' : (INTEGER[editing.kind ?? 'HOURS']?.suffix || undefined)} invalid={!!fieldError} aria-describedby={fieldError ? 'param-value-input-error' : undefined} />
           </Field>
           )
           )

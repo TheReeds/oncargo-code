@@ -40,6 +40,16 @@ const RESOURCES: Record<string, { path: string; query: (p: URLSearchParams) => U
   // Ola 1 zona C (roadmap 1.5): mis ofertas y mis viajes del transportista. `estado` = estado de la oferta o del viaje.
   'mis-ofertas': { path: '/api/v1/shipment-requests/my-bids/export', query: passthrough },
   viajes: { path: '/api/v1/trips/mine/export', query: passthrough },
+  // Ola 2 zona F (2.11): CSV del reporte del período (`desde`/`hasta` de `/…/reportes`).
+  reportes: {
+    path: '/api/v1/reports/export',
+    query: (p) => {
+      const out = new URLSearchParams();
+      if (p.get('desde')) out.set('from', p.get('desde')!);
+      if (p.get('hasta')) out.set('to', p.get('hasta')!);
+      return out;
+    },
+  },
 };
 
 export const GET: APIRoute = async ({ params, url, locals }) => {

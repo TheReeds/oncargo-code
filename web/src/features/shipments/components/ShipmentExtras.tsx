@@ -12,6 +12,7 @@ import type { ShipmentView } from '@/lib/api/server';
 import ShipmentActions from './ShipmentActions';
 import AdjustmentsPanel, { signedMoney } from './AdjustmentsPanel';
 import ExecutionPanel from './ExecutionPanel';
+import SettlementCard from '@/features/settlements/components/SettlementCard';
 
 type Perspective = 'PYME' | 'CARRIER' | 'OPERATOR';
 
@@ -74,6 +75,8 @@ export default function ShipmentExtras({ shipment: initial, perspective }: { shi
           El conductor no puede avanzar las paradas hasta que OnCargo la resuelva. Revisa el detalle en la pestaña Incidencias.
         </Alert>
       )}
+      {/* Ola 2 zona F (2.12): cobro del envío entregado (no se pinta si aún no se entregó). */}
+      <SettlementCard shipmentId={shipment.id!} perspective={perspective} shipmentStatus={shipment.status} />
       <Tabs defaultValue="documentos">
         <TabsList aria-label="Información del envío">
           <TabsTrigger value="documentos"><FileText className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Documentos</TabsTrigger>

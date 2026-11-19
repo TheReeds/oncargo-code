@@ -1,0 +1,30 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import SettlementsList from '@/features/settlements/components/SettlementsList';
+import SettlementKpis from '@/features/settlements/components/SettlementKpis';
+import { listSettlements, settlementSummary } from '@/features/settlements/server';
+import { apiQuery, filtersFromUrl, PAGE_SIZE } from '@/features/settlements/filters';
+const token = Astro.locals.session!.token;
+const filters = filtersFromUrl(Astro.url.searchParams);
+let summary: Awaited<ReturnType<typeof settlementSummary>> | null = null;
+let list: Awaited<ReturnType<typeof listSettlements>> = { items: [], meta: { page: 0, size: PAGE_SIZE, total: 0 } };
+let loadError: string | null = null;
+try {
+  [summary, list] = await Promise.all([settlementSummary(token), listSettlements(token, apiQuery(filters))]);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus pagos.';
+}
+---
+<AppShell title="Por pagar" active="pagos">
+  <PageHeader title="Por pagar" subtitle="Envíos entregados que debes pagar al transportista, con su fecha de vencimiento." />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus pagos" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <div class="space-y-4">
+    {summary && <div><SettlementKpis client:load summary={summary} perspective="PYME" /></div>}
+    <div>
+    <SettlementsList client:load perspective="PYME" rows={list.items} filters={filters} page={list.meta.page + 1} size={list.meta.size} total={list.meta.total} base="/pyme/pagos"
+      counts={summary ? { overdue: summary.overdue, disputed: summary.disputed } : undefined} />
+    </div>
+  </div>
+</AppShell>

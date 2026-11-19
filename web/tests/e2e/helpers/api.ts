@@ -216,7 +216,10 @@ export const inviteUser = (token: string, fullName: string, email: string, role:
 export const orgUsers = (token: string) => call<OrgUser[]>('GET', '/organizations/me/users', token);
 export const userEmail = (prefix = 'usr') => `${prefix}-${uid()}@prueba.pe`;
 export const forgotPassword = (email: string) => call<any>('POST', '/auth/forgot-password', undefined, { email });
-export const resetPasswordApi = (token: string, newPassword: string, acceptPrivacyPolicy?: boolean) => call<any>('POST', '/auth/reset-password', undefined, { token, newPassword, acceptPrivacyPolicy });
+/** `accept` = aceptar la política de privacidad y (V24) los Términos vigentes, obligatorios al activar una invitación. */
+export const resetPasswordApi = (token: string, newPassword: string, accept?: boolean) => call<any>('POST', '/auth/reset-password', undefined, { token, newPassword, acceptPrivacyPolicy: accept, acceptTerms: accept });
+/** Solo dev (V24): la cuenta de prueba olvida sus aceptaciones de los Términos (para ver el diálogo de aceptación). */
+export const forgetTerms = (email: string) => call<any>('POST', `/dev/terms/forget?email=${encodeURIComponent(email)}`);
 /** Crea (por API) un usuario con ese rol en la organización de `adminToken`, completa la invitación y devuelve su token. */
 export async function userWithRole(adminToken: string, role: 'ADMIN' | 'OPS' | 'VIEWER', password = PASSWORD) {
   const email = userEmail(role.toLowerCase());

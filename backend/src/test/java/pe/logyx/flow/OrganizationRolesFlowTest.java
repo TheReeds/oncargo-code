@@ -137,7 +137,7 @@ class OrganizationRolesFlowTest {
         given().contentType(ContentType.JSON).body(Map.of("token", token, "newPassword", "Invitada2026"))
                 .post("/api/v1/auth/reset-password").then().statusCode(400).body("error.code", is("LOGYX-AUTH-011"));
         given().contentType(ContentType.JSON).body(Map.of("token", token, "newPassword", "Invitada2026",
-                "acceptPrivacyPolicy", true)).post("/api/v1/auth/reset-password").then().statusCode(200);
+                "acceptPrivacyPolicy", true, "acceptTerms", true)).post("/api/v1/auth/reset-password").then().statusCode(200);
         Session ops = login(email, "Invitada2026");
         as(admin).post(USERS + "/" + id + "/resend-invitation").then().statusCode(409)
                 .body("error.code", is("LOGYX-USR-003"));

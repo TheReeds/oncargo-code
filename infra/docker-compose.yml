@@ -77,10 +77,18 @@ services:
       SMTP_START_TLS: ${SMTP_START_TLS:-REQUIRED}
       SMTP_TLS: ${SMTP_TLS:-false}
       MAIL_FROM: ${MAIL_FROM:-OnCargo <no-reply@oncargo.tech>}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      # V24: enlaces de los correos de avisos y de baja (/baja?t=…) y clave HMAC del enlace de baja (obligatoria).
+      WEB_URL: ${WEB_URL:-http://localhost:8580}
+      LOGYX_UNSUBSCRIBE_SECRET: ${LOGYX_UNSUBSCRIBE_SECRET:?falta LOGYX_UNSUBSCRIBE_SECRET en infra/.env}
       # Página de la web que recibe ?token= (restablecer e invitaciones)
       PASSWORD_RESET_URL: ${PASSWORD_RESET_URL:-http://localhost:8580/restablecer}
       # Solo entornos de prueba: true = no envía correos (quedan en memoria)
       MAILER_MOCK: ${MAILER_MOCK:-false}
+      # Cobros (V24): clave AES-256 de los datos de cobro (openssl rand -base64 32) y emisor de las liquidaciones.
+      LOGYX_PAYOUT_KEY: ${LOGYX_PAYOUT_KEY:-}
+      BILLING_ISSUER_NAME: ${BILLING_ISSUER_NAME:-OnCargo}
+      BILLING_ISSUER_RUC: ${BILLING_ISSUER_RUC:-}
     secrets: [jwt_private_key, jwt_public_key]
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8680}:8080"

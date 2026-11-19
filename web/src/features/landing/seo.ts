@@ -8,7 +8,7 @@ import { SUPPORT_EMAIL } from '@/lib/contact';
 import { CITIES } from './corridor-data';
 
 export const SITE_URL = 'https://oncargo.tech';
-export const INDEXABLE_PATHS = ['/', '/precios', '/contacto', '/registro', '/terminos', '/privacidad'];
+export const INDEXABLE_PATHS = ['/', '/precios', '/contacto', '/registro', '/terminos', '/seguridad', '/privacidad'];
 
 const ORG_ID = `${SITE_URL}/#organizacion`;
 

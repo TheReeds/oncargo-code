@@ -1,14 +1,14 @@
 ---
 /**
  * Marco de login y registro: pantalla partida a ancho completo.
- * - ≥ lg: panel de marca a sangre (vídeo + prueba: beneficios por rol, corredor con km reales, testimonio ilustrativo, sellos)
+ * - ≥ lg: panel de marca a sangre (vídeo + prueba: beneficios por rol, corredor con km reales, verificación, sellos)
  *   a la izquierda y el formulario centrado sobre `steel-100` con textura a la derecha.
  * - < lg: banda de marca compacta arriba (solo póster, sin descargar vídeo) y la tarjeta del formulario solapando su borde
  *   inferior; debajo, los beneficios por rol (2 columnas en tablet).
  * El panel es un contenedor (`@container`): sus tarjetas y titulares se adaptan a su propio ancho, no al de la ventana.
  */
 import BgVideo from '@/components/media/BgVideo.astro';
-import { Building, Truck, Quote, Timer, BadgeCheck, ShieldCheck, Lock, FileCheck, Check } from '@lucide/astro';
+import { Building, Truck, Timer, BadgeCheck, ShieldCheck, Lock, FileCheck, Check } from '@lucide/astro';
 interface Props { variant: 'login' | 'registro' }
 const { variant } = Astro.props;
 const login = variant === 'login';
@@ -35,9 +35,6 @@ const corridor = [
   { city: 'Cusco', km: '1,104.1' },
   { city: 'Juliaca', km: '1,248.5' },
 ];
-const quote = login
-  ? { q: 'Antes pedía cotización por WhatsApp a cinco transportistas. Ahora comparo las ofertas en una sola pantalla.', by: 'Jefa de logística de una PYME de Lima' }
-  : { q: 'Veo la carga, el piso y el vehículo mínimo antes de ofertar, y lleno mis viajes de retorno.', by: 'Gerente de un transportista de Arequipa' };
 ---
 <div class:list={['auth grid min-h-[calc(100dvh-4.0625rem)]', login ? 'lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)]' : 'lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]']}>
   <aside class="auth-aside mk-dark @container relative isolate overflow-hidden text-white" aria-label="Por qué OnCargo">
@@ -119,14 +116,10 @@ const quote = login
       </div>
 
       <div class="grid gap-4 @2xl:grid-cols-[1fr_auto] @2xl:items-end">
-        <figure>
-          <div class="flex items-center gap-2">
-            <Quote size={16} class="text-emerald-500" aria-hidden="true" />
-            <span class="rounded-full border border-white/30 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-white">Ejemplo ilustrativo</span>
-          </div>
-          <blockquote class="mt-2 text-pretty text-sm leading-relaxed text-white/90">“{quote.q}”</blockquote>
-          <figcaption class="mt-1.5 text-xs text-white/80">{quote.by} · testimonio de ejemplo, no corresponde a una empresa real</figcaption>
-        </figure>
+        <div>
+          <p class="flex items-center gap-2 text-sm font-semibold text-white"><BadgeCheck size={16} class="text-emerald-500" aria-hidden="true" /> Cada empresa se verifica antes de operar</p>
+          <p class="mt-1.5 text-pretty text-sm leading-relaxed text-white/90">Revisamos el RUC y los datos de tu empresa en 1 día hábil. <a href="/seguridad" class="font-medium text-white underline underline-offset-2">Seguridad y seguro</a></p>
+        </div>
         <ul class="flex flex-wrap gap-2 @2xl:flex-col @2xl:items-end" aria-label="Garantías de OnCargo">
           {trust.map((t) => (
             <li class="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-chrome/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"><t.icon size={13} class="text-emerald-500" aria-hidden="true" />{t.t}</li>

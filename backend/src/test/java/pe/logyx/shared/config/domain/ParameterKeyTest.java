@@ -47,4 +47,18 @@ class ParameterKeyTest {
         assertTrue(ParameterKey.parse("nope").isEmpty());
         assertEquals(404, assertThrows(BusinessException.class, () -> ParameterKey.require("nope")).status());
     }
+
+    @Test
+    void subastaPisoYPlazoDePagoSonEnterosOFraccionesConLimites() {
+        assertEquals("90", ParameterKey.AUCTION_DURATION_MINUTES.normalize("90"));
+        assertEquals(Duration.ofMinutes(90), ParameterKey.AUCTION_DURATION_MINUTES.minutes("90"));
+        assertThrows(BusinessException.class, () -> ParameterKey.AUCTION_DURATION_MINUTES.normalize("4"));
+        assertEquals("5", ParameterKey.AUCTION_MAX_BIDS.normalize("5.0"));
+        assertThrows(BusinessException.class, () -> ParameterKey.AUCTION_MAX_BIDS.normalize("2.5"));
+        assertThrows(BusinessException.class, () -> ParameterKey.AUCTION_MAX_BIDS.normalize("0"));
+        assertEquals("0.8", ParameterKey.PRICE_FLOOR_RATIO.normalize("0.80"));
+        assertThrows(BusinessException.class, () -> ParameterKey.PRICE_FLOOR_RATIO.normalize("0.4"));
+        assertEquals(30, ParameterKey.PAYMENT_TERMS_DAYS.integer(ParameterKey.PAYMENT_TERMS_DAYS.normalize("30")));
+        assertThrows(BusinessException.class, () -> ParameterKey.PAYMENT_TERMS_DAYS.normalize("121"));
+    }
 }

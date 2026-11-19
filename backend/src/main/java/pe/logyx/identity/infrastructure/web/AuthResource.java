@@ -28,6 +28,7 @@ public class AuthResource {
     @Inject AuthService auth;
     @Inject PasswordTokenService passwordTokens;
     @Inject RefreshSessions refreshSessions;
+    @Inject pe.logyx.identity.application.TermsService terms;
     @Inject AuthRateLimits limits;
     @Inject TenantContext tenant;
     @Inject HttpServerRequest http;
@@ -50,7 +51,7 @@ public class AuthResource {
         limits.beforeRegister(clientIp());
         var result = auth.register(req.toCommand());
         signupFingerprints.record(result.user().organization().id(), clientIp());   // 2.15: señales de fraude
-        return ApiResponse.of(AuthResponse.of(result));
+        return ApiResponse.of(AuthResponse.of(result, terms.currentVersion()));
     }
 
     @POST
@@ -62,7 +63,7 @@ public class AuthResource {
         try {
             var result = auth.login(req.email(), req.password(), req.wantsRefresh(), userAgent());
             limits.loginSucceeded(req.email());
-            return ApiResponse.of(AuthResponse.of(result));
+            return ApiResponse.of(AuthResponse.of(result, terms.currentVersion()));
         } catch (BusinessException e) {
             if ("LOGYX-AUTH-001".equals(e.code())) limits.loginFailed(req.email());
             throw e;
@@ -73,7 +74,7 @@ public class AuthResource {
     @Path("/me")
     @Authenticated
     public ApiResponse<UserInfo> me() {
-        return ApiResponse.of(UserInfo.of(auth.me()));
+        return ApiResponse.of(UserInfo.of(auth.me(), terms.currentVersion()));
     }
 
     // ------------------------------------------------------------ Contraseñas (F02)
@@ -102,10 +103,12 @@ public class AuthResource {
     @Path("/reset-password")
     @Operation(summary = "Definir contraseña con el enlace", description = "Restablecer o aceptar una invitación. "
             + "Cierra todas las sesiones del usuario. 400 LOGYX-AUTH-005 (token inválido, vencido o usado), "
-            + "LOGYX-AUTH-011 (invitación sin aceptar la política de privacidad).")
+            + "LOGYX-AUTH-011 (invitación sin aceptar la política de privacidad), LOGYX-AUTH-013 (invitación sin aceptar "
+            + "los Términos, V24); 409 LOGYX-AUTH-012 (versión de los Términos desactualizada).")
     public ApiResponse<AuthMessage> resetPassword(@Valid ResetPasswordRequest req) {
         limits.beforePasswordTokenUse(clientIp());
-        var r = passwordTokens.redeem(req.token(), req.newPassword(), Boolean.TRUE.equals(req.acceptPrivacyPolicy()));
+        var r = passwordTokens.redeem(req.token(), req.newPassword(), Boolean.TRUE.equals(req.acceptPrivacyPolicy()),
+                Boolean.TRUE.equals(req.acceptTerms()), req.termsVersion());
         return ApiResponse.of(new AuthMessage(r.purpose() == pe.logyx.identity.domain.model.PasswordTokenPurpose.INVITE
                 ? "Tu cuenta está activa. Ya puedes iniciar sesión."
                 : "Listo, tu contraseña cambió. Inicia sesión con la nueva."));
@@ -121,11 +124,23 @@ public class AuthResource {
         limits.beforeChangePassword(key);
         try {
             return ApiResponse.of(AuthResponse.of(auth.changePassword(req.currentPassword(), req.newPassword(),
-                    req.wantsRefresh(), userAgent())));
+                    req.wantsRefresh(), userAgent()), terms.currentVersion()));
         } catch (BusinessException e) {
             if ("LOGYX-AUTH-006".equals(e.code())) limits.changePasswordFailed(key);
             throw e;
         }
+    }
+
+    // ------------------------------------------------------------ Términos (V24, 2.17)
+
+    @POST
+    @Path("/terms/accept")
+    @Authenticated
+    @Operation(summary = "Aceptar la versión vigente de los Términos y condiciones", description = "Cualquier rol "
+            + "(también Lector). Cuando cambia la versión, GET /auth/me trae termsAccepted=false y la web lo pide. "
+            + "Idempotente. 409 LOGYX-AUTH-012 si termsVersion no es la vigente.")
+    public ApiResponse<TermsStatus> acceptTerms(@Valid AcceptTermsRequest req) {
+        return ApiResponse.of(new TermsStatus(terms.accept(req.termsVersion()), true));
     }
 
     // ------------------------------------------------------------ Sesiones (F24, F55)
@@ -137,7 +152,7 @@ public class AuthResource {
             + "No envíes Authorization.")
     public ApiResponse<AuthResponse> refresh(@Valid RefreshRequest req) {
         limits.beforeRefresh(clientIp());
-        return ApiResponse.of(AuthResponse.of(refreshSessions.rotate(req.refreshToken())));
+        return ApiResponse.of(AuthResponse.of(refreshSessions.rotate(req.refreshToken()), terms.currentVersion()));
     }
 
     @POST

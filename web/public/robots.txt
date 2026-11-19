@@ -21,5 +21,6 @@ Disallow: /incidencias
 Disallow: /sin-acceso
 Disallow: /logout
 Disallow: /restablecer
+Disallow: /baja
 
 Sitemap: https://oncargo.tech/sitemap.xml

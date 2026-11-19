@@ -64,6 +64,10 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
     @Column(name = "price_floor")
     public BigDecimal priceFloor;
 
+    /** V24 (2.14): versión del tarifario de la cotización; nula = anterior a V24. */
+    @Column(name = "tariff_version")
+    public Integer tariffVersion;
+
     @Enumerated(EnumType.STRING)
     public ShipmentRequest.Status status;
 
@@ -113,7 +117,7 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
         return new ShipmentRequest(id, requesterOrgId, createdBy,
                 new ShipmentRequest.Cargo(originCity, originAddress, destinationCity, destinationAddress,
                         cargoType, cargoDescription, weightKg, volumeM3, pickupDate),
-                new ShipmentRequest.Pricing(distanceKm, suggestedPrice, priceFloor),
+                new ShipmentRequest.Pricing(distanceKm, suggestedPrice, priceFloor, tariffVersion),
                 status, assignedCarrierOrgId, createdAt, cancelReason, republishedFrom, code,
                 new ShipmentRequest.Details(customerReference, declaredValue,
                         new ShipmentRequest.StopDetails(pickupContactName, pickupContactPhone, pickupWindowFrom,
@@ -140,6 +144,7 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
         distanceKm = p.distanceKm();
         suggestedPrice = p.suggestedPrice();
         priceFloor = p.priceFloor();
+        tariffVersion = p.tariffVersion();
         status = r.status();
         assignedCarrierOrgId = r.assignedCarrierOrgId();
         createdAt = r.createdAt();

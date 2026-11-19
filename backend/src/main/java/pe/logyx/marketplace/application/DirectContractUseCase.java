@@ -50,7 +50,8 @@ public class DirectContractUseCase {
                     new ShipmentRequest.Cargo(cmd.originCity(), cmd.originAddress(), cmd.destinationCity(),
                             cmd.destinationAddress(), cmd.cargoType(), cmd.cargoDescription(), cmd.weightKg(), null,
                             cmd.pickupDate()),
-                    new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()),
+                    new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor(),
+                        quote.tariffVersion()),
                     ShipmentRequest.Status.MATCHED, cmd.carrierOrgId(), now, null, null, codes.next(),
                     ShipmentRequest.Details.NONE);
             requests.save(r);

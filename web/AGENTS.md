@@ -285,3 +285,49 @@ Contrato: `docs/api/CHANGELOG.md` (zona X). ADR-0012 (ajustes y precio final).
 - e2e: `tests/e2e/ola2-x.spec.ts` (ajuste propuesto/aceptado/rechazado, recojo, registro por la oficina, informativa retirada, bandeja y nota
   interna del operador, 360 con suspender/reactivar, señales y ajustes; axe en claro y oscuro). `incidents.spec.ts` y `shipment-actions.spec.ts`
   se ajustaron a que `DELAY` es informativa.
+
+## Ola 2 zona F: tarifario, parámetros y calendario (V24, 2026-11-19, agente F; roadmap 2.14)
+- `features/config/` (acciones `actions.config.*`): `server.ts` (tarifario `/pricing/tariffs*`, calendario `/catalog/calendar`),
+  `components/TariffEditor.tsx` (vigente, versiones, «Nueva versión» ya o programada con `ReasonDialog`, anular), `CalendarEditor.tsx`
+  (feriados, paros y avisos por ciudad), `CalendarBanner.astro` (aviso global de hoy a pasado mañana, montado en `AppShell`; si la API
+  falla no muestra nada) y `HolidayHint.tsx` (aviso bajo la fecha de recojo en `RequestForm`, no bloquea).
+- `/operador/parametros` suma las secciones «Tarifario» y «Feriados y paros» (anclas `#tarifario`, `#calendario`). `ParametersEditor` y
+  `formatParam` entienden los tipos `MINUTES` («90 min», «3 h»), `COUNT` («5 ofertas») y `DAYS` («30 días»).
+- Reportes y cobros (2.11/2.12): ver la sección de reportes y cobros.
+
+
+## Ola 2 zona F: preferencias, correo y términos (V24, 2026-11-19; roadmap 2.2 y 2.17)
+- **`/cuenta/avisos`** suma `features/notifications/components/EmailSettingsCard` (tarjeta «Correo»: `Switch` correo sí/no, `RadioGroup`
+  al momento / resumen diario con la hora en `Select`, horario de silencio con dos `TimeSelect`; la API devuelve `HH:mm:ss`, la tarjeta
+  trabaja con `HH:mm`). Actions `notifications.emailSettings|updateEmailSettings`. Cualquier rol (también Lector).
+- **`/organizacion/preferencias`** (`features/organization/components/OrganizationPreferencesForm`, actions
+  `organization.preferences|updatePreferences`; enlace desde `/organizacion` y entrada «Preferencias de la empresa» del menú): rutas (filas
+  `Combobox` origen/destino, ≤ 20), ciudades y tipos (`MultiSelect`); transportista: «Alertas por mis rutas» y precio mínimo por km
+  (`MoneyInput`); PYME: horario de recojo (`TimeSelect`) y plazo de pago (`NumberInput suffix="días"`). Escribe solo
+  `<Can permission="MANAGE_ORGANIZATION">`; los demás ven un resumen (`DescriptionList`). Las claves de las filas salen del índice para que
+  los ids coincidan entre el SSR y la hidratación.
+- **`/baja`** (pública, también con sesión; sin JS): `?t=<token>` → `features/notifications/unsubscribe.ts` (`inspectUnsubscribe`,
+  `unsubscribe`, reenvía la IP) → confirmar con un `<form method="post">` a la misma página (`scope` CATEGORY o ALL). **`/baja/one-click`**
+  (`POST`, RFC 8058, sin cookies; `GET` redirige a `/baja`). `middleware.ts`: públicas, sin `Referer`, `noindex`; `robots.txt`: `Disallow: /baja`.
+- **Términos (2.17).** `components/domain/TermsGate` (Radix AlertDialog que no se cierra con Esc ni clic fuera; «Cerrar sesión» por
+  `POST /logout`) lo monta `AppShell` si `/auth/me` trae `termsAccepted = false` (PYME y transportista; no conductor ni operador). Action
+  `auth.acceptTerms`; si la API responde `AUTH-012` (la versión cambió otra vez) recarga. La invitación (`ResetPasswordForm`, `/restablecer`)
+  tiene una segunda casilla «Acepto los Términos y condiciones» y envía `acceptTerms` + `termsVersion` (de `GET /public/legal`).
+- **`/seguridad`** («Seguridad y seguro», borrador; texto en `features/legal/safety-content.ts`): pie de `Public.astro`, sitemap e
+  `INDEXABLE_PATHS`. `VerificationBanner` muestra el plazo «1 día hábil» y «Qué revisamos» (`VERIFICATION_CHECKLIST` en
+  `features/verification/copy.ts`). El panel de login/registro (`AuthShell`) ya no tiene testimonio «de ejemplo».
+- e2e: `tests/e2e/ola2-f-prefs.spec.ts` (axe claro y oscuro en `/cuenta/avisos`, `/organizacion/preferencias`, `/baja`, el diálogo de términos y
+  `/seguridad`). Para ver el diálogo con una cuenta de prueba: `api.forgetTerms(email)` (`POST /api/v1/dev/terms/forget`, solo dev).
+  `api.resetPasswordApi(token, pass, true)` acepta ahora privacidad **y** términos.
+
+
+## Ola 2 zona F: reportes y cobros (2026-11-19, agente web F; roadmap 2.11 y 2.12)
+Contrato: `docs/api/CHANGELOG.md` (zona F), ADR-0010 (la PYME nunca ve la comisión) y ADR-0012 (precio final = acordado + ajustes aceptados).
+- **Reportes** (`features/reports/`: `server`, `labels` (`monthLabel`, `routeLabel`, `formatPercent`), `components/{ReportView,MonthlyBars,PrintButton}`). Una isla `ReportView` con `perspective` para `/pyme/reportes`, `/transportista/reportes` y `/operador/reportes`; el rango va en la URL (`?desde=&hasta=`, sin fechas = 6 meses; la API responde `VAL-001` si pasa de 400 días y la página lo muestra en un `Alert`). Las columnas salen de `COLS[perspective]`: la de la PYME no incluye comisión ni neto. Gráfico de barras de una serie (`MonthlyBars`, CSS, `role="img"` con el detalle; la tabla «Por mes» trae los mismos datos). `ExportButton` → `/exportar/reportes` (entrada nueva en `pages/exportar/[recurso].ts`: `desde/hasta` → `from/to`).
+- **Liquidación imprimible** `pages/reportes/liquidacion/[periodo].astro` (PYME «Resumen de costos», transportista «Liquidación de comisión»; operador con `?org=<id>`, enlazada desde su tabla por transportista): sin librería PDF. La página se ve dentro de `AppShell`; `@media print` (en `styles/global.css`: oculta `#sidebar`, `#app-topbar` y `.no-print`, vuelve a tokens claros aunque el tema sea oscuro y fuerza el logo claro; en la página: tabla en blanco y negro, `@page` A4 horizontal para la liquidación de comisión y vertical para el resumen) más `PrintButton` (`window.print()`). El pie lleva el `disclaimer` de la API.
+- **Cobros** (`features/settlements/`: `server`, `actions` → `actions.settlements.*`, `labels`, `filters`, `upload`, `components/`). `SettlementCard` («Cobro») se monta en `ShipmentExtras` (PYME y transportista, sobre las pestañas) y en `/operador/envios/[id]`; no pinta nada si el envío no está `DELIVERED` o la API responde `LOGYX-STL-001` (`getSettlement` → `null`). Los botones salen de `SettlementView.actions` (`INVOICE`, `PAY`, `CONFIRM`, `DISPUTE`, `WITHDRAW_DISPUTE`, `RESOLVE`) dentro de `<Can>`. Diálogos en `SettlementDialogs`: comprobante y pago suben el archivo antes por `/documentos/subir` (`uploadProof`; el proxy ahora acepta `PAYMENT_PROOF` y `CARRIER_INVOICE`) y pasan el `documentId`; el pago exige número de operación salvo efectivo; disputar usa `ReasonDialog`; resolver (operador) elige estado + nota (≥ 3 caracteres); retirar la disputa propia es `confirm()` + `resolve` sin estado. La PYME ve «Dónde pagar» (`PayoutAccountsList`, con `CopyButton` del CCI/celular).
+- **Listados**: `/pyme/pagos` («Por pagar»), `/transportista/cobros` («Por cobrar» + cobros de comisión) y `/operador/cobros` (disputas, `OperatorCommissionPanel` con «Registrar cobro de comisión» = `CommissionCollectDialog`: transportista → envíos con comisión pendiente marcados con total → forma de pago, operación y fecha; el monto lo calcula la API). `SettlementsList` (una isla con `perspective`; filtros en la URL `estado` = estado o `VENCIDOS`/`COMISION`, `desde`, `hasta`, `pagina`; 20 por página) y `SettlementKpis` (**en archivos separados**: dos componentes del mismo módulo, uno por defecto y otro nombrado, hacen que Astro no pinte el segundo). La API limita `size` a 100.
+- **Datos de cobro** `/organizacion/datos-de-cobro` (`PayoutAccountsManager`; solo transportista, otro tipo → `/sin-acceso`; enlace en `/organizacion` y en el menú «Organización»): agregar (CCI de 20 dígitos o celular de 9), principal, archivar con `confirm()`. Escribe `<Can permission="MANAGE_ORGANIZATION">` (el ADMIN del transportista); los demás ven `•••• last4`.
+- Menú (`AppShell`): grupo «Dinero» (PYME: Por pagar, Reportes; transportista: Por cobrar, Reportes), «Cobros» y «Reportes» del operador, «Datos de cobro» en «Organización» del transportista. `StatusPill kind="settlement" | "commission"`. `lib/lima-date.ts#limaDateOf(iso)` da el día de Lima de un instante (`formatDate` solo acepta fechas sin hora: con un instante lanza `Invalid time value` y corta el SSR sin error visible).
+- **Trampa (dev):** si una isla falla durante el SSR, Astro corta la respuesta tras el HTML ya enviado (status 200) y el resto de la página no aparece: mira `web/.astro/dev.log`.
+- e2e: `tests/e2e/ola2-f.spec.ts` (11 tests: flujo factura → pago → confirmación, disputa y resolución, retirar disputa, Lector, listados y filtros, cobro de comisión del operador, reportes por rol, rango/400 días/CSV, liquidación en pantalla e impresión (`emulateMedia print`), datos de cobro; axe en claro y oscuro en cada pantalla y en los diálogos). Corre con `E2E_BASE_URL=http://127.0.0.1:4321 E2E_API_URL=http://localhost:8080 npx playwright test ola2-f.spec.ts --workers=1`.

@@ -28,6 +28,21 @@ public final class DocumentUploadPolicy {
 
     private DocumentUploadPolicy() {}
 
+    /**
+     * Documentos del cobro (V24, 2.12): {@code PAYMENT_PROOF} solo la PYME del envío; {@code CARRIER_INVOICE} solo la
+     * oficina del transportista (no el conductor). {@code LOGYX-DOC-010} (403) si no.
+     */
+    public static void ensureSettlementSide(DocumentType type, boolean uploaderIsRequester, boolean uploaderIsDriver) {
+        if (!type.isSettlementDocument()) return;
+        if (type == DocumentType.PAYMENT_PROOF && !uploaderIsRequester) {
+            throw new BusinessException(403, "LOGYX-DOC-010", "La constancia de pago la sube la PYME del envío");
+        }
+        if (type == DocumentType.CARRIER_INVOICE && (uploaderIsRequester || uploaderIsDriver)) {
+            throw new BusinessException(403, "LOGYX-DOC-010",
+                    "El comprobante del flete lo sube la oficina del transportista");
+        }
+    }
+
     public static FileFormat ensureValidFile(DocumentType type, long sizeBytes, long maxBytes, byte[] header) {
         if (sizeBytes <= 0) {
             throw BusinessException.badRequest("LOGYX-DOC-003", "El archivo está vacío", "file");

@@ -25,13 +25,15 @@ public final class OrgAccessPolicy {
 
     /**
      * Escrituras permitidas a un VIEWER: su propia cuenta y sesión, leer avisos y sus preferencias de aviso (V16), pedir
-     * acceso a los ADMIN (V16) y el cotizador (sin efectos).
+     * acceso a los ADMIN (V16), sus preferencias de correo (resumen diario y silencio, V24; aceptar los términos vigentes
+     * entra por {@code /auth/terms/accept}) y el cotizador (sin efectos).
      */
     private static final List<Pattern> VIEWER_WRITES = List.of(
             Pattern.compile("/api/v1/auth/[a-z-]+(/[a-z-]+)?"),
             Pattern.compile("/api/v1/notifications/[^/]+/read"),
             Pattern.compile("/api/v1/notifications/read-all"),
             Pattern.compile("/api/v1/notifications/preferences"),
+            Pattern.compile("/api/v1/notifications/email-settings"),
             Pattern.compile("/api/v1/organizations/me/access-requests"),
             Pattern.compile("/api/v1/pricing/calculate"));
 

@@ -1,0 +1,138 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Logo from '@/components/layout/Logo.astro';
+import { Alert } from '@/components/ui/alert';
+import PrintButton from '@/features/reports/components/PrintButton';
+import { getStatement } from '@/features/reports/server';
+import { monthLabel } from '@/features/reports/labels';
+import { SETTLEMENT_STATUS_LABELS } from '@/features/settlements/labels';
+import { ApiError } from '@/lib/api/client';
+import { CITY_LABELS, formatDate, formatDateTime, formatMoney } from '@/lib/format';
+
+const session = Astro.locals.session!;
+const { periodo } = Astro.params;
+if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo ?? '')) return Astro.redirect(session.orgType === 'OPERATOR' ? '/operador/reportes' : session.orgType === 'CARRIER' ? '/transportista/reportes' : '/pyme/reportes');
+const org = Astro.url.searchParams.get('org') ?? '';
+const reportsHref = session.orgType === 'OPERATOR' ? '/operador/reportes' : session.orgType === 'CARRIER' ? '/transportista/reportes' : '/pyme/reportes';
+const active = session.orgType === 'OPERATOR' ? 'operador-reportes' : 'reportes';
+
+let s: Awaited<ReturnType<typeof getStatement>> | null = null;
+let error: string | null = null;
+try {
+  s = await getStatement(session.token, periodo!, /^[0-9a-f-]{36}$/i.test(org) ? org : undefined);
+} catch (e) {
+  if (e instanceof ApiError && e.status === 401) throw e;
+  error = e instanceof Error ? e.message : 'No pudimos cargar el documento.';
+}
+const commission = s?.kind === 'COMMISSION_STATEMENT';
+const title = commission ? 'Liquidación de comisión' : 'Resumen de costos';
+const route = (o?: string, d?: string) => `${CITY_LABELS[o ?? ''] ?? o} → ${CITY_LABELS[d ?? ''] ?? d}`;
+const t = s?.totals ?? {};
+---
+<AppShell title={`${title} ${monthLabel(periodo)}`} active={active}>
+  <div class="no-print">
+    <PageHeader title={`${title} de ${monthLabel(periodo, true)}`} subtitle="Documento interno de OnCargo. Imprímelo o guárdalo como PDF desde el diálogo de impresión."
+      breadcrumbs={[{ label: 'Reportes', href: reportsHref }, { label: `${title} ${monthLabel(periodo)}` }]}>
+      {s && <PrintButton slot="actions" client:load />}
+    </PageHeader>
+  </div>
+  {error && <Alert tone="error" title="No pudimos armar el documento" className="no-print">{error}</Alert>}
+  {s && (
+    <article class="statement mx-auto max-w-5xl rounded-card border border-steel-200 bg-surface p-6 text-ink-900 sm:p-8" aria-label={`${title} ${s.number}`}>
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-steel-200 pb-5">
+        <div class="space-y-3">
+          <Logo size="md" />
+          <div>
+            <h2 class="text-xl font-semibold">{title}</h2>
+            <p class="text-sm text-ink-700">Período: <span class="font-medium">{s.periodLabel ?? monthLabel(periodo, true)}</span> (envíos entregados en el mes)</p>
+          </div>
+        </div>
+        <dl class="text-sm sm:text-right">
+          <dt class="text-ink-500">Número</dt>
+          <dd class="font-mono text-base font-semibold" data-testid="statement-number">{s.number}</dd>
+          <dt class="mt-2 text-ink-500">Generado</dt>
+          <dd>{formatDateTime(s.generatedAt)}</dd>
+        </dl>
+      </header>
+
+      <section class="grid gap-4 border-b border-steel-200 py-5 text-sm sm:grid-cols-2" aria-label="Partes">
+        <div><h3 class="text-xs font-semibold uppercase tracking-wide text-ink-500">Emisor</h3><p class="font-medium">{s.issuerName}</p>{s.issuerRuc && <p class="font-mono text-xs text-ink-700">RUC {s.issuerRuc}</p>}</div>
+        <div><h3 class="text-xs font-semibold uppercase tracking-wide text-ink-500">{commission ? 'Transportista' : 'Empresa'}</h3><p class="font-medium">{s.organizationName}</p>{s.organizationRuc && <p class="font-mono text-xs text-ink-700">RUC {s.organizationRuc}</p>}</div>
+      </section>
+
+      {s.truncated && <Alert tone="warning" title="Documento incompleto" className="my-4">Hay más envíos de los que caben en este documento. Pide el detalle completo a soporte.</Alert>}
+
+      <section class="py-5" aria-label="Envíos del mes">
+        {(s.lines ?? []).length === 0 ? <p class="text-sm text-ink-700">No hay envíos entregados en este mes.</p> : (
+          <div class="statement-table-wrap overflow-x-auto" tabindex="0" role="region" aria-label="Envíos del mes">
+            <table class="statement-table w-full text-left text-[13px]">
+              <thead>
+                <tr>
+                  <th scope="col">Envío</th><th scope="col">Entrega</th><th scope="col">Ruta</th><th scope="col">{commission ? 'PYME' : 'Transportista'}</th>
+                  {commission ? (<>
+                    <th scope="col" class="num">Precio final</th><th scope="col" class="num">Valor de venta</th><th scope="col" class="num">Tasa</th><th scope="col" class="num">Comisión</th><th scope="col" class="num">IGV comisión</th><th scope="col" class="num">Neto</th>
+                  </>) : (<>
+                    <th scope="col" class="num">Acordado</th><th scope="col" class="num">Ajustes</th><th scope="col" class="num">Precio final</th><th scope="col" class="num">IGV</th><th scope="col">Cobro</th>
+                  </>)}
+                </tr>
+              </thead>
+              <tbody>
+                {s.lines!.map((l) => (
+                  <tr>
+                    <td class="font-mono">{l.code}</td><td class="whitespace-nowrap">{formatDate(l.deliveredOn)}</td><td>{route(l.originCity, l.destinationCity)}</td><td>{l.counterpartyName}</td>
+                    {commission ? (<>
+                      <td class="num">{formatMoney(l.finalPrice)}</td><td class="num">{formatMoney(l.netOfVat)}</td><td class="num">{l.commissionRate != null ? `${(l.commissionRate * 100).toFixed(1)} %` : '—'}</td><td class="num">{formatMoney(l.commission)}</td><td class="num">{formatMoney(l.commissionVat)}</td><td class="num">{formatMoney(l.carrierNet)}</td>
+                    </>) : (<>
+                      <td class="num">{formatMoney(l.agreedPrice)}</td><td class="num">{formatMoney(l.adjustmentsTotal)}</td><td class="num">{formatMoney(l.finalPrice)}</td><td class="num">{formatMoney(l.vat)}</td><td>{SETTLEMENT_STATUS_LABELS[l.settlementStatus ?? ''] ?? l.settlementStatus}</td>
+                    </>)}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr data-testid="statement-total">
+                  <th scope="row" colspan="4">Total · {s.lines!.length} {s.lines!.length === 1 ? 'envío' : 'envíos'}</th>
+                  {commission ? (<>
+                    <td class="num">{formatMoney(t.finalTotal)}</td><td class="num">{formatMoney(t.netOfVat)}</td><td></td><td class="num">{formatMoney(t.commission)}</td><td class="num">{formatMoney(t.commissionVat)}</td><td class="num">{formatMoney(t.carrierNet)}</td>
+                  </>) : (<>
+                    <td class="num">{formatMoney(t.agreedTotal)}</td><td class="num">{formatMoney(t.adjustmentsTotal)}</td><td class="num">{formatMoney(t.finalTotal)}</td><td class="num">{formatMoney(t.vat)}</td><td></td>
+                  </>)}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {commission && (
+        <section class="flex flex-wrap items-baseline justify-end gap-x-8 gap-y-1 border-t border-steel-200 pt-4 text-sm" aria-label="Resumen">
+          <p>Comisión + IGV a pagar a OnCargo: <span class="font-mono text-base font-semibold" data-testid="statement-due">{formatMoney((t.commission ?? 0) + (t.commissionVat ?? 0))}</span></p>
+        </section>
+      )}
+
+      <footer class="mt-6 border-t border-steel-200 pt-4 text-xs text-ink-700" data-testid="statement-disclaimer">{s.disclaimer}</footer>
+    </article>
+  )}
+</AppShell>
+<style is:inline set:html={`@media print { @page { size: A4 ${commission ? 'landscape' : 'portrait'}; margin: 14mm; } }`}></style>
+
+<style is:global>
+  .statement-table { border-collapse: collapse; }
+  .statement-table th, .statement-table td { padding: 0.5rem 0.625rem; border-bottom: 1px solid var(--color-steel-200); vertical-align: top; }
+  .statement-table thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-ink-500); border-bottom: 1.5px solid var(--color-ink-700); white-space: nowrap; }
+  .statement-table tfoot th, .statement-table tfoot td { font-weight: 600; border-top: 1.5px solid var(--color-ink-700); border-bottom: 0; }
+  .statement-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  @media print {
+    .statement { border: 0 !important; padding: 0 !important; max-width: none !important; color: #000 !important; }
+    .statement * { color: #000 !important; background: transparent !important; }
+    .statement-table-wrap { overflow: visible !important; }
+    .statement-table { font-size: 9pt; }
+    .statement-table th, .statement-table td { border-bottom: 1px solid #888 !important; }
+    .statement-table thead th { border-bottom: 1.5px solid #000 !important; }
+    .statement-table tfoot th, .statement-table tfoot td { border-top: 1.5px solid #000 !important; }
+    .statement-table thead { display: table-header-group; }
+    .statement-table tr { break-inside: avoid; }
+    .statement header, .statement section { break-inside: avoid; }
+    .statement footer { position: static; }
+  }
+</style>

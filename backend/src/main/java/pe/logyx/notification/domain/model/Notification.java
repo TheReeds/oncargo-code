@@ -47,11 +47,20 @@ public final class Notification {
                 truncate(body, 1000), relatedType, relatedId, false, null, OffsetDateTime.now());
     }
 
-    /** Aviso para una persona concreta de la organización (sigue respetando sus preferencias). */
+    /** Aviso para una persona concreta de la organización (sigue respetando sus preferencias). Marca «Tuyo». */
     public static Notification toPerson(UUID orgId, UUID profileId, NotificationType type, String title, String body,
                                         NotificationTarget relatedType, UUID relatedId) {
+        return toPerson(orgId, profileId, type, title, body, relatedType, relatedId, true);
+    }
+
+    /**
+     * Aviso para una persona; {@code mine = false} cuando no es de algo que ella creó (V24: alerta implícita por las
+     * rutas de interés de su empresa, que reemplaza al aviso de organización para no duplicar).
+     */
+    public static Notification toPerson(UUID orgId, UUID profileId, NotificationType type, String title, String body,
+                                        NotificationTarget relatedType, UUID relatedId, boolean mine) {
         return new Notification(UUID.randomUUID(), Objects.requireNonNull(orgId), Objects.requireNonNull(profileId), type,
-                truncate(title, 200), truncate(body, 1000), relatedType, relatedId, true, null, OffsetDateTime.now());
+                truncate(title, 200), truncate(body, 1000), relatedType, relatedId, mine, null, OffsetDateTime.now());
     }
 
     /** Copia para una persona (id nuevo, sin leer). */

@@ -105,6 +105,41 @@ Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del
 - **Ofertas de respaldo** (`bid_backups`): la PYME dueña las gestiona; el transportista solo ve su fila cuando se le pidió confirmar (`state <> 'AVAILABLE'`, así no sabe que quedó de respaldo) y solo puede pasar de `REQUESTED` a `CONFIRMED`/`DECLINED` (`UPDATE` por columna: `state`, fechas). Nunca ve otras ofertas (RN04).
 - **Acciones masivas**: cada ítem corre bajo la RLS y las reglas de la PYME (otra organización recibe 404 por ítem); máximo 50 por llamada y sin lectura de datos ajenos en el resultado.
 
+### Ola 2 · zona F (V24): cobros, reportes y configuración
+- **Datos de cobro** (`carrier_payout_accounts`): el CCI o el celular de Yape/Plin se cifran en la aplicación con **AES-256-GCM**
+  (`LOGYX_PAYOUT_KEY`, IV aleatorio, etiqueta de integridad); la BD guarda bytes y los 4 últimos dígitos. RLS: el transportista (escribe
+  solo su ADMIN), la PYME **solo con un envío no cancelado con él**, el operador lee, el conductor nunca. Los no ADMIN del transportista ven
+  solo los 4 últimos dígitos. Sin la clave en prod esos endpoints fallan (el resto sigue); rotarla exige re-cifrar.
+- **Cobros**: `shipment_settlements`/`settlement_history` solo para las partes y el operador (restrictiva sin conductor). Un trigger impide que
+  una parte cambie la comisión o las partes del cobro; la comisión la registra el operador (`commission_collections`, la PYME no la lee). El
+  número de operación y los comprobantes son datos de las partes: no se publican ni van en los avisos de tiempo real (payload mínimo).
+- **SystemTx nuevo, acotado**: abrir el cobro (vencimiento con el plazo de la PYME), el barrido de recordatorios, leer el estado del cobro para
+  bloquear ajustes (el conductor no ve cobros) y leer tarifario y calendario (datos de plataforma). Los **reportes** leen bajo RLS.
+- **Tarifario, parámetros y calendario**: solo el operador escribe (RLS `app_org_type() = 'OPERATOR'`), cada cambio con motivo y auditoría;
+  una versión del tarifario no se reescribe (`GRANT UPDATE` solo de la anulación).
+- **CSV del reporte**: `CsvWriter` neutraliza fórmulas; misma consulta y RLS que la vista; la PYME no recibe columnas de comisión.
+
+### Ola 2 · zona F (V24): preferencias, correo de avisos, baja sin login y términos
+- **Token de baja** (`/baja?t=…`, `List-Unsubscribe`): sin estado, `base64url(perfil ‖ alcance) . base64url(HMAC-SHA256)` con
+  `LOGYX_UNSUBSCRIBE_SECRET` (≥ 32 caracteres, obligatoria; el backend no arranca sin ella). Comparación en tiempo constante; no vence (un correo
+  viejo debe poder darse de baja); cambiar la clave invalida todos los enlaces. Solo identifica al perfil: no lleva email, organización ni
+  permisos, y lo único que permite es **apagar** correos de esa persona (nunca encender ni leer otra cosa). Token mal formado, alterado, de otra
+  persona o de una cuenta desactivada: misma respuesta 404 `LOGYX-NTF-003`. Endpoints públicos con límite por IP
+  (`logyx.rate-limit.public-unsubscribe.per-ip`), `SystemTx` acotado al perfil del token, lista blanca `UnsubscribeView` (email enmascarado) y
+  `noindex`; el token viaja en el cuerpo hacia la API (no queda en sus logs). La web `/baja` va sin `Referer`, sin caché, `noindex` y en
+  `robots.txt`; el one-click (`POST /baja/one-click`, RFC 8058) no usa cookies ni muestra datos.
+- **Correo masivo**: los avisos respetan la categoría, el correo apagado, el resumen diario y el horario de silencio de cada persona; un resumen
+  agrupa la cola en **un correo por persona** (la cola es solo del sistema: `REVOKE ALL` a `logyx_app`). Antes de enviar se vuelve a mirar si la
+  persona sigue activa y con el correo encendido. Producción necesita **SPF, DKIM y DMARC** del dominio remitente (`infra/vps/README.md` §
+  Correo) y la baja en un clic (Gmail/Yahoo la exigen para envíos masivos desde 2024). Los correos no llevan montos de comisión a la PYME ni
+  datos de contacto de la contraparte (solo el título y el texto del aviso).
+- **Preferencias**: `user_preferences` por persona y `organization_preferences` por organización bajo RLS (el operador solo lee); escribir las de
+  la organización exige ADMIN (`@OrgAdminOnly` + `AccessDenied`). `org_route_alerts` y la cola de correo, solo sistema
+  (`PreferencesRowLevelSecurityTest`).
+- **Términos**: la persona solo inserta **su** aceptación y solo con `source = 'UPDATE'` (`terms_own_insert`); la de invitación la escribe la
+  plataforma en el canje del token; no hay UPDATE/DELETE para `logyx_app`. El diálogo de la web no bloquea la API.
+- `DevTermsResource` (`POST /api/v1/dev/terms/forget`) existe solo con `logyx.dev-mailbox=true` (dev y la imagen de pruebas), como el buzón dev.
+
 ## Checklist de despliegue
 1. Contraseñas únicas para superusuario, `logyx_owner`, `logyx_api` y MinIO (o un usuario MinIO/S3 limitado al bucket).
 2. `infra/scripts/gen-jwt-keys.sh` (o claves del gestor de secretos); nunca reutilizar las de otro entorno.
@@ -120,5 +155,10 @@ Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del
    (`OnCargo <no-reply@oncargo.tech>`) con SPF/DKIM/DMARC del dominio, y `PASSWORD_RESET_URL`
    (`https://oncargo.tech/restablecer`, la página de la web). `MAILER_MOCK` debe quedar sin definir (false) en
    producción. La imagen de producción no incluye el buzón dev (`logyx.dev-mailbox=false`, propiedad de build).
+   V24: `LOGYX_UNSUBSCRIBE_SECRET` (obligatoria, `openssl rand -base64 48`), `WEB_URL` (https; enlaces de los correos y
+   `List-Unsubscribe`), `MAIL_REPLY_TO` opcional. DMARC empieza en `p=none` y sube a `quarantine` con reportes limpios.
 8. Varias réplicas: la revocación por `sv` tarda hasta `logyx.session.cache-ttl` (30 s) y los rate limits son por
    instancia.
+9. Cobros (V24): `LOGYX_PAYOUT_KEY` = `openssl rand -base64 32`, guardada fuera del repo y con respaldo (perderla deja ilegibles los datos
+   de cobro). `BILLING_ISSUER_NAME`/`BILLING_ISSUER_RUC` = razón social y RUC del emisor de las liquidaciones internas.
+

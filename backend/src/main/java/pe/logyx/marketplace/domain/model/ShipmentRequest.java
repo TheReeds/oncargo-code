@@ -22,8 +22,15 @@ public final class ShipmentRequest {
                         CargoType cargoType, String cargoDescription, BigDecimal weightKg, BigDecimal volumeM3,
                         LocalDate pickupDate) {}
 
-    /** Precio calculado por el motor de costos al publicar (piso = RN03). */
-    public record Pricing(BigDecimal distanceKm, BigDecimal suggestedPrice, BigDecimal priceFloor) {}
+    /**
+     * Precio calculado por el motor de costos al publicar (piso = RN03). {@code tariffVersion} (V24, 2.14): versión del
+     * tarifario usada; nula en solicitudes anteriores (= versión 1).
+     */
+    public record Pricing(BigDecimal distanceKm, BigDecimal suggestedPrice, BigDecimal priceFloor, Integer tariffVersion) {
+        public Pricing(BigDecimal distanceKm, BigDecimal suggestedPrice, BigDecimal priceFloor) {
+            this(distanceKm, suggestedPrice, priceFloor, null);
+        }
+    }
 
     /**
      * Contacto, ventana horaria e instrucciones de un extremo (recojo o entrega). Datos <b>privados</b> de la PYME:

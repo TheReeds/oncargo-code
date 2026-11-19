@@ -3,7 +3,7 @@ import { actions } from 'astro:actions';
 import { Alert } from '@/components/ui/alert';
 import { toast } from '@/components/ui/toaster';
 import { useLiveRefresh } from '@/lib/realtime';
-import { BANNER, type VerificationOrg, type VerificationStatus } from '@/features/verification/copy';
+import { BANNER, VERIFICATION_CHECKLIST, type VerificationOrg, type VerificationStatus } from '@/features/verification/copy';
 import { SUPPORT_EMAIL } from '@/lib/contact';
 
 /**
@@ -36,6 +36,14 @@ export default function VerificationBanner({ status: initial, note: initialNote,
         {s !== 'PENDING' && <> Escribe a <a className="font-medium underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> con tu RUC para revisar tu caso.</>}
       </p>
       {state.note && <p className="mt-1"><span className="font-semibold">{s === 'PENDING' ? 'Nota del equipo' : 'Motivo'}:</span> {state.note}</p>}
+      {s !== 'SUSPENDED' && (
+        <div className="mt-2">
+          <p className="font-semibold">Qué revisamos</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5" data-testid="verification-checklist">
+            {VERIFICATION_CHECKLIST.map((c) => <li key={c}>{c}</li>)}
+          </ul>
+        </div>
+      )}
     </Alert>
   );
 }

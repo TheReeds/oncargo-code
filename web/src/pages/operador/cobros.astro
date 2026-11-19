@@ -1,0 +1,70 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { buttonVariants } from '@/components/ui/button';
+import SettlementsList from '@/features/settlements/components/SettlementsList';
+import SettlementKpis from '@/features/settlements/components/SettlementKpis';
+import CommissionCollections from '@/features/settlements/components/CommissionCollections';
+import OperatorCommissionPanel from '@/features/settlements/components/OperatorCommissionPanel';
+import { listCommissionCollections, listSettlements, settlementSummary } from '@/features/settlements/server';
+import { apiQuery, filtersFromUrl, PAGE_SIZE } from '@/features/settlements/filters';
+import { CITY_LABELS, formatDate } from '@/lib/format';
+import { limaDateOf } from '@/lib/lima-date';
+const token = Astro.locals.session!.token;
+const filters = filtersFromUrl(Astro.url.searchParams);
+let summary: Awaited<ReturnType<typeof settlementSummary>> | null = null;
+let list: Awaited<ReturnType<typeof listSettlements>> = { items: [], meta: { page: 0, size: PAGE_SIZE, total: 0 } };
+let disputed: Awaited<ReturnType<typeof listSettlements>>['items'] = [];
+let pending: Awaited<ReturnType<typeof listSettlements>> = { items: [], meta: { page: 0, size: 100, total: 0 } };
+let collections: Awaited<ReturnType<typeof listCommissionCollections>>['items'] = [];
+let loadError: string | null = null;
+try {
+  const [s, l, d, p, c] = await Promise.all([
+    settlementSummary(token), listSettlements(token, apiQuery(filters)), listSettlements(token, { status: 'DISPUTED', size: 20 }),
+    listSettlements(token, { commissionPending: true, size: 100 }), listCommissionCollections(token, { size: 10 }),
+  ]);
+  summary = s; list = l; disputed = d.items; pending = p; collections = c.items;
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar los cobros.';
+}
+// Comisión pendiente agrupada por transportista (comisión + su IGV).
+const byCarrier = new Map<string, { id: string; name: string; count: number; amount: number }>();
+for (const r of pending.items) {
+  const cur = byCarrier.get(r.carrierOrgId!) ?? { id: r.carrierOrgId!, name: r.carrierName ?? 'Transportista', count: 0, amount: 0 };
+  cur.count += 1; cur.amount += (r.commission ?? 0) + (r.commissionVat ?? 0);
+  byCarrier.set(r.carrierOrgId!, cur);
+}
+const carriers = [...byCarrier.values()].sort((a, b) => b.amount - a.amount);
+const route = (o?: string, d?: string) => `${CITY_LABELS[o ?? ''] ?? o} → ${CITY_LABELS[d ?? ''] ?? d}`;
+---
+<AppShell title="Cobros" active="operador-cobros" wide>
+  <PageHeader title="Cobros" subtitle="Cobros de todos los envíos entregados, disputas por resolver y comisión pendiente por transportista." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Cobros' }]} />
+  {loadError && <Alert tone="error" title="No pudimos cargar los cobros" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <div class="space-y-4">
+    {summary && <div><SettlementKpis client:load summary={summary} perspective="OPERATOR" /></div>}
+    {disputed.length > 0 && (
+      <Card data-testid="disputes-card">
+        <CardHeader><div><CardTitle>Disputas por resolver</CardTitle><CardDescription>Abre el envío para ver el motivo y cerrar la disputa.</CardDescription></div></CardHeader>
+        <ul class="divide-y divide-steel-200 border-t border-steel-200">
+          {disputed.map((r) => (
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
+              <span class="font-mono text-xs text-ink-500">{r.code}</span>
+              <span class="font-medium text-ink-900">{route(r.originCity, r.destinationCity)}</span>
+              <span class="text-ink-700">{r.requesterName} · {r.carrierName}</span>
+              <span class="text-xs text-ink-500">Entregado {r.deliveredAt ? formatDate(limaDateOf(r.deliveredAt)) : '—'}</span>
+              <a class={buttonVariants({ variant: 'outline', size: 'sm', className: 'ml-auto' })} href={`/operador/envios/${r.shipmentId}`}>Resolver<span class="sr-only"> la disputa de {r.code}</span></a>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    )}
+    <div><OperatorCommissionPanel client:load carriers={carriers} truncated={pending.meta.total > pending.items.length} /></div>
+    <div>
+    <SettlementsList client:load perspective="OPERATOR" rows={list.items} filters={filters} page={list.meta.page + 1} size={list.meta.size} total={list.meta.total} base="/operador/cobros"
+      counts={summary ? { overdue: summary.overdue, disputed: summary.disputed, commissionPending: summary.commissionPending } : undefined} />
+    </div>
+    <div><CommissionCollections client:load items={collections} perspective="OPERATOR" title="Cobros de comisión registrados" /></div>
+  </div>
+</AppShell>

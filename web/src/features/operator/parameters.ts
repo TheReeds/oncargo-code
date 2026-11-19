@@ -6,6 +6,12 @@ export function formatParam(kind: string | undefined, value: string | undefined)
   if (kind === 'FLAG') return value === '1' ? 'Activado' : 'Desactivado';
   if (kind === 'RATE') return `${rateToPercent(value)} %`;
   if (kind === 'AMOUNT') return `S/ ${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (kind === 'MINUTES') {
+    const m = Number(value);
+    return m >= 60 && m % 60 === 0 ? `${m / 60} h` : `${value} min`;
+  }
+  if (kind === 'COUNT') return `${value} ${value === '1' ? 'oferta' : 'ofertas'}`;
+  if (kind === 'DAYS') return `${value} ${value === '1' ? 'día' : 'días'}`;
   return `${value} h`;
 }
 

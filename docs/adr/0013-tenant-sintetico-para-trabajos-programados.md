@@ -35,4 +35,4 @@ Los trabajos que actúan **en nombre de** una organización corren con un **tena
 - Una persona desactivada sigue figurando como autora de lo que su plantilla publique. Si hace falta, se archiva la plantilla.
 - Un job nuevo «en nombre de» reutiliza `SyntheticTenant`; el test de referencia es `TemplatesFlowTest` (bajo RLS: la
   solicitud nace en la organización dueña y a nombre del autor, y otra organización no ve nada).
-- Los feriados nacionales de la programación son una lista fija (`PeruHolidays`) hasta que el roadmap 2.14 los vuelva administrables.
+- Los feriados de la programación salen del calendario del operador (V24, `CalendarService.skipsRecurrence` con la ciudad de origen); un año sin feriados cargados usa la lista nacional fija.

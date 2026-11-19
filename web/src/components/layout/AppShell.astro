@@ -7,11 +7,13 @@ import LiveIndicator from '@/components/layout/LiveIndicator';
 import CommandMenu from '@/components/layout/CommandMenu';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 import VerificationBanner from '@/components/domain/VerificationBanner';
+import CalendarBanner from '@/features/config/components/CalendarBanner.astro';
+import TermsGate from '@/components/domain/TermsGate';
 import { me } from '@/features/auth/server';
 import { can, deniedRouteNotice, roleLabel as personRoleLabel } from '@/lib/permissions';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import RequestAccessHost from '@/features/access/components/RequestAccessDialog';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText, SlidersHorizontal, MapPinned, Handshake, CalendarRange, Scale, ShieldAlert } from '@lucide/astro';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText, SlidersHorizontal, MapPinned, Handshake, CalendarRange, Scale, ShieldAlert, ChartColumn, Banknote, Landmark } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
@@ -37,6 +39,10 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
       { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
     ] },
+    { label: 'Dinero', items: [
+      { id: 'pagos', href: '/pyme/pagos', label: 'Por pagar', icon: Banknote },
+      { id: 'reportes', href: '/pyme/reportes', label: 'Reportes', icon: ChartColumn },
+    ] },
   ],
   CARRIER: [
     { items: [{ id: 'panel', href: '/transportista', label: 'Tu actividad', icon: LayoutDashboard }] },
@@ -54,6 +60,10 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
       { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
     ] },
+    { label: 'Dinero', items: [
+      { id: 'cobros', href: '/transportista/cobros', label: 'Por cobrar', icon: Banknote },
+      { id: 'reportes', href: '/transportista/reportes', label: 'Reportes', icon: ChartColumn },
+    ] },
   ],
   OPERATOR: [
     { items: [{ id: 'operador', href: '/operador', label: 'Panel de operación', icon: Radar }] },
@@ -62,6 +72,8 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'operador-envios', href: '/operador/envios', label: 'Envíos', icon: Truck },
       { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
       { id: 'operador-ajustes', href: '/operador/ajustes', label: 'Ajustes', icon: Scale },
+      { id: 'operador-cobros', href: '/operador/cobros', label: 'Cobros', icon: Banknote },
+      { id: 'operador-reportes', href: '/operador/reportes', label: 'Reportes', icon: ChartColumn },
     ] },
     { label: 'Cuentas', items: [
       { id: 'operador-organizaciones', href: '/operador/organizaciones', label: 'Verificación', icon: Building2 },
@@ -76,6 +88,8 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
 // Sección "Organización" (PYME y transportista): el perfil lo ve todo el mundo; Usuarios solo con MANAGE_USERS.
 const orgGroup: NavGroup = { label: 'Organización', items: [
   { id: 'organizacion', href: '/organizacion', label: 'Perfil de la empresa', icon: Building },
+  { id: 'preferencias-empresa', href: '/organizacion/preferencias', label: 'Preferencias de la empresa', icon: SlidersHorizontal },
+  ...(session.orgType === 'CARRIER' ? [{ id: 'datos-de-cobro', href: '/organizacion/datos-de-cobro', label: 'Datos de cobro', icon: Landmark }] : []),
   ...(can(session, 'MANAGE_USERS') ? [{ id: 'usuarios', href: '/organizacion/usuarios', label: 'Usuarios y roles', icon: Users }] : []),
 ] };
 const baseGroups = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? 'PYME'] ?? [];
@@ -140,6 +154,7 @@ const mayRequestAccess = session.role !== 'ADMIN' && session.role !== null;
         <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={personRole} org={orgLabel} roleName={session.role ?? undefined} verified={!!user?.rucVerified && session.orgType !== 'OPERATOR'} />
       </header>
       <main id="contenido" class:list={['mx-auto w-full flex-1 px-4 py-6 lg:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl']}>
+        {session.role !== 'DRIVER' && <CalendarBanner />}
         {(session.orgType === 'PYME' || session.orgType === 'CARRIER') && user?.verificationStatus && user.verificationStatus !== 'VERIFIED' && (
           <VerificationBanner client:load status={user.verificationStatus} note={user.verificationNote ?? null} orgType={session.orgType} />
         )}
@@ -149,6 +164,10 @@ const mayRequestAccess = session.role !== 'ADMIN' && session.role !== null;
         <slot />
       </main>
       {mayRequestAccess && <RequestAccessHost client:idle />}
+      {/* V24 (2.17): la versión vigente de los Términos sin aceptar. No a conductores (no usan AppShell) ni operadores. */}
+      {(session.orgType === 'PYME' || session.orgType === 'CARRIER') && session.role !== 'DRIVER' && user && user.termsAccepted === false && user.termsVersion && (
+        <TermsGate client:load version={user.termsVersion} />
+      )}
     </div>
   </div>
   <style is:global>

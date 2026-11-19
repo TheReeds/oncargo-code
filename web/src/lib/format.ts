@@ -62,6 +62,7 @@ export const INCIDENT_STATUS_LABELS: Record<string, string> = { OPEN: 'Abierta',
 export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   PICKUP_PHOTO: 'Foto de la carga',
   SERVICE_ORDER: 'Orden de servicio', REMISSION_GUIDE: 'Guía de remisión', RECEIPT: 'Comprobante', DELIVERY_PHOTO: 'Foto de entrega', SIGNATURE: 'Firma de recepción', OTHER: 'Otro documento',
+  PAYMENT_PROOF: 'Constancia de pago', CARRIER_INVOICE: 'Comprobante del transportista',
 };
 
 /** `hace 5 min`, `hace 3 h`, o la fecha corta si pasó más de un día. */

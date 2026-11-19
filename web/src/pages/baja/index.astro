@@ -1,0 +1,87 @@
+---
+// Baja del correo de avisos sin iniciar sesión (V24, roadmap 2.2). Enlace «Darte de baja» de cada correo: `/baja?t=<token>`.
+// El token es una firma HMAC del backend (persona + categoría o todo); aquí solo se reenvía. Funciona sin JavaScript: el
+// formulario hace POST a esta misma página (mismo origen, pasa el control de origen de Astro). Sin caché, sin indexar y
+// sin `Referer` (middleware). El one-click de los clientes de correo (RFC 8058) va a `/baja/one-click`.
+import Public from '@/layouts/Public.astro';
+import { AuthCard } from '@/components/ui/auth-card';
+import { Alert } from '@/components/ui/alert';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { inspectUnsubscribe, unsubscribe, isUnsubscribeToken, type UnsubscribeView } from '@/features/notifications/unsubscribe';
+import { MailX, TriangleAlert } from '@lucide/astro';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+let ip: string | undefined;
+try { ip = Astro.clientAddress || undefined; } catch { ip = undefined; }
+
+let token = Astro.url.searchParams.get('t')?.trim() ?? '';
+let done: 'CATEGORY' | 'ALL' | null = null;
+let result: { data: UnsubscribeView | null; status: number };
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null);
+  token = String(form?.get('t') ?? token).trim();
+  const scope = form?.get('scope') === 'ALL' ? 'ALL' : 'CATEGORY';
+  result = await unsubscribe(token, scope, ip);
+  if (result.data) done = scope === 'ALL' || !result.data.category ? 'ALL' : 'CATEGORY';
+} else {
+  result = isUnsubscribeToken(token) ? await inspectUnsubscribe(token, ip) : { data: null, status: 404 };
+}
+const info = result.data;
+const label = info?.categoryLabel;
+const already = info && !done && (label ? !info.categoryEmail || !info.emailEnabled : !info.emailEnabled);
+if (!info) Astro.response.status = result.status === 429 ? 429 : result.status >= 500 ? 503 : 404;
+const title = !info ? 'Este enlace de baja no sirve' : done ? 'Listo, te diste de baja' : already ? 'Ya no recibes estos correos' : 'Darte de baja de los correos';
+---
+<Public title="Darte de baja" description="Deja de recibir correos de avisos de OnCargo con el enlace de tu correo." footer="compact">
+  <div class="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
+    <AuthCard embedded title={title} cardClassName="p-5 sm:p-8">
+      {!info ? (
+        <div class="space-y-4" data-testid="unsubscribe-invalid">
+          {result.status === 429 ? (
+            <Alert tone="error">Hiciste muchos intentos seguidos. Espera unos minutos y vuelve a abrir el enlace.</Alert>
+          ) : result.status >= 500 ? (
+            <Alert tone="error">No pudimos conectar con OnCargo. Vuelve a abrir el enlace en unos segundos.</Alert>
+          ) : (
+            <div class="flex items-start gap-3 rounded-input border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              <TriangleAlert size={18} class="mt-0.5 shrink-0" aria-hidden="true" />
+              <p>El enlace está incompleto o ya no es válido. Puedes elegir qué correos recibes desde tu cuenta.</p>
+            </div>
+          )}
+          <a href="/cuenta/avisos" class={cn(buttonVariants({ size: 'lg' }), 'w-full')}>Ir a mis avisos</a>
+        </div>
+      ) : done || already ? (
+        <div class="space-y-4" data-testid="unsubscribe-done">
+          <p class="text-sm text-ink-700">
+            {done === 'CATEGORY' || (already && label && info.emailEnabled)
+              ? <>Ya no te enviaremos correos de «{label}» a <span class="font-mono text-[13px] text-ink-900">{info.email}</span>. Esos avisos siguen llegando a la app.</>
+              : <>Ya no te enviaremos correos de avisos a <span class="font-mono text-[13px] text-ink-900">{info.email}</span>. Los avisos siguen llegando a la app y los correos de tu contraseña e invitaciones, también.</>}
+          </p>
+          <p class="text-sm text-ink-500">¿Fue un error? Vuelve a activarlos en «Mis avisos».</p>
+          <a href="/cuenta/avisos" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'w-full')}>Ir a mis avisos</a>
+        </div>
+      ) : (
+        <div class="space-y-5" data-testid="unsubscribe-confirm">
+          <div class="flex items-start gap-3">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-petrol-50 text-petrol-700"><MailX size={20} aria-hidden="true" /></span>
+            <p class="text-sm text-ink-700">
+              {label
+                ? <>Dejarás de recibir por correo los avisos de «{label}» en <span class="font-mono text-[13px] text-ink-900">{info.email}</span>. Seguirás viéndolos en la app.</>
+                : <>Dejarás de recibir correos de avisos en <span class="font-mono text-[13px] text-ink-900">{info.email}</span>. Seguirás viéndolos en la app.</>}
+            </p>
+          </div>
+          <form method="post" class="space-y-2">
+            <input type="hidden" name="t" value={token} />
+            <button type="submit" name="scope" value={label ? 'CATEGORY' : 'ALL'} class={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
+              {label ? `Darme de baja de «${label}»` : 'Darme de baja de los correos'}
+            </button>
+            {label && (
+              <button type="submit" name="scope" value="ALL" class={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'w-full')}>No recibir ningún correo de avisos</button>
+            )}
+          </form>
+          <p class="text-xs text-ink-500">También puedes elegir qué avisos te llegan por correo en <a href="/cuenta/avisos" class="font-medium text-petrol-700 underline underline-offset-2">Mis avisos</a>.</p>
+        </div>
+      )}
+    </AuthCard>
+  </div>
+</Public>

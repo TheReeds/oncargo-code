@@ -9,18 +9,19 @@ import { toFormErrors } from '@/lib/action-error';
 import { PasswordRequirements, checkPassword } from './PasswordRequirements';
 import { PASSWORD_MAX } from '../password-rules';
 
-type Errors = { newPassword?: string; confirm?: string; accept?: string };
+type Errors = { newPassword?: string; confirm?: string; accept?: string; terms?: string };
 
 /**
  * Define la contraseña con el enlace del correo. `purpose = RESET`: restablece; `INVITE`: activa la cuenta y exige aceptar la
- * política de privacidad (Ley 29733). El token ya fue validado en el servidor (`inspect`); aquí se quita de la URL para que no
+ * política de privacidad (Ley 29733) y, desde V24 (2.17), los Términos y condiciones vigentes (`termsVersion`). El token ya fue validado en el servidor (`inspect`); aquí se quita de la URL para que no
  * quede en el historial ni se filtre por el `Referer`. Éxito: al login (la API no inicia sesión).
  */
-export default function ResetPasswordForm({ token, purpose, organizationName }: { token: string; purpose: 'RESET' | 'INVITE'; organizationName?: string }) {
+export default function ResetPasswordForm({ token, purpose, organizationName, termsVersion }: { token: string; purpose: 'RESET' | 'INVITE'; organizationName?: string; termsVersion?: string }) {
   const invite = purpose === 'INVITE';
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,6 +40,7 @@ export default function ResetPasswordForm({ token, purpose, organizationName }: 
     if (!confirm) e.confirm = 'Repite la contraseña nueva.';
     else if (password !== confirm) e.confirm = 'Las contraseñas no coinciden.';
     if (invite && !accepted) e.accept = 'Acepta la política de privacidad para activar tu cuenta.';
+    if (invite && !termsAccepted) e.terms = 'Acepta los Términos y condiciones para activar tu cuenta.';
     return e;
   }
 
@@ -48,19 +50,24 @@ export default function ResetPasswordForm({ token, purpose, organizationName }: 
     setFormError(null);
     const e = validate();
     setErrors(e);
-    const first = (['newPassword', 'confirm', 'accept'] as const).find((k) => e[k]);
-    if (first) { if (first === 'accept') document.getElementById('accept-privacy')?.focus(); else refs[first].current?.focus(); return; }
+    const first = (['newPassword', 'confirm', 'accept', 'terms'] as const).find((k) => e[k]);
+    if (first) {
+      if (first === 'accept') document.getElementById('accept-privacy')?.focus();
+      else if (first === 'terms') document.getElementById('accept-terms')?.focus();
+      else refs[first].current?.focus();
+      return;
+    }
     setBusy(true);
     let res;
     try {
-      res = await actions.password.reset({ token, newPassword: password, acceptPrivacyPolicy: invite ? true : undefined });
+      res = await actions.password.reset({ token, newPassword: password, acceptPrivacyPolicy: invite ? true : undefined, acceptTerms: invite ? true : undefined, termsVersion: invite ? termsVersion : undefined });
     } catch {
       setFormError('No pudimos conectar con OnCargo. Revisa tu conexión e inténtalo de nuevo.');
       setBusy(false);
       return;
     }
     if (res.error) {
-      const { errors: fieldErrors, formError: other, failure } = toFormErrors(res.error, { newPassword: 'newPassword', acceptPrivacyPolicy: 'accept', token: 'token' });
+      const { errors: fieldErrors, formError: other, failure } = toFormErrors(res.error, { newPassword: 'newPassword', acceptPrivacyPolicy: 'accept', acceptTerms: 'terms', token: 'token' });
       // `AUTH-005`: el enlace venció o ya se usó mientras se llenaba el formulario.
       if (failure.code === 'LOGYX-AUTH-005') { window.location.href = '/restablecer'; return; }
       setErrors({ ...fieldErrors } as Errors);
@@ -121,6 +128,20 @@ export default function ResetPasswordForm({ token, purpose, organizationName }: 
             </label>
           </div>
           {errors.accept && <p id="accept-privacy-error" role="alert" className="mt-2 pl-7 text-xs text-red-700">{errors.accept}</p>}
+          <div className="mt-3 flex items-start gap-2.5 border-t border-steel-200 pt-3">
+            <Checkbox
+              id="accept-terms"
+              checked={termsAccepted}
+              onCheckedChange={(c) => { setTermsAccepted(c === true); if (c === true) setErrors((p) => ({ ...p, terms: undefined })); }}
+              aria-invalid={!!errors.terms}
+              aria-describedby={errors.terms ? 'accept-terms-error' : undefined}
+              className="mt-0.5"
+            />
+            <label htmlFor="accept-terms" className="cursor-pointer text-[13px] leading-snug text-ink-700">
+              Acepto los <a href="/terminos" target="_blank" rel="noopener" className="font-medium text-petrol-700 underline underline-offset-2">Términos y condiciones</a> de OnCargo.
+            </label>
+          </div>
+          {errors.terms && <p id="accept-terms-error" role="alert" className="mt-2 pl-7 text-xs text-red-700">{errors.terms}</p>}
         </div>
       )}
 

@@ -1,6 +1,8 @@
 package pe.logyx.notification.infrastructure.web;
 
 import pe.logyx.notification.application.NotificationService.CategoryPreference;
+import pe.logyx.notification.domain.model.EmailMode;
+import pe.logyx.notification.domain.model.EmailSettings;
 import pe.logyx.notification.domain.model.NotificationCategory;
 import pe.logyx.notification.domain.model.NotificationPreference;
 import pe.logyx.notification.domain.model.NotificationTarget;
@@ -8,11 +10,14 @@ import pe.logyx.notification.domain.model.NotificationType;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import pe.logyx.notification.application.NotificationService;
 import pe.logyx.notification.domain.model.Notification;
@@ -20,6 +25,7 @@ import pe.logyx.shared.api.ApiResponse;
 import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.tenancy.Roles;
 
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -60,7 +66,47 @@ public class NotificationResource {
 
     public record UpdateNotificationPreferences(@NotEmpty @Size(max = 20) List<@Valid @NotNull NotificationPreferenceChange> preferences) {}
 
+    /**
+     * V24 (2.2): cómo llegan tus correos de avisos. {@code quietFrom}/{@code quietTo} en hora de Lima (pueden cruzar la
+     * medianoche; ambos nulos = sin silencio). {@code unsubscribedAt}: cuándo te diste de baja de todo con el enlace.
+     */
+    public record EmailSettingsView(boolean emailEnabled, EmailMode mode, int digestHour, LocalTime quietFrom,
+                                    LocalTime quietTo, OffsetDateTime unsubscribedAt) {
+        static EmailSettingsView of(EmailSettings s) {
+            return new EmailSettingsView(s.emailEnabled(), s.mode(), s.digestHour(), s.quietFrom(), s.quietTo(),
+                    s.unsubscribedAt());
+        }
+    }
+
+    public record UpdateEmailSettings(
+            @NotNull Boolean emailEnabled,
+            @NotNull EmailMode mode,
+            @Schema(description = "Hora del resumen diario (0–23, hora de Lima). Por omisión 7") @Min(0) @Max(23) Integer digestHour,
+            @Schema(description = "Inicio del horario de silencio (HH:mm, hora de Lima). Nulo con quietTo nulo = sin silencio")
+            LocalTime quietFrom,
+            @Schema(description = "Fin del horario de silencio (HH:mm). Puede ser menor que quietFrom: cruza la medianoche")
+            LocalTime quietTo) {}
+
     @Inject NotificationService service;
+
+    @GET
+    @Path("/email-settings")
+    @Operation(summary = "Mis preferencias de correo (V24)", description = "Correo activo, inmediato o resumen diario "
+            + "(hora de Lima) y horario de silencio. Se aplican después de la matriz categoría × canal.")
+    public ApiResponse<EmailSettingsView> emailSettings() {
+        return ApiResponse.of(EmailSettingsView.of(service.emailSettings()));
+    }
+
+    @PUT
+    @Path("/email-settings")
+    @Operation(summary = "Cambiar mis preferencias de correo (V24)", description = "Cualquier rol (también Lector). "
+            + "Con emailEnabled=false no sale ningún correo de avisos (los de cuenta sí). DAILY = un resumen al día a "
+            + "digestHour; durante el silencio los correos esperan hasta quietTo. 400 LOGYX-NTF-004 si el silencio está "
+            + "incompleto o empieza y termina a la misma hora.")
+    public ApiResponse<EmailSettingsView> updateEmailSettings(@Valid @NotNull UpdateEmailSettings req) {
+        return ApiResponse.of(EmailSettingsView.of(service.updateEmailSettings(req.emailEnabled(), req.mode(),
+                req.digestHour() == null ? 7 : req.digestHour(), req.quietFrom(), req.quietTo())));
+    }
 
     @GET
     @Operation(summary = "Mis avisos, recientes primero (siempre paginado)",

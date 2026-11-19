@@ -1,0 +1,21 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import ReportView from '@/features/reports/components/ReportView';
+import { getOverview } from '@/features/reports/server';
+const token = Astro.locals.session!.token;
+const from = Astro.url.searchParams.get('desde') ?? '';
+const to = Astro.url.searchParams.get('hasta') ?? '';
+let overview: Awaited<ReturnType<typeof getOverview>> | null = null;
+let error: string | null = null;
+try {
+  overview = await getOverview(token, from, to);
+} catch (e) {
+  error = e instanceof Error ? e.message : 'No pudimos cargar el reporte.';
+}
+const range = { from: from ? overview?.from ?? from : '', to: from ? overview?.to ?? to : '' };
+---
+<AppShell title="Reportes" active="reportes">
+  <PageHeader title="Reportes" subtitle="Ingresos, comisión, neto por km, ocupación y adjudicación por ruta." />
+  <ReportView client:load perspective="CARRIER" overview={overview} error={error} range={range} base="/transportista/reportes" />
+</AppShell>

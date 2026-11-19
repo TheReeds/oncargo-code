@@ -62,6 +62,9 @@ test.describe('Usuarios y roles', () => {
     await gp.getByRole('link', { name: 'política de privacidad' }).first().focus();
     await gp.getByRole('checkbox', { name: /Acepto la política de privacidad/ }).click();
     await gp.getByRole('button', { name: 'Activar cuenta' }).click();
+    await expect(gp.getByText('Acepta los Términos y condiciones para activar tu cuenta.')).toBeVisible();
+    await gp.getByRole('checkbox', { name: /Acepto los Términos y condiciones/ }).click();
+    await gp.getByRole('button', { name: 'Activar cuenta' }).click();
     await expect(gp).toHaveURL(/\/login\?activada=1/);
     await expect(gp.getByText('Tu cuenta quedó activa')).toBeVisible();
     await gp.getByLabel('Correo electrónico').fill(email);

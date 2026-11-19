@@ -9,15 +9,23 @@ import ParametersEditor from '@/features/operator/components/ParametersEditor';
 import { listParameters, parameterHistory } from '@/features/operator/server';
 import { formatParam } from '@/features/operator/parameters';
 import { formatDateTime } from '@/lib/format';
+import TariffEditor from '@/features/config/components/TariffEditor';
+import CalendarEditor from '@/features/config/components/CalendarEditor';
+import { calendarDays, tariffVersions } from '@/features/config/server';
 import { History } from 'lucide-react';
 
 const token = Astro.locals.session!.token;
 const pageNo = Math.max(1, Number(Astro.url.searchParams.get('pagina')) || 1);
 let rows: Awaited<ReturnType<typeof listParameters>> = [];
 let history = { items: [] as Awaited<ReturnType<typeof parameterHistory>>['items'], meta: { page: 0, size: 10, total: 0 } };
+let tariffs: Awaited<ReturnType<typeof tariffVersions>> = [];
+let days: Awaited<ReturnType<typeof calendarDays>> = [];
 let loadError: string | null = null;
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+const inAYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date(Date.now() + 365 * 86_400_000));
 try {
-  [rows, history] = await Promise.all([listParameters(token), parameterHistory(token, { page: pageNo - 1, size: 10 })]);
+  [rows, history, tariffs, days] = await Promise.all([listParameters(token), parameterHistory(token, { page: pageNo - 1, size: 10 }),
+    tariffVersions(token), calendarDays(token, { from: today, to: inAYear })]);
 } catch (e) {
   loadError = e instanceof Error ? e.message : 'No pudimos cargar los parámetros.';
 }
@@ -26,17 +34,34 @@ const pages = Math.max(1, Math.ceil(history.meta.total / history.meta.size));
 const href = (p: number) => (p <= 1 ? '/operador/parametros' : `/operador/parametros?pagina=${p}`);
 ---
 <AppShell title="Parámetros del sistema" active="operador-parametros" wide>
-  <PageHeader title="Parámetros del sistema" subtitle="La comisión de OnCargo, el SLA de asignación manual y los umbrales de las incidencias. Cada cambio queda con su motivo."
+  <PageHeader title="Parámetros del sistema" subtitle="Comisión, subasta, piso, plazos, tarifario y feriados. Cada cambio queda con su motivo."
     breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Parámetros del sistema' }]} />
   {loadError && <Alert tone="error" title="No pudimos cargar los parámetros" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   {!loadError && (
     <div class="space-y-6">
+      <nav aria-label="Secciones de la página" class="flex flex-wrap gap-2 text-sm">
+        <a href="#parametros" class="rounded-full border border-steel-200 px-3 py-1 font-medium text-petrol-700 hover:bg-petrol-50">Valores vigentes</a>
+        <a href="#tarifario" class="rounded-full border border-steel-200 px-3 py-1 font-medium text-petrol-700 hover:bg-petrol-50">Tarifario</a>
+        <a href="#calendario" class="rounded-full border border-steel-200 px-3 py-1 font-medium text-petrol-700 hover:bg-petrol-50">Feriados y paros</a>
+        <a href="#historial" class="rounded-full border border-steel-200 px-3 py-1 font-medium text-petrol-700 hover:bg-petrol-50">Historial</a>
+      </nav>
+      <h2 id="parametros" class="sr-only">Parámetros</h2>
       <Alert tone="info" title="Cómo funcionan los cambios">
         Se aplican de inmediato a lo nuevo: la comisión se guarda en cada envío al adjudicarlo, así que no altera los envíos ya creados. Todo cambio sube la versión y se registra en el historial y en la auditoría.
       </Alert>
       <ParametersEditor client:load rows={rows} now={Date.now()} />
 
-      <Card>
+      <section id="tarifario" aria-labelledby="tarifario-title" class="scroll-mt-20 space-y-3">
+        <h2 id="tarifario-title" class="text-lg font-semibold text-ink-900">Tarifario</h2>
+        <TariffEditor client:load versions={tariffs} today={today} />
+      </section>
+
+      <section id="calendario" aria-labelledby="calendario-title" class="scroll-mt-20 space-y-3">
+        <h2 id="calendario-title" class="text-lg font-semibold text-ink-900">Feriados y paros</h2>
+        <CalendarEditor client:load days={days} today={today} />
+      </section>
+
+      <Card id="historial" className="scroll-mt-20">
         <CardHeader><div><CardTitle>Historial de cambios</CardTitle><CardDescription>El más reciente primero. Es de solo lectura.</CardDescription></div></CardHeader>
         {history.items.length === 0 ? (
           <EmptyState compact icon={History} title="Aún no hay cambios" description="Los parámetros siguen con los valores de la configuración." />

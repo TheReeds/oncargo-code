@@ -17,7 +17,7 @@ test.describe('Landing y páginas públicas', () => {
   test('SEO: title y description únicos, canónica, JSON-LD válido, noindex fuera del sitemap, robots.txt y sitemap.xml', async ({ page, request }) => {
     test.slow(); // 8 páginas SSR
     const seen = new Set<string>();
-    for (const path of ['/', '/precios', '/contacto', '/registro', '/terminos', '/privacidad']) {
+    for (const path of ['/', '/precios', '/contacto', '/registro', '/terminos', '/seguridad', '/privacidad']) {
       await page.goto(path);
       const title = await page.title();
       const desc = await page.locator('meta[name="description"]').getAttribute('content');
@@ -42,7 +42,7 @@ test.describe('Landing y páginas públicas', () => {
     const robots = await (await request.get('/robots.txt')).text();
     for (const rule of ['Disallow: /s/', 'Disallow: /app/', 'Disallow: /dev/', 'Disallow: /exportar/', 'Sitemap: https://oncargo.tech/sitemap.xml']) expect(robots).toContain(rule);
     const sitemap = await (await request.get('/sitemap.xml')).text();
-    expect(sitemap.match(/<loc>/g)).toHaveLength(6);
+    expect(sitemap.match(/<loc>/g)).toHaveLength(7);
     expect(sitemap).not.toContain('/login');
   });
 

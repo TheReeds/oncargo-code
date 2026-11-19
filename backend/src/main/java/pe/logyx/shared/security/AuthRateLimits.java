@@ -21,6 +21,7 @@ import java.util.Locale;
  *   <li>cotizador público por IP ({@code public-quote.per-ip}, 30 por ventana);</li>
  *   <li>seguimiento público ({@code /public/tracking/{token}}) por IP ({@code public-tracking.per-ip}, 120 por ventana:
  *       la página consulta cada 60 s);</li>
+ *   <li>baja del correo de avisos sin cuenta ({@code /public/unsubscribe}, V24) por IP ({@code public-unsubscribe.per-ip});</li>
  *   <li>cambio de contraseña: tras {@code change-password.failures-per-user} contraseñas actuales incorrectas, 429.</li>
  * </ul>
  * La IP sale de la conexión o, detrás de un proxy confiable ({@code quarkus.http.proxy.*}), de X-Forwarded-For
@@ -43,6 +44,7 @@ public class AuthRateLimits {
     @ConfigProperty(name = "logyx.rate-limit.public-quote.per-ip", defaultValue = "30") int publicQuotePerIp;
     @ConfigProperty(name = "logyx.rate-limit.public-tracking.per-ip", defaultValue = "120") int publicTrackingPerIp;
     @ConfigProperty(name = "logyx.rate-limit.public-access-request.per-ip", defaultValue = "10") int publicAccessRequestPerIp;
+    @ConfigProperty(name = "logyx.rate-limit.public-unsubscribe.per-ip", defaultValue = "60") int publicUnsubscribePerIp;
     @ConfigProperty(name = "logyx.rate-limit.change-password.failures-per-user", defaultValue = "10")
     int changePasswordFailures;
 
@@ -96,6 +98,11 @@ public class AuthRateLimits {
     /** 2.15: «Pedir acceso a la organización» desde el registro, por IP → 429. */
     public void beforePublicAccessRequest(String ip) {
         acquireOr429("public-access-request-ip:" + ip, publicAccessRequestPerIp);
+    }
+
+    /** V24 (2.2): baja del correo de avisos con el enlace (sin cuenta), por IP → 429. Cuenta también los tokens inválidos. */
+    public void beforePublicUnsubscribe(String ip) {
+        acquireOr429("public-unsubscribe-ip:" + ip, publicUnsubscribePerIp);
     }
 
     public void beforeRefresh(String ip) {

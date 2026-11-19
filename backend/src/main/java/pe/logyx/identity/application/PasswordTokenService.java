@@ -55,6 +55,8 @@ public class PasswordTokenService {
     @Inject AccountMailer mailer;
     @Inject AccountSessions sessions;
     @Inject AuditService audit;
+    @Inject LegalTerms legalTerms;
+    @Inject pe.logyx.identity.application.port.out.TermsAcceptanceRepository termsAcceptances;
 
     @ConfigProperty(name = "logyx.password-reset.ttl", defaultValue = "PT30M") Duration resetTtl;
     @ConfigProperty(name = "logyx.invitation.ttl", defaultValue = "PT72H") Duration inviteTtl;
@@ -163,10 +165,14 @@ public class PasswordTokenService {
 
     /**
      * Define la contraseña con el token: lo marca usado, invalida los demás del usuario, sube la versión de sesión
-     * (cierra todas sus sesiones) y audita. Una invitación exige aceptar la política de privacidad (Ley N° 29733).
+     * (cierra todas sus sesiones) y audita. Una invitación exige aceptar la política de privacidad (Ley N° 29733,
+     * {@code LOGYX-AUTH-011}) y, desde V24 (2.17), los Términos y condiciones vigentes ({@code LOGYX-AUTH-013}; versión
+     * desactualizada: 409 {@code LOGYX-AUTH-012}); la aceptación se guarda con {@code source = 'INVITATION'}.
      */
-    // SystemTx: sin usuario; password_tokens solo es accesible para la plataforma.
-    public Redeemed redeem(String raw, String newPassword, boolean acceptPrivacyPolicy) {
+    // SystemTx: sin usuario; password_tokens solo es accesible para la plataforma (y terms_acceptances de INVITATION
+    // solo la escribe la plataforma: la persona aún no tiene sesión).
+    public Redeemed redeem(String raw, String newPassword, boolean acceptPrivacyPolicy, boolean acceptTerms,
+                           String termsVersion) {
         if (!OpaqueTokens.wellFormed(raw)) throw invalidToken();
         String hash = passwords.hash(newPassword);
         Redeemed r = system.call(() -> {
@@ -181,7 +187,13 @@ public class PasswordTokenService {
                             "Para activar tu cuenta debes aceptar la política de privacidad (Ley N° 29733)",
                             "acceptPrivacyPolicy");
                 }
+                if (!acceptTerms) {
+                    throw BusinessException.badRequest("LOGYX-AUTH-013",
+                            "Para activar tu cuenta debes aceptar los Términos y condiciones", "acceptTerms");
+                }
+                String terms = legalTerms.ensureCurrent(termsVersion);
                 p.acceptInvitation(hash, now);
+                termsAcceptances.insert(p.id(), p.organizationId(), terms, now, "INVITATION");
             } else {
                 p.changePassword(hash, now);
             }

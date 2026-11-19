@@ -50,4 +50,4 @@ lo que de verdad se cobró. Es además el primer paso hacia los cobros (roadmap 
   el silencio no la perjudica sin que lo vea alguien (el operador).
 - Negativas: la comisión de OnCargo sobre los peajes puede discutirse; queda documentado arriba cómo cambiarlo. Los reportes de 2.11
   deben leer `finalPrice`, no `agreedPrice`.
-- Pendiente (2.12 cobros): marcar el envío como cobrado y bloquear ajustes nuevos después del cobro.
+- 2.12 (V24, ADR-0014): el cobro del envío bloquea los ajustes desde que el transportista factura (`LOGYX-ADJ-009`); los reportes y la liquidación usan el precio final.

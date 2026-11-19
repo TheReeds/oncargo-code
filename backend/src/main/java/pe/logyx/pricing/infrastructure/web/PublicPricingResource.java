@@ -47,10 +47,11 @@ public class PublicPricingResource {
     public record PublicQuote(BigDecimal distanceKm, BigDecimal fuelCost, BigDecimal transportCost,
                               BigDecimal tollCost, BigDecimal handlingFee, BigDecimal suggestedPrice,
                               BigDecimal priceFloor, BigDecimal vatRate, BigDecimal suggestedNetOfVat,
-                              BigDecimal suggestedVat, BigDecimal commissionRate) {
+                              BigDecimal suggestedVat, BigDecimal commissionRate, BigDecimal baseFee) {
         static PublicQuote of(PriceQuote q, AwardedPriceBreakdown b) {
             return new PublicQuote(q.distanceKm(), q.fuelCost(), q.transportCost(), q.tollCost(), q.handlingFee(),
-                    q.suggestedPrice(), q.priceFloor(), b.vatRate(), b.netOfVat(), b.vat(), b.commissionRate());
+                    q.suggestedPrice(), q.priceFloor(), b.vatRate(), b.netOfVat(), b.vat(), b.commissionRate(),
+                    q.baseFee());
         }
     }
 

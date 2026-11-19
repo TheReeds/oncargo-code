@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { clearSession, homeFor, writeSession, readSession } from '@/lib/session';
-import { login, me, register } from './server';
+import { acceptTerms, login, me, register } from './server';
 import { run, clientIpOf, requireToken } from '@/lib/actions';
 
 const homeAfter = (cookies: any) => {
@@ -48,6 +48,12 @@ export const auth = {
       const u = await me(requireToken(ctx));
       return { status: u?.verificationStatus ?? null, note: u?.verificationNote ?? null };
     },
+  }),
+  /** V24 (2.17): aceptar la versión vigente de los Términos (diálogo de `AppShell`). Cualquier rol, también Lector. */
+  acceptTerms: defineAction({
+    accept: 'json',
+    input: z.object({ termsVersion: z.string().min(1).max(40) }),
+    handler: ({ termsVersion }, ctx) => run(() => acceptTerms(requireToken(ctx), termsVersion)),
   }),
   logout: defineAction({
     handler: async (_i, ctx) => {

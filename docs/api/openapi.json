@@ -35,6 +35,17 @@
           }
         }
       },
+      "AcceptTermsRequest" : {
+        "type" : "object",
+        "required" : [ "termsVersion" ],
+        "properties" : {
+          "termsVersion" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 40
+          }
+        }
+      },
       "AccessRequestView" : {
         "type" : "object",
         "properties" : {
@@ -338,11 +349,44 @@
           }
         }
       },
+      "ApiResponseBoolean" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "boolean"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseCalendarDayView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CalendarDayView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseCarrierPreferenceView" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/CarrierPreferenceView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseCommissionCollectionView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CommissionCollectionView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -365,6 +409,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/CounterOfferView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseCurrentTariff" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CurrentTariff"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -409,6 +464,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/EligibilityView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseEmailSettingsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/EmailSettingsView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -565,6 +631,20 @@
           }
         }
       },
+      "ApiResponseListCalendarDayView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CalendarDayView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListCargoItem" : {
         "type" : "object",
         "properties" : {
@@ -614,6 +694,20 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/CityItem"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListCommissionCollectionView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CommissionCollectionView"
             }
           },
           "meta" : {
@@ -901,6 +995,20 @@
           }
         }
       },
+      "ApiResponseListPayoutAccountView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PayoutAccountView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListPlaceView" : {
         "type" : "object",
         "properties" : {
@@ -985,6 +1093,20 @@
           }
         }
       },
+      "ApiResponseListSettlementRowView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SettlementRowView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListShareLinkView" : {
         "type" : "object",
         "properties" : {
@@ -1048,6 +1170,20 @@
             "type" : "array",
             "items" : {
               "type" : "string"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListTariffVersionView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TariffVersionView"
             }
           },
           "meta" : {
@@ -1244,6 +1380,17 @@
           }
         }
       },
+      "ApiResponseOrganizationPreferencesView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OrganizationPreferencesView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseOrganizationProfile" : {
         "type" : "object",
         "properties" : {
@@ -1293,6 +1440,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/PasswordTokenInfo"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponsePayoutAccountView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PayoutAccountView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1376,6 +1534,17 @@
           }
         }
       },
+      "ApiResponseReportOverviewView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ReportOverviewView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseReputationView" : {
         "type" : "object",
         "properties" : {
@@ -1453,6 +1622,28 @@
           }
         }
       },
+      "ApiResponseSettlementSummaryView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SettlementSummaryView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseSettlementView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SettlementView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseShareLinkCreated" : {
         "type" : "object",
         "properties" : {
@@ -1519,11 +1710,33 @@
           }
         }
       },
+      "ApiResponseStatementView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/StatementView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseSuggestionsView" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/SuggestionsView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseTariffVersionView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TariffVersionView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1546,6 +1759,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/TemplateView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseTermsStatus" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TermsStatus"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1590,6 +1814,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/UnreadCount"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseUnsubscribeView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/UnsubscribeView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -2197,6 +2432,48 @@
           }
         }
       },
+      "CalendarDayKind" : {
+        "type" : "string",
+        "enum" : [ "HOLIDAY", "STRIKE", "OTHER" ]
+      },
+      "CalendarDayView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "day" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/CalendarDayKind"
+          },
+          "kindLabel" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "national" : {
+            "type" : "boolean"
+          },
+          "skipRecurrence" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
       "CancelRequestBody" : {
         "type" : "object",
         "properties" : {
@@ -2214,6 +2491,18 @@
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 500
+          }
+        }
+      },
+      "CancelTariffVersion" : {
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "minLength" : 3,
+            "maxLength" : 300
           }
         }
       },
@@ -2376,6 +2665,82 @@
         "type" : "string",
         "enum" : [ "TIMEOUT", "MAX_BIDS", "ACCEPTED", "CANCELLED" ]
       },
+      "CollectCommission" : {
+        "type" : "object",
+        "required" : [ "carrierOrgId", "shipmentIds", "method", "operationNumber", "paidOn" ],
+        "properties" : {
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "maxItems" : 200,
+            "minItems" : 1
+          },
+          "method" : {
+            "$ref" : "#/components/schemas/PaymentMethod"
+          },
+          "operationNumber" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 40
+          },
+          "paidOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 500
+          }
+        }
+      },
+      "CommissionCollectionView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "method" : {
+            "$ref" : "#/components/schemas/PaymentMethod"
+          },
+          "methodLabel" : {
+            "type" : "string"
+          },
+          "operationNumber" : {
+            "type" : "string"
+          },
+          "paidOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "shipmentsCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "recordedByName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
       "CommissionInfo" : {
         "type" : "object",
         "properties" : {
@@ -2389,6 +2754,10 @@
             "$ref" : "#/components/schemas/Breakdown"
           }
         }
+      },
+      "CommissionStatus" : {
+        "type" : "string",
+        "enum" : [ "PENDING", "COLLECTED", "NOT_APPLICABLE" ]
       },
       "CounterOfferStatus" : {
         "type" : "string",
@@ -2445,6 +2814,62 @@
           "reason" : {
             "type" : "string",
             "maxLength" : 300
+          }
+        }
+      },
+      "CreateCalendarDay" : {
+        "type" : "object",
+        "required" : [ "day", "kind", "name" ],
+        "properties" : {
+          "day" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/CalendarDayKind"
+          },
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 120
+          },
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "skipRecurrence" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 300
+          }
+        }
+      },
+      "CreatePayoutAccount" : {
+        "type" : "object",
+        "required" : [ "kind", "holderName", "number" ],
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/PayoutKind"
+          },
+          "bankName" : {
+            "type" : "string",
+            "maxLength" : 60
+          },
+          "holderName" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 150
+          },
+          "number" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 30
+          },
+          "primary" : {
+            "type" : "boolean"
           }
         }
       },
@@ -2561,6 +2986,50 @@
           }
         }
       },
+      "CreateTariffVersion" : {
+        "type" : "object",
+        "required" : [ "baseFee", "fuelPerKm", "ratePerKmTon", "tollEveryKm", "tollPrice", "handlingRate", "cargoMultipliers", "reason" ],
+        "properties" : {
+          "baseFee" : {
+            "type" : "number"
+          },
+          "fuelPerKm" : {
+            "type" : "number"
+          },
+          "ratePerKmTon" : {
+            "type" : "number"
+          },
+          "tollEveryKm" : {
+            "type" : "number"
+          },
+          "tollPrice" : {
+            "type" : "number"
+          },
+          "handlingRate" : {
+            "type" : "number"
+          },
+          "cargoMultipliers" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "number"
+            }
+          },
+          "effectiveFrom" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "minLength" : 3,
+            "maxLength" : 300
+          },
+          "expectedLatestVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        }
+      },
       "CreateTripBookingRequest" : {
         "type" : "object",
         "required" : [ "weightKg", "cargoDescription", "cargoType", "pickupAddress", "deliveryAddress" ],
@@ -2624,6 +3093,21 @@
           "notes" : {
             "type" : "string",
             "maxLength" : 300
+          }
+        }
+      },
+      "CurrentTariff" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "effectiveFrom" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "values" : {
+            "$ref" : "#/components/schemas/TariffValues"
           }
         }
       },
@@ -2700,7 +3184,7 @@
       },
       "DocumentType" : {
         "type" : "string",
-        "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER", "PICKUP_PHOTO" ]
+        "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER", "PICKUP_PHOTO", "PAYMENT_PROOF", "CARRIER_INVOICE" ]
       },
       "DocumentView" : {
         "type" : "object",
@@ -2870,6 +3354,34 @@
             "items" : {
               "$ref" : "#/components/schemas/VehicleEligibilityView"
             }
+          }
+        }
+      },
+      "EmailMode" : {
+        "type" : "string",
+        "enum" : [ "IMMEDIATE", "DAILY" ]
+      },
+      "EmailSettingsView" : {
+        "type" : "object",
+        "properties" : {
+          "emailEnabled" : {
+            "type" : "boolean"
+          },
+          "mode" : {
+            "$ref" : "#/components/schemas/EmailMode"
+          },
+          "digestHour" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "quietFrom" : {
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "quietTo" : {
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "unsubscribedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -3268,6 +3780,18 @@
         "format" : "date-time",
         "examples" : [ "2022-03-10T16:15:50Z" ]
       },
+      "InterestRouteView" : {
+        "type" : "object",
+        "required" : [ "origin", "destination" ],
+        "properties" : {
+          "origin" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destination" : {
+            "$ref" : "#/components/schemas/City"
+          }
+        }
+      },
       "InviteResult" : {
         "type" : "object",
         "properties" : {
@@ -3391,6 +3915,15 @@
         "type" : "string",
         "format" : "date",
         "examples" : [ "2022-03-10" ]
+      },
+      "LocalTime" : {
+        "type" : "string",
+        "format" : "local-time",
+        "examples" : [ "13:45:30.123456789" ],
+        "externalDocs" : {
+          "description" : "As defined by 'partial-time' in RFC3339",
+          "url" : "https://www.rfc-editor.org/rfc/rfc3339.html#section-5.6"
+        }
       },
       "LoginRequest" : {
         "type" : "object",
@@ -3573,7 +4106,7 @@
       },
       "NotificationCategory" : {
         "type" : "string",
-        "enum" : [ "BIDS", "AWARDS", "REQUESTS", "NEGOTIATION", "SHIPMENTS", "INCIDENTS", "REVIEWS", "TRIPS", "SMART_LOAD", "ALERTS", "FLEET", "ACCOUNT" ]
+        "enum" : [ "BIDS", "AWARDS", "REQUESTS", "NEGOTIATION", "SHIPMENTS", "INCIDENTS", "REVIEWS", "TRIPS", "SMART_LOAD", "ALERTS", "FLEET", "PAYMENTS", "ACCOUNT" ]
       },
       "NotificationPreferenceChange" : {
         "type" : "object",
@@ -3619,7 +4152,7 @@
       },
       "NotificationType" : {
         "type" : "string",
-        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION", "ACCESS_REQUESTED", "NEW_LOAD_MATCH", "FLEET_DOCUMENT_EXPIRING", "BID_IMPROVED", "TEMPLATE_RUN", "REQUEST_INVITATION", "BACKUP_REQUESTED", "BACKUP_RESPONDED", "ADJUSTMENT_PROPOSED", "ADJUSTMENT_DECIDED", "ADJUSTMENT_ESCALATED", "INCIDENT_ASSIGNED" ]
+        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION", "ACCESS_REQUESTED", "NEW_LOAD_MATCH", "FLEET_DOCUMENT_EXPIRING", "BID_IMPROVED", "TEMPLATE_RUN", "REQUEST_INVITATION", "BACKUP_REQUESTED", "BACKUP_RESPONDED", "ADJUSTMENT_PROPOSED", "ADJUSTMENT_DECIDED", "ADJUSTMENT_ESCALATED", "INCIDENT_ASSIGNED", "PAYMENT_DUE", "SETTLEMENT_UPDATED", "COMMISSION_COLLECTED" ]
       },
       "NotificationView" : {
         "type" : "object",
@@ -3793,6 +4326,18 @@
         "type" : "string",
         "format" : "date-time",
         "examples" : [ "2022-03-10T12:15:50-04:00" ]
+      },
+      "OpenSettlementDispute" : {
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "minLength" : 5,
+            "maxLength" : 500
+          }
+        }
       },
       "OperatorAlertsView" : {
         "type" : "object",
@@ -4570,6 +5115,51 @@
           }
         }
       },
+      "OrganizationPreferencesView" : {
+        "type" : "object",
+        "properties" : {
+          "organizationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/City"
+            }
+          },
+          "routes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/InterestRouteView"
+            }
+          },
+          "cargoTypes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CargoType"
+            }
+          },
+          "routeAlerts" : {
+            "type" : "boolean"
+          },
+          "minPricePerKm" : {
+            "type" : "number"
+          },
+          "defaultPickupFrom" : {
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "defaultPickupTo" : {
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "paymentTermsDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
       "OrganizationProfile" : {
         "type" : "object",
         "properties" : {
@@ -4800,6 +5390,43 @@
             "maxLength" : 200
           }
         }
+      },
+      "PaymentMethod" : {
+        "type" : "string",
+        "enum" : [ "TRANSFER", "DEPOSIT", "YAPE", "PLIN", "CASH", "OTHER" ]
+      },
+      "PayoutAccountView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/PayoutKind"
+          },
+          "bankName" : {
+            "type" : "string"
+          },
+          "holderName" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "last4" : {
+            "type" : "string"
+          },
+          "primary" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "PayoutKind" : {
+        "type" : "string",
+        "enum" : [ "BANK", "YAPE", "PLIN" ]
       },
       "PickupRequirementsRequest" : {
         "type" : "object",
@@ -5085,6 +5712,9 @@
           },
           "commissionRate" : {
             "type" : "number"
+          },
+          "baseFee" : {
+            "type" : "number"
           }
         }
       },
@@ -5244,6 +5874,13 @@
           },
           "priceFloor" : {
             "type" : "number"
+          },
+          "baseFee" : {
+            "type" : "number"
+          },
+          "tariffVersion" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         }
       },
@@ -5300,6 +5937,46 @@
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 200
+          }
+        }
+      },
+      "RegisterInvoice" : {
+        "type" : "object",
+        "required" : [ "invoiceNumber", "issuedOn" ],
+        "properties" : {
+          "invoiceNumber" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 40
+          },
+          "issuedOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "RegisterPayment" : {
+        "type" : "object",
+        "required" : [ "method", "paidOn", "amount" ],
+        "properties" : {
+          "method" : {
+            "$ref" : "#/components/schemas/PaymentMethod"
+          },
+          "operationNumber" : {
+            "type" : "string",
+            "maxLength" : 40
+          },
+          "paidOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "amount" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -5375,6 +6052,42 @@
           }
         }
       },
+      "ReportBidRouteView" : {
+        "type" : "object",
+        "properties" : {
+          "originCity" : {
+            "type" : "string"
+          },
+          "destinationCity" : {
+            "type" : "string"
+          },
+          "bids" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "won" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "winRate" : {
+            "type" : "number"
+          }
+        }
+      },
+      "ReportGroupView" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/ReportTotalsView"
+          }
+        }
+      },
       "ReportIncident" : {
         "type" : "object",
         "required" : [ "category", "description" ],
@@ -5418,6 +6131,123 @@
           },
           "adjustmentId" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "ReportOverviewView" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "viewer" : {
+            "type" : "string"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/ReportTotalsView"
+          },
+          "byMonth" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportGroupView"
+            }
+          },
+          "byRoute" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportGroupView"
+            }
+          },
+          "byCounterparty" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportGroupView"
+            }
+          },
+          "byCargoType" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportGroupView"
+            }
+          },
+          "byVehicle" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportGroupView"
+            }
+          },
+          "bidsByRoute" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportBidRouteView"
+            }
+          },
+          "truncated" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ReportTotalsView" : {
+        "type" : "object",
+        "properties" : {
+          "shipments" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "delivered" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "finalTotal" : {
+            "type" : "number"
+          },
+          "netOfVat" : {
+            "type" : "number"
+          },
+          "vat" : {
+            "type" : "number"
+          },
+          "agreedTotal" : {
+            "type" : "number"
+          },
+          "adjustmentsTotal" : {
+            "type" : "number"
+          },
+          "suggestedTotal" : {
+            "type" : "number"
+          },
+          "savings" : {
+            "type" : "number"
+          },
+          "savingsRate" : {
+            "type" : "number"
+          },
+          "costPerKg" : {
+            "type" : "number"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "distanceKm" : {
+            "type" : "number"
+          },
+          "commission" : {
+            "type" : "number"
+          },
+          "commissionVat" : {
+            "type" : "number"
+          },
+          "carrierNet" : {
+            "type" : "number"
+          },
+          "netPerKm" : {
+            "type" : "number"
+          },
+          "occupancy" : {
+            "type" : "number"
           }
         }
       },
@@ -5657,6 +6487,27 @@
           },
           "acceptPrivacyPolicy" : {
             "type" : "boolean"
+          },
+          "acceptTerms" : {
+            "type" : "boolean",
+            "description" : "V24: obligatorio (true) para una invitación (LOGYX-AUTH-013)"
+          },
+          "termsVersion" : {
+            "type" : "string",
+            "description" : "V24: versión de los Términos que leyó (la de GET /public/legal). Si se omite se asume la vigente; si no es la vigente, 409 LOGYX-AUTH-012",
+            "maxLength" : 40
+          }
+        }
+      },
+      "ResolveSettlementDispute" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 500
           }
         }
       },
@@ -6053,6 +6904,318 @@
         "properties" : {
           "kind" : {
             "$ref" : "#/components/schemas/PreferenceKind"
+          }
+        }
+      },
+      "SettlementDisputeView" : {
+        "type" : "object",
+        "properties" : {
+          "openedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "openedBy" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "previousStatus" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          }
+        }
+      },
+      "SettlementHistoryItem" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          },
+          "toLabel" : {
+            "type" : "string"
+          },
+          "actorName" : {
+            "type" : "string"
+          },
+          "actorSide" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "at" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "SettlementInvoiceView" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "string"
+          },
+          "issuedOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "registeredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "SettlementPaymentView" : {
+        "type" : "object",
+        "properties" : {
+          "method" : {
+            "$ref" : "#/components/schemas/PaymentMethod"
+          },
+          "methodLabel" : {
+            "type" : "string"
+          },
+          "operationNumber" : {
+            "type" : "string"
+          },
+          "paidOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "registeredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "SettlementRowView" : {
+        "type" : "object",
+        "properties" : {
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "type" : "string"
+          },
+          "destinationCity" : {
+            "type" : "string"
+          },
+          "requesterOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          },
+          "statusLabel" : {
+            "type" : "string"
+          },
+          "dueOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "daysOverdue" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "pendingAdjustments" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "invoiceNumber" : {
+            "type" : "string"
+          },
+          "paidOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "paidAmount" : {
+            "type" : "number"
+          },
+          "commission" : {
+            "type" : "number"
+          },
+          "commissionVat" : {
+            "type" : "number"
+          },
+          "carrierNet" : {
+            "type" : "number"
+          },
+          "commissionStatus" : {
+            "$ref" : "#/components/schemas/CommissionStatus"
+          }
+        }
+      },
+      "SettlementStatus" : {
+        "type" : "string",
+        "enum" : [ "PENDING_INVOICE", "INVOICED", "PAID", "CONFIRMED", "DISPUTED" ]
+      },
+      "SettlementSummaryView" : {
+        "type" : "object",
+        "properties" : {
+          "awaiting" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "awaitingAmount" : {
+            "type" : "number"
+          },
+          "overdue" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "overdueAmount" : {
+            "type" : "number"
+          },
+          "disputed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "toConfirm" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "toConfirmAmount" : {
+            "type" : "number"
+          },
+          "commissionPending" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "commissionPendingAmount" : {
+            "type" : "number"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SettlementView" : {
+        "type" : "object",
+        "properties" : {
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "type" : "string"
+          },
+          "destinationCity" : {
+            "type" : "string"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/SettlementStatus"
+          },
+          "statusLabel" : {
+            "type" : "string"
+          },
+          "dueOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "daysOverdue" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "agreedPrice" : {
+            "type" : "number"
+          },
+          "adjustmentsTotal" : {
+            "type" : "number"
+          },
+          "pendingAdjustments" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "netOfVat" : {
+            "type" : "number"
+          },
+          "vat" : {
+            "type" : "number"
+          },
+          "commissionRate" : {
+            "type" : "number"
+          },
+          "commission" : {
+            "type" : "number"
+          },
+          "commissionVat" : {
+            "type" : "number"
+          },
+          "carrierNet" : {
+            "type" : "number"
+          },
+          "commissionStatus" : {
+            "$ref" : "#/components/schemas/CommissionStatus"
+          },
+          "adjustmentsLocked" : {
+            "type" : "boolean"
+          },
+          "invoice" : {
+            "$ref" : "#/components/schemas/SettlementInvoiceView"
+          },
+          "payment" : {
+            "$ref" : "#/components/schemas/SettlementPaymentView"
+          },
+          "confirmedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "dispute" : {
+            "$ref" : "#/components/schemas/SettlementDisputeView"
+          },
+          "history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SettlementHistoryItem"
+            }
+          },
+          "payoutAccounts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PayoutAccountView"
+            }
+          },
+          "actions" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -6538,6 +7701,109 @@
           }
         }
       },
+      "StatementLineView" : {
+        "type" : "object",
+        "properties" : {
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "deliveredOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "originCity" : {
+            "type" : "string"
+          },
+          "destinationCity" : {
+            "type" : "string"
+          },
+          "counterpartyName" : {
+            "type" : "string"
+          },
+          "agreedPrice" : {
+            "type" : "number"
+          },
+          "adjustmentsTotal" : {
+            "type" : "number"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "netOfVat" : {
+            "type" : "number"
+          },
+          "vat" : {
+            "type" : "number"
+          },
+          "commissionRate" : {
+            "type" : "number"
+          },
+          "commission" : {
+            "type" : "number"
+          },
+          "commissionVat" : {
+            "type" : "number"
+          },
+          "carrierNet" : {
+            "type" : "number"
+          },
+          "settlementStatus" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StatementView" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "periodLabel" : {
+            "type" : "string"
+          },
+          "generatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "organizationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "organizationName" : {
+            "type" : "string"
+          },
+          "organizationRuc" : {
+            "type" : "string"
+          },
+          "issuerName" : {
+            "type" : "string"
+          },
+          "issuerRuc" : {
+            "type" : "string"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StatementLineView"
+            }
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/ReportTotalsView"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "disclaimer" : {
+            "type" : "string"
+          }
+        }
+      },
       "Status" : {
         "type" : "string",
         "enum" : [ "AVAILABLE", "IN_ROUTE", "MAINTENANCE" ]
@@ -6709,6 +7975,68 @@
             "items" : {
               "$ref" : "#/components/schemas/VehicleOptionView"
             }
+          }
+        }
+      },
+      "TariffValues" : {
+        "type" : "object",
+        "properties" : {
+          "baseFee" : {
+            "type" : "number"
+          },
+          "fuelPerKm" : {
+            "type" : "number"
+          },
+          "ratePerKmTon" : {
+            "type" : "number"
+          },
+          "tollEveryKm" : {
+            "type" : "number"
+          },
+          "tollPrice" : {
+            "type" : "number"
+          },
+          "handlingRate" : {
+            "type" : "number"
+          },
+          "cargoMultipliers" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "number"
+            }
+          }
+        }
+      },
+      "TariffVersionView" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "effectiveFrom" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "values" : {
+            "$ref" : "#/components/schemas/TariffValues"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "createdBy" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "createdByName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "cancelledAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -7069,6 +8397,17 @@
           }
         }
       },
+      "TermsStatus" : {
+        "type" : "object",
+        "properties" : {
+          "termsVersion" : {
+            "type" : "string"
+          },
+          "termsAccepted" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "TripBookingView" : {
         "type" : "object",
         "properties" : {
@@ -7242,6 +8581,86 @@
           }
         }
       },
+      "UnsubscribeRequest" : {
+        "type" : "object",
+        "required" : [ "token" ],
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "scope" : {
+            "description" : "CATEGORY (por omisión) o ALL",
+            "type" : "string",
+            "$ref" : "#/components/schemas/UnsubscribeScope"
+          }
+        }
+      },
+      "UnsubscribeScope" : {
+        "type" : "string",
+        "enum" : [ "CATEGORY", "ALL" ]
+      },
+      "UnsubscribeTokenRequest" : {
+        "type" : "object",
+        "required" : [ "token" ],
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          }
+        }
+      },
+      "UnsubscribeView" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "$ref" : "#/components/schemas/NotificationCategory"
+          },
+          "categoryLabel" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "categoryEmail" : {
+            "type" : "boolean"
+          },
+          "emailEnabled" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateEmailSettings" : {
+        "type" : "object",
+        "required" : [ "emailEnabled", "mode" ],
+        "properties" : {
+          "emailEnabled" : {
+            "type" : "boolean"
+          },
+          "mode" : {
+            "$ref" : "#/components/schemas/EmailMode"
+          },
+          "digestHour" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Hora del resumen diario (0–23, hora de Lima). Por omisión 7",
+            "maximum" : 23,
+            "minimum" : 0
+          },
+          "quietFrom" : {
+            "description" : "Inicio del horario de silencio (HH:mm, hora de Lima). Nulo con quietTo nulo = sin silencio",
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "quietTo" : {
+            "description" : "Fin del horario de silencio (HH:mm). Puede ser menor que quietFrom: cruza la medianoche",
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalTime"
+          }
+        }
+      },
       "UpdateNotificationPreferences" : {
         "type" : "object",
         "required" : [ "preferences" ],
@@ -7253,6 +8672,59 @@
             },
             "maxItems" : 20,
             "minItems" : 1
+          }
+        }
+      },
+      "UpdateOrganizationPreferences" : {
+        "type" : "object",
+        "properties" : {
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/City"
+            },
+            "maxItems" : 30
+          },
+          "routes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/InterestRouteView"
+            },
+            "description" : "Hasta 20 rutas; origen y destino distintos (400 LOGYX-ORG-010/011)",
+            "maxItems" : 40
+          },
+          "cargoTypes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CargoType"
+            },
+            "maxItems" : 20
+          },
+          "routeAlerts" : {
+            "type" : "boolean",
+            "description" : "Transportista: avisarme de cargas nuevas en mis rutas de interés (por omisión true)"
+          },
+          "minPricePerKm" : {
+            "type" : "number",
+            "description" : "Transportista: precio sugerido mínimo por km que me interesa (S/, opcional)",
+            "minimum" : 0.01
+          },
+          "defaultPickupFrom" : {
+            "description" : "PYME: inicio del horario de recojo por defecto (HH:mm)",
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "defaultPickupTo" : {
+            "description" : "PYME: fin del horario de recojo por defecto (HH:mm)",
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalTime"
+          },
+          "paymentTermsDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "PYME: plazo de pago a sus transportistas en días (0–120)",
+            "maximum" : 120,
+            "minimum" : 0
           }
         }
       },
@@ -7352,6 +8824,14 @@
               "$ref" : "#/components/schemas/OrgPermission"
             },
             "description" : "Permisos por rol de organización (V14): READ, OPERATE, MANAGE_USERS, MANAGE_ORGANIZATION, MANAGE_DRIVERS. Úsalos para mostrar u ocultar acciones; el backend los hace cumplir igual"
+          },
+          "termsAccepted" : {
+            "type" : "boolean",
+            "description" : "V24 (2.17): la persona aceptó la versión vigente de los Términos. Si es false, la web pide aceptarlos (POST /auth/terms/accept); a conductores y operadores no se les pide"
+          },
+          "termsVersion" : {
+            "type" : "string",
+            "description" : "V24: versión vigente de los Términos y condiciones"
           }
         }
       },
@@ -8002,7 +9482,7 @@
     "/api/v1/auth/reset-password" : {
       "post" : {
         "summary" : "Definir contraseña con el enlace",
-        "description" : "Restablecer o aceptar una invitación. Cierra todas las sesiones del usuario. 400 LOGYX-AUTH-005 (token inválido, vencido o usado), LOGYX-AUTH-011 (invitación sin aceptar la política de privacidad).",
+        "description" : "Restablecer o aceptar una invitación. Cierra todas las sesiones del usuario. 400 LOGYX-AUTH-005 (token inválido, vencido o usado), LOGYX-AUTH-011 (invitación sin aceptar la política de privacidad), LOGYX-AUTH-013 (invitación sin aceptar los Términos, V24); 409 LOGYX-AUTH-012 (versión de los Términos desactualizada).",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -8029,6 +9509,47 @@
           }
         },
         "tags" : [ "Auth Resource" ]
+      }
+    },
+    "/api/v1/auth/terms/accept" : {
+      "post" : {
+        "summary" : "Aceptar la versión vigente de los Términos y condiciones",
+        "description" : "Cualquier rol (también Lector). Cuando cambia la versión, GET /auth/me trae termsAccepted=false y la web lo pide. Idempotente. 409 LOGYX-AUTH-012 si termsVersion no es la vigente.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AcceptTermsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTermsStatus"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Auth Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ ]
+        } ]
       }
     },
     "/api/v1/bids/backup-requests" : {
@@ -8587,6 +10108,138 @@
         "tags" : [ "Demand Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/catalog/calendar" : {
+      "get" : {
+        "summary" : "Feriados, paros y avisos entre dos fechas (inclusive)",
+        "description" : "Cualquier rol autenticado (banner, aviso al elegir la fecha de recojo). Sin fechas: de hoy a 60 días. Rango máximo 550 días (LOGYX-VAL-001). city filtra lo que afecta a esa ciudad (y lo nacional).",
+        "parameters" : [ {
+          "description" : "Código de ciudad del catálogo (p. ej. PUNO).",
+          "name" : "city",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Desde (yyyy-MM-dd), por omisión hoy en Lima.",
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Hasta (yyyy-MM-dd), por omisión desde + 60 días.",
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListCalendarDayView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Calendar Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Agrega un feriado, paro o aviso (operador)",
+        "description" : "LOGYX-CAL-001 fecha pasada o a más de 3 años (day), CAL-002 (409) ya existe ese día con ese nombre, VAL-001 datos inválidos, NEG-001 datos de contacto (RN07). Queda en la auditoría.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCalendarDay"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCalendarDayView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Calendar Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/catalog/calendar/{id}" : {
+      "delete" : {
+        "summary" : "Quita un día del calendario (operador), con motivo",
+        "description" : "404 si no existe.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Motivo (3-300 caracteres).",
+          "name" : "reason",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBoolean"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Calendar Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
         } ]
       }
     },
@@ -9774,6 +11427,73 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponseListNotificationView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/notifications/email-settings" : {
+      "put" : {
+        "summary" : "Cambiar mis preferencias de correo (V24)",
+        "description" : "Cualquier rol (también Lector). Con emailEnabled=false no sale ningún correo de avisos (los de cuenta sí). DAILY = un resumen al día a digestHour; durante el silencio los correos esperan hasta quietTo. 400 LOGYX-NTF-004 si el silencio está incompleto o empieza y termina a la misma hora.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateEmailSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseEmailSettingsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Mis preferencias de correo (V24)",
+        "description" : "Correo activo, inmediato o resumen diario (hora de Lima) y horario de silencio. Se aplican después de la matriz categoría × canal.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseEmailSettingsView"
                 }
               }
             }
@@ -11375,6 +13095,209 @@
         } ]
       }
     },
+    "/api/v1/organizations/me/payout-accounts" : {
+      "get" : {
+        "summary" : "Datos de cobro vigentes de mi empresa transportista (número completo solo para el ADMIN)",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListPayoutAccountView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Payout Account Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Agrega un dato de cobro (ADMIN)",
+        "description" : "LOGYX-STL-007 CCI de 20 dígitos o celular de 9 dígitos, STL-008 (409) más de 5 vigentes. El número se guarda cifrado. El primero queda como principal.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePayoutAccount"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePayoutAccountView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Payout Account Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/organizations/me/payout-accounts/{id}/archive" : {
+      "post" : {
+        "summary" : "Archiva un dato de cobro (ADMIN); deja de verse en los cobros",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBoolean"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Payout Account Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/organizations/me/payout-accounts/{id}/primary" : {
+      "post" : {
+        "summary" : "Marca un dato de cobro como principal (ADMIN)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePayoutAccountView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Payout Account Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/organizations/me/preferences" : {
+      "put" : {
+        "summary" : "Cambiar las preferencias de mi organización (V24)",
+        "description" : "Solo ADMIN (403 LOGYX-AUTH-008). Reemplaza todo; lo que no aplica al tipo de organización se ignora. 400 LOGYX-ORG-010 (ruta con origen = destino), ORG-011 (más de 20 rutas), ORG-012 (horario de recojo), ORG-013 (plazo de pago), ORG-014 (precio mínimo por km).",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateOrganizationPreferences"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrganizationPreferencesView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Organization Preferences Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Preferencias de mi organización (V24)",
+        "description" : "Cualquier rol de la organización (también Lector). Ciudades, rutas y tipos de carga de interés; del transportista, alertas por rutas y precio mínimo por km; de la PYME, horario de recojo por defecto y plazo de pago.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrganizationPreferencesView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Organization Preferences Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/organizations/me/users" : {
       "get" : {
         "summary" : "Usuarios de mi organización",
@@ -11627,6 +13550,42 @@
         "tags" : [ "Organization Resource" ],
         "security" : [ {
           "SecurityScheme" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/organizations/{id}/preferences" : {
+      "get" : {
+        "summary" : "Preferencias de una organización (operador, V24)",
+        "description" : "Solo lectura.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrganizationPreferencesView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Organization Preferences Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
         } ]
       }
     },
@@ -12035,6 +13994,150 @@
         } ]
       }
     },
+    "/api/v1/pricing/tariffs" : {
+      "get" : {
+        "summary" : "Versiones del tarifario (operador), la más nueva primero",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListTariffVersionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Tariff Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Crea una versión del tarifario, vigente ya o programada (operador)",
+        "description" : "LOGYX-TRF-001 valor fuera de rango (field = el campo, p. ej. cargoMultipliers.FRAGILE), TRF-002 sin motivo, TRF-003 vigencia en el pasado o a más de un año, TRF-005 (409) otro operador creó una versión. Las solicitudes ya publicadas conservan su precio; las nuevas guardan la versión.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTariffVersion"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTariffVersionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Tariff Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/pricing/tariffs/current" : {
+      "get" : {
+        "summary" : "Tarifa vigente del motor de costos (versión, vigencia y valores)",
+        "description" : "Cualquier rol autenticado. Sugerido = base + km × combustible + km × t × tarifa t·km × multiplicador(tipo) + ⌈km / tramo⌉ × peaje + manipuleo × transporte.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCurrentTariff"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Tariff Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/pricing/tariffs/{version}/cancel" : {
+      "post" : {
+        "summary" : "Anula una versión programada que todavía no rige (operador)",
+        "description" : "LOGYX-TRF-004 (409) si ya rige o ya estaba anulada; TRF-002 sin motivo.",
+        "parameters" : [ {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CancelTariffVersion"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTariffVersionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Tariff Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/public/legal" : {
       "get" : {
         "summary" : "Versión vigente de los Términos y condiciones y su estado",
@@ -12162,6 +14265,197 @@
           }
         },
         "tags" : [ "Public Tracking Resource" ]
+      }
+    },
+    "/api/v1/public/unsubscribe" : {
+      "post" : {
+        "summary" : "Darse de baja del correo de avisos (sin cuenta)",
+        "description" : "Sin JWT. scope=CATEGORY apaga el correo de la categoría del enlace (el aviso en la app sigue); ALL apaga todo el correo de avisos. Idempotente. La web la usa también para el one-click de List-Unsubscribe (RFC 8058). 404 LOGYX-NTF-003.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UnsubscribeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseUnsubscribeView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Public Unsubscribe Resource" ]
+      }
+    },
+    "/api/v1/public/unsubscribe/inspect" : {
+      "post" : {
+        "summary" : "Qué da de baja un enlace de correo (sin cuenta)",
+        "description" : "Sin JWT. Categoría, email enmascarado y estado actual. 404 LOGYX-NTF-003 si el enlace no es válido.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UnsubscribeTokenRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseUnsubscribeView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Public Unsubscribe Resource" ]
+      }
+    },
+    "/api/v1/reports/export" : {
+      "get" : {
+        "summary" : "Exporta a CSV (UTF-8 con BOM, separador ;) los envíos del reporte, uno por fila",
+        "description" : "Mismos filtros y RLS que /reports/overview. Máximo 10 000 filas (LOGYX-EXP-001). Para el transportista y el operador incluye comisión, su IGV y el neto.",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "text/csv;charset=UTF-8" : { }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/reports/overview" : {
+      "get" : {
+        "summary" : "Reporte del período: PYME (gasto, ahorro, costo por kg), transportista (ingresos netos, comisión, km, ocupación, adjudicación por ruta) u operador (GMV, comisión, envíos)",
+        "description" : "Por fecha de adjudicación (Lima), envíos no cancelados, con precio final (acordado + ajustes aceptados), IGV y comisión con la tasa guardada en cada envío. Sin fechas: los últimos 6 meses. Rango máximo 400 días (LOGYX-VAL-001). La PYME no recibe la comisión.",
+        "parameters" : [ {
+          "description" : "Desde (yyyy-MM-dd).",
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Hasta (yyyy-MM-dd).",
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseReportOverviewView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/reports/statements/{period}" : {
+      "get" : {
+        "summary" : "Documento interno del mes (por fecha de entrega): liquidación de comisión (transportista) o resumen de costos (PYME)",
+        "description" : "period = yyyy-MM, no futuro. El operador indica organizationId. No es un comprobante SUNAT: la web lo muestra como página imprimible (Guardar como PDF).",
+        "parameters" : [ {
+          "name" : "period",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Organización (solo el operador).",
+          "name" : "organizationId",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseStatementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
       }
     },
     "/api/v1/request-templates" : {
@@ -12992,6 +15286,207 @@
           }
         },
         "tags" : [ "Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/settlements" : {
+      "get" : {
+        "summary" : "Cobros de envíos entregados: «Por pagar» (PYME), «Por cobrar» (transportista) o todos (operador)",
+        "description" : "Bajo RLS: cada parte ve sus envíos. Orden: pendientes primero por vencimiento. La PYME no recibe la comisión. commissionPending y carrierOrgId son para el transportista y el operador.",
+        "parameters" : [ {
+          "description" : "Transportista (operador).",
+          "name" : "carrierOrgId",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "true = solo con comisión por cobrar.",
+          "name" : "commissionPending",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "description" : "Entregados desde (yyyy-MM-dd, Lima).",
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "description" : "true = solo vencidos sin pagar.",
+          "name" : "overdue",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "Estados separados por coma (PENDING_INVOICE, INVOICED, PAID, CONFIRMED, DISPUTED).",
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Entregados hasta (yyyy-MM-dd, Lima).",
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListSettlementRowView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/settlements/commission-collections" : {
+      "get" : {
+        "summary" : "Cobros de comisión registrados por OnCargo (transportista: los suyos; operador: todos o uno)",
+        "parameters" : [ {
+          "name" : "carrierOrgId",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListCommissionCollectionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER", "OPERATOR" ]
+        } ]
+      },
+      "post" : {
+        "summary" : "El operador registra que cobró la comisión (con su IGV) de envíos de un transportista",
+        "description" : "El monto se calcula: suma de comisión + IGV de la comisión de cada envío sobre su precio final. STL-006 ya cobrada, sin comisión o en disputa; STL-010 envío de otro transportista o no entregado.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CollectCommission"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCommissionCollectionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/settlements/summary" : {
+      "get" : {
+        "summary" : "Totales de cobros: por pagar/cobrar, vencidos, por confirmar, en disputa y comisión pendiente",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementSummaryView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
         } ]
@@ -14883,6 +17378,274 @@
         "tags" : [ "Reputation Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "DRIVER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement" : {
+      "get" : {
+        "summary" : "Cobro de un envío entregado (estado, montos con IGV, comprobante, pago, disputa, historial)",
+        "description" : "LOGYX-STL-001 (409) si el envío aún no se entrega. La PYME ve los datos de cobro del transportista y no ve la comisión.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement/confirm" : {
+      "post" : {
+        "summary" : "El transportista confirma que recibió el pago",
+        "description" : "STL-002 si no está PAID.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement/dispute" : {
+      "post" : {
+        "summary" : "Una parte objeta el cobro (facturado o pagado, sin confirmar)",
+        "description" : "STL-004 (409) estado no disputable. Lo resuelve el operador; quien la abrió puede retirarla.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OpenSettlementDispute"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement/invoice" : {
+      "post" : {
+        "summary" : "El transportista registra su comprobante (factura o boleta) del flete",
+        "description" : "Desde aquí el precio final queda fijo (los ajustes se bloquean: LOGYX-ADJ-009). STL-002 estado no válido, STL-003 ajustes pendientes, STL-005 (403) otra parte, STL-009 documento que no es CARRIER_INVOICE de este envío.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterInvoice"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement/payment" : {
+      "post" : {
+        "summary" : "La PYME registra el pago hecho fuera de la plataforma (transferencia, Yape, Plin…)",
+        "description" : "STL-002 ya pagado o en disputa, STL-003 ajustes pendientes, STL-009 documento que no es PAYMENT_PROOF de este envío. Número de operación obligatorio salvo efectivo.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterPayment"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/settlement/resolve" : {
+      "post" : {
+        "summary" : "Cierra la disputa: el operador elige el estado; quien la abrió la retira",
+        "description" : "STL-002 si no está en disputa, STL-005 (403) si no te toca. El operador debe dejar una nota.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResolveSettlementDispute"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSettlementView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Settlement Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
         } ]
       }
     },

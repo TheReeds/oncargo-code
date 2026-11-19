@@ -5,6 +5,90 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-19 — Ola 2, zona F: cobros sin pasarela, reportes y documentos internos, tarifario, subasta, piso y feriados (V24)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.11, 2.12 y 2.14. Decisión: ADR-0014. `scripts/check-contract.sh`: **compatible**
+(todo aditivo). Migración `V24__finance_settings_mail_preferences.sql` (compartida con 2.2/2.17, ver la sección de preferencias y correo):
+`tariff_versions` (versión 1 = las constantes de antes), `shipment_requests.tariff_version`, `calendar_days` (feriados nacionales 2026–2028),
+`shipment_settlements` + `settlement_history` (RLS de las partes y el operador; el conductor no ve nada; un trigger reserva la comisión al
+operador), `commission_collections` (transportista y operador), `settlement_notices` (solo sistema) y `carrier_payout_accounts` (número cifrado
+AES-GCM en la aplicación). Avisos nuevos `PAYMENT_DUE`, `SETTLEMENT_UPDATED`, `COMMISSION_COLLECTED` (categoría `PAYMENTS`); documentos
+`PAYMENT_PROOF` (solo la PYME) y `CARRIER_INVOICE` (solo la oficina del transportista), `LOGYX-DOC-010` (403) si sube la otra parte.
+
+### Cobros (2.12)
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /settlements?status=&overdue=&carrierOrgId=&commissionPending=&from=&to=&page=&size=` | PYME («Por pagar»), CARRIER («Por cobrar»), OPERATOR (todos) | `SettlementRowView[]` paginado: envíos **entregados** con su cobro, `finalPrice` (con IGV), `dueOn`, `daysOverdue`; `commission`, `commissionVat`, `carrierNet`, `commissionStatus` nulos para la PYME |
+| `GET /settlements/summary` | mismos | `SettlementSummaryView` (por pagar/cobrar, vencidos, por confirmar, en disputa, comisión pendiente; `truncated` si hay más de 2 000) |
+| `GET /shipments/{id}/settlement` | partes y operador (conductor 403) | `SettlementView`: estado (`SettlementStatus` `PENDING_INVOICE`\|`INVOICED`\|`PAID`\|`CONFIRMED`\|`DISPUTED` + `statusLabel`), precio final, valor de venta, IGV, comisión (no para la PYME), `invoice`, `payment`, `dispute`, `history[]`, `payoutAccounts[]` (completos para la PYME y el operador), `adjustmentsLocked` y `actions[]` (`INVOICE`, `PAY`, `CONFIRM`, `DISPUTE`, `WITHDRAW_DISPUTE`, `RESOLVE`). `LOGYX-STL-001` (409) si el envío no está entregado |
+| `POST /shipments/{id}/settlement/invoice` | CARRIER (oficina) | `RegisterInvoice{invoiceNumber, issuedOn, documentId?}` → `INVOICED`. Desde aquí el precio final no cambia: `POST /shipments/{id}/adjustments` y aceptar un ajuste dan **`LOGYX-ADJ-009`** (409) |
+| `POST /shipments/{id}/settlement/payment` | PYME | `RegisterPayment{method TRANSFER\|DEPOSIT\|YAPE\|PLIN\|CASH\|OTHER, operationNumber (salvo CASH), paidOn, amount, documentId?}` → `PAID` |
+| `POST /shipments/{id}/settlement/confirm` | CARRIER | → `CONFIRMED` |
+| `POST /shipments/{id}/settlement/dispute` · `/resolve` | partes · operador o quien la abrió | `OpenSettlementDispute{reason}` (desde INVOICED o PAID, `STL-004`); `ResolveSettlementDispute{status?, note}`: el operador elige el estado y deja nota; quien la abrió solo la retira (vuelve al anterior) |
+| `GET/POST /settlements/commission-collections` | CARRIER (lee las suyas), OPERATOR | `CollectCommission{carrierOrgId, shipmentIds[≤200], method, operationNumber, paidOn, note?}` → `CommissionCollectionView` (monto calculado: comisión + IGV de la comisión sobre el precio final). La PYME 403 |
+| `GET/POST /organizations/me/payout-accounts`, `POST …/{id}/primary\|archive` | CARRIER (escribe el ADMIN) | `PayoutAccountView{kind BANK\|YAPE\|PLIN, bankName, holderName, number (nulo si no eres ADMIN), last4, primary}`. `STL-007` CCI de 20 dígitos o celular de 9, `STL-008` más de 5 vigentes |
+Códigos: `STL-001` no entregado, `002` transición no válida, `003` ajustes pendientes, `004` no disputable, `005` (403) no te toca, `006` comisión ya
+cobrada/sin comisión/en disputa, `007` número de cobro inválido, `008` tope de datos de cobro, `009` documento que no es del tipo o del envío,
+`010` envío de otro transportista o no entregado. Recordatorios: job `logyx.settlement.reminders.every` (1 h; `%test` off) → evento `PaymentDue`.
+
+### Reportes y documentos internos (2.11)
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /reports/overview?from=&to=` | PYME, CARRIER, OPERATOR | `ReportOverviewView`: totales (`ReportTotalsView`: envíos, precio final, valor de venta, IGV, sugerido, acordado, ajustes, ahorro y su tasa, costo por kg, kg, km; comisión, su IGV, neto, neto por km y ocupación **solo transportista/operador**) y grupos por mes, ruta, contraparte, tipo de carga, vehículo y `bidsByRoute` (transportista: ofertas, ganadas, `winRate`). Por fecha de adjudicación, sin cancelados; sin fechas = 6 meses; máx. 400 días |
+| `GET /reports/export?from=&to=` | mismos | CSV (UTF-8 BOM, `;`): una fila por envío con precio final e IGV; comisión y neto para transportista y operador. `EXP-001` > 10 000 filas |
+| `GET /reports/statements/{yyyy-MM}?organizationId=` | mismos (el operador indica la organización) | `StatementView`: liquidación de comisión (`COMMISSION_STATEMENT`, `LIQ-…`) o resumen de costos (`COST_SUMMARY`, `RES-…`) del mes por fecha de entrega, con `disclaimer` (no es comprobante SUNAT). La web lo muestra como página imprimible |
+
+### Tarifario, subasta, piso y feriados (2.14)
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /pricing/tariffs/current` | cualquier rol | `CurrentTariff{version, effectiveFrom, values: TariffValues}` |
+| `GET /pricing/tariffs`, `POST /pricing/tariffs`, `POST /pricing/tariffs/{version}/cancel` | OPERATOR | `TariffVersionView{version, state CURRENT\|SCHEDULED\|PAST\|CANCELLED, effectiveFrom, values, reason, createdByName…}`. `CreateTariffVersion{baseFee, fuelPerKm, ratePerKmTon, tollEveryKm, tollPrice, handlingRate, cargoMultipliers{GENERAL…}, effectiveFrom?, reason, expectedLatestVersion?}`; `TRF-001` fuera de rango (`field` = el campo), `002` sin motivo, `003` vigencia pasada o a más de un año, `004` (409) anular una que ya rige, `005` (409) otro operador creó una versión |
+| `GET /catalog/calendar?from=&to=&city=` | cualquier rol | `CalendarDayView[]` (`kind` `CalendarDayKind` HOLIDAY\|STRIKE\|OTHER, `cities` (vacío = nacional), `skipRecurrence`). Sin fechas: hoy a +60 días |
+| `POST /catalog/calendar`, `DELETE /catalog/calendar/{id}?reason=` | OPERATOR | `CreateCalendarDay{day, kind, name, cities?, skipRecurrence?, note?}`; `CAL-001` fecha pasada o a más de 3 años, `CAL-002` (409) repetido. Auditados |
+- `Quote` (`POST /pricing/calculate`) suma `baseFee` y `tariffVersion`; `PublicQuote` suma `baseFee`. La solicitud guarda `tariff_version`.
+- Parámetros nuevos en `GET/PUT /operator/parameters` (`ParameterRow.kind` admite `MINUTES`, `COUNT`, `DAYS`): `auction_duration_minutes`
+  (RN04, 5–10 080), `auction_max_bids` (RN04, 1–50), `price_floor_ratio` (RN03, 0.5–1) y `payment_terms_days` (0–120). Sin cambio rige la
+  configuración de siempre (`logyx.auction.duration`, `logyx.auction.max-bids`, `logyx.pricing.floor-ratio`).
+- Las plantillas recurrentes que saltan feriados usan el calendario (nacional o de su ciudad de origen) en vez de la lista fija.
+
+## 2026-11-19 — Ola 2 zona F — preferencias, correo y términos (V24)
+
+Origen: roadmap v2 ítems 2.2 y 2.17. `scripts/check-contract.sh`: **compatible** (todo aditivo). Migración compartida
+`V24__finance_settings_mail_preferences.sql`: `user_preferences` (RLS por persona), `notification_email_queue` y
+`org_route_alerts` (solo sistema), `organization_preferences` (RLS por organización; el operador lee) y la política
+`terms_own_insert` (la persona inserta su aceptación con `source = 'UPDATE'`).
+
+### Endpoints nuevos
+| Método y path | Quién | Qué hace |
+|---|---|---|
+| `GET` / `PUT /notifications/email-settings` | PYME, CARRIER, OPERATOR (también Lector) | `EmailSettingsView{emailEnabled, mode EmailMode IMMEDIATE\|DAILY, digestHour 0–23, quietFrom, quietTo, unsubscribedAt}` · `UpdateEmailSettings`. Se aplica después de la matriz categoría × canal: correo apagado = no sale; `DAILY` = a la cola hasta la próxima `digestHour` de Lima; en el silencio (puede cruzar la medianoche) = a la cola hasta `quietTo`. `LOGYX-NTF-004` silencio incompleto o de duración cero (`quietFrom`/`quietTo`) |
+| `POST /public/unsubscribe/inspect` | sin JWT | `UnsubscribeTokenRequest{token}` → `UnsubscribeView{category, categoryLabel, email (enmascarado), categoryEmail, emailEnabled}` (lista blanca, `X-Robots-Tag: noindex`). Límite por IP (429 `AUTH-429`) |
+| `POST /public/unsubscribe` | sin JWT | `UnsubscribeRequest{token, scope UnsubscribeScope CATEGORY\|ALL}`: `CATEGORY` apaga el correo de la categoría del enlace (el aviso en la app sigue), `ALL` apaga todo el correo de avisos. Idempotente. Token mal formado, alterado o de una persona que ya no está: **404 `LOGYX-NTF-003`** (misma respuesta). La web la usa para `/baja` y para el one-click de `List-Unsubscribe` |
+| `GET /organizations/me/preferences` | PYME, CARRIER (cualquier rol) | `OrganizationPreferencesView{cities[], routes[InterestRouteView{origin, destination}], cargoTypes[], routeAlerts, minPricePerKm, defaultPickupFrom, defaultPickupTo, paymentTermsDays, updatedAt}`; sin fila: listas vacías y `routeAlerts = true` |
+| `PUT /organizations/me/preferences` | ADMIN (403 `AUTH-008`; Lector `AUTH-007`) | `UpdateOrganizationPreferences` (reemplaza todo; lo que no aplica al tipo se ignora: transportista `routeAlerts`/`minPricePerKm`, PYME horario de recojo y `paymentTermsDays`). Ciudades y tipos del catálogo. `ORG-010` ruta con origen = destino, `ORG-011` más de 20 rutas, `ORG-012` horario de recojo incompleto o invertido, `ORG-013` plazo fuera de 0–120, `ORG-014` precio mínimo por km fuera de S/ 0.01–100 |
+| `GET /organizations/{id}/preferences` | OPERATOR | lo mismo, de cualquier organización (solo lectura) |
+| `POST /auth/terms/accept` | cualquier rol con sesión (también Lector) | `AcceptTermsRequest{termsVersion}` → `TermsStatus{termsVersion, termsAccepted}`. Inserta `source = 'UPDATE'` bajo RLS; idempotente; 409 `AUTH-012` si no es la vigente |
+
+### Campos y comportamiento nuevos
+- `UserInfo` (`GET /auth/me`, login, registro, refresh, cambio de contraseña) suma `termsAccepted` (la persona aceptó la versión vigente) y
+  `termsVersion`. La API **no se bloquea**: la web muestra un diálogo de aceptación (no a conductores ni operadores).
+- `ResetPasswordRequest` suma `acceptTerms` y `termsVersion`: **⚠️ aceptar una invitación exige ahora `acceptTerms = true`** (nuevo
+  `LOGYX-AUTH-013`, `field = acceptTerms`; versión desactualizada: 409 `AUTH-012`) y guarda `terms_acceptances.source = 'INVITATION'`.
+  Restablecer la contraseña no cambia.
+- Correos de aviso: llevan «Darte de baja» (`<WEB_URL>/baja?t=<token>`) y las cabeceras `List-Unsubscribe: <<WEB_URL>/baja/one-click?t=…>`
+  y `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058). El token es HMAC-SHA256 sin estado (persona + categoría o `ALL`) con
+  `logyx.mail.unsubscribe-secret` (env `LOGYX_UNSUBSCRIBE_SECRET`, obligatoria en producción). Un resumen agrupa varios avisos («Tienes N
+  avisos»); job `logyx.notifications.email-queue.every` (5 m; `%test` off).
+- Alertas implícitas (2.2 + 2.3): al publicarse una carga, las personas de los transportistas con `routeAlerts` cuya ruta de interés
+  coincide (y tipo y precio sugerido por km si los declararon) y con un vehículo que puede ofertar reciben `NEW_LOAD_MATCH` (título «Carga
+  nueva en tu ruta: …», `mine = false`), salvo quien ya lo recibió por una búsqueda guardada. Sin bloqueados; tope
+  `logyx.alerts.max-implicit-per-org-per-hour` (20).
+- Avisos de cobro: `NotificationCategory.PAYMENTS` («Cobros y pagos», PYME, transportista y operador; correo por omisión **sí**) y
+  `NotificationType` `PAYMENT_DUE` (a la PYME), `SETTLEMENT_UPDATED` (a la contraparte; a las dos si actuó el operador; `relatedType
+  SHIPMENT`), `COMMISSION_COLLECTED` (solo al transportista; sin `relatedType`). La descripción de `ALERTS` menciona las rutas de interés.
+- Códigos nuevos: `NTF-003` (404) enlace de baja inválido, `NTF-004` silencio inválido, `NTF-005` hora del resumen (dominio; la API
+  responde antes `VAL-001`), `AUTH-013` invitación sin aceptar los Términos, `ORG-010…014`.
+
 ## 2026-11-19 — Ola 2, zona P: plantillas y cargas recurrentes, preferidos y bloqueados, segunda oferta, bandeja y acciones masivas (V21)
 
 Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.1, 2.9, 2.10 (lado PYME) y 2.16. `scripts/check-contract.sh`: **compatible** (todo aditivo).

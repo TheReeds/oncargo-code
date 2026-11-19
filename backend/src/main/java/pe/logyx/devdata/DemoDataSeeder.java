@@ -117,10 +117,12 @@ public class DemoDataSeeder {
             Log.info("Datos demo ya presentes; no se vuelven a crear");
             verifyExistingDemoOrganizations();
             ensureDemoTeam();
+            acceptDemoTerms();
             return;
         }
         seed();
         ensureDemoTeam();
+        acceptDemoTerms();
         Log.infof("Datos demo creados: %s, %s, %s, %s, %s (contraseña %s)",
                 PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL, PASSWORD);
     }
@@ -138,6 +140,22 @@ public class DemoDataSeeder {
                 .setParameter(1, PYME_EMAIL).setParameter(2, CARRIER_EMAIL).setParameter(3, CARRIER2_EMAIL)
                 .executeUpdate());
         if (n > 0) Log.infof("Organizaciones demo verificadas: %d", n);
+    }
+
+    /**
+     * V24 (2.17): las cuentas demo (todas las {@code @logyx.pe}) aceptan la versión vigente de los Términos, así la web
+     * no les pide aceptarlos en cada arranque (el seed las crea sin pasar por el formulario de registro). Idempotente.
+     */
+    private void acceptDemoTerms() {
+        String version = org.eclipse.microprofile.config.ConfigProvider.getConfig()
+                .getOptionalValue("logyx.terms.version", String.class).orElse("2026-11-17-borrador");
+        // SystemTx: arranque sin usuario; inserta la evidencia de las cuentas demo (logyx_app solo inserta la propia).
+        int n = systemTx.call(() -> em.createNativeQuery("INSERT INTO terms_acceptances (id, profile_id, organization_id, "
+                        + "terms_version, source) SELECT gen_random_uuid(), p.id, p.organization_id, ?1, 'REGISTER' FROM profiles p "
+                        + "WHERE p.email LIKE '%@logyx.pe' AND NOT EXISTS (SELECT 1 FROM terms_acceptances t "
+                        + "WHERE t.profile_id = p.id AND t.terms_version = ?1)")
+                .setParameter(1, version).executeUpdate());
+        if (n > 0) Log.infof("Términos %s aceptados por %d cuentas demo", version, n);
     }
 
     /**

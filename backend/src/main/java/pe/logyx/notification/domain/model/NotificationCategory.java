@@ -23,8 +23,13 @@ public enum NotificationCategory {
     TRIPS("Viajes y reservas", "Reservas en viajes publicados: pedidas, confirmadas, rechazadas o canceladas.",
             EnumSet.of(OrgType.PYME, OrgType.CARRIER)),
     SMART_LOAD("Cargas combinadas", "Sugerencias de Smart Load para tu flota.", EnumSet.of(OrgType.CARRIER)),
-    ALERTS("Alertas de carga", "Cargas nuevas que coinciden con tus búsquedas guardadas.", EnumSet.of(OrgType.CARRIER)),
+    ALERTS("Alertas de carga", "Cargas nuevas que coinciden con tus búsquedas guardadas o con las rutas de interés de tu empresa.",
+            EnumSet.of(OrgType.CARRIER)),
     FLEET("Documentos de flota", "SOAT, revisión técnica y licencias por vencer o vencidas.", EnumSet.of(OrgType.CARRIER)),
+    /** V24 (2.12): comprobantes, pagos, confirmaciones y disputas del cobro de cada envío; recordatorios de pago (PYME) y
+     *  cobro de la comisión de OnCargo (transportista). */
+    PAYMENTS("Cobros y pagos", "Comprobantes, pagos, confirmaciones y recordatorios de pago de tus envíos.",
+            EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR)),
     ACCOUNT("Cuenta y accesos", "Verificación de tu empresa y pedidos de acceso de tu equipo.",
             EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR));
 
@@ -58,6 +63,7 @@ public enum NotificationCategory {
                  TRIP_CANCELLED -> TRIPS;
             case SMART_LOAD_SUGGESTED -> SMART_LOAD;
             case ORGANIZATION_VERIFICATION, ACCESS_REQUESTED -> ACCOUNT;
+            case PAYMENT_DUE, SETTLEMENT_UPDATED, COMMISSION_COLLECTED -> PAYMENTS;
         };
     }
 }

@@ -68,4 +68,4 @@ La hoja de ruta v2 (`docs/product/2026-11-17-roadmap-v2.md`, ítems 1.13, 1.14, 
 ## Consecuencias
 - Un valor de RN10/RN11 pasa a ser dato: los tests que dependen de él lo fijan o lo restauran (`OperatorParametersFlowTest`).
 - El historial crece con cada cambio (poco volumen); no hay borrado ni "deshacer": se corrige con otro cambio.
-- Pendiente (2.14): tarifario, feriados, ciudades, subasta y piso editables; vigencia programada de un cambio.
+- 2.14 (V24, ADR-0014): subasta (`auction_duration_minutes`, `auction_max_bids`), piso (`price_floor_ratio`), plazo de pago, tarifario versionado con vigencia programada y calendario de feriados ya son editables. Sigue pendiente: activar o desactivar ciudades del catálogo.

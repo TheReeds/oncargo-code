@@ -50,10 +50,35 @@ public enum ParameterKey {
     INCIDENT_SLA_MEDIUM_HOURS("incident_sla_medium_hours", Kind.HOURS, "1", "720", "Incidencias medias: SLA",
             "Horas para resolver una incidencia de severidad media."),
     INCIDENT_SLA_LOW_HOURS("incident_sla_low_hours", Kind.HOURS, "1", "720", "Incidencias bajas: SLA",
-            "Horas para resolver una incidencia de severidad baja.");
+            "Horas para resolver una incidencia de severidad baja."),
+    /** 2.14 · RN04: minutos que dura la subasta desde que se publica (o se reabre). */
+    AUCTION_DURATION_MINUTES("auction_duration_minutes", Kind.MINUTES, "5", "10080", "Subasta: duración",
+            "Minutos que la subasta queda abierta desde que se publica la solicitud (RN04)."),
+    /** 2.14 · RN04: ofertas con las que la subasta cierra antes de tiempo. */
+    AUCTION_MAX_BIDS("auction_max_bids", Kind.COUNT, "1", "50", "Subasta: máximo de ofertas",
+            "La subasta cierra al recibir esta cantidad de ofertas (RN04)."),
+    /** 2.14 · RN03: fracción del precio sugerido bajo la cual no se puede ofertar. */
+    PRICE_FLOOR_RATIO("price_floor_ratio", Kind.RATE, "0.5", "1", "Piso de precio",
+            "Fracción del precio sugerido bajo la cual no se acepta una oferta (RN03; 0.75 = 75 %)."),
+    /** 2.12: plazo de pago de la PYME cuando su organización no declaró uno propio. */
+    PAYMENT_TERMS_DAYS("payment_terms_days", Kind.DAYS, "0", "120", "Cobros: plazo de pago",
+            "Días desde la entrega para que la PYME pague, si su empresa no fijó otro plazo.");
 
-    /** {@code AMOUNT} (V23): soles con hasta 2 decimales. */
-    public enum Kind { RATE, HOURS, FLAG, AMOUNT }
+    /**
+     * {@code AMOUNT} (V23): soles con hasta 2 decimales. {@code MINUTES}, {@code COUNT} y {@code DAYS} (V24): enteros.
+     */
+    public enum Kind { RATE, HOURS, FLAG, AMOUNT, MINUTES, COUNT, DAYS;
+        boolean integral() { return this == HOURS || this == FLAG || this == MINUTES || this == COUNT || this == DAYS; }
+        String unit() {
+            return switch (this) {
+                case HOURS -> " horas";
+                case MINUTES -> " minutos";
+                case DAYS -> " días";
+                case COUNT -> " ofertas";
+                default -> "";
+            };
+        }
+    }
 
     private final String key;
     private final Kind kind;
@@ -102,7 +127,9 @@ public enum ParameterKey {
         if (kind == Kind.FLAG && v.compareTo(BigDecimal.ZERO) != 0 && v.compareTo(BigDecimal.ONE) != 0) {
             throw invalid("Indica 1 (bloquear) o 0 (solo advertir)");
         }
-        if ((kind == Kind.HOURS || kind == Kind.FLAG) && v.stripTrailingZeros().scale() > 0) throw invalid("Indica horas enteras");
+        if (kind.integral() && v.stripTrailingZeros().scale() > 0) {
+            throw invalid(kind == Kind.HOURS ? "Indica horas enteras" : "Indica un número entero");
+        }
         if (kind == Kind.RATE && v.scale() > 4) throw invalid("Admite hasta 4 decimales (0.0825 = 8.25 %)");
         if (kind == Kind.AMOUNT && v.stripTrailingZeros().scale() > 2) throw invalid("Admite hasta 2 decimales");
         if (v.compareTo(min) < 0 || v.compareTo(max) > 0) {
@@ -110,9 +137,9 @@ public enum ParameterKey {
                     ? "Debe estar entre " + percent(min) + " y " + percent(max)
                     : kind == Kind.AMOUNT
                     ? "Debe estar entre S/ " + min.toPlainString() + " y S/ " + max.toPlainString()
-                    : "Debe estar entre " + min.toPlainString() + " y " + max.toPlainString() + " horas");
+                    : "Debe estar entre " + min.toPlainString() + " y " + max.toPlainString() + kind.unit());
         }
-        return kind == Kind.HOURS || kind == Kind.FLAG ? v.setScale(0).toPlainString() : strip(v);
+        return kind.integral() ? v.setScale(0, java.math.RoundingMode.UNNECESSARY).toPlainString() : strip(v);
     }
 
     public BigDecimal decimal(String canonical) { return new BigDecimal(canonical); }
@@ -120,6 +147,10 @@ public enum ParameterKey {
     public boolean flag(String canonical) { return "1".equals(canonical); }
 
     public Duration hours(String canonical) { return Duration.ofHours(Long.parseLong(canonical)); }
+
+    public Duration minutes(String canonical) { return Duration.ofMinutes(Long.parseLong(canonical)); }
+
+    public int integer(String canonical) { return Integer.parseInt(canonical); }
 
     private BusinessException invalid(String message) {
         return BusinessException.badRequest("LOGYX-PAR-001", label + ": " + message, "value");

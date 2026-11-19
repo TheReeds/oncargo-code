@@ -38,8 +38,9 @@ Especificación funcional completa: repo hermano `../ProyectoEPE-LOGYX/docs/soft
    lento de respaldo. Web: proxy `/eventos` + `web/src/lib/realtime.ts`; Android: cliente SSE en `:core:network`.
    **Trabajos «en nombre de» una organización** (plantillas recurrentes, ADR-0013): corren con `SyntheticTenant` (token en memoria con `org_id` y el autor), no con `SystemTx`; la RLS sigue activa.
    **Superficies públicas sin JWT** (cotizador `/public/pricing/*`, seguimiento por enlace `/public/tracking/{token}` → web `/s/<token>`,
-   ADR-0011; «pedir acceso a la empresa» desde el registro `/public/organization-access-requests`, Ola 2 X): límite por IP, `SystemTx` acotado y **lista blanca** de campos; nunca reutilices un DTO autenticado ahí.
+   ADR-0011; «pedir acceso a la empresa» desde el registro `/public/organization-access-requests`, Ola 2 X; baja del correo de avisos con token HMAC `/public/unsubscribe` → web `/baja`, Ola 2 F): límite por IP, `SystemTx` acotado y **lista blanca** de campos; nunca reutilices un DTO autenticado ahí.
    **Precio final de un envío** (Ola 2 X, ADR-0012) = acordado + ajustes aceptados; la comisión se calcula sobre él con la tasa guardada al adjudicar.
+   **Cobros, reportes y tarifario** (Ola 2 F, ADR-0014): un cobro por envío entregado (`settlement`; desde la factura no hay más ajustes), reportes y liquidaciones con el precio final (`reports`, bajo RLS, HTML imprimible), tarifario versionado y calendario editables por el operador.
 3. **Respuestas** siempre `{ data, meta }`; errores `{ error: { code, message, field }, meta }` con códigos `LOGYX-XXX-NNN`.
 4. **Idioma:** dominio, UI y mensajes en español; identificadores de código en inglés.
 5. **Una carpeta por feature/módulo**, con la misma forma interna en todo el monorepo (ver guías locales).

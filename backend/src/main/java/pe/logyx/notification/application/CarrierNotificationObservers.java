@@ -5,6 +5,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import pe.logyx.alerts.application.LoadAlertMatcher;
 import pe.logyx.fleet.application.event.FleetDocumentExpiring;
+import pe.logyx.identity.application.UserAccounts;
+import pe.logyx.identity.domain.model.Profile;
 import pe.logyx.marketplace.application.event.BidImproved;
 import pe.logyx.marketplace.application.event.RequestPublished;
 import pe.logyx.marketplace.application.MarketplaceQueries;
@@ -14,7 +16,11 @@ import pe.logyx.notification.domain.model.NotificationType;
 import pe.logyx.shared.domain.Money;
 import pe.logyx.shared.outbox.Outboxed;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Avisos de la zona del transportista (Ola 2, T): carga nueva que coincide con una búsqueda guardada (2.3), documento
@@ -27,21 +33,38 @@ public class CarrierNotificationObservers {
     @Inject NotificationPublisher publisher;
     @Inject LoadAlertMatcher alerts;
     @Inject MarketplaceQueries marketplace;
+    @Inject UserAccounts accounts;
 
-    /** 2.3: un aviso por persona cuyas búsquedas coinciden (nombra la primera) y cuyo vehículo puede ofertar. */
+    /**
+     * 2.3: un aviso por persona cuyas búsquedas coinciden (nombra la primera) y cuyo vehículo puede ofertar.
+     * V24 (2.2): además, a cada persona de los transportistas cuya ruta de interés coincide (alerta implícita), salvo a
+     * quien ya le llegó por una búsqueda guardada. Cada uno según su preferencia de «Alertas de carga».
+     */
     void onRequestPublished(@Observes @Outboxed RequestPublished e) {
         var matches = alerts.matchesFor(e.requestId());
-        if (matches.isEmpty()) return;
+        var routeMatches = alerts.routeMatchesFor(e.requestId());
+        if (matches.isEmpty() && routeMatches.isEmpty()) return;
         var r = marketplace.publishedForSystem(e.requestId()).orElse(null);
         if (r == null) return;
         var c = r.cargo();
         String what = c.cargoType().label + " · " + c.weightKg().stripTrailingZeros().toPlainString() + " kg · recojo "
                 + c.pickupDate().getDayOfMonth() + "/" + c.pickupDate().getMonthValue();
-        publisher.publish(matches.stream().map(m -> Notification.toPerson(m.organizationId(), m.profileId(),
+        List<Notification> out = new ArrayList<>(matches.stream().map(m -> Notification.toPerson(m.organizationId(), m.profileId(),
                 NotificationType.NEW_LOAD_MATCH, "Carga nueva: " + e.route(),
                 what + ". Coincide con «" + m.searchNames().getFirst() + "»"
                         + (m.searchNames().size() > 1 ? " y " + (m.searchNames().size() - 1) + " más" : "")
                         + ". La subasta ya está abierta.", NotificationTarget.REQUEST, e.requestId())).toList());
+        Set<UUID> already = matches.stream().map(LoadAlertMatcher.Match::profileId).collect(Collectors.toSet());
+        for (var m : routeMatches) {
+            for (Profile p : accounts.noticeRecipients(m.organizationId())) {
+                if (already.contains(p.id())) continue;
+                out.add(Notification.toPerson(m.organizationId(), p.id(), NotificationType.NEW_LOAD_MATCH,
+                        "Carga nueva en tu ruta: " + e.route(),
+                        what + ". Es una de las rutas de interés de tu empresa. La subasta ya está abierta.",
+                        NotificationTarget.REQUEST, e.requestId(), false));
+            }
+        }
+        publisher.publish(out);
     }
 
     /** 2.4: a la organización dueña de la flota (cada persona según su preferencia de «Documentos de flota»). */

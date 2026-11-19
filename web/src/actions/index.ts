@@ -22,5 +22,7 @@ import { searchActions } from '@/features/search/actions';
 import { landing } from '@/features/landing/actions';
 import { templates } from '@/features/templates/actions';
 import { preferences, backup } from '@/features/preferences/actions';
+import { config } from '@/features/config/actions';
+import { settlements } from '@/features/settlements/actions';
 
-export const server = { auth, password, orgAccess, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization, landing, access, activity, places, search: searchActions, templates, preferences, backup };
+export const server = { auth, password, orgAccess, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization, landing, access, activity, places, search: searchActions, templates, preferences, backup, config, settlements };

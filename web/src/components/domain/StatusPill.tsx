@@ -48,10 +48,14 @@ const ACCOUNT: Record<string, [string, Tone]> = { ACTIVE: ['Activo', 'emerald'],
 const ADJUSTMENT: Record<string, [string, Tone]> = { PENDING: ['Por responder', 'amber'], ACCEPTED: ['Aceptado', 'emerald'], REJECTED: ['Rechazado', 'red'], WITHDRAWN: ['Retirado', 'neutral'], ESCALATED: ['Lo decide OnCargo', 'petrol'] };
 /** Severidad de una incidencia (2.7). */
 const SEVERITY: Record<string, [string, Tone]> = { LOW: ['Baja', 'neutral'], MEDIUM: ['Media', 'petrol'], HIGH: ['Alta', 'amber'], CRITICAL: ['Crítica', 'red'] };
-const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART, verification: VERIFICATION, account: ACCOUNT, adjustment: ADJUSTMENT, severity: SEVERITY };
+/** Cobro de un envío entregado (2.12). */
+const SETTLEMENT: Record<string, [string, Tone]> = { PENDING_INVOICE: ['Falta comprobante', 'amber'], INVOICED: ['Facturado', 'petrol'], PAID: ['Pagado', 'petrol'], CONFIRMED: ['Cobrado', 'emerald'], DISPUTED: ['En disputa', 'red'] };
+/** Comisión de OnCargo sobre un envío (solo transportista y operador). */
+const COMMISSION: Record<string, [string, Tone]> = { PENDING: ['Por cobrar', 'amber'], COLLECTED: ['Cobrada', 'emerald'], NOT_APPLICABLE: ['No aplica', 'neutral'] };
+const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART, verification: VERIFICATION, account: ACCOUNT, adjustment: ADJUSTMENT, severity: SEVERITY, settlement: SETTLEMENT, commission: COMMISSION };
 
-export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' | 'verification' | 'account' | 'adjustment' | 'severity' }) {
-  if (kind === 'trip' || kind === 'booking' || kind === 'smart' || kind === 'verification' || kind === 'account' || kind === 'adjustment' || kind === 'severity') {
+export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' | 'verification' | 'account' | 'adjustment' | 'severity' | 'settlement' | 'commission' }) {
+  if (kind === 'trip' || kind === 'booking' || kind === 'smart' || kind === 'verification' || kind === 'account' || kind === 'adjustment' || kind === 'severity' || kind === 'settlement' || kind === 'commission') {
     const [label, tone] = BY_KIND[kind][status] ?? [status, 'neutral' as Tone];
     return <Badge tone={tone}>{label}</Badge>;
   }

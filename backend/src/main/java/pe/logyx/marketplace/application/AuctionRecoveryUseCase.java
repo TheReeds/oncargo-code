@@ -40,7 +40,8 @@ public class AuctionRecoveryUseCase {
     @Inject AuditService audit;
     @Inject TenantContext tenant;
 
-    @ConfigProperty(name = "logyx.auction.duration") Duration auctionDuration;
+    /** RN04 (2.14): duración vigente de la subasta. */
+    @Inject pe.logyx.shared.config.SystemParameters parameters;
 
     @Transactional
     public RequestSummary reopen(UUID requestId, LocalDate pickupDate) {
@@ -51,7 +52,7 @@ public class AuctionRecoveryUseCase {
             throw BusinessException.conflict("LOGYX-AUC-003", "Solo se reabre la subasta de una solicitud publicada");
         }
         OffsetDateTime now = OffsetDateTime.now();
-        a.reopen(now, auctionDuration);
+        a.reopen(now, parameters.auctionDuration());
         r.reschedule(pickupDate, LocalDate.now(LIMA));
         requests.save(r);
         auctions.save(a);

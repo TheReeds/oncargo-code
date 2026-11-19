@@ -21,6 +21,7 @@ import { LIMITS } from '@/lib/limits';
 import { VerificationBlock } from '@/components/domain/VerificationBlock';
 import { SaveTemplateDialog } from '@/features/templates/components/SaveTemplateDialog';
 import { Can } from '@/lib/permissions/react';
+import { HolidayHint } from '@/features/config/components/HolidayHint';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/lib/api/server';
 import type { PlaceView } from '@/features/places/server';
@@ -390,7 +391,7 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
               <Field label="Tipo de carga" htmlFor="cargoType">
                 <Select id="cargoType" value={v.cargoType} onValueChange={set('cargoType')} options={cargoOptions} />
               </Field>
-              <Field label="Fecha de recojo" htmlFor="pickupDate" error={err('pickupDate')}><DatePicker id="pickupDate" value={v.pickupDate} onValueChange={set('pickupDate')} min={today} invalid={!!err('pickupDate')} placeholder="Elige el día" /></Field>
+              <Field label="Fecha de recojo" htmlFor="pickupDate" error={err('pickupDate')}><DatePicker id="pickupDate" value={v.pickupDate} onValueChange={set('pickupDate')} min={today} invalid={!!err('pickupDate')} placeholder="Elige el día" /><HolidayHint date={v.pickupDate} city={v.originCity} /></Field>
               <Field label="Peso" htmlFor="weightKg" error={err('weightKg')}><div onBlur={touch('weightKg')}><NumberInput id="weightKg" value={v.weightKg} onValueChange={set('weightKg')} decimals={1} suffix="kg" placeholder="3,200" invalid={!!err('weightKg')} /></div></Field>
               <Field label="Volumen" htmlFor="volumeM3" hint="Opcional. Ayuda a elegir el vehículo."><NumberInput id="volumeM3" value={v.volumeM3} onValueChange={set('volumeM3')} decimals={1} suffix="m³" placeholder="12" /></Field>
               <Field label="Tu referencia" htmlFor="customerReference" error={err('customerReference')} hint="Opcional. N.º de orden de compra o de pedido. Solo lo ves tú y, cuando adjudiques, el transportista."><Input id="customerReference" name="customerReference" autoComplete="off" maxLength={LIMITS.customerReference} value={v.customerReference} onChange={(e) => set('customerReference')(e.target.value)} placeholder="OC 4500123" aria-invalid={!!err('customerReference')} /></Field>

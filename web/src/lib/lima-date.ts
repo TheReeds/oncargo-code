@@ -28,3 +28,6 @@ export function mondayOf(iso: string): string {
 
 /** `lun`, `mar`… */
 export const weekdayShort = (iso: string): string => new Intl.DateTimeFormat('es-PE', { timeZone: 'UTC', weekday: 'short' }).format(new Date(toUtc(iso))).replace('.', '').toLowerCase();
+
+/** Día calendario en Lima (`YYYY-MM-DD`) de un instante ISO (`2026-11-19T02:06:03Z` → `2026-11-18`). */
+export const limaDateOf = (iso: string): string => fmt.format(new Date(iso));

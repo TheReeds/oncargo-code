@@ -31,12 +31,13 @@ public class PricingResource {
                                @NotNull @DecimalMin(value = "1", message = "El peso debe ser mayor a 0") BigDecimal weightKg,
                                @NotNull CargoType cargoType) {}
 
+    /** {@code baseFee} y {@code tariffVersion} (V24, 2.14): tarifa base y versión del tarifario usada. */
     public record Quote(BigDecimal distanceKm, BigDecimal fuelCost, BigDecimal transportCost,
                         BigDecimal tollCost, BigDecimal handlingFee,
-                        BigDecimal suggestedPrice, BigDecimal priceFloor) {
+                        BigDecimal suggestedPrice, BigDecimal priceFloor, BigDecimal baseFee, int tariffVersion) {
         static Quote of(PriceQuote q) {
             return new Quote(q.distanceKm(), q.fuelCost(), q.transportCost(), q.tollCost(),
-                    q.handlingFee(), q.suggestedPrice(), q.priceFloor());
+                    q.handlingFee(), q.suggestedPrice(), q.priceFloor(), q.baseFee(), q.tariffVersion());
         }
     }
 

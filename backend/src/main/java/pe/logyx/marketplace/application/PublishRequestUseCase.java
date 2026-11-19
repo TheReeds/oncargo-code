@@ -49,8 +49,8 @@ public class PublishRequestUseCase {
     /** La solicitud y si es la ya creada por una petición anterior con la misma {@code Idempotency-Key}. */
     public record Published(RequestSummary summary, boolean replayed) {}
 
-    @ConfigProperty(name = "logyx.auction.duration") Duration auctionDuration;
-    @ConfigProperty(name = "logyx.auction.max-bids") int maxBids;
+    /** RN04 (2.14): duración y máximo de ofertas vigentes (parámetros del operador; sin cambio rige la configuración). */
+    @Inject pe.logyx.shared.config.SystemParameters parameters;
 
     @Transactional
     public RequestSummary publish(PublishRequestCommand cmd) {
@@ -87,7 +87,8 @@ public class PublishRequestUseCase {
         ShipmentRequest r = ShipmentRequest.publish(org.id(), tenant.profileId(),
                 new ShipmentRequest.Cargo(origin, cmd.originAddress(), destination, cmd.destinationAddress(),
                         cmd.cargoType(), cmd.cargoDescription(), cmd.weightKg(), cmd.volumeM3(), cmd.pickupDate()),
-                new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()),
+                new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor(),
+                        quote.tariffVersion()),
                 republishedFrom, codes.next(), cmd.details());
         requests.save(r);
         var used = new ArrayList<UUID>();
@@ -95,7 +96,7 @@ public class PublishRequestUseCase {
         used.add(cmd.destinationPlaceId());
         places.markUsed(used);                                                             // la libreta ordena por uso
 
-        Auction a = new AuctionClosingPolicy(auctionDuration, maxBids).open(r.id(), OffsetDateTime.now());
+        Auction a = new AuctionClosingPolicy(parameters.auctionDuration(), parameters.auctionMaxBids()).open(r.id(), OffsetDateTime.now());
         auctions.save(a);
 
         audit.record(tenant.profileId(), org.id(), republishedFrom == null ? "REQUEST_PUBLISHED" : "REQUEST_REPUBLISHED",

@@ -48,6 +48,22 @@ const typeLabel = profile.type === 'CARRIER' ? 'Transportista' : 'PYME';
           {viewer ? READ_ONLY_NOTICE : 'Tu rol Operaciones no administra los datos de la empresa. Pídele a un administrador que los actualice.'}
         </Alert>
       )}
+      <a href="/organizacion/preferencias" class="flex items-center justify-between gap-3 rounded-card border border-steel-200 bg-surface p-4 text-sm transition-colors hover:border-petrol-700" data-testid="org-preferences-link">
+        <span>
+          <span class="block font-semibold text-ink-900">Preferencias de la empresa</span>
+          <span class="block text-ink-500">{profile.type === 'CARRIER' ? 'Rutas y cargas de interés, alertas por tus rutas y precio mínimo por km.' : 'Rutas de interés, horario de recojo y plazo de pago a transportistas.'}</span>
+        </span>
+        <span aria-hidden="true" class="text-petrol-700">→</span>
+      </a>
+      {profile.type === 'CARRIER' && (
+        <a href="/organizacion/datos-de-cobro" class="flex items-center justify-between gap-3 rounded-card border border-steel-200 bg-surface p-4 text-sm transition-colors hover:border-petrol-700" data-testid="org-payout-link">
+          <span>
+            <span class="block font-semibold text-ink-900">Datos de cobro</span>
+            <span class="block text-ink-500">Tu CCI, Yape o Plin: lo que ve la PYME para pagarte.</span>
+          </span>
+          <span aria-hidden="true" class="text-petrol-700">→</span>
+        </a>
+      )}
     </div>
   </div>
 </AppShell>

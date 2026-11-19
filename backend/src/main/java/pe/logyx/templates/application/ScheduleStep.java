@@ -39,6 +39,8 @@ public class ScheduleStep {
     @Inject AuditService audit;
     @Inject TenantContext tenant;
     @Inject Event<TemplateRunRecorded> recorded;
+    /** 2.14: feriados y paros editables por el operador (antes la lista fija PeruHolidays). */
+    @Inject pe.logyx.catalog.application.CalendarService calendar;
 
     /**
      * Ejecuta la ocurrencia de {@code nextPickupDate} si la programación ya toca: la salta (feriado o fecha pasada),
@@ -67,7 +69,7 @@ public class ScheduleStep {
             skip(s, pickup, now, "La fecha de recojo ya pasó");
             return;
         }
-        if (s.config().skipHolidays() && RecurrencePolicy.isHoliday(pickup)) {
+        if (s.config().skipHolidays() && calendar.skipsRecurrence(pickup, t.data().originCity())) {
             skip(s, pickup, now, "Feriado: no se publicó");
             return;
         }

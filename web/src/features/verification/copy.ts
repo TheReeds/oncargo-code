@@ -10,7 +10,7 @@ export const BANNER: Record<Exclude<VerificationStatus, 'VERIFIED'>, { tone: 'wa
   PENDING: {
     tone: 'warning',
     title: 'Estamos verificando tu empresa',
-    body: (org) => `Revisamos los datos de tu RUC antes de habilitar todas las funciones. Mientras tanto puedes explorar la plataforma${org === 'CARRIER' ? ' y registrar tu flota y tus conductores' : ''}; ${org === 'CARRIER' ? 'ofertar y publicar viajes' : 'publicar solicitudes y reservar viajes'} queda sujeto a la verificación. Te avisaremos apenas termine.`,
+    body: (org) => `Lo revisamos en 1 día hábil. Mientras tanto puedes explorar la plataforma${org === 'CARRIER' ? ' y registrar tu flota y tus conductores' : ''}; ${org === 'CARRIER' ? 'ofertar y publicar viajes' : 'publicar solicitudes y reservar viajes'} se habilita al terminar. Te avisaremos.`,
   },
   REJECTED: {
     tone: 'error',
@@ -23,6 +23,16 @@ export const BANNER: Record<Exclude<VerificationStatus, 'VERIFIED'>, { tone: 'wa
     body: () => 'No puedes publicar solicitudes, ofertar, reservar viajes ni aceptar ofertas. Puedes seguir consultando tu información.',
   },
 };
+
+/** Qué revisa el equipo de OnCargo (roadmap 2.17, V-07). Se muestra mientras está en revisión o si fue rechazada. */
+export const VERIFICATION_CHECKLIST = [
+  'Que el RUC exista y esté activo',
+  'Que la razón social coincida con la del RUC',
+  'Que el teléfono y la ciudad de contacto sean de la empresa',
+];
+
+/** Plazo comprometido de la revisión (días hábiles, de lunes a viernes). */
+export const VERIFICATION_SLA = '1 día hábil';
 
 export const CONTACT_HINT = `Escribe a ${SUPPORT_EMAIL} con tu RUC para revisar tu caso.`;
 

@@ -54,13 +54,22 @@ public final class AuthDtos {
     public record ForgotPasswordRequest(@NotBlank @Email(message = "Email inválido") @Size(max = 254) String email) {}
 
     /**
-     * Canje de un token de contraseña (restablecer o invitación). {@code acceptPrivacyPolicy} es obligatorio (true)
-     * solo para una invitación ({@code LOGYX-AUTH-011}).
+     * Canje de un token de contraseña (restablecer o invitación). {@code acceptPrivacyPolicy} y {@code acceptTerms}
+     * son obligatorios (true) solo para una invitación ({@code LOGYX-AUTH-011}, {@code LOGYX-AUTH-013}).
      */
     public record ResetPasswordRequest(
             @NotBlank(message = "Falta el token del enlace") @Size(max = 200) String token,
             @NotBlank @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres") String newPassword,
-            Boolean acceptPrivacyPolicy) {}
+            Boolean acceptPrivacyPolicy,
+            @Schema(description = "V24: obligatorio (true) para una invitación (LOGYX-AUTH-013)") Boolean acceptTerms,
+            @Schema(description = "V24: versión de los Términos que leyó (la de GET /public/legal). Si se omite se asume "
+                    + "la vigente; si no es la vigente, 409 LOGYX-AUTH-012") @Size(max = 40) String termsVersion) {}
+
+    /** V24 (2.17): aceptar la versión vigente de los Términos y condiciones (la de {@code UserInfo.termsVersion}). */
+    public record AcceptTermsRequest(@NotBlank(message = "Falta la versión de los términos") @Size(max = 40) String termsVersion) {}
+
+    /** Estado de los términos de la persona tras aceptarlos. */
+    public record TermsStatus(String termsVersion, boolean termsAccepted) {}
 
     public record PasswordTokenRequest(@NotBlank(message = "Falta el token del enlace") @Size(max = 200) String token) {}
 
@@ -99,13 +108,20 @@ public final class AuthDtos {
                            @Schema(description = "Permisos por rol de organización (V14): READ, OPERATE, MANAGE_USERS, "
                                    + "MANAGE_ORGANIZATION, MANAGE_DRIVERS. Úsalos para mostrar u ocultar acciones; "
                                    + "el backend los hace cumplir igual")
-                           List<OrgPermission> permissions) {
-        static UserInfo of(UserAccount a) {
+                           List<OrgPermission> permissions,
+                           @Schema(description = "V24 (2.17): la persona aceptó la versión vigente de los Términos. Si es "
+                                   + "false, la web pide aceptarlos (POST /auth/terms/accept); a conductores y operadores "
+                                   + "no se les pide")
+                           boolean termsAccepted,
+                           @Schema(description = "V24: versión vigente de los Términos y condiciones")
+                           String termsVersion) {
+        static UserInfo of(UserAccount a, String termsVersion) {
             var p = a.profile();
             var o = a.organization();
             return new UserInfo(p.id(), p.email(), p.fullName(), p.role(), o.id(), o.legalName(), o.type(),
                     o.rucVerified(), o.city(), o.rucValid(), o.verificationStatus(), o.verification().note(),
-                    OrgAccessPolicy.permissions(p.role(), o.type()).stream().sorted().toList());
+                    OrgAccessPolicy.permissions(p.role(), o.type()).stream().sorted().toList(), a.termsAccepted(),
+                    termsVersion);
         }
     }
 
@@ -115,8 +131,8 @@ public final class AuthDtos {
      */
     public record AuthResponse(String accessToken, long expiresIn, UserInfo user, String refreshToken,
                                Long refreshExpiresIn) {
-        static AuthResponse of(AuthResult r) {
-            return new AuthResponse(r.accessToken(), r.expiresIn(), UserInfo.of(r.user()), r.refreshToken(),
+        static AuthResponse of(AuthResult r, String termsVersion) {
+            return new AuthResponse(r.accessToken(), r.expiresIn(), UserInfo.of(r.user(), termsVersion), r.refreshToken(),
                     r.refreshExpiresIn());
         }
     }

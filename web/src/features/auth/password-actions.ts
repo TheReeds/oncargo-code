@@ -22,7 +22,7 @@ export const password = {
   /** Define la contraseña (restablecer) o activa la cuenta (invitación, con consentimiento). No inicia sesión. */
   reset: defineAction({
     accept: 'json',
-    input: z.object({ token: z.string().min(10).max(200), newPassword, acceptPrivacyPolicy: z.boolean().optional() }),
+    input: z.object({ token: z.string().min(10).max(200), newPassword, acceptPrivacyPolicy: z.boolean().optional(), acceptTerms: z.boolean().optional(), termsVersion: z.string().max(40).optional() }),
     handler: (input, ctx) => run(() => resetPassword(input, clientIpOf(ctx))),
   }),
   /** Cambia la contraseña y reemplaza la cookie con el token nuevo (las demás sesiones quedan fuera). */

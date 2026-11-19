@@ -4,7 +4,8 @@ import { API_URL } from '@/lib/api/client';
 export const prerender = false;
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'private, no-store' } });
 const err = (status: number, code: string, message: string, field?: string) => json(status, { error: { code, message, field: field ?? null } });
-const TYPES = ['SERVICE_ORDER', 'REMISSION_GUIDE', 'RECEIPT', 'OTHER'];
+// PAYMENT_PROOF (PYME) y CARRIER_INVOICE (transportista) los sube el flujo de cobro (`features/settlements`).
+const TYPES = ['SERVICE_ORDER', 'REMISSION_GUIDE', 'RECEIPT', 'OTHER', 'PAYMENT_PROOF', 'CARRIER_INVOICE'];
 
 /**
  * Subida multipart de documentos de las partes. Reenvía el archivo a la API con el Bearer de la sesión.

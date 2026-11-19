@@ -1,0 +1,21 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import OrganizationPreferencesForm from '@/features/organization/components/OrganizationPreferencesForm';
+import { getOrganizationPreferences } from '@/features/organization/server';
+import { getCatalog } from '@/features/catalog/server';
+const session = Astro.locals.session!;
+const orgType = session.orgType === 'CARRIER' ? 'CARRIER' : 'PYME';
+const [prefs, catalog] = await Promise.all([getOrganizationPreferences(session.token).catch(() => null), getCatalog()]);
+const cities = catalog.cities.map((c) => ({ value: c.code!, label: c.name! }));
+const cargoTypes = catalog.cargo.map((c) => ({ value: c.code!, label: c.name! }));
+---
+<AppShell title="Preferencias de la empresa" active="preferencias-empresa">
+  <PageHeader title="Preferencias de la empresa"
+    subtitle={orgType === 'CARRIER' ? 'Tus rutas y cargas de interés. Con ellas te avisamos de cargas nuevas.' : 'Tus rutas, el horario de recojo y el plazo de pago a transportistas.'}
+    breadcrumbs={[{ label: 'Perfil de la empresa', href: '/organizacion' }, { label: 'Preferencias' }]} />
+  {prefs
+    ? <OrganizationPreferencesForm client:load initial={prefs as never} orgType={orgType} cities={cities} cargoTypes={cargoTypes} />
+    : <Alert tone="error" title="No pudimos cargar las preferencias">Recarga la página en unos segundos.</Alert>}
+</AppShell>

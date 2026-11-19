@@ -1,0 +1,22 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import PayoutAccountsManager from '@/features/settlements/components/PayoutAccountsManager';
+import { listPayoutAccounts } from '@/features/settlements/server';
+const session = Astro.locals.session!;
+// Solo el transportista cobra: la PYME y el operador no tienen datos de cobro.
+if (session.orgType !== 'CARRIER') return Astro.rewrite('/sin-acceso');
+let items: Awaited<ReturnType<typeof listPayoutAccounts>> = [];
+let loadError: string | null = null;
+try {
+  items = await listPayoutAccounts(session.token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus datos de cobro.';
+}
+---
+<AppShell title="Datos de cobro" active="datos-de-cobro">
+  <PageHeader title="Datos de cobro" subtitle="Dónde te paga la PYME: cuenta bancaria, Yape o Plin." breadcrumbs={[{ label: 'Perfil de la empresa', href: '/organizacion' }, { label: 'Datos de cobro' }]} />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus datos de cobro" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <PayoutAccountsManager client:load initial={items} />
+</AppShell>

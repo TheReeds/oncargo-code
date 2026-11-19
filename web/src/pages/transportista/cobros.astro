@@ -1,0 +1,36 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import SettlementsList from '@/features/settlements/components/SettlementsList';
+import SettlementKpis from '@/features/settlements/components/SettlementKpis';
+import CommissionCollections from '@/features/settlements/components/CommissionCollections';
+import { listCommissionCollections, listSettlements, settlementSummary } from '@/features/settlements/server';
+import { apiQuery, filtersFromUrl, PAGE_SIZE } from '@/features/settlements/filters';
+const token = Astro.locals.session!.token;
+const filters = filtersFromUrl(Astro.url.searchParams);
+let summary: Awaited<ReturnType<typeof settlementSummary>> | null = null;
+let list: Awaited<ReturnType<typeof listSettlements>> = { items: [], meta: { page: 0, size: PAGE_SIZE, total: 0 } };
+let collections: Awaited<ReturnType<typeof listCommissionCollections>>['items'] = [];
+let loadError: string | null = null;
+try {
+  const [s, l, c] = await Promise.all([settlementSummary(token), listSettlements(token, apiQuery(filters)), listCommissionCollections(token, { size: 10 })]);
+  summary = s; list = l; collections = c.items;
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus cobros.';
+}
+---
+<AppShell title="Por cobrar" active="cobros">
+  <PageHeader title="Por cobrar" subtitle="Registra tu comprobante, confirma los pagos que recibes y revisa la comisión de OnCargo.">
+    <a slot="actions" href="/organizacion/datos-de-cobro" class="inline-flex h-10 items-center rounded-input border border-steel-200 bg-surface px-4 text-sm font-medium text-ink-900 hover:bg-steel-100">Datos de cobro</a>
+  </PageHeader>
+  {loadError && <Alert tone="error" title="No pudimos cargar tus cobros" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <div class="space-y-4">
+    {summary && <div><SettlementKpis client:load summary={summary} perspective="CARRIER" /></div>}
+    <div>
+    <SettlementsList client:load perspective="CARRIER" rows={list.items} filters={filters} page={list.meta.page + 1} size={list.meta.size} total={list.meta.total} base="/transportista/cobros"
+      counts={summary ? { overdue: summary.overdue, disputed: summary.disputed, commissionPending: summary.commissionPending } : undefined} />
+    </div>
+    <div><CommissionCollections client:load items={collections} perspective="CARRIER" /></div>
+  </div>
+</AppShell>

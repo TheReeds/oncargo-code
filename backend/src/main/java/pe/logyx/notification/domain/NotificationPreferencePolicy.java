@@ -11,7 +11,7 @@ import java.util.Map;
  * Preferencias de aviso por persona (V16, roadmap 2.2 adelantado a la Ola 1), en Java puro:
  * <ul>
  *   <li>Por omisión todo llega in-app; por correo solo lo que exige actuar o es grave: adjudicaciones, envíos,
- *       incidencias y cuenta.</li>
+ *       incidencias, cuenta, documentos de flota y cobros (V24).</li>
  *   <li>{@code ACCOUNT} in-app es obligatoria (verificación de la empresa, pedidos de acceso): no se puede apagar
  *       ({@code LOGYX-NTF-001}). El correo sí.</li>
  * </ul>
@@ -22,7 +22,7 @@ public final class NotificationPreferencePolicy {
 
     public static NotificationPreference defaults(NotificationCategory c) {
         boolean email = switch (c) {
-            case AWARDS, SHIPMENTS, INCIDENTS, ACCOUNT, FLEET -> true;
+            case AWARDS, SHIPMENTS, INCIDENTS, ACCOUNT, FLEET, PAYMENTS -> true;
             default -> false;
         };
         return new NotificationPreference(c, true, email);

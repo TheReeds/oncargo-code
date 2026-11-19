@@ -13,6 +13,7 @@ import { inspectPasswordToken, type PasswordTokenInfo } from '@/features/auth/pa
 import { ApiError } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { Clock, Mail, TriangleAlert } from '@lucide/astro';
+import { getLegal } from '@/features/legal/server';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 const token = Astro.url.searchParams.get('token')?.trim() ?? '';
@@ -32,6 +33,8 @@ if (!token) {
   }
 }
 const invite = info?.purpose === 'INVITE';
+// V24 (2.17): la invitación acepta también los Términos vigentes (si la versión cambió, la API responde 409 AUTH-012).
+const legal = invite ? await getLegal() : null;
 const title = state === 'ok' ? (invite ? `Activa tu cuenta en ${info?.organizationName ?? 'OnCargo'}` : 'Restablece tu contraseña') : state === 'error' ? 'No pudimos validar el enlace' : 'Este enlace ya no sirve';
 const subtitle = state === 'ok'
   ? (invite ? 'Crea tu contraseña para empezar a usar OnCargo con tu empresa.' : 'Elige una contraseña nueva para tu cuenta.')
@@ -46,7 +49,7 @@ const subtitle = state === 'ok'
             <div><dt class="text-xs text-ink-500">Cuenta</dt><dd class="font-mono text-[13px] text-ink-900">{info.email}</dd></div>
             <div><dt class="flex items-center gap-1 text-xs text-ink-500"><Clock size={12} aria-hidden="true" /> El enlace vence</dt><dd class="font-medium text-ink-900">{formatDateTime(info.expiresAt)}</dd></div>
           </dl>
-          <ResetPasswordForm client:load token={token} purpose={info.purpose!} organizationName={info.organizationName} />
+          <ResetPasswordForm client:load token={token} purpose={info.purpose!} organizationName={info.organizationName} termsVersion={legal?.termsVersion} />
         </div>
       ) : (
         <div class="space-y-4" data-testid="reset-invalid">

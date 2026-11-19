@@ -51,6 +51,8 @@ public class AdjustmentService {
     @Inject Event<AdjustmentDecided> decided;
     @Inject Event<AdjustmentEscalated> escalated;
     @Inject pe.logyx.shared.idempotency.IdempotencyKeys idempotency;
+    /** 2.12: el cobro facturado bloquea los ajustes (LOGYX-ADJ-009). */
+    @Inject pe.logyx.shipment.application.port.out.SettlementLock settlementLock;
 
     static final String IDEMPOTENCY_SCOPE = "shipment-adjustment";
 
@@ -86,6 +88,7 @@ public class AdjustmentService {
             var previous = idempotency.find(IDEMPOTENCY_SCOPE, key).flatMap(adjustments::findById);
             if (previous.isPresent() && previous.get().shipmentId().equals(s.id())) return previous.get();
         }
+        ensureNotSettled(s.id());
         OffsetDateTime now = OffsetDateTime.now();
         String note = AdjustmentPolicy.validateProposal(s, cmd.type(), cmd.amount(), cmd.note(),
                 adjustments.countByShipment(s.id()), now);
@@ -115,6 +118,10 @@ public class AdjustmentService {
                 ? AdjustmentPolicy.Decider.REQUESTER : AdjustmentPolicy.Decider.OTHER;
         if (!a.isPending()) throw BusinessException.conflict("LOGYX-ADJ-007", "Este ajuste ya se resolvió");
         AdjustmentPolicy.ensureCanDecide(a, who);
+        if (accept) {
+            queries.lockShipment(a.shipmentId(), "shipment-adjust:");
+            ensureNotSettled(a.shipmentId());
+        }
         a.decide(accept, tenant.orgId(), tenant.profileId(), note, OffsetDateTime.now());
         adjustments.update(a);
         boolean byOperator = who == AdjustmentPolicy.Decider.OPERATOR;
@@ -124,6 +131,14 @@ public class AdjustmentService {
         decided.fire(new AdjustmentDecided(a.id(), a.shipmentId(), a.requesterOrgId(), a.carrierOrgId(), a.type(),
                 a.amount(), a.status(), byOperator, a.decision().note(), sum.routeLabel(), code(sum)));
         return a;
+    }
+
+    /** 2.12 (ADR-0014): facturado el flete, el precio final ya no cambia. */
+    private void ensureNotSettled(UUID shipmentId) {
+        if (settlementLock.locksAdjustments(shipmentId)) {
+            throw BusinessException.conflict("LOGYX-ADJ-009",
+                    "El flete ya se facturó: el precio final no admite ajustes. Si hay un error, abre una disputa del cobro");
+        }
     }
 
     /** El transportista retira su propuesta mientras está pendiente. */

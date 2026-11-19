@@ -5,11 +5,11 @@ import { clearSession, homeFor, readSession } from './lib/session';
 import { runWithSession } from './lib/request-context';
 import { can, writeRouteFor } from './lib/permissions';
 
-const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/terminos', '/precios', '/contacto', '/olvide', '/restablecer'];
+const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/terminos', '/seguridad', '/precios', '/contacto', '/olvide', '/restablecer', '/baja', '/baja/one-click'];
 /** Públicas que también ve quien ya tiene sesión (no se redirigen a su home). */
-const OPEN_WITH_SESSION = ['/privacidad', '/terminos', '/precios', '/contacto', '/olvide', '/restablecer'];
-/** Páginas con un token en la URL: sin `Referer` hacia ningún sitio. */
-const NO_REFERRER = ['/restablecer', '/olvide'];
+const OPEN_WITH_SESSION = ['/privacidad', '/terminos', '/seguridad', '/precios', '/contacto', '/olvide', '/restablecer', '/baja', '/baja/one-click'];
+/** Páginas con un token en la URL: sin `Referer` hacia ningún sitio (V24: `/baja?t=` del correo). */
+const NO_REFERRER = ['/restablecer', '/olvide', '/baja', '/baja/one-click'];
 /** Seguimiento público por enlace (roadmap 1.6, ADR-0011): `/s/<token>` y su consulta `/s/<token>/estado`, sin sesión y con o sin ella. */
 const isTrackingLink = (p: string) => p.startsWith('/s/');
 const isAsset = (p: string) => !p.startsWith('/_actions') && (p.startsWith('/_') || p.startsWith('/favicon') || p.includes('.'));
@@ -96,7 +96,7 @@ function secure(res: Response, url: URL, req: Request): Response {
   };
   // En dev Vite inyecta scripts y un websocket de HMR: CSP solo en producción.
   if (isProd) set['Content-Security-Policy'] = CSP;
-  if (isTrackingLink(url.pathname)) set['X-Robots-Tag'] = 'noindex, nofollow, noarchive';
+  if (isTrackingLink(url.pathname) || url.pathname.startsWith('/baja')) set['X-Robots-Tag'] = 'noindex, nofollow, noarchive';
   const https = url.protocol === 'https:' || req.headers.get('x-forwarded-proto')?.split(',')[0].trim() === 'https';
   if (isProd && (https || process.env.HSTS === 'true')) set['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
   try {

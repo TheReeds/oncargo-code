@@ -122,3 +122,20 @@ html[data-theme='dark'] .maplibregl-ctrl-attrib a { color: var(--color-ink-700);
 
 /* Contenido fuera de pantalla no se renderiza hasta acercarse (listas largas, INP) */
 .lx-defer { content-visibility: auto; contain-intrinsic-size: auto 96px; }
+
+/* Impresión (Ola 2 zona F: liquidaciones y resúmenes): siempre en claro, sin menús ni controles. `.no-print` oculta lo que no va al papel. */
+@media print {
+  html[data-theme='dark'] {
+    color-scheme: light;
+    --color-ink-900: #0e1726; --color-ink-700: #334155; --color-ink-500: #5b6b7f; --color-ink-400: #94a3b8;
+    --color-steel-100: #eef2f6; --color-steel-200: #e2e8f0; --color-surface: #ffffff;
+    --color-petrol-700: #0b4f6c; --color-petrol-800: #093f56; --color-petrol-50: #e6f1f5;
+    --color-emerald-50: #ecfdf5; --color-emerald-700: #047857; --color-amber-50: #fffbeb; --color-amber-700: #b45309;
+    --color-red-50: #fef2f2; --color-red-600: #dc2626; --color-red-700: #b91c1c;
+  }
+  html[data-theme='dark'] .oncargo-logo:not(.oncargo-logo--dark) .oncargo-logo__light { display: block; }
+  html[data-theme='dark'] .oncargo-logo:not(.oncargo-logo--dark) .oncargo-logo__dark { display: none; }
+  body { background: #fff !important; }
+  #sidebar, #app-topbar, #scrim, .no-print { display: none !important; }
+  #contenido { max-width: none !important; padding: 0 !important; }
+}

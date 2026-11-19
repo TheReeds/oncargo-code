@@ -1,0 +1,34 @@
+---
+/**
+ * Aviso global de feriados y paros (2.14): lo que cae hoy, mañana o pasado mañana según el calendario del operador.
+ * Si la API falla, no se muestra nada (el aviso nunca bloquea la página).
+ */
+import { CalendarDays } from 'lucide-react';
+import { calendarDays } from '@/features/config/server';
+import { CITY_LABELS, formatDate } from '@/lib/format';
+
+const token = Astro.locals.session?.token;
+const fmt = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
+const today = fmt(new Date());
+const until = fmt(new Date(Date.now() + 2 * 86_400_000));
+let items: Awaited<ReturnType<typeof calendarDays>> = [];
+if (token) {
+  try {
+    items = (await calendarDays(token, { from: today, to: until })).slice(0, 3);
+  } catch {
+    items = [];
+  }
+}
+const when = (day?: string) => (day === today ? 'Hoy' : formatDate(day));
+const scope = (d: (typeof items)[number]) => (d.national ? 'todo el país' : (d.cities ?? []).map((c) => CITY_LABELS[c] ?? c).join(', '));
+---
+{items.length > 0 && (
+  <aside aria-label="Feriados y paros próximos" class="mb-4 flex items-start gap-3 rounded-card border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-ink-900" data-testid="calendar-banner">
+    <CalendarDays size={18} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+    <ul class="space-y-0.5">
+      {items.map((d) => (
+        <li><span class="font-semibold">{when(d.day)}: {d.name}</span> <span class="text-ink-700">({d.kindLabel?.toLowerCase()}, {scope(d)}).</span>{d.note && <span class="text-ink-700"> {d.note}</span>}</li>
+      ))}
+    </ul>
+  </aside>
+)}

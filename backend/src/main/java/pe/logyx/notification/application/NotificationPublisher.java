@@ -6,16 +6,22 @@ import jakarta.inject.Inject;
 import pe.logyx.identity.application.UserAccounts;
 import pe.logyx.identity.domain.model.Profile;
 import pe.logyx.notification.application.event.NotificationsPublished;
+import pe.logyx.notification.application.port.out.EmailQueueRepository;
+import pe.logyx.notification.application.port.out.EmailSettingsRepository;
 import pe.logyx.notification.application.port.out.NotificationMailer;
 import pe.logyx.notification.application.port.out.NotificationPreferenceRepository;
 import pe.logyx.notification.application.port.out.NotificationRepository;
 import pe.logyx.notification.application.port.out.ResourceAuthors;
+import pe.logyx.notification.domain.EmailDeliveryPolicy;
 import pe.logyx.notification.domain.NotificationPreferencePolicy;
+import pe.logyx.notification.domain.model.EmailSettings;
 import pe.logyx.notification.domain.model.Notification;
 import pe.logyx.notification.domain.model.NotificationCategory;
 import pe.logyx.notification.domain.model.NotificationPreference;
 import pe.logyx.shared.tenancy.SystemTx;
 
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +42,11 @@ import java.util.UUID;
  * el envío (tras el commit). Si el recurso tiene autor en esa organización ({@link ResourceAuthors}), su copia lleva
  * {@code mine = true} («Tuyo»).
  *
+ * <p><b>Correo según {@code user_preferences} (V24, 2.2).</b> Si la categoría va por correo, {@link EmailDeliveryPolicy}
+ * decide con las preferencias de correo de la persona: no sale (correo desactivado), sale ya, o queda en
+ * {@code notification_email_queue} hasta el fin del silencio o la hora del resumen diario (lo envía
+ * {@link EmailQueueService}).
+ *
  * <p>Luego dispara {@link NotificationsPublished} (síncrono, misma transacción) con el contador de no leídas de cada
  * persona: el tiempo real (ADR-0007) lo proyecta como {@code notification.created} dirigido a esa persona.
  */
@@ -46,6 +57,8 @@ public class NotificationPublisher {
     @Inject NotificationPreferenceRepository preferences;
     @Inject ResourceAuthors authors;
     @Inject NotificationMailer mailer;
+    @Inject EmailSettingsRepository emailSettings;
+    @Inject EmailQueueRepository emailQueue;
     @Inject UserAccounts accounts;
     @Inject SystemTx system;
     @Inject Event<NotificationsPublished> published;
@@ -53,6 +66,7 @@ public class NotificationPublisher {
     public void publish(List<Notification> list) {
         if (list.isEmpty()) return;
         system.run(() -> {
+            ZonedDateTime now = ZonedDateTime.now(EmailDeliveryPolicy.LIMA);
             Map<UUID, List<Profile>> members = new HashMap<>();
             List<Notification> rows = new ArrayList<>();
             List<NotificationMailer.Email> emails = new ArrayList<>();
@@ -65,14 +79,26 @@ public class NotificationPublisher {
                         ? authors.authorIn(draft.orgId(), draft.relatedType(), draft.relatedId()).orElse(null) : null;
                 var prefs = preferences.forProfiles(targets.stream().map(Profile::id).toList());
                 NotificationCategory category = draft.category();
+                List<Profile> byEmail = new ArrayList<>();
                 for (Profile p : targets) {
                     NotificationPreference pref = NotificationPreferencePolicy.effective(prefs.get(p.id())).get(category);
                     if (pref.inApp()) {
-                        rows.add(draft.addressedTo(p.id(), !draft.isForWholeOrganization() || Objects.equals(author, p.id())));
+                        rows.add(draft.addressedTo(p.id(),
+                                draft.isForWholeOrganization() ? Objects.equals(author, p.id()) : draft.mine()));
                     }
-                    if (pref.email() && p.email() != null && !p.email().isBlank()) {
-                        emails.add(new NotificationMailer.Email(p.email(), p.fullName(), draft.title(), draft.body(),
-                                category.label()));
+                    if (pref.email() && p.email() != null && !p.email().isBlank()) byEmail.add(p);
+                }
+                if (byEmail.isEmpty()) continue;
+                Map<UUID, EmailSettings> settings = emailSettings.forProfiles(byEmail.stream().map(Profile::id).toList());
+                for (Profile p : byEmail) {
+                    var decision = EmailDeliveryPolicy.decide(settings.get(p.id()), now);
+                    switch (decision.kind()) {
+                        case NOW -> emails.add(NotificationMailer.Email.single(p.email(), p.fullName(), p.id(), category,
+                                draft.title(), draft.body()));
+                        case DEFER -> emailQueue.enqueue(new EmailQueueRepository.QueuedEmail(UUID.randomUUID(), p.id(),
+                                draft.orgId(), category, draft.title(), draft.body(), decision.reason(),
+                                decision.sendAfter().toOffsetDateTime(), OffsetDateTime.now()));
+                        case SKIP -> { }
                     }
                 }
             }

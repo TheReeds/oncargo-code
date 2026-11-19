@@ -3,9 +3,13 @@ package pe.logyx.notification.application;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import pe.logyx.notification.application.port.out.EmailSettingsRepository;
 import pe.logyx.notification.application.port.out.NotificationPreferenceRepository;
 import pe.logyx.notification.application.port.out.NotificationRepository;
+import pe.logyx.notification.domain.EmailDeliveryPolicy;
 import pe.logyx.notification.domain.NotificationPreferencePolicy;
+import pe.logyx.notification.domain.model.EmailMode;
+import pe.logyx.notification.domain.model.EmailSettings;
 import pe.logyx.notification.domain.model.Notification;
 import pe.logyx.notification.domain.model.NotificationCategory;
 import pe.logyx.notification.domain.model.NotificationPreference;
@@ -15,6 +19,7 @@ import pe.logyx.shared.domain.Paged;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shared.tenancy.TenantContext;
 
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +37,7 @@ public class NotificationService {
 
     @Inject NotificationRepository notifications;
     @Inject NotificationPreferenceRepository preferences;
+    @Inject EmailSettingsRepository emailSettings;
     @Inject TenantContext tenant;
 
     /** Preferencia efectiva de una categoría, con si su in-app está bloqueado. */
@@ -78,6 +84,25 @@ public class NotificationService {
         }
         changes.forEach(p -> preferences.upsert(tenant.profileId(), tenant.orgId(), p));
         return preferences();
+    }
+
+    /** V24 (2.2): correo activo, inmediato o resumen diario y horario de silencio de la persona actual. */
+    public EmailSettings emailSettings() {
+        return emailSettings.forProfile(tenant.profileId());
+    }
+
+    /**
+     * Cambia las preferencias de correo (cualquier rol, también Lector: es su propia cuenta). Volver a activar el correo
+     * deshace la baja del enlace. {@code LOGYX-NTF-004} horario de silencio incompleto o de duración cero.
+     */
+    public EmailSettings updateEmailSettings(boolean emailEnabled, EmailMode mode, int digestHour, LocalTime quietFrom,
+                                             LocalTime quietTo) {
+        EmailSettings current = emailSettings.forProfile(tenant.profileId());
+        EmailSettings next = new EmailSettings(emailEnabled, mode, digestHour, quietFrom, quietTo,
+                emailEnabled ? null : current.unsubscribedAt());
+        EmailDeliveryPolicy.validate(next);
+        emailSettings.upsert(tenant.profileId(), tenant.orgId(), next);
+        return next;
     }
 
     private static List<CategoryPreference> visible(Map<NotificationCategory, NotificationPreference> effective, OrgType type) {

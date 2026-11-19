@@ -60,6 +60,10 @@ public class SystemParameters {
     @ConfigProperty(name = "logyx.incident.sla.high", defaultValue = "PT12H") Duration defaultSlaHigh;
     @ConfigProperty(name = "logyx.incident.sla.medium", defaultValue = "PT24H") Duration defaultSlaMedium;
     @ConfigProperty(name = "logyx.incident.sla.low", defaultValue = "PT72H") Duration defaultSlaLow;
+    @ConfigProperty(name = "logyx.auction.duration", defaultValue = "PT20M") Duration defaultAuctionDuration;
+    @ConfigProperty(name = "logyx.auction.max-bids", defaultValue = "5") int defaultAuctionMaxBids;
+    @ConfigProperty(name = "logyx.pricing.floor-ratio", defaultValue = "0.75") BigDecimal defaultFloorRatio;
+    @ConfigProperty(name = "logyx.settlement.default-terms-days", defaultValue = "30") int defaultPaymentTermsDays;
 
     private record Cached(Map<ParameterKey, ParameterValue> values, long loadedAt) {}
 
@@ -102,6 +106,22 @@ public class SystemParameters {
             default -> hoursOf(ParameterKey.INCIDENT_SLA_MEDIUM_HOURS);
         };
     }
+
+    /** 2.14 · RN04: duración de la subasta al publicar o reabrir. */
+    public Duration auctionDuration() {
+        return ParameterKey.AUCTION_DURATION_MINUTES.minutes(get(ParameterKey.AUCTION_DURATION_MINUTES).value());
+    }
+
+    /** 2.14 · RN04: ofertas con las que cierra la subasta. */
+    public int auctionMaxBids() { return ParameterKey.AUCTION_MAX_BIDS.integer(get(ParameterKey.AUCTION_MAX_BIDS).value()); }
+
+    /** 2.14 · RN03: fracción del sugerido que es el piso. */
+    public BigDecimal priceFloorRatio() {
+        return ParameterKey.PRICE_FLOOR_RATIO.decimal(get(ParameterKey.PRICE_FLOOR_RATIO).value());
+    }
+
+    /** 2.12: días de plazo de pago cuando la PYME no fijó el suyo. */
+    public int paymentTermsDays() { return ParameterKey.PAYMENT_TERMS_DAYS.integer(get(ParameterKey.PAYMENT_TERMS_DAYS).value()); }
 
     private Duration hoursOf(ParameterKey k) { return k.hours(get(k).value()); }
 
@@ -147,6 +167,10 @@ public class SystemParameters {
             case INCIDENT_SLA_HIGH_HOURS -> String.valueOf(defaultSlaHigh.toHours());
             case INCIDENT_SLA_MEDIUM_HOURS -> String.valueOf(defaultSlaMedium.toHours());
             case INCIDENT_SLA_LOW_HOURS -> String.valueOf(defaultSlaLow.toHours());
+            case AUCTION_DURATION_MINUTES -> String.valueOf(defaultAuctionDuration.toMinutes());
+            case AUCTION_MAX_BIDS -> String.valueOf(defaultAuctionMaxBids);
+            case PRICE_FLOOR_RATIO -> k.normalize(defaultFloorRatio.toPlainString());
+            case PAYMENT_TERMS_DAYS -> String.valueOf(defaultPaymentTermsDays);
         };
     }
 

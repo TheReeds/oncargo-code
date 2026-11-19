@@ -2,7 +2,7 @@ import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
 import { LIMITS } from '@/lib/limits';
-import { changeUserRole, deactivateUser, getOrganization, inviteUser, listUsers, reactivateUser, resendInvitation, updateOrganization } from './server';
+import { changeUserRole, deactivateUser, getOrganization, getOrganizationPreferences, inviteUser, listUsers, reactivateUser, resendInvitation, updateOrganization, updateOrganizationPreferences } from './server';
 
 const role = z.enum(['ADMIN', 'OPS', 'VIEWER']);
 
@@ -34,4 +34,20 @@ export const organization = {
   changeRole: defineAction({ accept: 'json', input: z.object({ id: z.uuid(), role }), handler: ({ id, role }, ctx) => run(() => changeUserRole(requireToken(ctx), id, role)) }),
   deactivateUser: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => deactivateUser(requireToken(ctx), id)) }),
   reactivateUser: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => reactivateUser(requireToken(ctx), id)) }),
+  /** V24 (2.2): preferencias de la organización. Lee cualquiera; escribe solo el ADMIN (la API responde AUTH-008). */
+  preferences: defineAction({ accept: 'json', handler: (_i, ctx) => run(() => getOrganizationPreferences(requireToken(ctx))) }),
+  updatePreferences: defineAction({
+    accept: 'json',
+    input: z.object({
+      cities: z.array(z.string().min(2).max(20)).max(30),
+      routes: z.array(z.object({ origin: z.string().min(2).max(20), destination: z.string().min(2).max(20) })).max(20, 'Puedes declarar hasta 20 rutas.'),
+      cargoTypes: z.array(z.string().min(2).max(20)).max(20),
+      routeAlerts: z.boolean().optional(),
+      minPricePerKm: z.number().positive().max(100).nullable().optional(),
+      defaultPickupFrom: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      defaultPickupTo: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+      paymentTermsDays: z.number().int().min(0).max(120).nullable().optional(),
+    }),
+    handler: (input, ctx) => run(() => updateOrganizationPreferences(requireToken(ctx), input as never)),
+  }),
 };

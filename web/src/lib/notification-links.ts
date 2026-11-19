@@ -1,4 +1,4 @@
-import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake, ShieldCheck, Undo2, Ban, Hourglass, KeyRound, CalendarClock, Send, BellRing, FileClock, Receipt } from 'lucide-react';
+import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake, ShieldCheck, Undo2, Ban, Hourglass, KeyRound, CalendarClock, Send, BellRing, FileClock, Receipt, Wallet, Banknote } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export type NotifOrg = 'PYME' | 'CARRIER' | 'OPERATOR' | null | undefined;
@@ -15,6 +15,9 @@ export function notificationHref(n: NotifLike, orgType: NotifOrg): string {
     if (n.relatedType === 'SHIPMENT') return id ? `/operador/envios/${id}` : '/operador/envios';
     if (n.relatedType === 'ORGANIZATION') return '/operador/organizaciones';
   }
+  // 2.12: la comisión cobrada por OnCargo no tiene envío; va a «Por cobrar».
+  if (n.type === 'COMMISSION_COLLECTED') return '/transportista/cobros';
+  if (n.type === 'PAYMENT_DUE' && !id) return '/pyme/pagos';
   // 2.9: la PYME pide confirmar la segunda oferta → pantalla de confirmaciones del transportista.
   if (n.type === 'BACKUP_REQUESTED' && carrier) return '/transportista/confirmaciones';
   // 2.3: una carga nueva que coincide con una búsqueda guardada abre la carga en «Cargas disponibles» (aún no hay oferta propia).
@@ -87,5 +90,9 @@ export const NOTIFICATION_META: Record<string, { label: string; icon: ComponentT
   ADJUSTMENT_DECIDED: { label: 'Ajuste resuelto', icon: Receipt, tone: 'bg-petrol-50 text-petrol-700' },
   ADJUSTMENT_ESCALATED: { label: 'Ajuste para OnCargo', icon: Receipt, tone: 'bg-amber-50 text-amber-700' },
   INCIDENT_ASSIGNED: { label: 'Incidencia asignada', icon: TriangleAlert, tone: 'bg-amber-50 text-amber-700' },
+  // Ola 2 zona F (2.12)
+  PAYMENT_DUE: { label: 'Pago por vencer', icon: Wallet, tone: 'bg-amber-50 text-amber-700' },
+  SETTLEMENT_UPDATED: { label: 'Cobro', icon: Banknote, tone: 'bg-petrol-50 text-petrol-700' },
+  COMMISSION_COLLECTED: { label: 'Comisión cobrada', icon: Banknote, tone: 'bg-emerald-50 text-emerald-700' },
 };
 export const notificationMeta = (type?: string) => NOTIFICATION_META[type ?? ''] ?? { label: 'Aviso', icon: Bell, tone: 'bg-steel-100 text-ink-700' };

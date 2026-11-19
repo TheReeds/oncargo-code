@@ -16,3 +16,10 @@ export const markAllRead = (token: string) => unwrap(apiFor(token).POST('/api/v1
 export const getPreferences = (token: string) => unwrap(apiFor(token).GET('/api/v1/notifications/preferences'));
 export const updatePreferences = (token: string, preferences: NotificationPreferenceChange[]) =>
   unwrap(apiFor(token).PUT('/api/v1/notifications/preferences', { body: { preferences } }));
+
+// ----- V24 (Ola 2 zona F, 2.2): correo según la persona (activo, inmediato o resumen diario, horario de silencio)
+export type EmailSettingsView = Schemas['EmailSettingsView'];
+export type UpdateEmailSettings = Schemas['UpdateEmailSettings'];
+export const getEmailSettings = (token: string) => unwrap(apiFor(token).GET('/api/v1/notifications/email-settings'));
+export const updateEmailSettings = (token: string, body: UpdateEmailSettings) =>
+  unwrap(apiFor(token).PUT('/api/v1/notifications/email-settings', { body }));

@@ -35,6 +35,7 @@ No hay datos demo (el seed es solo del perfil dev): registra una cuenta desde `/
 | `CORS_ENABLED` / `CORS_ORIGINS` | CORS desactivado por omisión en prod (la web es SSR) |
 | `TRUSTED_PROXIES` | redes desde las que se acepta `X-Forwarded-For` (rate limiting por IP) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_START_TLS` (`REQUIRED` por omisión), `SMTP_TLS`, `MAIL_FROM` | correo de restablecer contraseña e invitaciones (V14, ADR-0009) |
+| `MAIL_REPLY_TO`, `WEB_URL`, `LOGYX_UNSUBSCRIBE_SECRET` (**obligatoria**, ≥ 32 caracteres) | V24 (2.2): correos de avisos y resumen diario, enlace de baja `/baja?t=` y `List-Unsubscribe` (RFC 8058). SPF/DKIM/DMARC y proveedor: `vps/README.md` § Correo |
 | `PASSWORD_RESET_URL` | página `/restablecer` de la web; el correo agrega `?token=…` |
 | `MAILER_MOCK` | solo pruebas: `true` no envía correos (los guarda en memoria; si la imagen se compila con `-Dlogyx.dev-mailbox=true` se leen en `GET /api/v1/dev/mailbox?to=`) |
 

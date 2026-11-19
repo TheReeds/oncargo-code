@@ -14,3 +14,7 @@ export async function me(token: string): Promise<UserInfo | null> {
     return null;
   }
 }
+
+/** V24 (2.17): la persona acepta la versión vigente de los Términos (`UserInfo.termsVersion`). 409 `AUTH-012` si cambió. */
+export const acceptTerms = (token: string, termsVersion: string) =>
+  unwrap(apiClient(token).POST('/api/v1/auth/terms/accept', { body: { termsVersion } }));

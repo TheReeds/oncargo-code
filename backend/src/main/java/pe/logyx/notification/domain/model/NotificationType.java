@@ -19,5 +19,8 @@ public enum NotificationType {
     TEMPLATE_RUN, REQUEST_INVITATION, BACKUP_REQUESTED, BACKUP_RESPONDED,
     /** V23 (Ola 2, zona X): ajuste del envío propuesto (a la PYME), decidido o retirado (a la contraparte) y escalado al
      *  operador por falta de respuesta (2.6); incidencia asignada a una persona del operador (2.7). */
-    ADJUSTMENT_PROPOSED, ADJUSTMENT_DECIDED, ADJUSTMENT_ESCALATED, INCIDENT_ASSIGNED
+    ADJUSTMENT_PROPOSED, ADJUSTMENT_DECIDED, ADJUSTMENT_ESCALATED, INCIDENT_ASSIGNED,
+    /** V24 (Ola 2, zona F, 2.12): recordatorio de pago a la PYME, cambio de estado del cobro de un envío (a la
+     *  contraparte) y cobro de la comisión de OnCargo registrado por el operador (solo al transportista). */
+    PAYMENT_DUE, SETTLEMENT_UPDATED, COMMISSION_COLLECTED
 }
