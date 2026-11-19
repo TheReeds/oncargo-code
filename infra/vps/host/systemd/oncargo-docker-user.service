@@ -1,0 +1,13 @@
+[Unit]
+Description=OnCargo: lista blanca de puertos publicados por Docker (DOCKER-USER)
+After=docker.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/oncargo-docker-user
+
+[Install]
+WantedBy=docker.service multi-user.target

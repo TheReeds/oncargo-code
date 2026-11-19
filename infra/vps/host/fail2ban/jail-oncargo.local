@@ -1,0 +1,49 @@
+# OnCargo — /etc/fail2ban/jail.d/oncargo.local (lo instala infra/vps/harden.sh).
+# Docker publica 80/443 con DNAT, así que ese tráfico pasa por FORWARD y no por INPUT: las jails de Caddy
+# bloquean en las dos cadenas (forward para IPv4 hacia el contenedor; input para IPv6, que entra por docker-proxy).
+# Las jails web bloquean SOLO 80/443 (tcp y udp): nunca el 22, para que una prueba desde la IP del administrador
+# no lo deje fuera del servidor. Para no bloquear nunca una IP propia: ignoreip = 127.0.0.1/8 ::1 <tu-ip> en [DEFAULT].
+# Ojo: muchas redes móviles de Perú usan CGNAT (una IP = muchos usuarios); por eso los umbrales son altos.
+
+[sshd]
+# Igual que jail.local (5 fallos, 1 h); se repite para que el archivo sea autosuficiente.
+enabled  = true
+maxretry = 5
+bantime  = 1h
+
+# Reincidentes de SSH: 3 bloqueos de sshd en un día → una semana fuera, en todos los puertos.
+[recidive]
+enabled   = true
+backend   = auto
+filter    = oncargo-recidive-sshd
+logpath   = /var/log/fail2ban.log
+findtime  = 1d
+bantime   = 1w
+maxretry  = 3
+action    = nftables[type=allports, protocol="tcp,udp", name=recidive]
+            nftables[type=allports, protocol="tcp,udp", name=recidive-fwd, chain=f2b-fwd, chain_hook=forward]
+
+# Escáneres: rutas que la aplicación no tiene (.php, /.env, /.git/, wp-*, phpMyAdmin…). 3 en 10 min → 1 día fuera de 80/443.
+[oncargo-caddy-probe]
+enabled   = true
+backend   = auto
+logpath   = /var/log/oncargo/caddy/access.log
+filter    = oncargo-caddy-probe
+findtime  = 10m
+maxretry  = 3
+bantime   = 1d
+action    = nftables[type=multiport, port="http,https", protocol="tcp,udp", name=caddy-probe]
+            nftables[type=multiport, port="http,https", protocol="tcp,udp", name=caddy-probe-fwd, chain=f2b-fwd, chain_hook=forward]
+
+# Fuerza bruta contra la API: la aplicación ya responde 429 (AuthRateLimits); 20 respuestas 429 en 10 min
+# desde una IP indican que sigue insistiendo pese al límite → 1 h fuera de 80/443.
+[oncargo-caddy-auth]
+enabled   = true
+backend   = auto
+logpath   = /var/log/oncargo/caddy/access.log
+filter    = oncargo-caddy-auth
+findtime  = 10m
+maxretry  = 20
+bantime   = 1h
+action    = nftables[type=multiport, port="http,https", protocol="tcp,udp", name=caddy-auth]
+            nftables[type=multiport, port="http,https", protocol="tcp,udp", name=caddy-auth-fwd, chain=f2b-fwd, chain_hook=forward]

@@ -40,9 +40,36 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 | Exposición de secretos | Nada en el repo: `infra/.env` y `infra/secrets/` en `.gitignore`; claves JWT montadas como secretos; contraseñas de BD por env | Rotación manual |
 | CORS abusivo | En prod CORS desactivado (`CORS_ENABLED=false`): el navegador nunca llama a la API directamente (SSR); Android no usa CORS | Si se habilita, `CORS_ORIGINS` explícito |
 | Fuga de datos personales en logs | Logs sin emails/RUC/teléfonos/tokens: solo ids y contadores; `quarkus.hibernate-orm.log.sql=false`; el outbox guarda solo tipo de excepción y mensaje. Swagger UI desactivado en prod | El stack trace de un 500 puede incluir valores de una restricción SQL; las contraseñas demo del seed se loguean solo en perfil dev |
-| Denegación de servicio | Límites de body (12 MB), `mem_limit` en compose, pools acotados, `CONNECTION LIMIT` de `logyx_api` | Sin WAF ni rate limit general (poner en el proxy). Endpoints públicos con límite por IP: login, registro, olvidé, canje, refresh, el **cotizador público** (`POST /public/pricing/quote`, 30 por 15 min, `logyx.rate-limit.public-quote.per-ip`) y el **seguimiento público** (`GET /public/tracking/{token}`, 120 por 15 min, `logyx.rate-limit.public-tracking.per-ip`) |
+| Denegación de servicio | Límites de body (12 MB), `mem_limit` en compose, pools acotados, `CONNECTION LIMIT` de `logyx_api` | Sin WAF ni rate limit general en el proxy (Caddy 2.10 no trae el módulo; Cloudflare pendiente); fail2ban banea en 80/443 las IP que acumulan 429 o escanean (ver § Infraestructura del VPS). Endpoints públicos con límite por IP: login, registro, olvidé, canje, refresh, el **cotizador público** (`POST /public/pricing/quote`, 30 por 15 min, `logyx.rate-limit.public-quote.per-ip`) y el **seguimiento público** (`GET /public/tracking/{token}`, 120 por 15 min, `logyx.rate-limit.public-tracking.per-ip`) |
 | Enlace público de seguimiento (ADR-0011): enumeración, fuga de datos, indexación, `Referer` | Token de 128 bits (`SecureRandom`), en BD solo su SHA-256; formato validado antes de consultar; inexistente/revocado/vencido = la misma 404 (`SHL-001`); lista blanca `PublicTrackingView` (sin precio, contactos, direcciones, placa, conductor ni ids/nombres de organizaciones) probada campo por campo; único `SystemTx` acotado al hash; límite por IP; `noindex` (cabecera y meta), `Referrer-Policy: no-referrer`, `no-store`, sin canónica; revocable al instante y vence 7 días tras la entrega; RLS: solo la PYME dueña crea/revoca (UPDATE por columna) | Quien tenga el enlace ve el avance hasta que se revoque o venza (es su propósito); el límite por IP es por instancia |
 | Repudio | `audit_log` en acciones críticas con usuario y organización | — |
+
+### Infraestructura del VPS (2026-11-19): endurecimiento, respaldos y monitoreo
+Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del host. Se aplica con `infra/vps/harden.sh`
+(sistema operativo, idempotente) y `deploy.sh` (compose y Caddy); todo vive en el repo.
+- **Red**: UFW (22, 80, 443 tcp/udp) + `DOCKER-USER` como lista blanca (solo 80/443 hacia contenedores, por puerto original);
+  `db` y `minio` en una red `internal: true` (sin salida a Internet); `http://<IP>` redirige al dominio (ya no hay login en claro);
+  `/q/*` de Quarkus cerrado en el proxy salvo `/q/health*`.
+- **SSH**: solo clave, `AllowUsers deploy root`, sin reenvío X11/agente/túneles, KEX/cifrados/MAC modernos; puerto 22 (cambiarlo
+  requiere aprobación). fail2ban: `sshd`, `recidive` (solo reincidentes de sshd), y sobre el log de Caddy `oncargo-caddy-probe`
+  y `oncargo-caddy-auth`, que bloquean **solo 80/443** (nunca dejan al administrador sin SSH). Umbrales altos por el CGNAT móvil.
+- **Contenedores**: `no-new-privileges`, `cap_drop: ALL` (+ mínimas en db/caddy), `pids_limit`, `read_only` en caddy, web y
+  backend; AppArmor `docker-default`; MinIO sin consola y bucket privado.
+- **Registros**: acceso de Caddy en JSON (14 días) con los tokens de URL redactados (`?t=`, `?token=`, `/s/<token>`,
+  `/public/tracking/<token>`); Caddy ya oculta `Cookie` y `Authorization`. journald ≤ 1 GB / 30 días. auditd sobre accesos,
+  sudoers, `authorized_keys`, `state/` y configuración de Docker/UFW/fail2ban. Las IP son dato personal (Ley 29733): retención corta.
+- **Respaldos**: diarios, cifrados con age (la identidad privada **no** está en el VPS), 14 días locales, prueba de restauración
+  `oncargo-backup verify` con conteos; incluyen `state/.env` (todas las claves: JWT, `LOGYX_UNSUBSCRIBE_SECRET`,
+  `LOGYX_PAYOUT_KEY`). **Residual**: la copia está en el mismo disco hasta configurar el destino externo (R2).
+- **Monitoreo**: `oncargo-health` cada 5 min (web, API, APK, contenedores, disco, memoria, certificado, antigüedad del respaldo);
+  **residual**: sin canal de alerta ni latido externo configurados (necesitan una cuenta del usuario: ntfy/healthchecks.io/UptimeRobot).
+- **Pendiente con decisión del usuario**: Cloudflare (proxy naranja, WAF gestionado, regla de rate limit en `/api/v1/auth/*`;
+  **sin Bot Fight Mode**, que desafía a clientes no navegador y rompería la app Android; con proxy hay que restaurar la IP real
+  con `trusted_proxies` de Caddy para los rangos de Cloudflare y limitar 80/443 a esos rangos en `DOCKER-USER`), HSTS `preload`,
+  registro CAA `0 issue "letsencrypt.org"`, reinicio por parches de kernel, destino externo de respaldos y proveedor SMTP.
+- **Contraseña demo pública**: `Logyx2026!` está en el repo público y abre las cuentas `*@logyx.pe` del VPS (datos demo, pero
+  con acceso de operador). Propuesta: el seeder lee `DEMO_PASSWORD` (por omisión `Logyx2026!` en dev) y el VPS la define en
+  `state/.env` con un valor propio que se comparte solo con los evaluadores; cambia `backend/` (DemoDataSeeder), pendiente.
 
 ### Ola 2 · zona T (V22)
 - **Documentos de flota** (`fleet_documents`: SOAT, revisión técnica, licencia, DNI…): privados del transportista por RLS (`fleet_documents_owner`; el operador solo lee). Inmutables: el único `UPDATE` permitido es `superseded_at`. La PYME **no** los lee: solo recibe los sellos derivados (`bids.soat_valid_until`/`inspection_valid_until`). Descarga solo por `GET /fleet/documents/{id}/file` (propietario; `nosniff`, `no-store`). Formato por firma binaria y tamaño como la evidencia (ADR-0005).
@@ -82,7 +109,8 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 1. Contraseñas únicas para superusuario, `logyx_owner`, `logyx_api` y MinIO (o un usuario MinIO/S3 limitado al bucket).
 2. `infra/scripts/gen-jwt-keys.sh` (o claves del gestor de secretos); nunca reutilizar las de otro entorno.
 3. TLS en el proxy delante de web y API; `COOKIE_SECURE=true` (por omisión en prod); `TRUSTED_PROXIES` = red del proxy.
-4. Backups de Postgres y del bucket; Postgres y MinIO sin puertos públicos.
+4. Backups de Postgres y del bucket; Postgres y MinIO sin puertos públicos. En el VPS: `harden.sh` instala el respaldo diario
+   cifrado (`oncargo-backup`) y el chequeo de salud; falta la copia fuera del servidor y guardar la identidad age del administrador.
 5. Revisar `outbox_events` en estado `FAILED` y los logs `ERROR`.
 6. Proxy delante de API/web: sin buffering ni compresión en `text/event-stream` (`/api/v1/events/stream` y `/eventos` de la
    web), timeout de lectura ≥ 60 s. Con varias réplicas de la API, todas contra la misma BD (fan-out por LISTEN/NOTIFY);

@@ -23,6 +23,9 @@ mkdir -p state/secrets downloads
 if [[ ! -f state/.env ]]; then
   (cd src.new/infra/vps && ./bootstrap.sh) && mv src.new/infra/vps/.env state/.env && cp src.new/infra/secrets/*.pem state/secrets/
 fi
+# Secretos agregados después del primer despliegue (V24: clave del enlace de baja). Se generan una vez y se conservan.
+grep -q '^LOGYX_UNSUBSCRIBE_SECRET=' state/.env || echo "LOGYX_UNSUBSCRIBE_SECRET=$(openssl rand -base64 48 | tr -d '/+=' | cut -c1-48)" >> state/.env
+grep -q '^LOGYX_PAYOUT_KEY=' state/.env || echo "LOGYX_PAYOUT_KEY=$(openssl rand -base64 32)" >> state/.env
 ln -sfn /opt/oncargo/state/.env src.new/infra/vps/.env
 rm -rf src.new/infra/secrets && ln -sfn /opt/oncargo/state/secrets src.new/infra/secrets
 rm -rf src.old && { [[ -d src ]] && mv src src.old || true; } && mv src.new src
@@ -36,3 +39,4 @@ docker image prune -f >/dev/null
 docker compose ps --format 'table {{.Service}}\t{{.Status}}'
 REMOTE
 echo "✓ Desplegado $SHA"
+echo "  (servidor nuevo o cambios en harden.sh/host/: ${SSH[*]} sudo /opt/oncargo/src/infra/vps/harden.sh)"

@@ -1,0 +1,15 @@
+## OnCargo — /etc/audit/rules.d/60-oncargo.rules (lo instala infra/vps/harden.sh).
+## Pocas reglas de alto valor: quién toca accesos, secretos y Docker. Consulta: ausearch -k <clave> -i
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /home/deploy/.ssh/authorized_keys -p wa -k ssh_keys
+-w /root/.ssh/authorized_keys -p wa -k ssh_keys
+-w /opt/oncargo/state/ -p wa -k oncargo_secrets
+-w /etc/docker/daemon.json -p wa -k docker
+-w /etc/ufw/ -p wa -k firewall
+-w /etc/fail2ban/ -p wa -k firewall

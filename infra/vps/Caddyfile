@@ -1,11 +1,38 @@
 # OnCargo — Caddy: HTTPS automático (Let's Encrypt) en cuanto el DNS apunte al VPS.
+# Endurecimiento (ver infra/vps/README.md § Seguridad del host): registro de accesos para fail2ban,
+# cabeceras, /q/* cerrado salvo la salud y el acceso por IP redirigido al dominio.
+
+(access_log) {
+	# JSON por petición en /var/log/oncargo/caddy/access.log del host (lo lee fail2ban). Caddy ya oculta
+	# Cookie y Authorization; aquí además se tapan los tokens de URL: ?t= (baja), ?token= (restablecer,
+	# invitación) y /s/<token> · /public/tracking/<token> (seguimiento público). Retención: 14 días.
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 20MiB
+			roll_keep 10
+			roll_keep_for 336h
+			mode 0640
+		}
+		format filter {
+			wrap json {
+				time_format iso8601
+			}
+			request>uri regexp "([?&](?:t|token)=|/s/|/public/tracking/)[^&/?]+" "${1}REDACTED"
+		}
+	}
+}
+
 (security) {
+	import access_log
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# Solo si la aplicación no la fijó (la web ya manda la suya).
+		?Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 		-Server
+		-Via
 	}
 }
 
@@ -14,6 +41,11 @@
 	redir /app /app/ 308
 	handle_path /app/* {
 		root * /srv/downloads
+		# Página estática servida por Caddy (no pasa por la web): CSP propia. Estilo y script en línea.
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+			X-Frame-Options "DENY"
+		}
 		@apk path *.apk
 		header @apk Content-Type "application/vnd.android.package-archive"
 		header @apk Content-Disposition "attachment"
@@ -28,28 +60,27 @@
 }
 
 www.{$DOMAIN} {
+	import access_log
 	redir https://{$DOMAIN}{uri} 308
 }
 
 # API pública para la app Android (la web llama a la API por la red interna).
 api.{$DOMAIN} {
 	import security
+	# Rutas internas de Quarkus (/q/openapi, /q/metrics…): solo la salud queda pública (monitoreo externo).
+	@quarkus_internal {
+		path /q/*
+		not path /q/health /q/health/*
+	}
+	respond @quarkus_internal 404
 	reverse_proxy backend:8080 {
 		# SSE (/api/v1/events/stream): sin buffer
 		flush_interval -1
 	}
 }
 
-# Acceso por IP mientras el DNS no apunta al VPS (solo pruebas, sin TLS).
+# Acceso por IP sin TLS: ya no sirve contenido (login en claro, hallazgo H-01). Redirige al dominio con HTTPS.
 http://{$PUBLIC_IP} {
-	encode zstd gzip
-	import downloads
-	handle /api/* {
-		reverse_proxy backend:8080 {
-			flush_interval -1
-		}
-	}
-	handle {
-		reverse_proxy web:4321
-	}
+	import access_log
+	redir https://{$DOMAIN}{uri} 308
 }

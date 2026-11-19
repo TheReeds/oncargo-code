@@ -1,0 +1,10 @@
+[Unit]
+Description=OnCargo: respaldo cifrado de PostgreSQL, MinIO y state/
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/oncargo-backup run
+Nice=10
+IOSchedulingClass=idle

@@ -1,0 +1,5 @@
+# OnCargo — destinatarios age de los respaldos del VPS (claves PÚBLICAS: pueden versionarse).
+# La identidad privada correspondiente NO está en el VPS ni en el repo: la guarda el administrador
+# (gestor de contraseñas). Para rotar: age-keygen, reemplazar esta línea, harden.sh ops.
+# Se pueden listar varias (una por línea) para que más de una persona pueda descifrar.
+age1xjjfy7denpl8q2t8g5su7se0zxv82nwvplvzpuls6qnwets2efpshs0wd3

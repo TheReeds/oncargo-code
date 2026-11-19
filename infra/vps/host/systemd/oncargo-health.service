@@ -1,0 +1,7 @@
+[Unit]
+Description=OnCargo: chequeo de salud (servicio, disco, memoria, certificado, respaldo)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/oncargo-health

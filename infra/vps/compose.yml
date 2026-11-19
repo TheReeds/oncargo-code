@@ -1,7 +1,13 @@
 # OnCargo — VPS (Hostinger KVM 2). Ver infra/vps/README.md.
 # Caddy es lo único publicado en el host (80/443); el resto vive en redes internas de Docker,
 # así UFW no queda puenteado por puertos que Docker publique.
+# Endurecimiento de contenedores (x-hardening): sin escalar privilegios, sin capacidades salvo las
+# imprescindibles, límite de procesos y, donde se probó, sistema de archivos de solo lectura.
 name: oncargo
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
 
 services:
   db:
@@ -24,6 +30,10 @@ services:
       retries: 20
     networks: [internal]
     mem_limit: 768m
+    <<: *hardening
+    # El entrypoint corre como root, ajusta dueños del directorio de datos y pasa a postgres (su-exec).
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    pids_limit: 512
 
   minio:
     # Almacén S3 de documentos para el entorno de pruebas. En producción: Cloudflare R2 (ver README).
@@ -33,6 +43,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?falta en .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?falta en .env}
+      # Sin consola web: el bucket se administra por la API S3 desde el backend.
+      MINIO_BROWSER: "off"
     volumes:
       - miniodata:/data
     healthcheck:
@@ -42,6 +54,8 @@ services:
       retries: 20
     networks: [internal]
     mem_limit: 384m
+    <<: *hardening
+    pids_limit: 512
 
   backend:
     build:
@@ -68,12 +82,35 @@ services:
       LOGYX_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       LOGYX_S3_CREATE_BUCKET: "true"
       CORS_ENABLED: "false"
+      # Cobros (V24): clave AES-256 de los datos de cobro (openssl rand -base64 32) y emisor de las liquidaciones.
+      LOGYX_PAYOUT_KEY: ${LOGYX_PAYOUT_KEY:-}
+      BILLING_ISSUER_NAME: ${BILLING_ISSUER_NAME:-OnCargo}
+      BILLING_ISSUER_RUC: ${BILLING_ISSUER_RUC:-}
+      # Correo (V14 contraseñas e invitaciones; V24 avisos, resumen diario y baja). Proveedor por definir: ver README.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_START_TLS: ${SMTP_START_TLS:-REQUIRED}
+      SMTP_TLS: ${SMTP_TLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-OnCargo <no-reply@oncargo.tech>}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      # Enlaces de los correos (avisos, /baja, List-Unsubscribe) y de restablecer contraseña.
+      WEB_URL: ${WEB_URL:-https://oncargo.tech}
+      PASSWORD_RESET_URL: ${PASSWORD_RESET_URL:-https://oncargo.tech/restablecer}
+      # Clave HMAC del enlace de baja (V24): la generan bootstrap.sh / deploy.sh en state/.env.
+      LOGYX_UNSUBSCRIBE_SECRET: ${LOGYX_UNSUBSCRIBE_SECRET:?falta LOGYX_UNSUBSCRIBE_SECRET en .env}
       # Solo Caddy (red edge de Docker) puede fijar X-Forwarded-For.
       TRUSTED_PROXIES: 172.16.0.0/12
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
     secrets: [jwt_private_key, jwt_public_key]
     networks: [internal, edge]
     mem_limit: 1g
+    <<: *hardening
+    pids_limit: 1024
+    # Solo /tmp escribible (subidas multipart, vertx-cache): nadie puede reescribir /app.
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
 
   web:
     build: ../../web
@@ -83,10 +120,14 @@ services:
       backend: { condition: service_healthy }
     environment:
       API_URL: http://backend:8080
-      # false mientras se prueba por IP (http). Con el dominio en HTTPS: true.
+      # Cookie de sesión solo por HTTPS (el acceso por IP ya redirige al dominio).
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
     networks: [edge]
     mem_limit: 512m
+    <<: *hardening
+    pids_limit: 256
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
 
   caddy:
     image: caddy:2.10-alpine
@@ -104,8 +145,15 @@ services:
       - ${DOWNLOADS_DIR:-/opt/oncargo/downloads}:/srv/downloads:ro
       - caddy_data:/data
       - caddy_config:/config
+      # Registro de accesos (lo lee fail2ban en el host; lo crea harden.sh).
+      - /var/log/oncargo/caddy:/var/log/caddy
     networks: [edge]
     mem_limit: 128m
+    <<: *hardening
+    cap_add: [NET_BIND_SERVICE]
+    pids_limit: 256
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
 
 secrets:
   jwt_private_key:
@@ -120,5 +168,7 @@ volumes:
   caddy_config:
 
 networks:
+  # Sin salida a Internet: db y minio solo hablan con el backend (el backend sale por edge).
   internal:
+    internal: true
   edge:

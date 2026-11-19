@@ -14,10 +14,14 @@ DB_ADMIN_PASSWORD=$(rnd)
 DB_APP_PASSWORD=$(rnd)
 MINIO_ROOT_USER=oncargo-minio
 MINIO_ROOT_PASSWORD=$(rnd)
+# Clave HMAC del enlace de baja de los correos (V24). Obligatoria: sin ella el backend no arranca.
+LOGYX_UNSUBSCRIBE_SECRET=$(rnd)$(rnd)
+# Clave AES-256 de los datos de cobro del transportista (V24, ADR-0014). Respáldala: sin ella no se leen.
+LOGYX_PAYOUT_KEY=$(openssl rand -base64 32)
 # Entorno de pruebas: cuentas demo (*@logyx.pe, Logyx2026!). En producción real: false.
 DEMO_DATA=true
-# false mientras se prueba por http://IP; true cuando el dominio tenga HTTPS.
-COOKIE_SECURE=false
+# Cookie de sesión solo por HTTPS (el acceso por IP redirige al dominio).
+COOKIE_SECURE=true
 DOWNLOADS_DIR=/opt/oncargo/downloads
 ENV
   echo ".env creado"
