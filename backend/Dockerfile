@@ -3,7 +3,7 @@
 # Ver infra/README.md. La caché de BuildKit (/root/.m2) evita bajar dependencias en cada build.
 
 # ---------- build ----------
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/root/.m2 \
       -Dlogyx.demo-data=${DEMO_DATA}
 
 # ---------- runtime ----------
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 RUN addgroup -S -g 10001 logyx && adduser -S -D -H -u 10001 -G logyx logyx
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /src/target/quarkus-app/ /app/
