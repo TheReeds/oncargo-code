@@ -54,6 +54,7 @@ Estado al 2026-11-19 (evidencia en la documentación del EPE, Infraestructura �
 | HSTS `preload` | Descartado por ahora | Prácticamente irreversible (salir de la lista de los navegadores tarda meses) y obliga a HTTPS en todo subdominio futuro: no mientras el dominio está en fase de pruebas. Queda HSTS 1 año sin `preload` |
 | `/q/*` de Quarkus cerrado en `api.` salvo `/q/health*` | ✅ | Caddyfile (`@quarkus_internal`) |
 | Acceso `http://<IP>` → 308 al dominio (antes servía el login sin TLS) | ✅ | Caddyfile |
+| IP real del cliente en la web (H-10): `security.allowedDomains` en `web/astro.config.mjs`; Caddy reemplaza el `X-Forwarded-For` del cliente | ✅ (2026-11-19, `848ba00`) | Comprobado con `tcpdump` (el backend recibe la IP real, no la de `caddy` ni una falsa) y T10 |
 | Límite de tasa en Caddy | ⏳ no aplica | `caddy:2.10-alpine` no trae `rate_limit` (módulo de terceros: exige imagen propia con xcaddy). Cubren `AuthRateLimits` (app) + fail2ban `oncargo-caddy-auth`; en el borde, Cloudflare |
 | Contenedores: `no-new-privileges`, `cap_drop: ALL` (+ mínimas en db y caddy), `pids_limit`, `read_only` en caddy/web/backend con `tmpfs /tmp` | ✅ | `compose.yml` (`x-hardening`). db y minio sin `read_only` (escriben fuera de sus volúmenes); todos corren sin root salvo el entrypoint de db y caddy (root sin capacidades salvo `NET_BIND_SERVICE`) |
 | Red `internal` con `internal: true` (db y minio sin salida a Internet) | ✅ | `compose.yml` |
@@ -95,6 +96,14 @@ cambios de estado (OK→FALLA con prioridad alta, FALLA→OK). Canales en `/etc/
   Probar: `sudo oncargo-health --test-alert` y `curl -s "https://ntfy.sh/<tema>/json?poll=1&since=5m"`.
   Cambiar de tema (si se filtró): editar el archivo con un tema nuevo (`oncargo-$(openssl rand -hex 16)`) y suscribirse de nuevo.
 - `HEARTBEAT_URL=https://hc-ping.com/<uuid>` — opcional (healthchecks.io: avisa también si el VPS entero se cae).
+
+## Demo, pruebas y simulaciones (`demo/`)
+`infra/vps/demo/demo.sh` (menú o `demo.sh status`, salida con la IP enmascarada), `demo/sim1-restore.sh` (SIM-1: restauración
+medida del último respaldo en un PostgreSQL local sin red), `demo/attacks/` (A1–A9; las activas exigen la autorización
+firmada) y el guion de la exposición. Página de estado opcional (Uptime Kuma, perfil `status` del compose, **no desplegada**).
+Detalle: [`demo/README.md`](demo/README.md). Herramientas de terminal en el VPS: `btop` (apt, 2026-11-19) y `htop`.
+El respaldo diario es un **timer de systemd** (equivalente a una línea de cron `30 3 * * *` con `Persistent=true`, que además
+recupera la ejecución si el servidor estaba apagado a esa hora): `systemctl list-timers 'oncargo-*'`.
 
 ## Entorno de pruebas vs. producción
 `state/.env` trae `DEMO_DATA=true` (cuentas `*@logyx.pe`). **La contraseña demo del VPS no es la del repo** (`Logyx2026!`,

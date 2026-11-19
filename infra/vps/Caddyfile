@@ -79,6 +79,17 @@ api.{$DOMAIN} {
 	}
 }
 
+# Página de estado OPCIONAL (perfil `status` del compose; ver infra/vps/demo/README.md). Antes de descomentar:
+# aprobación del dueño, registro A `status` → IP del VPS y `docker compose --profile status up -d uptime-kuma`.
+# Uptime Kuma tiene su propio usuario; basic_auth añade una segunda puerta (hash: caddy hash-password).
+# status.{$DOMAIN} {
+# 	import security
+# 	basic_auth {
+# 		expositor <hash bcrypt de caddy hash-password>
+# 	}
+# 	reverse_proxy uptime-kuma:3001
+# }
+
 # Acceso por IP sin TLS: ya no sirve contenido (login en claro, hallazgo H-01). Redirige al dominio con HTTPS.
 http://{$PUBLIC_IP} {
 	import access_log

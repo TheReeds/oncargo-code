@@ -159,6 +159,24 @@ services:
     read_only: true
     tmpfs: ["/tmp:size=16m"]
 
+  # Página de estado OPCIONAL (Uptime Kuma). NO arranca con `docker compose up -d` ni con deploy.sh: solo con
+  #   docker compose --profile status up -d uptime-kuma
+  # y requiere la aprobación del dueño, el registro DNS `status` y descomentar su bloque en el Caddyfile.
+  # Guía: infra/vps/demo/README.md § Página de estado. Sin puertos publicados: se llega solo por Caddy.
+  uptime-kuma:
+    profiles: [status]
+    image: louislam/uptime-kuma:1.23.16
+    restart: unless-stopped
+    volumes:
+      - kuma_data:/app/data
+    networks: [edge]
+    mem_limit: 256m
+    security_opt: ["no-new-privileges:true"]
+    # Su entrypoint ajusta dueños del volumen y baja a un usuario sin privilegios: capacidades mínimas para eso.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    pids_limit: 256
+
 secrets:
   jwt_private_key:
     file: ../secrets/jwt-private.pem
@@ -170,6 +188,7 @@ volumes:
   miniodata:
   caddy_data:
   caddy_config:
+  kuma_data:
 
 networks:
   # Sin salida a Internet: db y minio solo hablan con el backend (el backend sale por edge).
