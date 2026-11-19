@@ -65,10 +65,27 @@ public class ShipmentStopEntity extends PanacheEntityBase {
 
     public String instructions;
 
+    @Column(name = "loaded_weight_kg")
+    public java.math.BigDecimal loadedWeightKg;
+
+    @Column(name = "received_by_name")
+    public String receivedByName;
+
+    @Column(name = "received_by_doc")
+    public String receivedByDoc;
+
+    @Column(name = "arrival_office_reason")
+    public String arrivalOfficeReason;
+
+    @Column(name = "completion_office_reason")
+    public String completionOfficeReason;
+
     ShipmentStop toDomain() {
         return new ShipmentStop(id, shipmentId, requesterOrgId, carrierOrgId, sequence, type, city, address, status,
                 arrivedAt, completedAt, arrivedRecordedAt, completedRecordedAt,
-                new StopContact(contactName, contactPhone, windowFrom, windowTo, instructions));
+                new StopContact(contactName, contactPhone, windowFrom, windowTo, instructions))
+                .restoreExecution(loadedWeightKg, receivedByName, receivedByDoc, arrivalOfficeReason,
+                        completionOfficeReason);
     }
 
     void apply(ShipmentStop s) {
@@ -91,5 +108,10 @@ public class ShipmentStopEntity extends PanacheEntityBase {
         windowFrom = c.windowFrom();
         windowTo = c.windowTo();
         instructions = c.instructions();
+        loadedWeightKg = s.loadedWeightKg();
+        receivedByName = s.receivedByName();
+        receivedByDoc = s.receivedByDoc();
+        arrivalOfficeReason = s.arrivalOfficeReason();
+        completionOfficeReason = s.completionOfficeReason();
     }
 }

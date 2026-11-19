@@ -53,9 +53,22 @@ public class BidEntity extends PanacheEntityBase {
     @Column(name = "load_group_id")
     public UUID loadGroupId;
 
+    @Column(name = "soat_valid_until")
+    public java.time.LocalDate soatValidUntil;
+
+    @Column(name = "inspection_valid_until")
+    public java.time.LocalDate inspectionValidUntil;
+
+    @Column(name = "improved_count")
+    public int improvedCount;
+
+    @Column(name = "improved_at")
+    public OffsetDateTime improvedAt;
+
     Bid toDomain() {
         return new Bid(id, auctionId, requestId, requesterOrgId, carrierOrgId, vehicleId, vehicleType,
-                vehiclePlate, amount, notes, status, createdAt, assignedByOperator, loadGroupId);
+                vehiclePlate, amount, notes, status, createdAt, assignedByOperator, loadGroupId, soatValidUntil,
+                inspectionValidUntil, improvedCount, improvedAt);
     }
 
     void apply(Bid b) {
@@ -73,5 +86,9 @@ public class BidEntity extends PanacheEntityBase {
         createdAt = b.createdAt();
         assignedByOperator = b.assignedByOperator();
         loadGroupId = b.loadGroupId();
+        soatValidUntil = b.soatValidUntil();
+        inspectionValidUntil = b.inspectionValidUntil();
+        improvedCount = b.improvedCount();
+        improvedAt = b.improvedAt();
     }
 }

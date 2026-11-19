@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
-import { acceptBid, cancelRequest, createRequest, getRequest, listBids, quote, reopenRequest, republishRequest, similarRequests } from './server';
+import { acceptBid, batchCancel, batchDuplicate, batchReschedule, cancelRequest, createRequest, getRequest, listBids, offersInbox, quote, reopenRequest, republishRequest, similarRequests } from './server';
 import { LIMITS } from '@/lib/limits';
 
 const city = z.string().min(1, 'Selecciona una ciudad');
@@ -40,6 +40,8 @@ export const requests = {
       deliveryContactName: opt(LIMITS.contactName), deliveryContactPhone: opt(LIMITS.contactPhone),
       deliveryWindowFrom: hhmm.optional(), deliveryWindowTo: hhmm.optional(), deliveryInstructions: opt(LIMITS.stopInstructions),
       originPlaceId: z.uuid().optional(), destinationPlaceId: z.uuid().optional(),
+      /** Avisa a los transportistas preferidos al publicar (2.9). */
+      invitePreferred: z.boolean().optional(),
       /** Clave de idempotencia del formulario: un doble clic o un reintento no publica dos veces. */
       idempotencyKey: z.string().min(8).max(80).optional(),
     }),
@@ -72,5 +74,23 @@ export const requests = {
     accept: 'json',
     input: z.object({ bidId: z.uuid() }),
     handler: ({ bidId }, ctx) => run(() => acceptBid(requireToken(ctx), bidId)),
+  }),
+  /** Bandeja de ofertas: una fila por solicitud con ofertas por elegir (2.10). */
+  inbox: defineAction({ accept: 'json', handler: (_i, ctx) => run(() => offersInbox(requireToken(ctx))) }),
+  /** Acciones masivas: por solicitud, sin atomicidad; el resultado trae el código de cada fallo (2.10). */
+  batchCancel: defineAction({
+    accept: 'json',
+    input: z.object({ ids: z.array(z.uuid()).min(1).max(50), reason: z.string().trim().max(LIMITS.requestCancelReason).optional() }),
+    handler: ({ ids, reason }, ctx) => run(() => batchCancel(requireToken(ctx), ids, reason || undefined)),
+  }),
+  batchReschedule: defineAction({
+    accept: 'json',
+    input: z.object({ ids: z.array(z.uuid()).min(1).max(50), pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Selecciona la nueva fecha de recojo') }),
+    handler: ({ ids, pickupDate }, ctx) => run(() => batchReschedule(requireToken(ctx), ids, pickupDate)),
+  }),
+  batchDuplicate: defineAction({
+    accept: 'json',
+    input: z.object({ ids: z.array(z.uuid()).min(1).max(50), idempotencyKey: z.string().min(8).max(43).optional() }),
+    handler: ({ ids, idempotencyKey }, ctx) => run(() => batchDuplicate(requireToken(ctx), ids, idempotencyKey)),
   }),
 };

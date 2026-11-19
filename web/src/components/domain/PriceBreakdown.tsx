@@ -9,7 +9,7 @@ import type { Schemas } from '@/lib/api/server';
  * La PYME ve valor de venta + IGV; el transportista y el operador ven además la comisión de OnCargo con la tasa que quedó
  * guardada al adjudicar, su IGV y «Cobras neto» (los campos de comisión llegan nulos para la PYME y el conductor).
  */
-export function PriceBreakdown({ breakdown, className }: { breakdown?: Schemas['PriceBreakdownView'] | null; className?: string }) {
+export function PriceBreakdown({ breakdown, className, totalLabel = 'Precio acordado' }: { breakdown?: Schemas['PriceBreakdownView'] | null; className?: string; /** «Precio final» cuando incluye los ajustes aceptados (2.6). */ totalLabel?: string }) {
   if (!breakdown || breakdown.amount == null) return null;
   const b = breakdown;
   const withCommission = b.commission != null && b.carrierNet != null;
@@ -22,7 +22,7 @@ export function PriceBreakdown({ breakdown, className }: { breakdown?: Schemas['
       <dl className="mt-2 grid min-w-56 grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-left">
         <dt>Valor de venta (sin IGV)</dt><dd className="text-right font-mono tabular-nums">{formatMoney(b.netOfVat)}</dd>
         <dt>IGV ({formatRate(b.vatRate ?? 0.18)})</dt><dd className="text-right font-mono tabular-nums">{formatMoney(b.vat)}</dd>
-        <dt className="border-t border-steel-200 pt-1 font-medium text-ink-900">Precio acordado</dt><dd className="border-t border-steel-200 pt-1 text-right font-mono font-medium tabular-nums text-ink-900">{formatMoney(b.amount)}</dd>
+        <dt className="border-t border-steel-200 pt-1 font-medium text-ink-900">{totalLabel}</dt><dd className="border-t border-steel-200 pt-1 text-right font-mono font-medium tabular-nums text-ink-900">{formatMoney(b.amount)}</dd>
         {withCommission && (
           <>
             <dt>Comisión de OnCargo ({formatRate(b.commissionRate ?? 0)} del valor de venta)</dt><dd className="text-right font-mono tabular-nums">− {formatMoney(b.commission)}</dd>

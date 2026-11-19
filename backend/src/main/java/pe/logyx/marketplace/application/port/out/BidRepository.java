@@ -46,4 +46,12 @@ public interface BidRepository {
 
     /** Inserta o actualiza. */
     void save(Bid bid);
+
+    /** Historial de mejoras (2.8): una fila por mejora. Solo la ve el transportista dueño (RLS bid_revisions_carrier). */
+    void recordRevision(UUID bidId, UUID carrierOrgId, Bid.Revision revision);
+
+    /** Mejoras de la oferta, la más antigua primero. */
+    List<RevisionRow> listRevisions(UUID bidId);
+
+    record RevisionRow(java.time.OffsetDateTime at, Bid.Revision revision) {}
 }

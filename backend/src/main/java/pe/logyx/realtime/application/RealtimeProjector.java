@@ -192,6 +192,24 @@ public class RealtimeProjector {
     }
 
     /** Las dos partes del envío y su conductor (dirigido a su usuario). */
+    // ----- Ajustes del envío (V23, 2.6): las partes y el conductor refrescan el panel; el monto no viaja
+    void onAdjustmentProposed(@Observes @Outboxed pe.logyx.shipment.application.event.AdjustmentProposed e) {
+        emitToShipment(SHIPMENT_ADJUSTMENT_UPDATED, data("shipmentId", e.shipmentId(), "adjustmentId", e.adjustmentId(),
+                "status", "PENDING"), e.shipmentId(), e.requesterOrgId(), e.carrierOrgId(), null);
+    }
+
+    void onAdjustmentDecided(@Observes @Outboxed pe.logyx.shipment.application.event.AdjustmentDecided e) {
+        emitToShipment(SHIPMENT_ADJUSTMENT_UPDATED, data("shipmentId", e.shipmentId(), "adjustmentId", e.adjustmentId(),
+                "status", e.status().name()), e.shipmentId(), e.requesterOrgId(), e.carrierOrgId(), null);
+    }
+
+    void onAdjustmentEscalated(@Observes @Outboxed pe.logyx.shipment.application.event.AdjustmentEscalated e) {
+        emitToShipment(SHIPMENT_ADJUSTMENT_UPDATED, data("shipmentId", e.shipmentId(), "adjustmentId", e.adjustmentId(),
+                "status", "PENDING", "escalated", true), e.shipmentId(), e.requesterOrgId(), e.carrierOrgId(), null);
+        emit(SHIPMENT_ADJUSTMENT_UPDATED, data("shipmentId", e.shipmentId(), "adjustmentId", e.adjustmentId(),
+                "escalated", true), Recipient.broadcast(pe.logyx.shared.tenancy.OrgType.OPERATOR));
+    }
+
     private void emitToShipment(String type, Map<String, Object> d, UUID shipmentId, UUID requester, UUID carrier,
                                 UUID knownDriver) {
         List<Recipient> to = new ArrayList<>(List.of(orgs(requester, carrier)));

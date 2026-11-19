@@ -204,4 +204,39 @@
     <string name="loads_bids_filter_closed">Cerradas</string>
     <string name="loads_bids_filtered_title">Sin ofertas en este filtro</string>
     <string name="loads_bids_filtered_message">Prueba con otro filtro para ver el resto de tus ofertas.</string>
+
+    <!-- Búsquedas guardadas (alertas de carga) -->
+    <string name="loads_saved_chip">Mis búsquedas</string>
+    <string name="loads_saved_chip_count">Mis búsquedas (%1$d)</string>
+    <string name="loads_saved_title">Mis búsquedas</string>
+    <string name="loads_saved_intro">Te avisamos cuando se publique una carga que coincida. Elige cómo recibir el aviso en la web: Cuenta, Avisos, Alertas de carga.</string>
+    <string name="loads_saved_save_current">Guardar búsqueda actual</string>
+    <string name="loads_saved_save_filters">Guardar esta búsqueda</string>
+    <string name="loads_saved_empty_title">Aún no guardas búsquedas</string>
+    <string name="loads_saved_empty_message">Filtra las cargas y guarda la búsqueda para enterarte primero de las nuevas.</string>
+    <string name="loads_saved_no_summary">Sin filtros</string>
+    <string name="loads_saved_active">Avisos activos</string>
+    <string name="loads_saved_paused_label">Avisos en pausa</string>
+    <string name="loads_saved_any_city">cualquiera</string>
+    <string name="loads_saved_weight_up_to">Hasta %1$s</string>
+    <string name="loads_saved_dates_range">Recojo del %1$s al %2$s</string>
+    <string name="loads_saved_dates_from">Recojo desde el %1$s</string>
+    <string name="loads_saved_dates_until">Recojo hasta el %1$s</string>
+    <string name="loads_saved_vehicle">Vehículo %1$s</string>
+    <string name="loads_saved_save_title">Guardar búsqueda</string>
+    <string name="loads_saved_name_label">Nombre</string>
+    <string name="loads_saved_name_hint">Por ejemplo: Lima a Juliaca</string>
+    <string name="loads_saved_name_required">Ponle un nombre a la búsqueda.</string>
+    <string name="loads_saved_save_action">Guardar búsqueda</string>
+    <string name="loads_saved_back">Volver</string>
+    <string name="loads_saved_created">Búsqueda guardada</string>
+    <string name="loads_saved_paused">Avisos en pausa</string>
+    <string name="loads_saved_resumed">Avisos activos</string>
+    <string name="loads_saved_deleted">Búsqueda borrada</string>
+    <string name="loads_saved_delete_title">¿Borrar la búsqueda?</string>
+    <string name="loads_saved_delete_message">Dejarás de recibir avisos de «%1$s».</string>
+    <string name="loads_saved_delete_confirm">Borrar búsqueda</string>
+    <string name="loads_saved_delete_keep">Volver</string>
+    <string name="loads_saved_delete_description">Borrar la búsqueda %1$s</string>
+    <string name="loads_fleet_doc_warning">Un documento del vehículo está vencido o vence antes del recojo.</string>
 </resources>

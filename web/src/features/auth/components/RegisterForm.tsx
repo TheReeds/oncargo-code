@@ -10,6 +10,7 @@ import { Alert } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { Checkbox, RadioGroup, RadioGroupItem } from '@/components/ui/form-controls';
 import { isValidRuc, rucKind } from '@/lib/ruc';
+import RequestOrgAccess from './RequestOrgAccess';
 import { cn } from '@/lib/utils';
 
 type City = { code?: string; name?: string };
@@ -100,6 +101,7 @@ export default function RegisterForm({ cities, initialType, termsVersion, termsD
   const [type, setType] = useState<OrgType>(initialType ?? 'PYME');
   const [city, setCity] = useState('');
   const [ruc, setRuc] = useState('');
+  const [rucTaken, setRucTaken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -187,6 +189,7 @@ export default function RegisterForm({ cities, initialType, termsVersion, termsD
         setBusy(false);
         return;
       }
+      setRucTaken(code === 'LOGYX-ORG-002' ? ruc : null);   // 2.15: «Pedir acceso a la empresa»
       if (field && FIELDS.includes(field)) {
         setErrors({ [field]: message });
         requestAnimationFrame(() => document.getElementById(field)?.focus());
@@ -250,6 +253,7 @@ export default function RegisterForm({ cities, initialType, termsVersion, termsD
                 <span>{rucOk ? `Dígito verificador correcto${rucKind(ruc) ? ` · ${rucKind(ruc)}` : ''}` : '11 dígitos'}</span>
                 {!rucOk && <span className="font-mono tabular-nums" aria-hidden="true">{ruc.length}/11</span>}
               </p>
+              {rucTaken && rucTaken === ruc && <RequestOrgAccess ruc={ruc} />}
             </Field>
             <Field label="Ciudad" htmlFor="city" hint="Opcional" className="@md:col-span-3">
               <Combobox id="city" value={city} onValueChange={setCity} options={cities.map((c) => ({ value: c.code ?? '', label: c.name ?? '' }))} placeholder="Selecciona tu ciudad" searchPlaceholder="Buscar ciudad…" emptyText="No hay ciudades con ese nombre" />

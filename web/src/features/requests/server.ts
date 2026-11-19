@@ -21,3 +21,12 @@ export const cancelRequest = (token: string, id: string, reason?: string) => unw
 export const reopenRequest = (token: string, id: string, pickupDate?: string) => unwrap(apiFor(token).POST('/api/v1/shipment-requests/{id}/reopen', { params: { path: { id } }, body: pickupDate ? { pickupDate } : {} }));
 export const republishRequest = (token: string, id: string, pickupDate?: string) => unwrap(apiFor(token).POST('/api/v1/shipment-requests/{id}/republish', { params: { path: { id } }, body: pickupDate ? { pickupDate } : {} }));
 export const acceptBid = (token: string, id: string) => unwrap(apiFor(token).POST('/api/v1/bids/{id}/accept', { params: { path: { id } } }));
+
+// ----- Bandeja de ofertas y acciones masivas (Ola 2, roadmap 2.10)
+export const offersInbox = (token: string) => unwrap(apiFor(token).GET('/api/v1/offers/inbox'));
+export const batchCancel = (token: string, ids: string[], reason?: string) =>
+  unwrap(apiFor(token).POST('/api/v1/shipment-requests/batch/cancel', { body: { ids, reason } }));
+export const batchReschedule = (token: string, ids: string[], pickupDate: string) =>
+  unwrap(apiFor(token).POST('/api/v1/shipment-requests/batch/reschedule', { body: { ids, pickupDate } }));
+export const batchDuplicate = (token: string, ids: string[], idempotencyKey?: string) =>
+  unwrap(apiFor(token).POST('/api/v1/shipment-requests/batch/duplicate', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body: { ids } }));

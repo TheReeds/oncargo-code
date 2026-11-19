@@ -27,6 +27,8 @@ public class IncidentQueries {
     @Inject ShipmentQueries shipments;
     @Inject OrganizationDirectory organizations;
     @Inject TenantContext tenant;
+    @Inject pe.logyx.documents.application.DocumentQueries documents;
+    @Inject pe.logyx.identity.application.UserAccounts users;
 
     public List<IncidentSummary> byShipment(UUID shipmentId) {
         shipments.detail(shipmentId);
@@ -70,10 +72,45 @@ public class IncidentQueries {
     }
 
     public IncidentSummary summary(Incident i, boolean withComments) {
-        List<IncidentComment> comments = withComments ? incidents.listComments(i.id()) : List.of();
+        boolean operator = tenant.isAuthenticated() && tenant.orgType() == OrgType.OPERATOR;
+        // Segunda barrera (la RLS ya oculta las internas a las partes, V23).
+        List<IncidentComment> comments = withComments ? incidents.listComments(i.id()).stream()
+                .filter(c -> operator || !c.internal()).toList() : List.of();
         Set<UUID> orgIds = new HashSet<>(List.of(i.requesterOrgId(), i.carrierOrgId(), i.reportedByOrgId()));
         comments.forEach(c -> orgIds.add(c.authorOrgId()));
-        return new IncidentSummary(i, names(orgIds), comments);
+        if (!withComments) return new IncidentSummary(i, names(orgIds), comments);
+        List<IncidentSummary.Attachment> attachments = new ArrayList<>();
+        for (UUID docId : incidents.attachments(i.id())) {
+            try {
+                var d = documents.ofShipment(i.shipmentId(), docId);
+                attachments.add(new IncidentSummary.Attachment(d.id(), d.fileName(), d.type().name(), d.contentType()));
+            } catch (BusinessException ignored) {
+                // documento que quien consulta no ve: no se lista
+            }
+        }
+        java.math.BigDecimal declared = null;
+        try {
+            var sum = shipments.detail(i.shipmentId());
+            declared = sum.request() == null ? null : sum.request().declaredValue();
+        } catch (BusinessException ignored) {
+            // envío no visible (no debería pasar si la incidencia lo es)
+        }
+        String assignee = i.assigneeProfileId() == null ? null
+                : users.byId(i.assigneeProfileId()).map(p -> p.fullName()).orElse(null);
+        return new IncidentSummary(i, names(orgIds), comments, attachments, declared, operator ? assignee : null);
+    }
+
+    /** Bandeja del operador (2.7): filtros por estado, severidad, responsable, SLA vencido y organización. */
+    public Paged<IncidentSummary> operatorInbox(OperatorIncidentFilter filter, PageRequest page) {
+        if (tenant.orgType() != OrgType.OPERATOR) throw BusinessException.forbidden("Solo el operador");
+        Paged<Incident> p = incidents.searchOperator(filter, page);
+        List<IncidentSummary> base = summaries(p.items());
+        Map<UUID, String> assignees = new HashMap<>();
+        var ids = p.items().stream().map(Incident::assigneeProfileId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!ids.isEmpty()) users.byIds(ids).forEach((k, v) -> assignees.put(k, v.fullName()));
+        return new Paged<>(base.stream().map(x -> new IncidentSummary(x.incident(), x.orgNames(), List.of(), List.of(),
+                null, assignees.get(x.incident().assigneeProfileId()))).toList(), page, p.total());
     }
 
     private List<IncidentSummary> summaries(List<Incident> list) {

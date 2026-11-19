@@ -73,6 +73,7 @@ public final class VehicleCargoCompatibility {
             throw BusinessException.badRequest("LOGYX-CAP-001", "El vehículo no tiene capacidad suficiente (RN02)",
                     "vehicleId");
         }
+        ensureOwnerAccepts(v, cargo);
         ensureTypeAndVolume(v.type(), v.maxVolumeM3(), cargo, volumeM3);
     }
 
@@ -92,7 +93,16 @@ public final class VehicleCargoCompatibility {
             throw BusinessException.badRequest("LOGYX-CAP-001", "El vehículo no tiene capacidad suficiente (RN02)",
                     "vehicleId");
         }
+        ensureOwnerAccepts(v, cargo);
         ensureTypeAndVolume(v.type(), v.maxVolumeM3(), cargo, volumeM3);
+    }
+
+    /** 2.4: el dueño puede restringir los tipos de carga de un vehículo (nunca ampliar la matriz). LOGYX-CAP-003. */
+    private static void ensureOwnerAccepts(Vehicle v, CargoType cargo) {
+        if (!v.acceptsCargoType(cargo)) {
+            throw BusinessException.badRequest("LOGYX-CAP-003", v.plate() + " está configurado para no llevar carga «"
+                    + cargo.label.toLowerCase() + "»: cambia su configuración o elige otro vehículo", "vehicleId");
+        }
     }
 
     /** LOGYX-CAP-003 (tipo de vehículo no apto) y LOGYX-CAP-004 (volumen), con {@code field = vehicleId}. */

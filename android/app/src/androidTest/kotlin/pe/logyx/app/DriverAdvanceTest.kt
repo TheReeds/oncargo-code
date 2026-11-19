@@ -1,5 +1,8 @@
 package pe.logyx.app
 
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -55,6 +58,10 @@ class DriverAdvanceTest {
         compose.onNodeWithText("Entregado").assertIsNotEnabled()
         compose.onNodeWithText("Tomar foto de entrega").performClick()
         compose.waitUntil(10_000) { evidence.hasUploadedPhoto("s1") }
+        // Ola 2 (2.5): la entrega pide nombre y DNI de quien recibe.
+        compose.onNodeWithText("Entregado").assertIsNotEnabled()
+        compose.onNode(hasSetTextAction() and hasContentDescription("Nombre de quien recibe")).performTextInput("Ana Torres")
+        compose.onNode(hasSetTextAction() and hasContentDescription("DNI o carné de extranjería")).performTextInput("45678912")
         compose.waitUntil(10_000) {
             runCatching { compose.onNodeWithText("Entregado").assertIsEnabled() }.isSuccess
         }

@@ -63,7 +63,8 @@ public final class ShipmentRequest {
     public record Details(String customerReference, BigDecimal declaredValue, StopDetails pickup, StopDetails delivery) {
         public static final Details NONE = new Details(null, null, StopDetails.NONE, StopDetails.NONE);
 
-        static Details clean(Details d) {
+        /** Normaliza y valida (referencia, valor declarado, contactos y ventanas); la usan también las plantillas. */
+        public static Details clean(Details d) {
             if (d == null) return NONE;
             String ref = blankToNull(d.customerReference);
             if (ref != null && ref.length() > 40) {
@@ -170,6 +171,7 @@ public final class ShipmentRequest {
     public void matchTo(UUID carrierOrgId) {
         status = Status.MATCHED;
         assignedCarrierOrgId = carrierOrgId;
+        cancelReason = null;                      // adjudicada a la segunda oferta tras cancelarse el primer envío (2.9)
     }
 
     public void cancel() {

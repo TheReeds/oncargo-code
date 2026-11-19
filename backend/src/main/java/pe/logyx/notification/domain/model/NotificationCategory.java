@@ -16,13 +16,15 @@ public enum NotificationCategory {
     REQUESTS("Solicitudes y subastas", "Cierre de subastas y solicitudes canceladas.",
             EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR)),
     NEGOTIATION("Mensajes y contraofertas", "Mensajes del chat y contraofertas.", EnumSet.of(OrgType.PYME, OrgType.CARRIER)),
-    SHIPMENTS("Envíos", "Recojo, entrega, cancelaciones y cambios de vehículo o conductor.",
-            EnumSet.of(OrgType.PYME, OrgType.CARRIER)),
-    INCIDENTS("Incidencias", "Incidencias reportadas y resueltas.", EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR)),
+    SHIPMENTS("Envíos", "Recojo, entrega, cancelaciones, cambios de vehículo o conductor y ajustes del precio.",
+            EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR)),
+    INCIDENTS("Incidencias", "Incidencias reportadas, asignadas y resueltas.", EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR)),
     REVIEWS("Calificaciones", "Cuando te califican después de una entrega.", EnumSet.of(OrgType.PYME, OrgType.CARRIER)),
     TRIPS("Viajes y reservas", "Reservas en viajes publicados: pedidas, confirmadas, rechazadas o canceladas.",
             EnumSet.of(OrgType.PYME, OrgType.CARRIER)),
     SMART_LOAD("Cargas combinadas", "Sugerencias de Smart Load para tu flota.", EnumSet.of(OrgType.CARRIER)),
+    ALERTS("Alertas de carga", "Cargas nuevas que coinciden con tus búsquedas guardadas.", EnumSet.of(OrgType.CARRIER)),
+    FLEET("Documentos de flota", "SOAT, revisión técnica y licencias por vencer o vencidas.", EnumSet.of(OrgType.CARRIER)),
     ACCOUNT("Cuenta y accesos", "Verificación de tu empresa y pedidos de acceso de tu equipo.",
             EnumSet.of(OrgType.PYME, OrgType.CARRIER, OrgType.OPERATOR));
 
@@ -42,12 +44,15 @@ public enum NotificationCategory {
 
     public static NotificationCategory of(NotificationType t) {
         return switch (t) {
-            case NEW_BID, BID_WITHDRAWN, SMART_LOAD_ACCEPTED -> BIDS;
-            case BID_ACCEPTED, BID_REJECTED -> AWARDS;
-            case AUCTION_CLOSED, REQUEST_CANCELLED -> REQUESTS;
+            case NEW_BID, BID_WITHDRAWN, BID_IMPROVED, SMART_LOAD_ACCEPTED, BACKUP_RESPONDED -> BIDS;
+            case NEW_LOAD_MATCH -> ALERTS;
+            case FLEET_DOCUMENT_EXPIRING -> FLEET;
+            case BID_ACCEPTED, BID_REJECTED, BACKUP_REQUESTED -> AWARDS;
+            case AUCTION_CLOSED, REQUEST_CANCELLED, TEMPLATE_RUN, REQUEST_INVITATION -> REQUESTS;
             case NEW_MESSAGE, COUNTER_OFFER -> NEGOTIATION;
-            case SHIPMENT_STATUS_CHANGE, SHIPMENT_CANCELLED -> SHIPMENTS;
-            case INCIDENT_REPORTED, INCIDENT_RESOLVED -> INCIDENTS;
+            case SHIPMENT_STATUS_CHANGE, SHIPMENT_CANCELLED, ADJUSTMENT_PROPOSED, ADJUSTMENT_DECIDED,
+                 ADJUSTMENT_ESCALATED -> SHIPMENTS;
+            case INCIDENT_REPORTED, INCIDENT_RESOLVED, INCIDENT_ASSIGNED -> INCIDENTS;
             case NEW_REVIEW -> REVIEWS;
             case TRIP_BOOKING_REQUESTED, TRIP_BOOKING_CONFIRMED, TRIP_BOOKING_REJECTED, TRIP_BOOKING_CANCELLED,
                  TRIP_CANCELLED -> TRIPS;

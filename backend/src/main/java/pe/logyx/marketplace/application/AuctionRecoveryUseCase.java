@@ -35,6 +35,7 @@ public class AuctionRecoveryUseCase {
     @Inject ShipmentRequestRepository requests;
     @Inject AuctionRepository auctions;
     @Inject PublishRequestUseCase publish;
+    @Inject pe.logyx.marketplace.application.port.out.BidRepository bids;
     @Inject RequestSummaries summaries;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
@@ -56,6 +57,28 @@ public class AuctionRecoveryUseCase {
         auctions.save(a);
         audit.record(tenant.profileId(), tenant.orgId(), "AUCTION_REOPENED", "shipment_request", r.id(),
                 "cierra=" + a.closesAt());
+        return summaries.of(r, false);
+    }
+
+    /**
+     * Cambia la fecha de recojo de una solicitud publicada (acción masiva «Reprogramar», roadmap 2.10). Solo sin ofertas
+     * pendientes: los transportistas ofertaron con la agenda de la fecha anterior (LOGYX-REQ-009). Nunca a una fecha pasada.
+     */
+    @Transactional
+    public RequestSummary reschedule(UUID requestId, LocalDate pickupDate) {
+        ShipmentRequest r = requests.findOwned(requestId, tenant.orgId())
+                .orElseThrow(() -> BusinessException.notFound("Solicitud"));
+        if (!r.isPublished()) {
+            throw BusinessException.conflict("LOGYX-REQ-008", "Solo se reprograma una solicitud publicada");
+        }
+        if (!bids.listPendingByRequest(r.id()).isEmpty()) {
+            throw BusinessException.conflict("LOGYX-REQ-009",
+                    "Ya tiene ofertas: cancélala y publícala con la nueva fecha");
+        }
+        r.reschedule(pickupDate, LocalDate.now(LIMA));
+        requests.save(r);
+        audit.record(tenant.profileId(), tenant.orgId(), "REQUEST_RESCHEDULED", "shipment_request", r.id(),
+                "recojo=" + r.cargo().pickupDate());
         return summaries.of(r, false);
     }
 

@@ -14,7 +14,7 @@ import { MoneyInput } from '@/components/ui/number-input';
 import { Alert } from '@/components/ui/alert';
 import { toast } from '@/components/ui/toaster';
 import { TrustScore } from '@/components/domain/TrustScore';
-import { ChevronRight, MessageSquare, TrendingDown, Wallet } from 'lucide-react';
+import { BarChart3, ChevronRight, MessageSquare, TrendingDown, Wallet } from 'lucide-react';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
 import { Badge } from '@/components/ui/badge';
 import { RouteLine } from '@/components/domain/RouteLine';
@@ -22,6 +22,7 @@ import { Countdown } from '@/components/domain/Countdown';
 import { CARGO_LABELS, formatDate, formatMoney, formatNumber, formatTons, VEHICLE_LABELS } from '@/lib/format';
 import { formatRate, priceBreakdown } from '@/lib/pricing';
 import { loadCommissionRate } from '../commission';
+import { shortIssue } from '@/features/fleet/documents';
 import { clippedToFloor, recalled, remember, shortcutAmount, SHORTCUT_LABEL, type Shortcut } from '../quick-bid';
 import type { BidView, RequestView, VehicleView } from '@/lib/api/server';
 
@@ -30,6 +31,9 @@ type Elig = {
   vehicles?: { vehicleId?: string; eligible?: boolean; blockerCode?: string | null; blockerMessage?: string | null; freeFrom?: string | null; busy?: { kind?: string; label?: string; from?: string; to?: string }[]; warnings?: { code?: string; message?: string }[] }[];
 };
 type VehicleElig = NonNullable<Elig['vehicles']>[number];
+type Lane = { samples?: number; windowDays?: number; median?: number; low?: number; high?: number };
+
+const isDocWarning = (code?: string) => code === 'LOGYX-FLT-007' || code === 'LOGYX-FLT-008';
 
 const range = (from?: string, to?: string) => (from && to && from !== to ? `${formatDate(from)} a ${formatDate(to)}` : formatDate(from));
 
@@ -39,6 +43,8 @@ function agendaHint(e: VehicleElig | undefined): string | null {
   if (!e.eligible) {
     if (e.blockerCode === 'LOGYX-CAP-005') return e.freeFrom ? `Ocupado · libre el ${formatDate(e.freeFrom)}` : 'Ocupado en esas fechas';
     if (e.blockerCode === 'LOGYX-CAP-007') return 'Demasiadas ofertas en esas fechas';
+    // 2.4: el operador activó el bloqueo por documento vencido (LOGYX-FLT-007): «Bloqueado: SOAT vencido el 1 oct».
+    if (e.blockerCode === 'LOGYX-FLT-007') return `Bloqueado: ${shortIssue(e.blockerMessage)}`;
     return null;
   }
   const bids = e.busy?.filter((b) => b.kind === 'BID').length ?? 0;
@@ -65,6 +71,8 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
   const [busy, setBusy] = useState<'send' | 'next' | null>(null);
   const [elig, setElig] = useState<Elig | null>(null);
   const [rate, setRate] = useState<number | null>(null);
+  // 2.8: precio de la ruta (`undefined` = cargando, `null` = sin datos suficientes: no se muestra nada).
+  const [lane, setLane] = useState<Lane | null | undefined>(undefined);
   const touchedVehicle = useRef(false);
   const advance = useRef(false);
 
@@ -90,6 +98,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
     setErrors({});
     setBusy(null);
     setElig(null);
+    setLane(undefined);
     if (!request?.id) return;
     // El atajo recordado rellena el monto (editable); sin datos de la carga queda vacío.
     if (last.shortcut) {
@@ -98,6 +107,7 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
     }
     let alive = true;
     actions.marketplace.eligibility({ requestId: request.id }).then(({ data }) => { if (alive && data) setElig(data as Elig); }).catch(() => undefined);
+    actions.marketplace.laneStats({ requestId: request.id }).then(({ data }) => { if (alive) setLane((data as Lane | null) ?? null); }).catch(() => alive && setLane(null));
     // Foco en el monto: con vehículo y monto ya puestos, Enter envía.
     const t = window.setTimeout(() => document.getElementById('b-amount')?.focus(), 80);
     return () => { alive = false; window.clearTimeout(t); };
@@ -153,7 +163,10 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
     }
     remember(vehicleId, notes, shortcut);
     toast.success('Oferta enviada');
-    for (const w of (data as BidView).warnings ?? []) toast.warning(w.message ?? 'Ese vehículo ya tiene ofertas para esas fechas', 'Si la PYME acepta una, las demás no se podrán cumplir con este vehículo.');
+    for (const w of (data as BidView).warnings ?? []) {
+      if (isDocWarning(w.code)) toast.warning(w.message ?? 'Revisa los documentos del vehículo', 'Renueva el documento y súbelo en Flota.');
+      else toast.warning(w.message ?? 'Ese vehículo ya tiene ofertas para esas fechas', 'Si la PYME acepta una, las demás no se podrán cumplir con este vehículo.');
+    }
     if (onPlaced) { setBusy(null); onPlaced(data as BidView, goNext); } else window.location.reload();
   }
 
@@ -185,6 +198,14 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
               </div>
             </div>
 
+            {lane === undefined ? <div aria-hidden="true" className="lx-skeleton h-4 w-2/3 rounded-input" /> : lane ? (
+              <section aria-labelledby="b-lane" className="rounded-input border border-steel-200 px-3 py-2.5 text-sm" data-testid="lane-stats">
+                <h3 id="b-lane" className="flex items-center gap-1.5 text-xs font-semibold text-ink-700"><BarChart3 className="size-3.5" aria-hidden="true" />Precio de esta ruta</h3>
+                <p className="mt-0.5 text-ink-700">Mediana adjudicada en esta ruta: <span className="font-mono font-semibold tabular-nums text-ink-900">{formatMoney(lane.median)}</span> <span className="text-xs text-ink-500">(últimos {lane.windowDays ?? 90} días, {lane.samples} envíos)</span>.</p>
+                <p className="text-xs text-ink-500">Rango habitual <span className="font-mono tabular-nums">{formatMoney(lane.low)}–{formatMoney(lane.high)}</span></p>
+              </section>
+            ) : null}
+
             {error && <Alert tone="error" title="No pudimos enviar tu oferta">{error}</Alert>}
             {blocked && <VerificationBlock failure={blocked} />}
 
@@ -212,7 +233,11 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
                     ]}
                   />
                 </Field>
-                {selected?.warnings?.map((w) => (
+                {selected?.warnings?.map((w) => isDocWarning(w.code) ? (
+                  <Alert key={w.code} tone="warning" title={w.code === 'LOGYX-FLT-007' ? 'Documento vencido' : 'Un documento vence antes del recojo'} className="mt-0">
+                    {w.message}. Puedes ofertar igual, pero conviene regularizarlo: la PYME ve si tu SOAT y tu revisión técnica están vigentes. <a href="/transportista/flota" className="font-medium underline">Ir a Flota</a>
+                  </Alert>
+                ) : (
                   <Alert key={w.code} tone="warning" title={w.message ?? 'Ese vehículo ya tiene ofertas para esas fechas'}>
                     Puedes ofertar igual, pero si la PYME acepta una, el sistema bloqueará la aceptación de las demás con ese vehículo.
                     {selected.busy?.length ? <ul className="mt-1.5 list-disc pl-4 text-xs">{selected.busy.filter((b) => b.kind === 'BID').map((b, i) => <li key={i}>{b.label} · {range(b.from, b.to)}</li>)}</ul> : null}
@@ -220,12 +245,12 @@ export default function BidSheet({ request, vehicles, onClose, onAsk, defaultVeh
                 ))}
                 {agendaBlocked.length > 0 && (
                   <div className="rounded-input border border-steel-200 bg-steel-100/60 p-3 text-xs text-ink-700" data-testid="agenda-blocked">
-                    <p className="mb-1 font-medium text-ink-900">Ocupados en esas fechas</p>
+                    <p className="mb-1 font-medium text-ink-900">No disponibles para esta carga</p>
                     <ul className="space-y-0.5">
                       {agendaBlocked.map((v) => {
                         const e = eligOf(v.id!)!;
                         const slot = e.busy?.find((b) => b.kind === 'SHIPMENT') ?? e.busy?.[0];
-                        return <li key={v.id}><span className="font-mono font-semibold">{v.plate}</span>: {e.blockerCode === 'LOGYX-CAP-007' ? e.blockerMessage : `ocupado ${range(slot?.from, slot?.to)}${e.freeFrom ? `, libre el ${formatDate(e.freeFrom)}` : ''}`}</li>;
+                        return <li key={v.id}><span className="font-mono font-semibold">{v.plate}</span>: {e.blockerCode === 'LOGYX-CAP-007' ? e.blockerMessage : e.blockerCode === 'LOGYX-FLT-007' ? `bloqueado, ${shortIssue(e.blockerMessage)}` : `ocupado ${range(slot?.from, slot?.to)}${e.freeFrom ? `, libre el ${formatDate(e.freeFrom)}` : ''}`}</li>;
                       })}
                     </ul>
                   </div>

@@ -47,6 +47,26 @@
           }
         }
       },
+      "AccountActionReason" : {
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          }
+        }
+      },
+      "AccountReactivation" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 300
+          }
+        }
+      },
       "ActivityEntryView" : {
         "type" : "object",
         "properties" : {
@@ -110,6 +130,90 @@
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 2000
+          },
+          "internal" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AdjustmentStatus" : {
+        "type" : "string",
+        "enum" : [ "PENDING", "ACCEPTED", "REJECTED", "WITHDRAWN" ]
+      },
+      "AdjustmentSuggestionView" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/AdjustmentType"
+          },
+          "stopId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "detail" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AdjustmentType" : {
+        "type" : "string",
+        "enum" : [ "WEIGHT_DIFF", "DETENTION", "TOLL", "HANDLING", "OTHER" ]
+      },
+      "AdjustmentView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "stopId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/AdjustmentType"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "evidenceDocumentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/AdjustmentStatus"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "respondBy" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "escalated" : {
+            "type" : "boolean"
+          },
+          "escalatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "decidedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "decisionNote" : {
+            "type" : "string"
+          },
+          "decidedByOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requesterOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -146,6 +250,17 @@
           }
         }
       },
+      "ApiResponseAdjustmentView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/AdjustmentView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseAuthMessage" : {
         "type" : "object",
         "properties" : {
@@ -168,11 +283,66 @@
           }
         }
       },
+      "ApiResponseBackupItemView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/BackupItemView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseBackupOptionsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/BackupOptionsView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseBackupRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/BackupRequestView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseBatchResultView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/BatchResultView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseBidView" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/BidView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseCarrierPreferenceView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CarrierPreferenceView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -245,11 +415,55 @@
           }
         }
       },
+      "ApiResponseFleetDocumentView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/FleetDocumentView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseIncidentView" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/IncidentView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseInviteResult" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/InviteResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseLaneStatsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/LaneStatsView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseLegalChangeResult" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/LegalChangeResult"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -295,6 +509,48 @@
           }
         }
       },
+      "ApiResponseListBackupRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BackupRequestView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListBatchBidResult" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BatchBidResult"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListBidRevisionView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BidRevisionView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListBidView" : {
         "type" : "object",
         "properties" : {
@@ -316,6 +572,20 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/CargoItem"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListCarrierPreferenceView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CarrierPreferenceView"
             }
           },
           "meta" : {
@@ -393,6 +663,48 @@
           }
         }
       },
+      "ApiResponseListEscalatedAdjustmentRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EscalatedAdjustmentRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListFleetDocumentView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FleetDocumentView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListFraudSignalView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FraudSignalView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListIncidentView" : {
         "type" : "object",
         "properties" : {
@@ -456,6 +768,20 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/OperatorBidRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListOperatorIncidentRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OperatorIncidentRow"
             }
           },
           "meta" : {
@@ -631,6 +957,20 @@
           }
         }
       },
+      "ApiResponseListSavedSearchView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SavedSearchView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListSearchResultView" : {
         "type" : "object",
         "properties" : {
@@ -708,6 +1048,34 @@
             "type" : "array",
             "items" : {
               "type" : "string"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListTemplateDraftView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TemplateDraftView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListTemplateView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TemplateView"
             }
           },
           "meta" : {
@@ -801,6 +1169,26 @@
           }
         }
       },
+      "ApiResponseObject" : {
+        "type" : "object",
+        "properties" : {
+          "data" : { },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseOffersInboxView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OffersInboxView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseOperatorAlertsView" : {
         "type" : "object",
         "properties" : {
@@ -817,6 +1205,39 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/OperatorMetricsView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseOrgMemberView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OrgMemberView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseOrganization360View" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Organization360View"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseOrganizationAccessRequestAccepted" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OrganizationAccessRequestAccepted"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -933,6 +1354,17 @@
           }
         }
       },
+      "ApiResponsePublishedFromTemplate" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PublishedFromTemplate"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseQuote" : {
         "type" : "object",
         "properties" : {
@@ -999,6 +1431,28 @@
           }
         }
       },
+      "ApiResponseSavedSearchView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SavedSearchView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseScheduleView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ScheduleView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseShareLinkCreated" : {
         "type" : "object",
         "properties" : {
@@ -1015,6 +1469,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/ShareLinkView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseShipmentAdjustmentsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ShipmentAdjustmentsView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1054,6 +1519,39 @@
           }
         }
       },
+      "ApiResponseSuggestionsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SuggestionsView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseTemplateRunView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TemplateRunView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseTemplateView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TemplateView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseTripBookingView" : {
         "type" : "object",
         "properties" : {
@@ -1070,6 +1568,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/TripView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseUnmarked" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Unmarked"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1119,6 +1628,32 @@
           "reason" : {
             "type" : "string",
             "maxLength" : 500
+          }
+        }
+      },
+      "AssignIncident" : {
+        "type" : "object",
+        "properties" : {
+          "assigneeProfileId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "unassign" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AssignResources" : {
+        "type" : "object",
+        "properties" : {
+          "driverId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 300
           }
         }
       },
@@ -1251,6 +1786,292 @@
           }
         }
       },
+      "BackupItemView" : {
+        "type" : "object",
+        "properties" : {
+          "bid" : {
+            "$ref" : "#/components/schemas/BidView"
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/BackupState"
+          },
+          "requestedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "respondedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "BackupOptionsView" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "eligible" : {
+            "type" : "boolean"
+          },
+          "blockerCode" : {
+            "type" : "string"
+          },
+          "blockerMessage" : {
+            "type" : "string"
+          },
+          "deadline" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BackupItemView"
+            }
+          }
+        }
+      },
+      "BackupRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "bidId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requestCode" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "vehiclePlate" : {
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/BackupState"
+          },
+          "requestedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "respondedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "BackupState" : {
+        "type" : "string",
+        "enum" : [ "AVAILABLE", "REQUESTED", "CONFIRMED", "DECLINED", "USED" ]
+      },
+      "BatchBidItem" : {
+        "type" : "object",
+        "required" : [ "requestId", "vehicleId", "amount" ],
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "amount" : {
+            "type" : "number",
+            "minimum" : 1
+          },
+          "notes" : {
+            "type" : "string",
+            "maxLength" : 300
+          }
+        }
+      },
+      "BatchBidResult" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "ok" : {
+            "type" : "boolean"
+          },
+          "bidId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BidWarningView"
+            }
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "field" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BatchBids" : {
+        "type" : "object",
+        "required" : [ "items" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BatchBidItem"
+            },
+            "maxItems" : 20,
+            "minItems" : 1
+          }
+        }
+      },
+      "BatchCancel" : {
+        "type" : "object",
+        "required" : [ "ids" ],
+        "properties" : {
+          "ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "maxItems" : 50,
+            "minItems" : 1
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500
+          }
+        }
+      },
+      "BatchDuplicate" : {
+        "type" : "object",
+        "required" : [ "ids" ],
+        "properties" : {
+          "ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "maxItems" : 50,
+            "minItems" : 1
+          }
+        }
+      },
+      "BatchItemView" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "ok" : {
+            "type" : "boolean"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "field" : {
+            "type" : "string"
+          },
+          "resultId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "resultCode" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BatchReschedule" : {
+        "type" : "object",
+        "required" : [ "ids", "pickupDate" ],
+        "properties" : {
+          "ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "maxItems" : 50,
+            "minItems" : 1
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }
+      },
+      "BatchResultView" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "succeeded" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BatchItemView"
+            }
+          }
+        }
+      },
+      "BidPosition" : {
+        "type" : "string",
+        "enum" : [ "TOP_TWO", "LOWER_HALF", "UPPER_HALF" ]
+      },
+      "BidRevisionView" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "previousAmount" : {
+            "type" : "number"
+          },
+          "newAmount" : {
+            "type" : "number"
+          },
+          "previousPlate" : {
+            "type" : "string"
+          },
+          "newPlate" : {
+            "type" : "string"
+          }
+        }
+      },
       "BidStandingBand" : {
         "type" : "string",
         "enum" : [ "BEST", "WITHIN_5_PCT", "WITHIN_15_PCT", "ABOVE_15_PCT" ]
@@ -1305,6 +2126,19 @@
             "items" : {
               "$ref" : "#/components/schemas/BidWarningView"
             }
+          },
+          "improvedCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "improvedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "soatValidUntil" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "inspectionValidUntil" : {
+            "$ref" : "#/components/schemas/LocalDate"
           }
         }
       },
@@ -1397,6 +2231,29 @@
       "CargoType" : {
         "type" : "string",
         "enum" : [ "GENERAL", "FRAGILE", "PERISHABLE", "HAZARDOUS", "BULK", "OVERSIZED" ]
+      },
+      "CarrierPreferenceView" : {
+        "type" : "object",
+        "properties" : {
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "carrierRucVerified" : {
+            "type" : "boolean"
+          },
+          "carrierTrustScore" : {
+            "type" : "number"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/PreferenceKind"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
       },
       "ChangeIncidentStatus" : {
         "type" : "object",
@@ -1687,6 +2544,9 @@
           },
           "destinationPlaceId" : {
             "$ref" : "#/components/schemas/UUID"
+          },
+          "invitePreferred" : {
+            "type" : "boolean"
           }
         }
       },
@@ -1829,9 +2689,18 @@
           }
         }
       },
+      "DecideAdjustment" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 500
+          }
+        }
+      },
       "DocumentType" : {
         "type" : "string",
-        "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER" ]
+        "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER", "PICKUP_PHOTO" ]
       },
       "DocumentView" : {
         "type" : "object",
@@ -1869,6 +2738,37 @@
           }
         }
       },
+      "DriverOptionView" : {
+        "type" : "object",
+        "properties" : {
+          "driverId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "free" : {
+            "type" : "boolean"
+          },
+          "assignable" : {
+            "type" : "boolean"
+          },
+          "workloadDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "distanceKm" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "current" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "DriverPasswordReset" : {
         "type" : "object",
         "required" : [ "newPassword" ],
@@ -1878,6 +2778,19 @@
             "pattern" : "\\S",
             "minLength" : 8,
             "maxLength" : 72
+          }
+        }
+      },
+      "DriverPatch" : {
+        "type" : "object",
+        "properties" : {
+          "licenseCategory" : {
+            "type" : "string",
+            "maxLength" : 10
+          },
+          "dni" : {
+            "type" : "string",
+            "maxLength" : 12
           }
         }
       },
@@ -1927,6 +2840,15 @@
           },
           "active" : {
             "type" : "boolean"
+          },
+          "licenseCategory" : {
+            "type" : "string"
+          },
+          "licenseExpiresAt" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "dni" : {
+            "type" : "string"
           }
         }
       },
@@ -1951,6 +2873,129 @@
           }
         }
       },
+      "Equipment" : {
+        "type" : "string",
+        "enum" : [ "GPS", "RAMP", "LIFTGATE", "TARP", "REEFER_CERTIFIED", "STRAPS" ]
+      },
+      "EscalatedAdjustmentRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentCode" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/AdjustmentType"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/AdjustmentStatus"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "respondBy" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "escalatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "agreedPrice" : {
+            "type" : "number"
+          }
+        }
+      },
+      "ExpiryView" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "on" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "expired" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "FleetDocumentType" : {
+        "type" : "string",
+        "enum" : [ "SOAT", "TECHNICAL_INSPECTION", "PROPERTY_CARD", "INSURANCE_POLICY", "MTC_PERMIT", "DRIVER_LICENSE", "DNI" ]
+      },
+      "FleetDocumentView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/FleetDocumentType"
+          },
+          "typeLabel" : {
+            "type" : "string"
+          },
+          "ownerType" : {
+            "type" : "string"
+          },
+          "ownerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/Vigency"
+          },
+          "daysLeft" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "current" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "ForgotPasswordRequest" : {
         "type" : "object",
         "required" : [ "email" ],
@@ -1959,6 +3004,53 @@
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 254
+          }
+        }
+      },
+      "FraudSignalKind" : {
+        "type" : "string",
+        "enum" : [ "SHARED_PHONE", "SHARED_PLATE", "SHARED_LICENSE", "SHARED_SIGNUP_IP", "HIGH_WITHDRAWAL_RATE", "HIGH_CANCELLATION_RATE", "LOW_BIDS_NEW_ACCOUNT" ]
+      },
+      "FraudSignalSeverity" : {
+        "type" : "string",
+        "enum" : [ "HIGH", "MEDIUM" ]
+      },
+      "FraudSignalView" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/FraudSignalKind"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/FraudSignalSeverity"
+          },
+          "value" : {
+            "type" : "string"
+          },
+          "rate" : {
+            "type" : "number"
+          },
+          "sample" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "organizations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SignalOrganization"
+            }
+          }
+        }
+      },
+      "ImproveBid" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "number",
+            "minimum" : 1
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -1998,9 +3090,26 @@
           }
         }
       },
+      "IncidentAttachmentView" : {
+        "type" : "object",
+        "properties" : {
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          }
+        }
+      },
       "IncidentCategory" : {
         "type" : "string",
-        "enum" : [ "CARGO_DAMAGE", "DELAY", "LOST_CARGO", "WRONG_DELIVERY", "DRIVER_CONDUCT", "OTHER" ]
+        "enum" : [ "CARGO_DAMAGE", "DELAY", "LOST_CARGO", "WRONG_DELIVERY", "DRIVER_CONDUCT", "OTHER", "PICKUP_NO_SHOW", "SHIPPER_NO_SHOW", "BREAKDOWN", "ACCIDENT", "THEFT", "ROAD_BLOCKED", "PARTIAL_DELIVERY", "PAYMENT_DISPUTE" ]
       },
       "IncidentCommentView" : {
         "type" : "object",
@@ -2019,8 +3128,15 @@
           },
           "createdAt" : {
             "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "internal" : {
+            "type" : "boolean"
           }
         }
+      },
+      "IncidentSeverity" : {
+        "type" : "string",
+        "enum" : [ "LOW", "MEDIUM", "HIGH", "CRITICAL" ]
       },
       "IncidentShipmentOutcome" : {
         "type" : "string",
@@ -2086,6 +3202,64 @@
           },
           "shipmentOutcome" : {
             "$ref" : "#/components/schemas/IncidentShipmentOutcome"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/IncidentSeverity"
+          },
+          "blocking" : {
+            "type" : "boolean"
+          },
+          "holdsShipment" : {
+            "type" : "boolean"
+          },
+          "claimedAmount" : {
+            "type" : "number"
+          },
+          "declaredValue" : {
+            "type" : "number"
+          },
+          "dueAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "slaBreached" : {
+            "type" : "boolean"
+          },
+          "assigneeProfileId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "assigneeName" : {
+            "type" : "string"
+          },
+          "withdrawnAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "reopenedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "reopenCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "latitude" : {
+            "type" : "number"
+          },
+          "longitude" : {
+            "type" : "number"
+          },
+          "occurredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "adjustmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "attachments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/IncidentAttachmentView"
+            }
+          },
+          "canWithdraw" : {
+            "type" : "boolean"
           }
         }
       },
@@ -2093,6 +3267,15 @@
         "type" : "string",
         "format" : "date-time",
         "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "InviteResult" : {
+        "type" : "object",
+        "properties" : {
+          "invited" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
       },
       "InviteUserRequest" : {
         "type" : "object",
@@ -2112,6 +3295,84 @@
             "description" : "ADMIN, OPS o VIEWER (DRIVER no: los conductores se crean en la flota)",
             "type" : "string",
             "$ref" : "#/components/schemas/Role"
+          }
+        }
+      },
+      "LaneStatsView" : {
+        "type" : "object",
+        "properties" : {
+          "samples" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "windowDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "median" : {
+            "type" : "number"
+          },
+          "low" : {
+            "type" : "number"
+          },
+          "high" : {
+            "type" : "number"
+          }
+        }
+      },
+      "LegalChangeResult" : {
+        "type" : "object",
+        "properties" : {
+          "organizationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "successorCreated" : {
+            "type" : "boolean"
+          },
+          "change" : {
+            "$ref" : "#/components/schemas/LegalChangeView"
+          }
+        }
+      },
+      "LegalChangeView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "organizationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "successorId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "oldLegalName" : {
+            "type" : "string"
+          },
+          "newLegalName" : {
+            "type" : "string"
+          },
+          "oldRuc" : {
+            "type" : "string"
+          },
+          "newRuc" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "documentName" : {
+            "type" : "string"
+          },
+          "documentContentType" : {
+            "type" : "string"
+          },
+          "documentSizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -2304,12 +3565,15 @@
           },
           "finalStanding" : {
             "type" : "boolean"
+          },
+          "position" : {
+            "$ref" : "#/components/schemas/BidPosition"
           }
         }
       },
       "NotificationCategory" : {
         "type" : "string",
-        "enum" : [ "BIDS", "AWARDS", "REQUESTS", "NEGOTIATION", "SHIPMENTS", "INCIDENTS", "REVIEWS", "TRIPS", "SMART_LOAD", "ACCOUNT" ]
+        "enum" : [ "BIDS", "AWARDS", "REQUESTS", "NEGOTIATION", "SHIPMENTS", "INCIDENTS", "REVIEWS", "TRIPS", "SMART_LOAD", "ALERTS", "FLEET", "ACCOUNT" ]
       },
       "NotificationPreferenceChange" : {
         "type" : "object",
@@ -2351,11 +3615,11 @@
       },
       "NotificationTarget" : {
         "type" : "string",
-        "enum" : [ "REQUEST", "BID", "COUNTER_OFFER", "SHIPMENT", "INCIDENT", "REVIEW", "TRIP", "SMART_LOAD", "ORGANIZATION", "USER" ]
+        "enum" : [ "REQUEST", "BID", "COUNTER_OFFER", "SHIPMENT", "INCIDENT", "REVIEW", "TRIP", "SMART_LOAD", "ORGANIZATION", "USER", "VEHICLE", "DRIVER", "TEMPLATE" ]
       },
       "NotificationType" : {
         "type" : "string",
-        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION", "ACCESS_REQUESTED" ]
+        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION", "ACCESS_REQUESTED", "NEW_LOAD_MATCH", "FLEET_DOCUMENT_EXPIRING", "BID_IMPROVED", "TEMPLATE_RUN", "REQUEST_INVITATION", "BACKUP_REQUESTED", "BACKUP_RESPONDED", "ADJUSTMENT_PROPOSED", "ADJUSTMENT_DECIDED", "ADJUSTMENT_ESCALATED", "INCIDENT_ASSIGNED" ]
       },
       "NotificationView" : {
         "type" : "object",
@@ -2389,6 +3653,139 @@
           },
           "mine" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "OfferBidView" : {
+        "type" : "object",
+        "properties" : {
+          "bidId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "carrierRucVerified" : {
+            "type" : "boolean"
+          },
+          "carrierTrustScore" : {
+            "type" : "number"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "vehicleType" : {
+            "$ref" : "#/components/schemas/Type"
+          },
+          "vehiclePlate" : {
+            "type" : "string"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "preferred" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "OfferInboxRow" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "suggestedPrice" : {
+            "type" : "number"
+          },
+          "priceFloor" : {
+            "type" : "number"
+          },
+          "closesAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "bidCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "best" : {
+            "$ref" : "#/components/schemas/OfferBidView"
+          },
+          "bestTrust" : {
+            "$ref" : "#/components/schemas/OfferBidView"
+          },
+          "bids" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OfferBidView"
+            }
+          }
+        }
+      },
+      "OffersInboxView" : {
+        "type" : "object",
+        "properties" : {
+          "requests" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "bids" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OfferInboxRow"
+            }
+          }
+        }
+      },
+      "OfficeStopEvent" : {
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          },
+          "occurredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "receivedByName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "receivedByDoc" : {
+            "type" : "string",
+            "maxLength" : 20
           }
         }
       },
@@ -2469,6 +3866,65 @@
           },
           "createdAt" : {
             "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "OperatorIncidentRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/IncidentCategory"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/IncidentSeverity"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/IncidentStatus"
+          },
+          "blocking" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "requesterOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "reportedByOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "dueAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "slaBreached" : {
+            "type" : "boolean"
+          },
+          "assigneeProfileId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "assigneeName" : {
+            "type" : "string"
+          },
+          "claimedAmount" : {
+            "type" : "number"
           }
         }
       },
@@ -2701,13 +4157,407 @@
           }
         }
       },
+      "OrgAuditRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "occurredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "actorName" : {
+            "type" : "string"
+          },
+          "organizationName" : {
+            "type" : "string"
+          },
+          "action" : {
+            "type" : "string"
+          },
+          "entity" : {
+            "type" : "string"
+          },
+          "entityId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "detail" : {
+            "type" : "string"
+          }
+        }
+      },
+      "OrgCountsView" : {
+        "type" : "object",
+        "properties" : {
+          "vehicles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "vehiclesArchived" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "drivers" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipmentsPending" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipmentsInTransit" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipmentsDelivered" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipmentsCancelled" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "cancelledByThisOrg" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bids" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bidsWithdrawn" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bidsAccepted" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "requests" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "requestsCancelled" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incidents" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incidentsActive" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incidentsReported" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "OrgIncidentRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/IncidentCategory"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/IncidentSeverity"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/IncidentStatus"
+          },
+          "blocking" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "dueAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "slaBreached" : {
+            "type" : "boolean"
+          },
+          "reportedByOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "assigneeName" : {
+            "type" : "string"
+          }
+        }
+      },
+      "OrgMemberView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "role" : {
+            "$ref" : "#/components/schemas/Role"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "invitationPending" : {
+            "type" : "boolean"
+          },
+          "lastLoginAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "operatorSuspendedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "operatorSuspensionReason" : {
+            "type" : "string"
+          }
+        }
+      },
       "OrgPermission" : {
         "type" : "string",
         "enum" : [ "READ", "OPERATE", "MANAGE_USERS", "MANAGE_ORGANIZATION", "MANAGE_DRIVERS" ]
       },
+      "OrgRatesView" : {
+        "type" : "object",
+        "properties" : {
+          "cancellation" : {
+            "type" : "number"
+          },
+          "withdrawal" : {
+            "type" : "number"
+          },
+          "requestCancellation" : {
+            "type" : "number"
+          }
+        }
+      },
+      "OrgReputationView" : {
+        "type" : "object",
+        "properties" : {
+          "trustScore" : {
+            "type" : "number"
+          },
+          "totalReviews" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "avgRating" : {
+            "type" : "number"
+          }
+        }
+      },
+      "OrgShipmentRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/Status5"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "agreedPrice" : {
+            "type" : "number"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "requesterOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requesterName" : {
+            "type" : "string"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          }
+        }
+      },
       "OrgType" : {
         "type" : "string",
         "enum" : [ "PYME", "CARRIER", "OPERATOR" ]
+      },
+      "OrgVehicleView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "plate" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Organization360View" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/OrgType"
+          },
+          "legalName" : {
+            "type" : "string"
+          },
+          "ruc" : {
+            "type" : "string"
+          },
+          "city" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "verificationStatus" : {
+            "$ref" : "#/components/schemas/VerificationStatus"
+          },
+          "verificationNote" : {
+            "type" : "string"
+          },
+          "verificationUpdatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "predecessorId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "successorIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "counts" : {
+            "$ref" : "#/components/schemas/OrgCountsView"
+          },
+          "rates" : {
+            "$ref" : "#/components/schemas/OrgRatesView"
+          },
+          "reputation" : {
+            "$ref" : "#/components/schemas/OrgReputationView"
+          },
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgMemberView"
+            }
+          },
+          "vehicles" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgVehicleView"
+            }
+          },
+          "recentShipments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgShipmentRow"
+            }
+          },
+          "recentIncidents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgIncidentRow"
+            }
+          },
+          "verificationHistory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgAuditRow"
+            }
+          },
+          "activity" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrgAuditRow"
+            }
+          },
+          "legalChanges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LegalChangeView"
+            }
+          },
+          "signals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FraudSignalView"
+            }
+          }
+        }
+      },
+      "OrganizationAccessRequest" : {
+        "type" : "object",
+        "required" : [ "ruc", "fullName", "email" ],
+        "properties" : {
+          "ruc" : {
+            "type" : "string",
+            "pattern" : "\\d{11}"
+          },
+          "fullName" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "minLength" : 2,
+            "maxLength" : 150
+          },
+          "email" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 254
+          }
+        }
+      },
+      "OrganizationAccessRequestAccepted" : {
+        "type" : "object",
+        "properties" : {
+          "accepted" : {
+            "type" : "boolean"
+          }
+        }
       },
       "OrganizationDecision" : {
         "type" : "object",
@@ -2951,6 +4801,17 @@
           }
         }
       },
+      "PickupRequirementsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "photoRequired" : {
+            "type" : "boolean"
+          },
+          "weightRequired" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "PlaceBid" : {
         "type" : "object",
         "required" : [ "vehicleId", "amount" ],
@@ -3077,6 +4938,10 @@
           }
         }
       },
+      "PreferenceKind" : {
+        "type" : "string",
+        "enum" : [ "PREFERRED", "BLOCKED" ]
+      },
       "PriceBreakdownView" : {
         "type" : "object",
         "properties" : {
@@ -3103,6 +4968,28 @@
           },
           "carrierNet" : {
             "type" : "number"
+          }
+        }
+      },
+      "ProposeAdjustment" : {
+        "type" : "object",
+        "required" : [ "type", "amount" ],
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/AdjustmentType"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 500
+          },
+          "stopId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "evidenceDocumentId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -3314,6 +5201,26 @@
           }
         }
       },
+      "PublishedFromTemplate" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/Status2"
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "replayed" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "Quote" : {
         "type" : "object",
         "properties" : {
@@ -3457,6 +5364,17 @@
           }
         }
       },
+      "ReopenIncident" : {
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 2000
+          }
+        }
+      },
       "ReportIncident" : {
         "type" : "object",
         "required" : [ "category", "description" ],
@@ -3468,6 +5386,38 @@
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 2000
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/IncidentSeverity"
+          },
+          "claimedAmount" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "attachmentIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "maxItems" : 5
+          },
+          "latitude" : {
+            "type" : "number",
+            "maximum" : 90,
+            "minimum" : -90
+          },
+          "longitude" : {
+            "type" : "number",
+            "maximum" : 180,
+            "minimum" : -180
+          },
+          "occurredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "adjustmentId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -3923,6 +5873,153 @@
           }
         }
       },
+      "SavedSearchRequest" : {
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 80
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "pickupFrom" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "pickupTo" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "maxWeightKg" : {
+            "type" : "number",
+            "minimum" : 1
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "active" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SavedSearchView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "pickupFrom" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "pickupTo" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "maxWeightKg" : {
+            "type" : "number"
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "ScheduleFrequency" : {
+        "type" : "string",
+        "enum" : [ "WEEKLY", "BIWEEKLY" ]
+      },
+      "ScheduleMode" : {
+        "type" : "string",
+        "enum" : [ "PUBLISH", "DRAFT" ]
+      },
+      "ScheduleRowView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "blocked" : {
+            "type" : "boolean"
+          },
+          "blockedReason" : {
+            "type" : "string"
+          },
+          "slots" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SlotView"
+            }
+          },
+          "expiries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExpiryView"
+            }
+          }
+        }
+      },
+      "ScheduleRunStatus" : {
+        "type" : "string",
+        "enum" : [ "PUBLISHED", "DRAFT", "FAILED", "SKIPPED", "DISCARDED" ]
+      },
+      "ScheduleView" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "to" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "vehicles" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ScheduleRowView"
+            }
+          },
+          "drivers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ScheduleRowView"
+            }
+          }
+        }
+      },
       "SearchHitType" : {
         "type" : "string",
         "enum" : [ "REQUEST", "SHIPMENT", "COUNTERPART" ]
@@ -3947,6 +6044,15 @@
           },
           "href" : {
             "type" : "string"
+          }
+        }
+      },
+      "SetPreference" : {
+        "type" : "object",
+        "required" : [ "kind" ],
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/PreferenceKind"
           }
         }
       },
@@ -3992,6 +6098,35 @@
           "views" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "ShipmentAdjustmentsView" : {
+        "type" : "object",
+        "properties" : {
+          "agreedPrice" : {
+            "type" : "number"
+          },
+          "acceptedTotal" : {
+            "type" : "number"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "finalPriceBreakdown" : {
+            "$ref" : "#/components/schemas/PriceBreakdownView"
+          },
+          "adjustments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdjustmentView"
+            }
+          },
+          "suggestions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdjustmentSuggestionView"
+            }
           }
         }
       },
@@ -4104,6 +6239,76 @@
           },
           "carrierOrgId" : {
             "$ref" : "#/components/schemas/UUID"
+          },
+          "pickupPhotoRequired" : {
+            "type" : "boolean"
+          },
+          "pickupWeightRequired" : {
+            "type" : "boolean"
+          },
+          "adjustmentsTotal" : {
+            "type" : "number"
+          },
+          "pendingAdjustments" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "finalPrice" : {
+            "type" : "number"
+          },
+          "finalPriceBreakdown" : {
+            "$ref" : "#/components/schemas/PriceBreakdownView"
+          }
+        }
+      },
+      "ShipmentWindowView" : {
+        "type" : "object",
+        "properties" : {
+          "shipmentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "routeLabel" : {
+            "type" : "string"
+          },
+          "from" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "to" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "driverId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "assignable" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SignalOrganization" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "legalName" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/OrgType"
+          },
+          "ruc" : {
+            "type" : "string"
+          },
+          "verificationStatus" : {
+            "$ref" : "#/components/schemas/VerificationStatus"
           }
         }
       },
@@ -4170,6 +6375,31 @@
           },
           "auctionClosesAt" : {
             "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "SlotView" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "refId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "from" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "to" : {
+            "type" : "string",
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "driverId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -4350,6 +6580,17 @@
         "properties" : {
           "occurredAt" : {
             "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "receivedByName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "receivedByDoc" : {
+            "type" : "string",
+            "maxLength" : 20
           }
         }
       },
@@ -4405,6 +6646,21 @@
           },
           "instructions" : {
             "type" : "string"
+          },
+          "loadedWeightKg" : {
+            "type" : "number"
+          },
+          "receivedByName" : {
+            "type" : "string"
+          },
+          "receivedByDoc" : {
+            "type" : "string"
+          },
+          "arrivalOfficeReason" : {
+            "type" : "string"
+          },
+          "completionOfficeReason" : {
+            "type" : "string"
           }
         }
       },
@@ -4433,6 +6689,383 @@
           "comment" : {
             "type" : "string",
             "maxLength" : 1000
+          }
+        }
+      },
+      "SuggestionsView" : {
+        "type" : "object",
+        "properties" : {
+          "shipment" : {
+            "$ref" : "#/components/schemas/ShipmentWindowView"
+          },
+          "drivers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DriverOptionView"
+            }
+          },
+          "vehicles" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/VehicleOptionView"
+            }
+          }
+        }
+      },
+      "TemplateDraftView" : {
+        "type" : "object",
+        "properties" : {
+          "runId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "templateId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "templateName" : {
+            "type" : "string"
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "TemplateFromRequest" : {
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 80
+          },
+          "invitePreferred" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "TemplatePublishNow" : {
+        "type" : "object",
+        "required" : [ "pickupDate" ],
+        "properties" : {
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }
+      },
+      "TemplateRequest" : {
+        "type" : "object",
+        "required" : [ "name", "originCity", "originAddress", "destinationCity", "destinationAddress", "cargoType", "cargoDescription", "weightKg" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 80
+          },
+          "originCity" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "originAddress" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "destinationCity" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "destinationAddress" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "cargoDescription" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          },
+          "weightKg" : {
+            "type" : "number",
+            "maximum" : 40000,
+            "minimum" : 1
+          },
+          "volumeM3" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "customerReference" : {
+            "type" : "string",
+            "maxLength" : 40
+          },
+          "declaredValue" : {
+            "type" : "number",
+            "minimum" : 0.01,
+            "multipleOf" : 0.01
+          },
+          "pickupContactName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "pickupContactPhone" : {
+            "type" : "string",
+            "maxLength" : 20
+          },
+          "pickupWindowFrom" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "pickupWindowTo" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "pickupInstructions" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "deliveryContactName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "deliveryContactPhone" : {
+            "type" : "string",
+            "maxLength" : 20
+          },
+          "deliveryWindowFrom" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "deliveryWindowTo" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "deliveryInstructions" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "originPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "destinationPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "invitePreferred" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "TemplateRunView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "pickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/ScheduleRunStatus"
+          },
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "errorMessage" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "TemplateScheduleRequest" : {
+        "type" : "object",
+        "required" : [ "frequency", "pickupWeekday" ],
+        "properties" : {
+          "frequency" : {
+            "$ref" : "#/components/schemas/ScheduleFrequency"
+          },
+          "pickupWeekday" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 7,
+            "minimum" : 1
+          },
+          "leadDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 14,
+            "minimum" : 0
+          },
+          "endsOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "skipHolidays" : {
+            "type" : "boolean"
+          },
+          "mode" : {
+            "$ref" : "#/components/schemas/ScheduleMode"
+          }
+        }
+      },
+      "TemplateScheduleView" : {
+        "type" : "object",
+        "properties" : {
+          "frequency" : {
+            "$ref" : "#/components/schemas/ScheduleFrequency"
+          },
+          "pickupWeekday" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "leadDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endsOn" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "skipHolidays" : {
+            "type" : "boolean"
+          },
+          "mode" : {
+            "$ref" : "#/components/schemas/ScheduleMode"
+          },
+          "paused" : {
+            "type" : "boolean"
+          },
+          "finished" : {
+            "type" : "boolean"
+          },
+          "nextPickupDate" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "nextRunAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "lastRunAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "failures" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "TemplateView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "originCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "originAddress" : {
+            "type" : "string"
+          },
+          "destinationCity" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "destinationAddress" : {
+            "type" : "string"
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
+          },
+          "cargoDescription" : {
+            "type" : "string"
+          },
+          "weightKg" : {
+            "type" : "number"
+          },
+          "volumeM3" : {
+            "type" : "number"
+          },
+          "customerReference" : {
+            "type" : "string"
+          },
+          "declaredValue" : {
+            "type" : "number"
+          },
+          "pickupContactName" : {
+            "type" : "string"
+          },
+          "pickupContactPhone" : {
+            "type" : "string"
+          },
+          "pickupWindowFrom" : {
+            "type" : "string"
+          },
+          "pickupWindowTo" : {
+            "type" : "string"
+          },
+          "pickupInstructions" : {
+            "type" : "string"
+          },
+          "deliveryContactName" : {
+            "type" : "string"
+          },
+          "deliveryContactPhone" : {
+            "type" : "string"
+          },
+          "deliveryWindowFrom" : {
+            "type" : "string"
+          },
+          "deliveryWindowTo" : {
+            "type" : "string"
+          },
+          "deliveryInstructions" : {
+            "type" : "string"
+          },
+          "originPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "destinationPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "invitePreferred" : {
+            "type" : "boolean"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "lastPublishedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "schedule" : {
+            "$ref" : "#/components/schemas/TemplateScheduleView"
+          },
+          "recentRuns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TemplateRunView"
+            }
           }
         }
       },
@@ -4592,6 +7225,14 @@
         "format" : "uuid",
         "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
       },
+      "Unmarked" : {
+        "type" : "object",
+        "properties" : {
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
       "UnreadCount" : {
         "type" : "object",
         "properties" : {
@@ -4714,6 +7355,25 @@
           }
         }
       },
+      "VehicleConfig" : {
+        "type" : "object",
+        "properties" : {
+          "equipment" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/Equipment"
+            }
+          },
+          "acceptedCargoTypes" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CargoType"
+            }
+          }
+        }
+      },
       "VehicleEligibilityView" : {
         "type" : "object",
         "properties" : {
@@ -4758,6 +7418,32 @@
             "items" : {
               "$ref" : "#/components/schemas/BidWarningView"
             }
+          }
+        }
+      },
+      "VehicleOptionView" : {
+        "type" : "object",
+        "properties" : {
+          "vehicleId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "plate" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/Type"
+          },
+          "eligible" : {
+            "type" : "boolean"
+          },
+          "blockerCode" : {
+            "type" : "string"
+          },
+          "blockerMessage" : {
+            "type" : "string"
+          },
+          "current" : {
+            "type" : "boolean"
           }
         }
       },
@@ -4818,6 +7504,20 @@
           },
           "status" : {
             "$ref" : "#/components/schemas/Status"
+          },
+          "equipment" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/Equipment"
+            }
+          },
+          "acceptedCargoTypes" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/components/schemas/CargoType"
+            }
           }
         }
       },
@@ -4833,6 +7533,10 @@
             "maxLength" : 500
           }
         }
+      },
+      "Vigency" : {
+        "type" : "string",
+        "enum" : [ "VALID", "EXPIRING", "EXPIRED", "NO_EXPIRY" ]
       }
     },
     "securitySchemes" : {
@@ -4888,6 +7592,137 @@
         "tags" : [ "Activity Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/adjustments/{id}/accept" : {
+      "post" : {
+        "summary" : "Acepta un ajuste: la PYME del envío o, si ya se escaló, el operador (LOGYX-ADJ-006)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DecideAdjustment"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAdjustmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/adjustments/{id}/reject" : {
+      "post" : {
+        "summary" : "Rechaza un ajuste con motivo (LOGYX-ADJ-004): la PYME o, si ya se escaló, el operador",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DecideAdjustment"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAdjustmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/adjustments/{id}/withdraw" : {
+      "post" : {
+        "summary" : "El transportista retira un ajuste pendiente (LOGYX-ADJ-007 si ya se resolvió)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAdjustmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER", "DRIVER" ]
         } ]
       }
     },
@@ -5196,6 +8031,74 @@
         "tags" : [ "Auth Resource" ]
       }
     },
+    "/api/v1/bids/backup-requests" : {
+      "get" : {
+        "summary" : "Pedidos de confirmación de PYMEs que quieren adjudicarte su carga como segunda oferta",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListBackupRequestView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/batch" : {
+      "post" : {
+        "summary" : "2.10.3: ofertar a varias cargas de una vez (hasta 20); no es atómico",
+        "description" : "Cada oferta se evalúa por separado con todas las reglas de ofertar (RN01–RN04, RN02 por fecha, RN07, documentos de flota y bloqueos de la PYME). Responde 200 con el resultado por ítem, en el mismo orden.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchBids"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListBatchBidResult"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Carrier Bid Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/bids/{id}/accept" : {
       "post" : {
         "parameters" : [ {
@@ -5226,6 +8129,146 @@
         },
         "summary" : "Accept",
         "tags" : [ "Marketplace Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/{id}/backup/award" : {
+      "post" : {
+        "summary" : "Adjudica la solicitud a la oferta de respaldo que el transportista ya confirmó (nuevo envío con la comisión vigente). LOGYX-BCK-004 si aún no confirmó",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAcceptResult"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/{id}/backup/confirm" : {
+      "post" : {
+        "summary" : "Confirma que puedes llevar la carga si la PYME te la adjudica",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBackupRequestView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/{id}/backup/decline" : {
+      "post" : {
+        "summary" : "Declina llevar la carga",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBackupRequestView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/{id}/backup/request" : {
+      "post" : {
+        "summary" : "Pide al transportista de una oferta de respaldo que confirme que lleva la carga (aviso). LOGYX-BCK-001/002/003 si no corresponde",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBackupItemView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME" ]
         } ]
@@ -5312,6 +8355,90 @@
         } ]
       }
     },
+    "/api/v1/bids/{id}/improve" : {
+      "post" : {
+        "summary" : "2.8: mejora la oferta con la subasta abierta: baja el monto y/o cambia el vehículo",
+        "description" : "Solo bajar (400 LOGYX-BID-006 si sube; 400 LOGYX-BID-007 si no cambia nada). El vehículo nuevo debe ser apto (RN02 por fecha, CAP-001..007 y documentos FLT-007/008, como al ofertar). No cuenta como oferta nueva (RN04) y queda el historial. La PYME ve improvedCount/improvedAt en la oferta.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ImproveBid"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBidView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Carrier Bid Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/bids/{id}/revisions" : {
+      "get" : {
+        "summary" : "Historial de mejoras de mi oferta, la más antigua primero (solo el transportista dueño)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListBidRevisionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Carrier Bid Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/bids/{id}/withdraw" : {
       "post" : {
         "summary" : "F08: el transportista retira su oferta pendiente mientras la subasta está abierta (LOGYX-BID-005); no puede volver a ofertar en esa subasta",
@@ -5344,6 +8471,122 @@
         "tags" : [ "Marketplace Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/carrier-preferences" : {
+      "get" : {
+        "summary" : "Transportistas que la PYME marcó como preferidos o bloqueados (la marca es privada de la PYME)",
+        "parameters" : [ {
+          "description" : "PREFERRED o BLOCKED; sin valor trae ambas.",
+          "name" : "kind",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/PreferenceKind"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListCarrierPreferenceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/carrier-preferences/{carrierOrgId}" : {
+      "delete" : {
+        "summary" : "Quita la marca de un transportista. Idempotente",
+        "parameters" : [ {
+          "name" : "carrierOrgId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseUnmarked"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "put" : {
+        "summary" : "Marca o cambia la marca de un transportista. Bloqueado: no ve tus solicitudes ni puede ofertar; preferido: se destaca y se le invita a ofertar. Idempotente",
+        "parameters" : [ {
+          "name" : "carrierOrgId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetPreference"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCarrierPreferenceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
         } ]
       }
     },
@@ -5707,6 +8950,52 @@
         } ]
       }
     },
+    "/api/v1/drivers/{id}" : {
+      "patch" : {
+        "summary" : "Categoría de licencia y DNI del conductor (2.4)",
+        "description" : "Solo ADMIN. El vencimiento de la licencia se registra al subir el documento DRIVER_LICENSE.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DriverPatch"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDriverView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/drivers/{id}/deactivate" : {
       "post" : {
         "summary" : "Desactivar la cuenta del conductor",
@@ -5738,6 +9027,102 @@
           }
         },
         "tags" : [ "Fleet Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/drivers/{id}/documents" : {
+      "post" : {
+        "summary" : "Sube un documento del conductor (multipart: file, type, number, expiresAt)",
+        "description" : "type: DRIVER_LICENSE (exige expiresAt) o DNI. Subir la licencia actualiza licenseExpiresAt del conductor.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "DRIVER_LICENSE", "DNI" ]
+                  },
+                  "number" : {
+                    "type" : "string"
+                  },
+                  "expiresAt" : {
+                    "type" : "string",
+                    "format" : "date"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseFleetDocumentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Documentos del conductor (licencia, DNI): vigentes e historial",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListFleetDocumentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "CARRIER" ]
         } ]
@@ -5874,6 +9259,159 @@
         } ]
       }
     },
+    "/api/v1/fleet/assignment-suggestions" : {
+      "get" : {
+        "summary" : "2.13: conductores libres en las fechas del envío (por cercanía al recojo y carga de trabajo) y vehículos aptos",
+        "description" : "Para asignar con PUT /shipments/{id}/assignment. Un conductor es assignable si su cuenta está activa y no tiene otro envío solapado; un vehículo es eligible con las mismas reglas de ofertar (RN02 por fecha, agenda y documentos).",
+        "parameters" : [ {
+          "name" : "shipmentId",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSuggestionsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Planning Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/fleet/documents" : {
+      "get" : {
+        "summary" : "Documentos vigentes de toda mi flota, por vencimiento (tablero de vencimientos)",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListFleetDocumentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/fleet/documents/{id}/file" : {
+      "get" : {
+        "summary" : "Descarga el archivo de un documento de flota (solo el transportista dueño)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Contenido del archivo",
+            "content" : {
+              "image/jpeg" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/fleet/schedule" : {
+      "get" : {
+        "summary" : "2.13: calendario de la flota de 1 a 14 días: por vehículo y conductor, con envíos, ofertas pendientes, viajes y vencimientos de documentos",
+        "description" : "from y to inclusive (yyyy-MM-dd); más de 14 días da 400 LOGYX-FLT-011. Cada compromiso usa la ventana recojo + ⌈km/500⌉ días de ResourceSchedulePolicy. Solo mi organización (RLS).",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseScheduleView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Planning Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/incidents" : {
       "get" : {
         "summary" : "Incidencias de mis envíos (operador: todas), recientes primero",
@@ -5967,8 +9505,57 @@
         } ]
       }
     },
+    "/api/v1/incidents/{id}/assignee" : {
+      "put" : {
+        "summary" : "Operador: toma la incidencia (sin cuerpo o assigneeProfileId nulo), la asigna a otra persona del operador (LOGYX-INC-012) o la deja sin responsable (unassign)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssignIncident"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIncidentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Incident Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/incidents/{id}/comments" : {
       "post" : {
+        "summary" : "Comenta una incidencia. internal=true: nota interna del operador (LOGYX-INC-009 si la intenta una parte); las partes no la ven",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6008,10 +9595,57 @@
             "description" : "Bad Request"
           }
         },
-        "summary" : "Comment",
         "tags" : [ "Incident Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "DRIVER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/incidents/{id}/reopen" : {
+      "post" : {
+        "summary" : "Operador: reabre una incidencia resuelta o cerrada con motivo (2.7, LOGYX-INC-008); vuelve a IN_REVIEW con un SLA nuevo y, si congela, vuelve a detener el envío en curso",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReopenIncident"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIncidentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Incident Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
         } ]
       }
     },
@@ -6060,6 +9694,41 @@
         "tags" : [ "Incident Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/incidents/{id}/withdraw" : {
+      "post" : {
+        "summary" : "Quien la reportó retira una incidencia informativa activa (2.7, LOGYX-INC-007)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIncidentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Incident Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "DRIVER" ]
         } ]
       }
     },
@@ -6278,6 +9947,60 @@
         } ]
       }
     },
+    "/api/v1/offers/inbox" : {
+      "get" : {
+        "summary" : "Bandeja de ofertas: una fila por solicitud publicada con ofertas pendientes (mejor monto, mejor Trust Score y cierre de la subasta). No incluye ofertas de transportistas bloqueados",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOffersInboxView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/adjustments" : {
+      "get" : {
+        "summary" : "Ajustes escalados: la PYME no respondió a tiempo y los decide el operador (2.6)",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListEscalatedAdjustmentRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/operator/audit" : {
       "get" : {
         "summary" : "Visor de auditoría: acciones registradas en la plataforma, paginadas, más recientes primero",
@@ -6403,6 +10126,138 @@
         } ]
       }
     },
+    "/api/v1/operator/incidents" : {
+      "get" : {
+        "summary" : "Bandeja de incidencias del operador con SLA por severidad (2.7)",
+        "parameters" : [ {
+          "description" : "me = mías; none = sin responsable.",
+          "name" : "assignee",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "true = solo con el SLA vencido.",
+          "name" : "breached",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "description" : "due = las que vencen antes primero (por omisión); recent = recientes primero.",
+          "name" : "order",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Organización (PYME o transportista) parte del envío.",
+          "name" : "organizationId",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "Severidades separadas por coma (LOW, MEDIUM, HIGH, CRITICAL).",
+          "name" : "severity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "Estados separados por coma; por omisión OPEN,IN_REVIEW.",
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListOperatorIncidentRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/legal-changes/{id}/file" : {
+      "get" : {
+        "summary" : "Descarga el documento de sustento de un cambio de razón social o RUC",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Contenido del archivo",
+            "content" : {
+              "image/jpeg" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/operator/metrics" : {
       "get" : {
         "summary" : "Métricas globales de la plataforma",
@@ -6478,6 +10333,102 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponseListOrganizationReviewRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/organizations/{id}/legal-change" : {
+      "post" : {
+        "summary" : "Cambio asistido de razón social o RUC con documento (PDF/JPG/PNG) y motivo (2.15)",
+        "description" : "Mismo RUC: corrige la razón social. RUC nuevo: crea una organización sucesora VERIFIED que hereda la reputación, las personas y la flota; la anterior queda SUSPENDED (LOGYX-ORG-008 si tiene envíos, solicitudes, ofertas o viajes vivos; LOGYX-ORG-002 RUC ya registrado; LOGYX-ORG-009 sin cambios).",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "legalName" : {
+                    "type" : "string"
+                  },
+                  "ruc" : {
+                    "type" : "string"
+                  },
+                  "reason" : {
+                    "type" : "string"
+                  },
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseLegalChangeResult"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/organizations/{id}/overview" : {
+      "get" : {
+        "summary" : "Ficha 360 de una organización: usuarios, flota, envíos, incidencias, reputación, tasas, verificación, cambios legales, auditoría y señales (2.15)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrganization360View"
                 }
               }
             }
@@ -7169,6 +11120,33 @@
         } ]
       }
     },
+    "/api/v1/operator/signals" : {
+      "get" : {
+        "summary" : "Señales de fraude: teléfono, placa, licencia o IP de registro repetidos entre organizaciones, tasas de retiro o cancelación altas y cuentas nuevas con muchas ofertas bajo el sugerido (2.15)",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListFraudSignalView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/operator/sla-alerts" : {
       "get" : {
         "summary" : "Alertas SLA: sin ofertas > 24 h (RN10), subastas por vencer, envíos con incidencia (RN11)",
@@ -7188,6 +11166,102 @@
           },
           "403" : {
             "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/users/{id}/reactivate" : {
+      "post" : {
+        "summary" : "Levanta la suspensión del operador y reactiva a la persona",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AccountReactivation"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrgMemberView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/users/{id}/suspend" : {
+      "post" : {
+        "summary" : "Suspende a una persona de una PYME o transportista con motivo: cierra sus sesiones y su ADMIN no la reactiva (LOGYX-USR-007). Las cuentas del operador no (LOGYX-USR-008)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AccountActionReason"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrgMemberView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
           }
         },
         "tags" : [ "Operator Resource" ],
@@ -7980,6 +12054,38 @@
         "tags" : [ "Legal Resource" ]
       }
     },
+    "/api/v1/public/organization-access-requests" : {
+      "post" : {
+        "summary" : "Pide unirse a una organización ya registrada (tras LOGYX-ORG-002): avisa por correo a sus ADMIN",
+        "description" : "Sin sesión. Responde siempre 202 con el mismo cuerpo (no revela si la organización existe ni a quién se avisó). Límite por IP (429 LOGYX-AUTH-429) y un aviso por organización cada 10 min.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OrganizationAccessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOrganizationAccessRequestAccepted"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Public Access Request Resource" ]
+      }
+    },
     "/api/v1/public/pricing/commission" : {
       "get" : {
         "summary" : "Cuánto cobra OnCargo: la comisión vigente (la paga el transportista) y el IGV",
@@ -8058,6 +12164,582 @@
         "tags" : [ "Public Tracking Resource" ]
       }
     },
+    "/api/v1/request-templates" : {
+      "get" : {
+        "summary" : "Plantillas de la organización con su programación y últimas ocurrencias: la publicada más recientemente primero",
+        "parameters" : [ {
+          "description" : "Incluye las archivadas (por omisión no).",
+          "name" : "includeArchived",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Guarda una plantilla (RN07 se valida aquí y en cada publicación). Nombre único entre las activas: LOGYX-TPL-001",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemplateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/drafts" : {
+      "get" : {
+        "summary" : "Borradores que dejó la programación (modo DRAFT) y esperan confirmación",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListTemplateDraftView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/from-request/{requestId}" : {
+      "post" : {
+        "summary" : "Guarda como plantilla una solicitud tuya (carga, contactos y ventanas incluidos)",
+        "parameters" : [ {
+          "name" : "requestId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemplateFromRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/runs/{runId}/discard" : {
+      "post" : {
+        "summary" : "Descarta un borrador de la programación",
+        "parameters" : [ {
+          "name" : "runId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateRunView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/runs/{runId}/publish" : {
+      "post" : {
+        "summary" : "Publica un borrador de la programación con su fecha de recojo (RN01, RN03 y RN07 al publicar)",
+        "parameters" : [ {
+          "name" : "runId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePublishedFromTemplate"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}" : {
+      "put" : {
+        "summary" : "Reemplaza los campos de una plantilla activa (archivada: LOGYX-TPL-002)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemplateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/archive" : {
+      "post" : {
+        "summary" : "Archiva la plantilla (no se borra) y pausa su programación",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/publish" : {
+      "post" : {
+        "summary" : "Publicar ahora: crea una solicitud con la fecha de recojo dada. Con Idempotency-Key un reintento devuelve la ya creada (Idempotent-Replayed: true)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Clave de idempotencia (UUID recomendado), válida 24 h por organización.",
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemplatePublishNow"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePublishedFromTemplate"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/restore" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Restore",
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/schedule" : {
+      "delete" : {
+        "summary" : "Quita la programación; la plantilla y el historial quedan",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "put" : {
+        "summary" : "Programa la plantilla (semanal o quincenal, día de recojo, anticipación, fin, feriados y modo). Reemplaza la programación anterior y la reanuda",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemplateScheduleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/schedule/pause" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Pause",
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/request-templates/{id}/schedule/resume" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTemplateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Resume",
+        "tags" : [ "Templates Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
     "/api/v1/return-loads" : {
       "get" : {
         "responses" : {
@@ -8123,6 +12805,153 @@
         "tags" : [ "Routing Resource" ],
         "security" : [ {
           "SecurityScheme" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/saved-searches" : {
+      "get" : {
+        "summary" : "Mis búsquedas guardadas (solo las de quien consulta), las nuevas primero",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListSavedSearchView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Saved Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Guarda una búsqueda del marketplace para recibir avisos de cargas nuevas",
+        "description" : "Nombre (máx. 80) y al menos un filtro (400 LOGYX-ALT-001); filtros incoherentes 400 LOGYX-ALT-003; tope por persona (409 LOGYX-ALT-002, 20 por omisión). Los canales del aviso se eligen en la categoría «Alertas de carga» de las preferencias de aviso. Máximo 10 avisos por búsqueda y hora.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SavedSearchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSavedSearchView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Saved Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/saved-searches/{id}" : {
+      "put" : {
+        "summary" : "Reemplaza el nombre y los filtros de una búsqueda; con active pausa o reanuda los avisos",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SavedSearchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSavedSearchView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Saved Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      },
+      "delete" : {
+        "summary" : "Borra una búsqueda guardada",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Saved Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
         } ]
       }
     },
@@ -8306,6 +13135,134 @@
         "tags" : [ "Marketplace Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/batch/cancel" : {
+      "post" : {
+        "summary" : "Cancela varias solicitudes publicadas con un motivo común. Resultado por solicitud (éxito o código de error); NO es atómico: las que se pueden se cancelan aunque otras fallen",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchCancel"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBatchResultView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/batch/duplicate" : {
+      "post" : {
+        "summary" : "Publica una copia de cada solicitud con el recojo el mismo día de la semana siguiente (RN01, RN03 y RN07 por ítem). Con Idempotency-Key, reintentar el lote no duplica las copias ya creadas. No es atómico",
+        "parameters" : [ {
+          "description" : "Clave de idempotencia del lote (8-80 caracteres); cada copia deriva la suya.",
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchDuplicate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBatchResultView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/batch/reschedule" : {
+      "post" : {
+        "summary" : "Cambia la fecha de recojo de varias solicitudes publicadas sin ofertas pendientes (LOGYX-REQ-009 si ya tienen). Resultado por solicitud; no es atómico",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchReschedule"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBatchResultView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
         } ]
       }
     },
@@ -8690,6 +13647,41 @@
         } ]
       }
     },
+    "/api/v1/shipment-requests/{id}/backup-bids" : {
+      "get" : {
+        "summary" : "Ofertas de respaldo de la solicitud y si se puede adjudicar a otra: el envío adjudicado debe haberse cancelado en las 24 h siguientes a la adjudicación y el recojo no haber pasado",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseBackupOptionsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
     "/api/v1/shipment-requests/{id}/bids" : {
       "get" : {
         "summary" : "Ofertas de la solicitud, de menor a mayor monto: la PYME dueña o el operador (solo lectura)",
@@ -8816,6 +13808,77 @@
         "tags" : [ "Marketplace Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/{id}/invite-preferred" : {
+      "post" : {
+        "summary" : "Invita a ofertar a tus transportistas preferidos (aviso a cada uno). Solo solicitudes publicadas",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseInviteResult"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Demand Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/{id}/lane-stats" : {
+      "get" : {
+        "summary" : "2.8: mediana adjudicada de la ruta y el tipo de carga de la solicitud (90 días, k >= 5)",
+        "description" : "data es null cuando no hay al menos 5 envíos de 3 transportistas en la ruta: no se muestra nada. Montos con IGV, redondeados a S/ 5; nunca montos individuales ni nombres.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseLaneStatsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Carrier Bid Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
         } ]
       }
     },
@@ -9276,6 +14339,145 @@
         } ]
       }
     },
+    "/api/v1/shipments/{id}/adjustments" : {
+      "post" : {
+        "summary" : "El transportista (o su conductor) propone un ajuste: peso real, estadía, peaje, maniobras (2.6)",
+        "description" : "Monto con IGV ≠ 0 y |monto| ≤ precio acordado; descuento solo en WEIGHT_DIFF/OTHER (LOGYX-ADJ-003). Nota obligatoria en OTHER (LOGYX-ADJ-004), sin datos de contacto (RN07). Hasta 10 por envío (LOGYX-ADJ-005). Envío cancelado LOGYX-ADJ-001; entregado hace más de 7 días LOGYX-ADJ-002. evidenceDocumentId: documento del mismo envío (LOGYX-ADJ-008). La PYME responde dentro de adjustment_response_hours; luego decide el operador.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Clave de idempotencia, 24 h.",
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProposeAdjustment"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAdjustmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER", "DRIVER" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Ajustes del envío con el precio final (acordado + aceptados) y sugerencias (2.6)",
+        "description" : "Solo las partes, el conductor asignado y el operador. suggestions (estadía por parada y diferencia de peso) solo para el transportista.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseShipmentAdjustmentsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "DRIVER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/assignment" : {
+      "put" : {
+        "summary" : "2.13: asigna conductor y vehículo en un solo paso (atómico)",
+        "description" : "Aplica las reglas de PUT /shipments/{id}/vehicle y PUT /shipments/{id}/driver juntas: RN02, sin solapes (CAP-005, SHP-004) y motivo si ya se recogió. Si algo falla no queda ningún cambio. Las sugerencias salen de GET /fleet/assignment-suggestions.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssignResources"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseShipmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Assignment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
     "/api/v1/shipments/{id}/cancel" : {
       "post" : {
         "summary" : "Cancela el envío con motivo: las partes antes del recojo (LOGYX-SHP-003), el operador también en tránsito. La solicitud queda cancelada y se avisa a la contraparte",
@@ -9327,7 +14529,7 @@
     "/api/v1/shipments/{id}/documents" : {
       "post" : {
         "summary" : "Sube un documento o evidencia de entrega (multipart: file, type, stopId)",
-        "description" : "JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes (10 MB). DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor, stopId de la parada de entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO.",
+        "description" : "JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes (10 MB). DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor, stopId de la parada de entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO. PICKUP_PHOTO (V23): foto de la carga, mismas reglas en la parada de recojo (LOGYX-DOC-009 si stopId no es el recojo); el recojo la exige si la PYME lo pidió (pickupPhotoRequired).",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -9348,7 +14550,7 @@
                   },
                   "type" : {
                     "type" : "string",
-                    "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER" ]
+                    "enum" : [ "SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO", "SIGNATURE", "OTHER", "PICKUP_PHOTO" ]
                   },
                   "stopId" : {
                     "type" : "string",
@@ -9467,13 +14669,21 @@
     },
     "/api/v1/shipments/{id}/incidents" : {
       "post" : {
-        "summary" : "Reporta una incidencia; congela el avance de paradas hasta que el operador la resuelva (RN11)",
+        "summary" : "Reporta una incidencia; si su categoría congela (blocking), el avance de paradas queda en pausa hasta que el operador la resuelva (RN11)",
+        "description" : "V23 (2.7): DELAY, ROAD_BLOCKED y PAYMENT_DISPUTE son informativas (no congelan). Una activa que congela por envío y una activa por categoría (LOGYX-INC-001). Adjuntos: documentos de este envío (LOGYX-INC-011). Con la cabecera Idempotency-Key un reintento devuelve la ya creada.",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
           "required" : true,
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Clave de idempotencia (UUID recomendado), 24 h.",
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "requestBody" : {
@@ -9543,6 +14753,55 @@
         "tags" : [ "Incident Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "DRIVER", "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/pickup-requirements" : {
+      "put" : {
+        "summary" : "La PYME fija qué pide el recojo: foto de la carga y peso medido (2.5)",
+        "description" : "Solo mientras el envío espera el recojo (LOGYX-SHP-008). Por omisión no pide nada.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PickupRequirementsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseShipmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
         } ]
       }
     },
@@ -9860,6 +15119,118 @@
         "tags" : [ "Shipment Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "DRIVER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/stops/{stopId}/office-arrive" : {
+      "post" : {
+        "summary" : "La oficina del transportista registra «Llegué» por el conductor, con motivo (2.5)",
+        "description" : "ADMIN u OPS del transportista. Motivo obligatorio (LOGYX-SHP-006). Mismas reglas que la app (RN08, RN11, occurredAt) e idempotente. La parada queda marcada (arrivalOfficeReason) y auditada (STOP_REGISTERED_BY_OFFICE).",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "stopId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OfficeStopEvent"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseShipmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/shipments/{id}/stops/{stopId}/office-complete" : {
+      "post" : {
+        "summary" : "La oficina del transportista cierra la parada por el conductor, con motivo (2.5)",
+        "description" : "RN06: la oficina no sube la foto de entrega ni la de la carga. Si la parada la exige y el conductor no la subió, responde LOGYX-TRK-006 / LOGYX-TRK-009 igual que la app.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "stopId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OfficeStopEvent"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseShipmentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Shipment Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
         } ]
       }
     },
@@ -10762,6 +16133,151 @@
           }
         },
         "tags" : [ "Fleet Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/vehicles/{id}/config" : {
+      "put" : {
+        "summary" : "Equipamiento y tipos de carga aceptados por el vehículo (2.4)",
+        "description" : "Reemplaza ambas listas. acceptedCargoTypes restringe la matriz RN02 de ese vehículo, nunca la amplía (400 LOGYX-FLT-009); vacío = todo lo que la matriz permite. Ofertar con un tipo no aceptado da 400 LOGYX-CAP-003.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VehicleConfig"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVehicleView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Fleet Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      }
+    },
+    "/api/v1/vehicles/{id}/documents" : {
+      "post" : {
+        "summary" : "Sube un documento del vehículo (multipart: file, type, number, expiresAt)",
+        "description" : "type: SOAT, TECHNICAL_INSPECTION, PROPERTY_CARD, INSURANCE_POLICY o MTC_PERMIT. Los que tienen vencimiento exigen expiresAt (400 LOGYX-FLT-010). JPG, PNG o PDF. Reemplaza al vigente del mismo tipo (queda en el historial). Avisos a 30 y 7 días y el día que vence.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "SOAT", "TECHNICAL_INSPECTION", "PROPERTY_CARD", "INSURANCE_POLICY", "MTC_PERMIT" ]
+                  },
+                  "number" : {
+                    "type" : "string"
+                  },
+                  "expiresAt" : {
+                    "type" : "string",
+                    "format" : "date"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseFleetDocumentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "CARRIER" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Documentos del vehículo (SOAT, revisión técnica, MTC…): vigentes e historial",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListFleetDocumentView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Fleet Document Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "CARRIER" ]
         } ]

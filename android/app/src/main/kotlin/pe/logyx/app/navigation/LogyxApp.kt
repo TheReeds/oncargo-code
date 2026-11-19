@@ -66,7 +66,9 @@ import pe.logyx.feature.loads.CarrierHomeRoute
 import pe.logyx.feature.loads.LoadDetailRoute
 import pe.logyx.feature.loads.LoadsFeedRoute
 import pe.logyx.feature.loads.MyBidsRoute
+import pe.logyx.feature.requests.NewRequestRoute
 import pe.logyx.feature.requests.RequestDetailRoute
+import pe.logyx.feature.requests.TemplatesRoute
 import pe.logyx.feature.requests.RequestsRoute
 import pe.logyx.feature.shipments.ShipmentDetailRoute
 import pe.logyx.feature.shipments.ShipmentsRoute
@@ -303,7 +305,24 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 )
             }
 
-            composable<RequestsTab> { WithVerificationBanner(user) { RequestsRoute(onOpenRequest = { nav.navigate(RequestDetail(it)) }) } }
+            composable<RequestsTab> {
+                WithVerificationBanner(user) {
+                    RequestsRoute(
+                        onOpenRequest = { nav.navigate(RequestDetail(it)) },
+                        onNewRequest = { nav.navigate(NewRequest()) },
+                        onOpenTemplates = { nav.navigate(Templates) },
+                    )
+                }
+            }
+            composable<NewRequest> { e ->
+                NewRequestRoute(
+                    e.toRoute<NewRequest>().from, onBack = { nav.popBackStack() },
+                    onPublished = { id -> nav.navigate(RequestDetail(id)) { popUpTo<RequestsTab>() } },
+                )
+            }
+            composable<Templates> {
+                TemplatesRoute(onBack = { nav.popBackStack() }, onPublished = { id -> nav.navigate(RequestDetail(id)) { popUpTo<RequestsTab>() } })
+            }
             composable<RequestDetail> { e ->
                 RequestDetailRoute(
                     e.toRoute<RequestDetail>().id,
@@ -313,6 +332,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     onOpenThreads = { nav.navigate(Threads(e.toRoute<RequestDetail>().id)) },
                     onOpenOrganization = { nav.navigate(OrgProfile(it)) },
                     onOpenRequest = { nav.navigate(RequestDetail(it)) },
+                    onDuplicate = { nav.navigate(NewRequest(it)) },
                 )
             }
 
@@ -325,6 +345,7 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                     onOpenIncidents = { nav.navigate(IncidentsList(id)) },
                     onReportIncident = { nav.navigate(ReportIncident(id)) },
                     onReview = { nav.navigate(Review(id)) },
+                    onDuplicate = { nav.navigate(NewRequest(it)) },
                 )
             }
 

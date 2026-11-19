@@ -17,6 +17,8 @@ public interface ProfileRepository {
     void update(Profile profile);
     /** Usuarios de la organización que no son conductores (los conductores se gestionan en la flota). */
     List<Profile> listOrganizationUsers(UUID organizationId);
+    /** Todas las personas de la organización, conductores incluidos (operador 360, V23). */
+    List<Profile> listByOrganization(UUID organizationId);
     /** ADMIN activos con contraseña propia (las invitaciones pendientes no cuentan). */
     long countActiveAdmins(UUID organizationId);
 }

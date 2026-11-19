@@ -111,7 +111,8 @@ public class RequestSummaries {
             int rank = rk.betterCount() + 1;
             var band = decided ? null
                     : BidStandingPolicy.band(myBids.get(id).bid().amount(), rk.bestAmount());
-            out.put(id, new BidStanding(rank, rk.bidCount(), rank == 1, band, closed));
+            out.put(id, new BidStanding(rank, rk.bidCount(), rank == 1, band, closed,
+                    BidStandingPolicy.position(rank, rk.bidCount())));
         }
         return out;
     }

@@ -1,5 +1,5 @@
 import { Timeline, type TimelineItem } from '@/components/ui/timeline';
-import { CITY_LABELS, formatDateTime } from '@/lib/format';
+import { CITY_LABELS, formatDateTime, formatNumber } from '@/lib/format';
 import type { StopView } from '@/lib/api/server';
 
 /** Minutos de diferencia entre que ocurrió un hito (hora del conductor) y que llegó al servidor para avisar del retraso. */
@@ -18,10 +18,17 @@ export function stopsToItems(stops: StopView[]): TimelineItem[] {
     const here = s.status === 'ARRIVED';
     const time = s.completedAt ?? s.arrivedAt;
     const late = done ? lateSync(s.completedAt, s.completedRecordedAt) : lateSync(s.arrivedAt, s.arrivedRecordedAt);
+    // 2.5: peso medido, quién recibió y registro por la oficina (con su motivo).
+    const extra = [
+      s.loadedWeightKg != null ? `Peso medido ${formatNumber(s.loadedWeightKg, 2)} kg` : null,
+      s.receivedByName ? `Recibió ${s.receivedByName}${s.receivedByDoc ? ` (doc. ${s.receivedByDoc})` : ''}` : null,
+      s.arrivalOfficeReason ? `Llegada registrada por la oficina: ${s.arrivalOfficeReason}` : null,
+      s.completionOfficeReason ? `Cierre registrado por la oficina: ${s.completionOfficeReason}` : null,
+    ].filter(Boolean).join(' · ');
     return {
       id: s.id!,
       title: `${s.type === 'PICKUP' ? 'Recojo' : 'Entrega'} · ${CITY_LABELS[s.city!] ?? s.city}`,
-      detail: s.address,
+      detail: extra ? `${s.address ?? ''}${s.address ? ' · ' : ''}${extra}` : s.address,
       meta: `${done ? 'Completada' : here ? 'El conductor llegó' : 'Pendiente'}${time ? ` · ${formatDateTime(time)}` : ''}${late ? ' · registrado con retraso (sin señal)' : ''}`,
       status: done ? 'done' : here ? 'current' : 'pending',
     };

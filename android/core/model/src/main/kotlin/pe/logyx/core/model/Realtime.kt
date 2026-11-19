@@ -36,6 +36,8 @@ object RealtimeTypes {
     const val SHIPMENT_STATUS_CHANGED = "shipment.status_changed"
     const val SHIPMENT_STOP_UPDATED = "shipment.stop_updated"
     const val SHIPMENT_DRIVER_ASSIGNED = "shipment.driver_assigned"
+    /** V23 (2.6): ajuste del envío propuesto, decidido o retirado (payload `shipmentId`, `adjustmentId`, `status`). */
+    const val SHIPMENT_ADJUSTMENT_UPDATED = "shipment.adjustment_updated"
     const val INCIDENT_REPORTED = "incident.reported"
     const val INCIDENT_UPDATED = "incident.updated"
     const val NOTIFICATION_CREATED = "notification.created"
@@ -49,6 +51,6 @@ object RealtimeTypes {
     const val STREAM_READY = "stream.ready"
     const val STREAM_EXPIRED = "stream.expired"
 
-    val SHIPMENT = setOf(SHIPMENT_STATUS_CHANGED, SHIPMENT_STOP_UPDATED, SHIPMENT_DRIVER_ASSIGNED, INCIDENT_REPORTED, INCIDENT_UPDATED)
+    val SHIPMENT = setOf(SHIPMENT_STATUS_CHANGED, SHIPMENT_STOP_UPDATED, SHIPMENT_DRIVER_ASSIGNED, SHIPMENT_ADJUSTMENT_UPDATED, INCIDENT_REPORTED, INCIDENT_UPDATED)
     val AUCTION = setOf(BID_PLACED, AUCTION_UPDATED, BID_ACCEPTED, BID_REJECTED, REQUEST_MATCHED, COUNTER_OFFER_UPDATED)
 }

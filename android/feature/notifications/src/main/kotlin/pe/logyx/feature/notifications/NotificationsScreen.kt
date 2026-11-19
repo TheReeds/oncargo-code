@@ -27,6 +27,9 @@ import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.ReportProblem
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -199,6 +202,9 @@ internal fun NotificationType.icon() = when (this) {
     NotificationType.BID_WITHDRAWN -> Icons.Rounded.RemoveCircleOutline
     NotificationType.ORGANIZATION_VERIFICATION -> Icons.Rounded.Verified
     NotificationType.ACCESS_REQUESTED -> Icons.Rounded.Key
+    NotificationType.NEW_LOAD_MATCH -> Icons.Rounded.Search
+    NotificationType.FLEET_DOCUMENT_EXPIRING -> Icons.Rounded.Description
+    NotificationType.BID_IMPROVED -> Icons.Rounded.TrendingDown
     NotificationType.UNKNOWN -> Icons.Rounded.Notifications
 }
 

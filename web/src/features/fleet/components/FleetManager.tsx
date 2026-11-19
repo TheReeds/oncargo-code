@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
 import { splitActionError } from '@/lib/action-error';
-import { Archive, Ban, CheckCircle2, KeyRound, MoreHorizontal, Pencil, Plus, RotateCcw, Route, SearchX, Truck, UserRound, Wrench } from 'lucide-react';
+import { Archive, Ban, CheckCircle2, FileText, KeyRound, MoreHorizontal, Pencil, Plus, RotateCcw, Route, SearchX, SlidersHorizontal, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,12 @@ import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { useCan } from '@/lib/use-can';
 import { formatNumber, VEHICLE_LABELS } from '@/lib/format';
+import { Badge } from '@/components/ui/badge';
+import FleetDocumentsSheet, { type DocsTarget } from './FleetDocumentsSheet';
+import VehicleConfigDialog from './VehicleConfigDialog';
+import ExpirySummary, { ownerDocsSummary } from './ExpirySummary';
+import { EQUIPMENT_LABEL } from '../documents';
+import type { FleetDocument } from '../server';
 import type { DriverView, VehicleView } from '@/lib/api/server';
 /** campo de la API → clave de error local */
 const FIELD_MAP: Record<string, string> = { plate: 'plate', email: 'email', licenseNumber: 'licenseNumber', maxWeightKg: 'weight', maxVolumeM3: 'volume' };
@@ -175,12 +181,23 @@ function DriverActions({ d, onReset }: { d: DriverView; onReset: (d: DriverView)
   );
 }
 
+/** Botón «Documentos» con el estado resumido (color + texto) de lo que vence. */
+function DocsCell({ docs, ownerId, label, onOpen }: { docs: FleetDocument[]; ownerId: string; label: string; onOpen: () => void }) {
+  const sm = ownerDocsSummary(docs, ownerId);
+  return (
+    <div className="flex flex-wrap items-center gap-2 @max-[720px]:justify-end">
+      <Badge tone={sm.tone}>{sm.label}</Badge>
+      <Button size="sm" variant="outline" onClick={onOpen}><FileText aria-hidden="true" />Documentos<span className="sr-only"> de {label}</span></Button>
+    </div>
+  );
+}
+
 const STATUS_ACTIONS = [
   { status: 'AVAILABLE', label: 'Marcar como disponible', icon: CheckCircle2 },
   { status: 'MAINTENANCE', label: 'Enviar a mantenimiento', icon: Wrench },
 ] as const;
 
-function VehicleActions({ v, onEdit }: { v: VehicleView; onEdit: (v: VehicleView) => void }) {
+function VehicleActions({ v, onEdit, onConfig }: { v: VehicleView; onEdit: (v: VehicleView) => void; onConfig: (v: VehicleView) => void }) {
   const [busy, setBusy] = useState(false);
   async function change(status: (typeof STATUS_ACTIONS)[number]['status']) {
     setBusy(true);
@@ -205,6 +222,7 @@ function VehicleActions({ v, onEdit }: { v: VehicleView; onEdit: (v: VehicleView
         <DropdownMenuLabel>{v.plate}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => onEdit(v)}><Pencil aria-hidden="true" /> Editar vehículo</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onConfig(v)}><SlidersHorizontal aria-hidden="true" /> Configurar vehículo</DropdownMenuItem>
         {/* «En ruta» lo controla el envío (F33): no se ofrece marcarlo a mano. */}
         {STATUS_ACTIONS.filter((a) => a.status !== v.status).map((a) => (
           <DropdownMenuItem key={a.status} onSelect={() => change(a.status)}><a.icon aria-hidden="true" /> {a.label}</DropdownMenuItem>
@@ -216,7 +234,27 @@ function VehicleActions({ v, onEdit }: { v: VehicleView; onEdit: (v: VehicleView
   );
 }
 
-export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleView[]; drivers: DriverView[] }) {
+export default function FleetManager({ vehicles: vehiclesProp, drivers: driversProp, expiries: expiriesProp = [], focus }: { vehicles: VehicleView[]; drivers: DriverView[]; expiries?: FleetDocument[]; /** `?vehiculo=` / `?conductor=` (aviso de documento por vencer): abre sus documentos. */ focus?: { ownerType: 'VEHICLE' | 'DRIVER'; id: string } | null }) {
+  const [vehicles, setVehicles] = useState(vehiclesProp);
+  const [drivers, setDrivers] = useState(driversProp);
+  const [expiries, setExpiries] = useState(expiriesProp);
+  const [docsFor, setDocsFor] = useState<DocsTarget | null>(null);
+  const [configFor, setConfigFor] = useState<VehicleView | null>(null);
+  const refreshExpiries = useCallback(async () => {
+    const { data } = await actions.fleet.expiries({});
+    if (data) setExpiries(data as FleetDocument[]);
+  }, []);
+  const openDocs = useCallback((ownerType: 'VEHICLE' | 'DRIVER', id: string) => {
+    const v = ownerType === 'VEHICLE' ? vehicles.find((x) => x.id === id) : null;
+    const d = ownerType === 'DRIVER' ? drivers.find((x) => x.id === id) : null;
+    if (!v && !d) return;
+    setDocsFor(v ? { ownerType, id, title: v.plate ?? 'Vehículo', subtitle: `${VEHICLE_LABELS[v.type!] ?? ''}: SOAT, revisión técnica, tarjeta de propiedad, póliza y permiso MTC.` } : { ownerType, id, title: d!.fullName ?? 'Conductor', subtitle: 'Licencia de conducir y DNI.' });
+  }, [vehicles, drivers]);
+  useEffect(() => { if (focus) openDocs(focus.ownerType, focus.id); }, []);
+  const owners = {
+    VEHICLE: Object.fromEntries(vehicles.map((v) => [v.id!, v.plate ?? ''])),
+    DRIVER: Object.fromEntries(drivers.map((d) => [d.id!, d.fullName ?? ''])),
+  };
   const canOperate = useCan('OPERATE');
   const canDrivers = useCan('MANAGE_DRIVERS');
   const [resetFor, setResetFor] = useState<DriverView | null>(null);
@@ -232,6 +270,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
     <div className="space-y-6">
       <ReadOnlyNotice>No puedes agregar vehículos ni cambiar su estado.</ReadOnlyNotice>
       {canOperate && !canDrivers && <p role="note" data-testid="drivers-admin-only" className="rounded-input border border-steel-200 bg-steel-100/70 px-3 py-2 text-xs text-ink-700">Las cuentas de conductores las administra un administrador de tu empresa.</p>}
+      <ExpirySummary docs={expiries} owners={owners} onOpen={openDocs} />
       <KpiGrid>
         <KpiTile label="Vehículos" value={vehicles.length} context="en tu flota" icon={Truck} tone="petrol" />
         <KpiTile label="Disponibles" value={count('AVAILABLE')} context="listos para ofertar" icon={CheckCircle2} tone="money" />
@@ -260,16 +299,17 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
               <EmptyState compact icon={SearchX} title="Ningún vehículo con este estado" description="Cambia el filtro para ver el resto de tu flota." action={<Button size="sm" variant="outline" onClick={() => setVf('')}>Ver todos los vehículos</Button>} />
             ) : (
               <Table label="Vehículos de tu flota" stack>
-                <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="text-right">Volumen</Th><Th>Estado</Th><Th className="w-12"><span className="sr-only">Acciones</span></Th></tr></thead>
+                <thead><tr><Th>Placa</Th><Th>Tipo</Th><Th className="text-right">Capacidad</Th><Th className="text-right">Volumen</Th><Th>Estado</Th><Th>Documentos</Th><Th className="w-12"><span className="sr-only">Acciones</span></Th></tr></thead>
                 <tbody>
                   {shown.map((v) => (
                     <Tr key={v.id}>
                       <Td primary className="font-mono text-[15px] font-semibold tracking-wide">{v.plate}</Td>
-                      <Td label="Tipo">{VEHICLE_LABELS[v.type!]}</Td>
+                      <Td label="Tipo"><div className="@max-[720px]:text-right">{VEHICLE_LABELS[v.type!]}{v.equipment && v.equipment.length > 0 && <div className="text-xs text-ink-500" data-testid="vehicle-equipment">{v.equipment.map((e) => EQUIPMENT_LABEL[e] ?? e).join(' · ')}</div>}</div></Td>
                       <Td label="Capacidad" className="whitespace-nowrap text-right font-mono tabular-nums">{formatNumber(v.maxWeightKg)} kg</Td>
                       <Td label="Volumen" className="whitespace-nowrap text-right font-mono tabular-nums">{v.maxVolumeM3 ? `${formatNumber(v.maxVolumeM3, 1)} m³` : '—'}</Td>
                       <Td label="Estado"><StatusPill status={v.status!} /></Td>
-                      <Td actions className="text-right">{canOperate && <VehicleActions v={v} onEdit={setEditing} />}</Td>
+                      <Td label="Documentos"><DocsCell docs={expiries} ownerId={v.id!} label={v.plate!} onOpen={() => openDocs('VEHICLE', v.id!)} /></Td>
+                      <Td actions className="text-right">{canOperate && <VehicleActions v={v} onEdit={setEditing} onConfig={setConfigFor} />}</Td>
                     </Tr>
                   ))}
                 </tbody>
@@ -288,7 +328,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
           <EmptyState title="Aún no tienes conductores" description="Registra conductores para asignarlos a tus envíos; usarán la app móvil." action={canDrivers ? <Button onClick={() => setDialog('driver')}><Plus /> Registrar conductor</Button> : undefined} />
         ) : (
           <Table label="Conductores" stack>
-            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th>Correo</Th><Th>Estado</Th><Th>Acceso</Th>{canDrivers && <Th className="w-12"><span className="sr-only">Acciones</span></Th>}</tr></thead>
+            <thead><tr><Th>Conductor</Th><Th>Licencia</Th><Th>Correo</Th><Th>Estado</Th><Th>Acceso</Th><Th>Documentos</Th>{canDrivers && <Th className="w-12"><span className="sr-only">Acciones</span></Th>}</tr></thead>
             <tbody>
               {drivers.map((d) => (
                 <Tr key={d.id} data-testid="driver-row" className={d.active === false ? 'opacity-70' : undefined}>
@@ -297,6 +337,7 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
                   <Td label="Correo" className="text-ink-700"><span className="min-w-0 truncate">{d.email}</span></Td>
                   <Td label="Estado">{d.active === false ? <span className="text-ink-500">—</span> : <StatusPill status={d.status!} />}</Td>
                   <Td label="Acceso"><StatusPill kind="account" status={d.active === false ? 'INACTIVE' : 'ACTIVE'} /></Td>
+                  <Td label="Documentos"><DocsCell docs={expiries} ownerId={d.id!} label={d.fullName!} onOpen={() => openDocs('DRIVER', d.id!)} /></Td>
                   {canDrivers && <Td actions className="text-right"><DriverActions d={d} onReset={setResetFor} /></Td>}
                 </Tr>
               ))}
@@ -309,6 +350,9 @@ export default function FleetManager({ vehicles, drivers }: { vehicles: VehicleV
       {editing && <VehicleDialog key={editing.id} open vehicle={editing} onClose={() => setEditing(null)} />}
       <DriverDialog open={dialog === 'driver'} onClose={close} />
       <ResetPasswordDialog driver={resetFor} onClose={() => setResetFor(null)} />
+      <FleetDocumentsSheet target={docsFor} driver={docsFor?.ownerType === 'DRIVER' ? drivers.find((d) => d.id === docsFor.id) : null} onClose={() => setDocsFor(null)}
+        onChanged={refreshExpiries} onDriverSaved={(d) => setDrivers((l) => l.map((x) => (x.id === d.id ? { ...x, ...d } : x)))} />
+      <VehicleConfigDialog vehicle={configFor} onClose={() => setConfigFor(null)} onSaved={(v) => setVehicles((l) => l.map((x) => (x.id === v.id ? { ...x, ...v } : x)))} />
     </div>
   );
 }

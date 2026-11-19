@@ -44,16 +44,84 @@ public class PanacheIncidentRepository implements IncidentRepository {
         return new Paged<>(map(query.list()), page, IncidentEntity.count(q, params.toArray()));
     }
 
+    /** RN11 (V23): solo las activas que congelan. */
     @Override
     public Set<UUID> shipmentsWithActive(Collection<UUID> shipmentIds) {
         if (shipmentIds.isEmpty()) return Set.of();
-        return IncidentEntity.<IncidentEntity>list("shipmentId in ?1 and status in ?2", shipmentIds, ACTIVE).stream()
+        return IncidentEntity.<IncidentEntity>list("shipmentId in ?1 and status in ?2 and blocking = true",
+                        shipmentIds, ACTIVE).stream()
                 .map(e -> e.shipmentId).collect(Collectors.toSet());
     }
 
+    /** RN11 (V23): hay una activa que congela. */
     @Override
     public boolean hasActive(UUID shipmentId) {
-        return IncidentEntity.count("shipmentId = ?1 and status in ?2", shipmentId, ACTIVE) > 0;
+        return IncidentEntity.count("shipmentId = ?1 and status in ?2 and blocking = true", shipmentId, ACTIVE) > 0;
+    }
+
+    @Override
+    public boolean hasActiveOfCategory(UUID shipmentId, pe.logyx.incident.domain.model.IncidentCategory category) {
+        return IncidentEntity.count("shipmentId = ?1 and status in ?2 and category = ?3", shipmentId, ACTIVE,
+                category) > 0;
+    }
+
+    @Override
+    public Paged<Incident> searchOperator(pe.logyx.incident.application.OperatorIncidentFilter f, PageRequest page) {
+        List<String> where = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        if (f.statuses() != null && !f.statuses().isEmpty()) {
+            params.add(f.statuses());
+            where.add("status in ?" + params.size());
+        }
+        if (f.severities() != null && !f.severities().isEmpty()) {
+            params.add(f.severities());
+            where.add("severity in ?" + params.size());
+        }
+        if (f.assigneeProfileId() != null) {
+            params.add(f.assigneeProfileId());
+            where.add("assigneeProfileId = ?" + params.size());
+        }
+        if (f.unassigned()) where.add("assigneeProfileId is null");
+        if (f.breachedAt() != null) {
+            params.add(f.breachedAt());
+            where.add("dueAt < ?" + params.size());
+        }
+        if (f.organizationId() != null) {
+            params.add(f.organizationId());
+            where.add("(requesterOrgId = ?" + params.size() + " or carrierOrgId = ?" + params.size() + ")");
+        }
+        String q = where.isEmpty() ? "1 = 1" : String.join(" and ", where);
+        String order = f.byDueDate() ? " order by dueAt, createdAt" : " order by createdAt desc, id";
+        var query = IncidentEntity.<IncidentEntity>find(q + order, params.toArray()).page(page.page(), page.size());
+        return new Paged<>(map(query.list()), page, IncidentEntity.count(q, params.toArray()));
+    }
+
+    @Override
+    public void insertAttachment(Incident incident, UUID documentId) {
+        IncidentEntity.getEntityManager().flush();   // la FK exige que la incidencia ya esté insertada
+        IncidentEntity.getEntityManager().createNativeQuery(
+                        "INSERT INTO incident_attachments (incident_id, document_id, requester_org_id, carrier_org_id) "
+                                + "VALUES (?1, ?2, ?3, ?4)")
+                .setParameter(1, incident.id()).setParameter(2, documentId)
+                .setParameter(3, incident.requesterOrgId()).setParameter(4, incident.carrierOrgId()).executeUpdate();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<UUID> attachments(UUID incidentId) {
+        return IncidentEntity.getEntityManager().createNativeQuery(
+                        "SELECT document_id FROM incident_attachments WHERE incident_id = ?1 ORDER BY created_at, document_id",
+                        UUID.class)
+                .setParameter(1, incidentId).getResultList();
+    }
+
+    @Override
+    public boolean isOperatorProfile(UUID profileId) {
+        Number n = (Number) IncidentEntity.getEntityManager().createNativeQuery(
+                        "SELECT count(*) FROM profiles p JOIN organizations o ON o.id = p.organization_id "
+                                + "WHERE p.id = ?1 AND p.active AND o.type = 'OPERATOR'")
+                .setParameter(1, profileId).getSingleResult();
+        return n.longValue() > 0;
     }
 
     @Override

@@ -60,3 +60,29 @@ export async function publicTracking(token: string, clientIp?: string): Promise<
   const body = (await res.json()) as { data?: PublicTrackingView };
   return { data: body.data ?? null, status: 200 };
 }
+
+// ----- Ola 2 zona X: evidencia del recojo, registro por la oficina (2.5) y ajustes del envío (2.6, ADR-0012)
+export type AdjustmentView = Schemas['AdjustmentView'];
+export type ShipmentAdjustmentsView = Schemas['ShipmentAdjustmentsView'];
+export type AdjustmentType = Schemas['AdjustmentType'];
+
+export const shipmentAdjustments = (token: string, id: string) =>
+  unwrap(apiFor(token).GET('/api/v1/shipments/{id}/adjustments', { params: { path: { id } } }));
+export const proposeAdjustment = (token: string, id: string, body: Schemas['ProposeAdjustment'], idempotencyKey?: string) =>
+  unwrap(apiFor(token).POST('/api/v1/shipments/{id}/adjustments', {
+    params: { path: { id }, header: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined } as never, body,
+  }));
+export const decideAdjustment = (token: string, adjustmentId: string, accept: boolean, note?: string) =>
+  unwrap(apiFor(token).POST(accept ? '/api/v1/adjustments/{id}/accept' : '/api/v1/adjustments/{id}/reject', {
+    params: { path: { id: adjustmentId } }, body: note ? { note } : {},
+  }));
+export const withdrawAdjustment = (token: string, adjustmentId: string) =>
+  unwrap(apiFor(token).POST('/api/v1/adjustments/{id}/withdraw', { params: { path: { id: adjustmentId } } }));
+/** La PYME fija qué pide el recojo (foto de la carga y peso) mientras el envío espera el recojo (`SHP-008`). */
+export const setPickupRequirements = (token: string, id: string, photoRequired: boolean, weightRequired: boolean) =>
+  unwrap(apiFor(token).PUT('/api/v1/shipments/{id}/pickup-requirements', { params: { path: { id } }, body: { photoRequired, weightRequired } }));
+/** La oficina del transportista registra la llegada o el cierre de una parada con motivo (RN06: no salta la foto). */
+export const officeStop = (token: string, id: string, stopId: string, step: 'arrive' | 'complete', body: Schemas['OfficeStopEvent']) =>
+  unwrap(apiFor(token).POST(step === 'arrive' ? '/api/v1/shipments/{id}/stops/{stopId}/office-arrive' : '/api/v1/shipments/{id}/stops/{stopId}/office-complete', {
+    params: { path: { id, stopId } }, body,
+  }));

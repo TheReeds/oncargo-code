@@ -14,6 +14,7 @@ import OperatorChat from '@/features/operator/components/OperatorChat';
 import ShipmentIncidents from '@/features/incidents/components/ShipmentIncidents';
 import { getShipment } from '@/features/operator/server';
 import ShipmentActions from '@/features/shipments/components/ShipmentActions';
+import AdjustmentsPanel from '@/features/shipments/components/AdjustmentsPanel';
 import { ShipmentFacts } from '@/features/shipments/components/ShipmentExtras';
 import { ApiError } from '@/lib/api/client';
 import { CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons } from '@/lib/format';
@@ -68,6 +69,7 @@ const done = stops.filter((x) => x.status === 'COMPLETED').length;
       {s.requestId && <OperatorChat client:load requestId={s.requestId} />}
       <ShipmentIncidents client:load shipmentId={s.id!} />
       <DocumentsPanel client:load shipmentId={s.id!} perspective="OPERATOR" status={s.status!} hasActiveIncident={s.hasActiveIncident ?? false} />
+      <Card><CardBody><AdjustmentsPanel client:load shipment={s} perspective="OPERATOR" /></CardBody></Card>
     </div>
     <Card className="self-start">
       <CardHeader><CardTitle>Resumen</CardTitle></CardHeader>

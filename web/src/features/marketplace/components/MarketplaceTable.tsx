@@ -25,6 +25,7 @@ import NegotiationSheet from '@/features/negotiation/components/NegotiationSheet
 import { MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BidSheet from './BidSheet';
+import SavedSearches from './SavedSearches';
 import { standingText } from '../bid-state';
 import { fleetBlocker, fleetCanCarry } from '@/features/fleet/compatibility';
 
@@ -35,10 +36,10 @@ const SORT_OPTIONS = [{ value: 'pickup', label: 'Recojo más próximo' }, { valu
 import { useCan } from '@/lib/use-can';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 
-export default function MarketplaceTable({ requests, vehicles, cities, filters, page, size, total }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[]; filters: MarketFilters; page: number; size: number; total: number }) {
+export default function MarketplaceTable({ requests, vehicles, cities, filters, page, size, total, openRequest }: { requests: RequestView[]; vehicles: VehicleView[]; cities: CityItem[]; filters: MarketFilters; page: number; size: number; total: number; /** `?solicitud=`: carga que se abre al entrar (aviso de carga nueva que coincide). */ openRequest?: RequestView | null }) {
   const canOperate = useCan('OPERATE');
   const [f, setF] = useState(filters);
-  const [active, setActive] = useState<RequestView | null>(null);
+  const [active, setActive] = useState<RequestView | null>(openRequest ?? null);
   const [chat, setChat] = useState<RequestView | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -128,7 +129,8 @@ export default function MarketplaceTable({ requests, vehicles, cities, filters, 
             onValueChange={setQuick}
             options={[{ value: 'all', label: 'Todas' }, { value: 'compat', label: 'Mi vehículo' }, { value: 'pay', label: 'Mejor pago' }]}
           />
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <SavedSearches filters={f} vehicles={vehicles} />
             {maxCap > 0
               ? <span className="hidden items-center gap-1.5 text-xs text-ink-500 sm:inline-flex"><Truck className="size-3.5" aria-hidden="true" />Tu mayor vehículo disponible lleva <span className="font-mono font-semibold text-ink-700">{formatTons(maxCap)}</span></span>
               : <a href="/transportista/flota" className="text-xs font-medium text-amber-700 hover:underline">Agrega un vehículo disponible para ofertar</a>}

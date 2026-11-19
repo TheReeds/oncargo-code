@@ -34,10 +34,10 @@ test.describe('Incidencias', () => {
     await dlg.getByLabel('Descripción').fill(desc);
     await dlg.getByRole('button', { name: 'Reportar incidencia' }).click();
 
-    // RN11: banner de envío detenido y botón bloqueado
+    // RN11: banner de envío detenido. Desde la Ola 2 (2.7) se pueden reportar informativas: el botón sigue activo con un aviso
     await expect(page.locator('main').getByText('Este envío tiene una incidencia activa')).toBeVisible();
     await page.getByRole('tab', { name: 'Incidencias' }).click();
-    await expect(page.getByRole('button', { name: 'Reportar incidencia' })).toBeDisabled();
+    await expect(page.locator('main').getByText('Hay una incidencia que detiene el viaje.', { exact: false })).toBeVisible();
     await expect(page.locator('main p', { hasText: desc })).toBeVisible();
 
     // 2) aparece en /incidencias

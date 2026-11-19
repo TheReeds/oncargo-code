@@ -22,7 +22,7 @@ public final class NotificationPreferencePolicy {
 
     public static NotificationPreference defaults(NotificationCategory c) {
         boolean email = switch (c) {
-            case AWARDS, SHIPMENTS, INCIDENTS, ACCOUNT -> true;
+            case AWARDS, SHIPMENTS, INCIDENTS, ACCOUNT, FLEET -> true;
             default -> false;
         };
         return new NotificationPreference(c, true, email);

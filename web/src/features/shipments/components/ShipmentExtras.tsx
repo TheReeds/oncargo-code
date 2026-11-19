@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { actions } from 'astro:actions';
-import { CalendarClock, FileText, Star, TriangleAlert } from 'lucide-react';
+import { CalendarClock, FileText, Receipt, Star, TriangleAlert } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import DocumentsPanel from '@/features/documents/components/DocumentsPanel';
 import ReviewPanel from '@/features/reputation/components/ReviewPanel';
 import IncidentsPanel from '@/features/incidents/components/IncidentsPanel';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
 import type { ShipmentView } from '@/lib/api/server';
 import ShipmentActions from './ShipmentActions';
+import AdjustmentsPanel, { signedMoney } from './AdjustmentsPanel';
+import ExecutionPanel from './ExecutionPanel';
 
 type Perspective = 'PYME' | 'CARRIER' | 'OPERATOR';
 
@@ -46,21 +48,30 @@ export function ShipmentFacts({ shipment, perspective }: { shipment: ShipmentVie
           <span className="inline-flex items-center gap-1.5 text-ink-700"><CalendarClock className="size-4 text-ink-500" aria-hidden="true" />Recojo <span className="font-medium text-ink-900">{formatDate(shipment.pickupDate)}</span></span>
         )}
         {open && !shipment.driverId && perspective !== 'PYME' && <Badge tone="amber">Sin conductor</Badge>}
+        {!!shipment.adjustmentsTotal && (
+          <span className="text-ink-700" data-testid="final-price">Precio final <span className="money font-semibold">{formatMoney(shipment.finalPrice)}</span> <span className="text-xs text-ink-500">(ajustes {signedMoney(shipment.adjustmentsTotal)})</span></span>
+        )}
+        {!!shipment.pendingAdjustments && <Badge tone="amber">{shipment.pendingAdjustments === 1 ? '1 ajuste por responder' : `${shipment.pendingAdjustments} ajustes por responder`}</Badge>}
       </div>
     </div>
   );
 }
 
 /** Documentos, calificación e incidencias de un envío, con sus acciones. Cada panel carga sus datos por su cuenta (Astro Actions). */
-export default function ShipmentExtras({ shipment, perspective }: { shipment: ShipmentView; perspective: 'PYME' | 'CARRIER' }) {
+export default function ShipmentExtras({ shipment: initial, perspective }: { shipment: ShipmentView; perspective: 'PYME' | 'CARRIER' }) {
+  // 2.5/2.6: lo que cambia aquí (lo que pide el recojo, una parada registrada por la oficina) se refleja sin recargar.
+  const [shipment, setShipment] = useState(initial);
+  useEffect(() => { setShipment(initial); }, [initial]);
+  const refresh = async () => { const { data } = await actions.shipments.get({ id: initial.id! }); if (data) setShipment(data); };
   const props = { shipmentId: shipment.id!, perspective, status: shipment.status!, hasActiveIncident: !!shipment.hasActiveIncident };
   return (
     <div className="space-y-4">
       <ShipmentFacts shipment={shipment} perspective={perspective} />
       <ShipmentActions shipment={shipment} perspective={perspective} />
+      <ExecutionPanel shipment={shipment} perspective={perspective} onChanged={setShipment} />
       {shipment.hasActiveIncident && (
         <Alert tone="error" title="Este envío tiene una incidencia activa">
-          El conductor no puede avanzar las paradas hasta que el operador de OnCargo la resuelva. Revisa el detalle en la pestaña Incidencias.
+          El conductor no puede avanzar las paradas hasta que OnCargo la resuelva. Revisa el detalle en la pestaña Incidencias.
         </Alert>
       )}
       <Tabs defaultValue="documentos">
@@ -68,10 +79,12 @@ export default function ShipmentExtras({ shipment, perspective }: { shipment: Sh
           <TabsTrigger value="documentos"><FileText className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Documentos</TabsTrigger>
           <TabsTrigger value="calificacion"><Star className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Calificación</TabsTrigger>
           <TabsTrigger value="incidencias"><TriangleAlert className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Incidencias</TabsTrigger>
+          <TabsTrigger value="ajustes"><Receipt className="mr-1.5 inline size-4 align-text-bottom max-sm:hidden" aria-hidden="true" />Ajustes{shipment.pendingAdjustments ? ` (${shipment.pendingAdjustments})` : ''}</TabsTrigger>
         </TabsList>
         <TabsContent value="documentos"><DocumentsPanel {...props} /></TabsContent>
         <TabsContent value="calificacion"><ReviewPanel {...props} /></TabsContent>
         <TabsContent value="incidencias"><IncidentsPanel {...props} /></TabsContent>
+        <TabsContent value="ajustes"><AdjustmentsPanel shipment={shipment} perspective={perspective} onChanged={refresh} /></TabsContent>
       </Tabs>
     </div>
   );

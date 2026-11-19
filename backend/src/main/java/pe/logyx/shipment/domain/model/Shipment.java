@@ -37,6 +37,13 @@ public final class Shipment {
      * Un cambio posterior del parámetro no la altera.
      */
     private final BigDecimal commissionRate;
+    /** Lo que la PYME exige al recoger (roadmap 2.5, V23): foto de la carga y peso medido. Por omisión, nada. */
+    private PickupRequirements pickupRequirements = PickupRequirements.NONE;
+
+    /** Exigencias del recojo. */
+    public record PickupRequirements(boolean photo, boolean weight) {
+        public static final PickupRequirements NONE = new PickupRequirements(false, false);
+    }
 
     /** Quién canceló, cuándo y por qué (F06). */
     public record Cancellation(UUID byOrgId, String reason, OffsetDateTime at) {}
@@ -180,6 +187,26 @@ public final class Shipment {
         }
         return new Progress(started, delivered);
     }
+
+    /**
+     * La PYME fija qué pide el recojo (2.5). Solo mientras el envío espera el recojo (LOGYX-SHP-008): después ya no
+     * cambia lo que el conductor tuvo que presentar.
+     */
+    public void changePickupRequirements(PickupRequirements r) {
+        if (status != Status.PENDING) {
+            throw BusinessException.conflict("LOGYX-SHP-008",
+                    "El recojo ya se registró o el envío está cerrado: lo que pide el recojo ya no cambia");
+        }
+        pickupRequirements = r == null ? PickupRequirements.NONE : r;
+    }
+
+    /** Restaura lo guardado (persistencia). */
+    public Shipment restorePickupRequirements(PickupRequirements r) {
+        pickupRequirements = r == null ? PickupRequirements.NONE : r;
+        return this;
+    }
+
+    public PickupRequirements pickupRequirements() { return pickupRequirements; }
 
     public UUID id() { return id; }
     public UUID requestId() { return requestId; }

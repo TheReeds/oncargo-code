@@ -6,6 +6,7 @@ import { nextWeekSameDay } from '@/features/requests/dates';
 import type { RequestFormValues } from '@/features/requests/components/RequestForm';
 import { getCatalog } from '@/features/catalog/server';
 import { getRequest } from '@/features/requests/server';
+import { getTemplate } from '@/features/templates/server';
 import { listPlaces } from '@/features/places/server';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { can } from '@/lib/permissions';
@@ -34,6 +35,24 @@ if (canOperate && fromId && /^[0-9a-f-]{36}$/i.test(fromId)) {
     };
   }
 }
+// «Usar plantilla»: /pyme/solicitudes/nueva?plantilla=<id> precarga todo menos la fecha y deja actualizar la plantilla.
+const templateId = Astro.url.searchParams.get('plantilla');
+let template: { id: string; name: string; invitePreferred?: boolean } | undefined;
+if (canOperate && !initial && templateId && /^[0-9a-f-]{36}$/i.test(templateId)) {
+  const t = await getTemplate(session.token, templateId).catch(() => null);
+  if (t && !t.archived) {
+    template = { id: t.id!, name: t.name!, invitePreferred: t.invitePreferred };
+    initial = {
+      originCity: t.originCity ?? '', originAddress: t.originAddress ?? '', destinationCity: t.destinationCity ?? '', destinationAddress: t.destinationAddress ?? '',
+      cargoType: t.cargoType ?? 'GENERAL', cargoDescription: t.cargoDescription ?? '', weightKg: t.weightKg != null ? String(t.weightKg) : '', volumeM3: t.volumeM3 != null ? String(t.volumeM3) : '',
+      pickupDate: '',
+      customerReference: t.customerReference ?? '', declaredValue: t.declaredValue != null ? String(t.declaredValue) : '',
+      pickupContactName: t.pickupContactName ?? '', pickupContactPhone: t.pickupContactPhone ?? '', pickupWindowFrom: t.pickupWindowFrom ?? '', pickupWindowTo: t.pickupWindowTo ?? '', pickupInstructions: t.pickupInstructions ?? '',
+      deliveryContactName: t.deliveryContactName ?? '', deliveryContactPhone: t.deliveryContactPhone ?? '', deliveryWindowFrom: t.deliveryWindowFrom ?? '', deliveryWindowTo: t.deliveryWindowTo ?? '', deliveryInstructions: t.deliveryInstructions ?? '',
+      originPlaceId: t.originPlaceId ?? '', destinationPlaceId: t.destinationPlaceId ?? '',
+    };
+  }
+}
 // Desde el cotizador de la landing: ?origen=&destino=&peso=&tipo= (códigos del catálogo) precargan ruta, peso y tipo.
 if (canOperate && !initial) {
   const q = Astro.url.searchParams;
@@ -48,8 +67,8 @@ if (canOperate && !initial) {
 const places = canOperate ? await listPlaces(session.token).catch(() => []) : [];
 ---
 <AppShell title="Nueva solicitud" active="nueva">
-  <PageHeader title={duplicatedFrom ? 'Publicar otra igual' : 'Nueva solicitud'} subtitle={duplicatedFrom ? 'Los datos de tu solicitud anterior ya están cargados; revisa la fecha y publica' : 'Describe tu carga; los transportistas competirán por ella'} />
+  <PageHeader title={duplicatedFrom ? 'Publicar otra igual' : template ? 'Publicar desde plantilla' : 'Nueva solicitud'} subtitle={duplicatedFrom ? 'Los datos de tu solicitud anterior ya están cargados; revisa la fecha y publica' : template ? 'Los datos de la plantilla ya están cargados; elige la fecha y publica' : 'Describe tu carga; los transportistas competirán por ella'} />
   {canOperate
-    ? <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} places={places} initial={initial} duplicatedFrom={duplicatedFrom} />
+    ? <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} places={places} initial={initial} duplicatedFrom={duplicatedFrom} template={template} />
     : <div class="space-y-4"><ReadOnlyNotice client:load>No puedes publicar solicitudes.</ReadOnlyNotice><a href="/pyme/solicitudes" class={cn(buttonVariants({ variant: 'outline' }))}>Volver a mis solicitudes</a></div>}
 </AppShell>

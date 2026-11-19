@@ -61,6 +61,38 @@ class EvidenceRepositoryTest {
         assertEquals(EvidenceErrors.NOT_ASSIGNED_MESSAGE, item.error)
     }
 
+    @Test fun `DOC-009 descarta la foto de la carga con el mensaje del servidor`() = runBlocking<Unit> {
+        val (body, status) = error(HttpStatusCode.BadRequest, "LOGYX-DOC-009", "La foto de la carga debe indicar la parada de recojo (stopId)")
+        val repo = repo(dir(), MockEngine { respond(body, status, json) })
+        val item = repo.enqueue("s1", "st1", DocumentType.PICKUP_PHOTO, byteArrayOf(1))
+        assertEquals(EvidenceState.CLOSED, item.state)
+        assertEquals("La foto de la carga debe indicar la parada de recojo (stopId)", item.error)
+    }
+
+    @Test fun `DOC-005 la llegada sigue en la cola y la foto cuenta como pendiente de senal`() = runBlocking<Unit> {
+        val (body, status) = error(HttpStatusCode.Conflict, "LOGYX-DOC-005", "Registra la llegada al recojo antes de subir la foto de la carga")
+        val dir = dir()
+        val repo = repo(dir, MockEngine { respond(body, status, json) })
+        val item = repo.enqueue("s1", "st1", DocumentType.PICKUP_PHOTO, byteArrayOf(1))
+        assertEquals(EvidenceState.FAILED, item.state)
+        assertTrue(item.awaitingSignal)
+        assertEquals(1, dir.listFiles().orEmpty().size)
+    }
+
+    @Test fun `restoreQueued lee del disco la cola de todos los envios sin consultar al servidor`() = runBlocking<Unit> {
+        val dir = dir()
+        val engine = MockEngine { throw java.io.IOException("sin red") }
+        repo(dir, engine).apply {
+            enqueue("s1", "st1", DocumentType.PICKUP_PHOTO, byteArrayOf(1))
+            enqueue("s2", "st9", DocumentType.REMISSION_GUIDE, byteArrayOf(2))
+        }
+        val reborn = repo(dir, engine)
+        val calls = engine.requestHistory.size
+        reborn.restoreQueued()
+        assertEquals(setOf(DocumentType.PICKUP_PHOTO, DocumentType.REMISSION_GUIDE), reborn.items.value.map { it.type }.toSet())
+        assertEquals(calls, engine.requestHistory.size)
+    }
+
     @Test fun `un fallo de red deja la evidencia en la cola para reintentar`() = runBlocking<Unit> {
         var fail = true
         val engine = MockEngine { if (fail) throw java.io.IOException("sin red") else respond(uploadOk(), HttpStatusCode.Created, json) }

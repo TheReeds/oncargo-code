@@ -44,6 +44,40 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 | Enlace público de seguimiento (ADR-0011): enumeración, fuga de datos, indexación, `Referer` | Token de 128 bits (`SecureRandom`), en BD solo su SHA-256; formato validado antes de consultar; inexistente/revocado/vencido = la misma 404 (`SHL-001`); lista blanca `PublicTrackingView` (sin precio, contactos, direcciones, placa, conductor ni ids/nombres de organizaciones) probada campo por campo; único `SystemTx` acotado al hash; límite por IP; `noindex` (cabecera y meta), `Referrer-Policy: no-referrer`, `no-store`, sin canónica; revocable al instante y vence 7 días tras la entrega; RLS: solo la PYME dueña crea/revoca (UPDATE por columna) | Quien tenga el enlace ve el avance hasta que se revoque o venza (es su propósito); el límite por IP es por instancia |
 | Repudio | `audit_log` en acciones críticas con usuario y organización | — |
 
+### Ola 2 · zona T (V22)
+- **Documentos de flota** (`fleet_documents`: SOAT, revisión técnica, licencia, DNI…): privados del transportista por RLS (`fleet_documents_owner`; el operador solo lee). Inmutables: el único `UPDATE` permitido es `superseded_at`. La PYME **no** los lee: solo recibe los sellos derivados (`bids.soat_valid_until`/`inspection_valid_until`). Descarga solo por `GET /fleet/documents/{id}/file` (propietario; `nosniff`, `no-store`). Formato por firma binaria y tamaño como la evidencia (ADR-0005).
+- **Historial de precios por ruta** (RN04): `lane_price_stats` corre con los privilegios de su dueño y solo contiene agregados con k ≥ 5 envíos de ≥ 3 transportistas, redondeados a S/ 5; ningún endpoint devuelve montos individuales de otras ofertas. `bid_revisions` (historial de mejoras) solo lo lee el transportista dueño.
+- **Búsquedas guardadas** (`saved_searches`): privadas de cada persona (RLS por `app_profile()`); la bitácora `saved_search_alerts` y `fleet_document_notices` no tienen política para `logyx_app` (solo el sistema). Test: `CarrierZoneRlsTest`.
+
+### Ola 2 · zona X (V23)
+- **Ajustes del envío** (`shipment_adjustments`, ADR-0012): solo los leen las dos partes, el operador y, entre los conductores, el asignado
+  (política restrictiva `adjustments_driver_scope`). El transportista inserta **solo sobre un envío suyo** (la política verifica el envío,
+  no solo las columnas). Nadie cambia tipo, monto ni partes: `logyx_app` tiene `UPDATE` solo sobre el estado y la decisión; sin `DELETE`.
+  Notas con RN07. Cada paso queda en `audit_log`. El escalado lo hace un job con `SystemTx` que solo toca `escalated_at`.
+- **Notas internas de incidencias** (`incident_comments.internal`): la RLS impide a las partes leerlas o insertarlas aunque lo intenten por
+  SQL; la API las filtra además (segunda barrera). Adjuntos (`incident_attachments`): solo documentos del mismo envío de la incidencia.
+  Quien reportó una informativa solo puede pasarla a `CLOSED` con la marca de retiro (política `incidents_reporter_update`).
+- **Operador sobre cuentas ajenas**: `profiles_operator_update` + trigger `profiles_guard_operator_suspension`: el operador solo cambia el
+  estado y la suspensión de un usuario de otra organización (no su correo, contraseña, rol ni organización); el ADMIN de la organización no
+  puede levantar una suspensión del operador (`LOGYX-USR-007`). Suspender sube `session_version` y revoca los refresh.
+- **Cambio de RUC** (sucesora): `SystemTx` acotado en `OrganizationSuccessionService` (inserta la sucesora y mueve personas y flota); exige
+  documento de sustento (jpg/png/pdf por firma binaria, clave generada por el servidor) y motivo; todo queda en
+  `organization_legal_changes` (solo el operador lee e inserta) y en la auditoría. Las personas movidas suben su versión de sesión.
+- **Señales de fraude**: SQL de solo lectura bajo las políticas `*_operator` (nunca `SystemTx`). La IP del registro **no se guarda**: solo un
+  SHA-256 con prefijo fijo (`organizations.signup_ip_hash`), y nunca se muestra (ni el hash). Las IP locales o privadas no se registran.
+  Las señales son indicios: no bloquean nada solas.
+- **«Pedir acceso a la empresa» desde el registro** (`POST /public/organization-access-requests`, sin JWT): límite por IP
+  (`logyx.rate-limit.public-access-request.per-ip`, 429) y un aviso por organización cada 10 min; responde siempre igual (no confirma más
+  de lo que ya dijo `ORG-002`); el correo al ADMIN advierte que el correo del solicitante no está verificado y no lleva enlaces de acceso.
+- **Registro de paradas por la oficina**: motivo obligatorio, marca en la parada y auditoría `STOP_REGISTERED_BY_OFFICE`; no sube evidencia
+  (RN06: la foto de entrega y la de la carga son solo del conductor asignado).
+
+### Ola 2 · zona P (V21)
+- **Tenant sintético (ADR-0013)**: las plantillas programadas publican «en nombre de» la organización con un `JsonWebToken` en memoria (`SyntheticTenant`), no con `SystemTx`: `app.org_id`/`app.profile_id` quedan fijados y la RLS sigue activa; el token no se firma ni sale de la JVM, el rol es `OPS` y la organización y la persona salen de la plantilla guardada, nunca de un cliente. El único uso nuevo de `SystemTx` es leer los **ids** de las programaciones vencidas (`DueSchedules`). Un fallo no se reintenta en bucle (3 seguidos pausan la programación).
+- **Bloqueo de transportistas**: `carrier_preferences` es privada de la PYME (`prefs_owner`); el transportista no puede leerla. La política `requests_marketplace` y la restrictiva `bids_not_blocked` consultan `app_is_blocked_by(requester)`, una función `SECURITY DEFINER` (`search_path` fijo) que devuelve solo un booleano para el par «PYME, mi organización»: no revela otras marcas ni quién bloqueó a quién. El bloqueado recibe 404 y no se entera. `DemandZoneRlsTest` lo cubre.
+- **Ofertas de respaldo** (`bid_backups`): la PYME dueña las gestiona; el transportista solo ve su fila cuando se le pidió confirmar (`state <> 'AVAILABLE'`, así no sabe que quedó de respaldo) y solo puede pasar de `REQUESTED` a `CONFIRMED`/`DECLINED` (`UPDATE` por columna: `state`, fechas). Nunca ve otras ofertas (RN04).
+- **Acciones masivas**: cada ítem corre bajo la RLS y las reglas de la PYME (otra organización recibe 404 por ítem); máximo 50 por llamada y sin lectura de datos ajenos en el resultado.
+
 ## Checklist de despliegue
 1. Contraseñas únicas para superusuario, `logyx_owner`, `logyx_api` y MinIO (o un usuario MinIO/S3 limitado al bucket).
 2. `infra/scripts/gen-jwt-keys.sh` (o claves del gestor de secretos); nunca reutilizar las de otro entorno.

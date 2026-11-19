@@ -35,6 +35,7 @@ import { SkeletonList } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { BidSeals } from '@/components/domain/BidSeals';
 import { StarRating } from '@/components/ui/star-rating';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { TrustScore } from '@/components/domain/TrustScore';
@@ -326,7 +327,7 @@ export default function UiCatalog() {
           </Card>
         </Section>
 
-        <Section id="composicion" title="Composición" note="Piezas compartidas para pantallas completas: FilterBar (listados), Timeline (paradas/hitos), VerifiedBadge (RUC verificado), AuthCard (login/registro).">
+        <Section id="composicion" title="Composición" note="Piezas compartidas para pantallas completas: FilterBar (listados), Timeline (paradas/hitos), VerifiedBadge (RUC verificado), BidSeals (sellos de una oferta), AuthCard (login/registro).">
           <Card>
             <FilterBar count={12} noun={['carga', 'cargas']} active onClear={() => toast.info('Filtros limpiados')} sort={<Select id="d-fb-s" aria-label="Ordenar por" value="pickup" onValueChange={() => {}} options={[{ value: 'pickup', label: 'Recojo más próximo' }]} className="h-9 w-44" />}>
               <Field label="Buscar (SearchInput)" htmlFor="d-fb-q" hint="Enter o lupa para buscar; la X limpia"><SearchInput id="d-fb-q" value="" onSearch={(t) => toast.info(t ? `Buscar «${t}»` : 'Búsqueda limpia')} placeholder="Razón social, RUC, placa…" /></Field>
@@ -340,6 +341,7 @@ export default function UiCatalog() {
                 { id: '3', title: 'Cierre', detail: 'Confirmación de entrega', meta: 'Pendiente', status: 'pending' },
               ]} />
               <div className="flex flex-wrap items-center gap-4"><VerifiedBadge /><VerifiedBadge variant="icon" /></div>
+              <div className="space-y-1.5"><p className="text-xs text-ink-500">BidSeals: sellos de una oferta para la PYME («Mejorada», «SOAT vigente», «Revisión técnica vigente»; solo los vigentes hoy)</p><BidSeals improvedCount={2} soatValidUntil="2999-03-12" inspectionValidUntil="2999-06-30" /></div>
               <AuthCard title="Ingresa a tu cuenta" subtitle="Tarjeta de acceso (AuthCard)" footer="Pie con enlaces">
                 <p className="text-sm text-ink-700">Contenido del formulario.</p>
               </AuthCard>

@@ -149,6 +149,27 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     LiveIndicator(RealtimeStatus.RECONNECTING)
                 }
             }
+            Section("Conductor sin señal (cola offline)") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pe.logyx.core.designsystem.components.SyncStatusChip(3, pe.logyx.core.designsystem.components.SyncChipState.WaitingSignal, {})
+                    pe.logyx.core.designsystem.components.SyncStatusChip(1, pe.logyx.core.designsystem.components.SyncChipState.Sending, {})
+                    pe.logyx.core.designsystem.components.SyncStatusChip(2, pe.logyx.core.designsystem.components.SyncChipState.Failed, {})
+                    var kg by remember { mutableStateOf("2450") }
+                    pe.logyx.core.designsystem.components.NumberField(kg, { kg = it }, "Peso medido", "kg", hint = "Lo que marcó la balanza.")
+                    pe.logyx.core.designsystem.components.StopTimeline(
+                        listOf(
+                            pe.logyx.core.model.StopView(
+                                "p", 1, pe.logyx.core.model.StopType.PICKUP, "LIMA", "Av. Argentina 1234", pe.logyx.core.model.StopStatus.COMPLETED,
+                                completedAt = "2026-11-10T09:00:00-05:00", loadedWeightKg = 2450.0, completionOfficeReason = "Celular sin batería",
+                            ),
+                            pe.logyx.core.model.StopView(
+                                "d", 2, pe.logyx.core.model.StopType.DELIVERY, "JULIACA", null, pe.logyx.core.model.StopStatus.COMPLETED,
+                                completedAt = "2026-11-11T15:00:00-05:00", receivedByName = "Ana Torres", receivedByDoc = "45678912",
+                            ),
+                        ),
+                    )
+                }
+            }
             Section("Navegación") {
                 var sel by remember { mutableStateOf(1) }
                 LogyxBottomBar(
@@ -322,6 +343,9 @@ private fun Negotiation() {
     BidStandingRow(MyBidStanding(1, 4, true, BidStandingBand.BEST))
     BidStandingRow(MyBidStanding(3, 4, false, BidStandingBand.WITHIN_15_PCT))
     BidStandingRow(MyBidStanding(4, 4, false, BidStandingBand.ABOVE_15_PCT, finalStanding = true))
+    BidStandingRow(MyBidStanding(3, 5, false, BidStandingBand.WITHIN_15_PCT, position = pe.logyx.core.model.BidPosition.UPPER_HALF))
+    var avisar by remember { mutableStateOf(true) }
+    pe.logyx.core.designsystem.components.LogyxSwitchRow("Avisarme de cargas nuevas", avisar, { avisar = it }, supporting = "Búsqueda guardada")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         BidOutcome.entries.filter { it != BidOutcome.UNKNOWN }.take(3).forEach { StatusPill(it.pill()) }
     }

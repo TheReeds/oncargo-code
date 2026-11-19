@@ -28,6 +28,10 @@ import pe.logyx.identity.application.event.AccessRequested;
 import pe.logyx.marketplace.application.event.AuctionClosed;
 import pe.logyx.marketplace.application.event.BidWithdrawn;
 import pe.logyx.marketplace.application.event.RequestCancelled;
+import pe.logyx.marketplace.application.event.BackupRequested;
+import pe.logyx.marketplace.application.event.BackupResponded;
+import pe.logyx.marketplace.application.event.CarriersInvited;
+import pe.logyx.templates.application.event.TemplateRunRecorded;
 import pe.logyx.shipment.domain.model.Shipment;
 import pe.logyx.trip.application.event.*;
 
@@ -170,6 +174,59 @@ public class NotificationObservers {
                 NotificationTarget.REQUEST, e.requestId())).toList());
     }
 
+    // ----- Ola 2, zona P (roadmap 2.1 y 2.9)
+
+    /** 2.1: lo que hizo la programación de una plantilla, a quien creó la plantilla. */
+    void onTemplateRun(@Observes @Outboxed TemplateRunRecorded e) {
+        String when = e.pickupDate() == null ? "" : " para el recojo del " + e.pickupDate();
+        String title, body;
+        NotificationTarget target = e.requestId() == null ? NotificationTarget.TEMPLATE : NotificationTarget.REQUEST;
+        UUID related = e.requestId() == null ? e.templateId() : e.requestId();
+        switch (e.kind()) {
+            case "PUBLISHED" -> {
+                title = "Carga publicada por «" + e.templateName() + "»";
+                body = e.requestCode() + " · " + e.route() + when + ". La creó la plantilla, no una persona.";
+            }
+            case "DRAFT" -> {
+                title = "Borrador listo: «" + e.templateName() + "»";
+                body = e.route() + when + ". Revísalo y publícalo desde Plantillas.";
+            }
+            default -> {
+                title = "No se pudo publicar «" + e.templateName() + "»";
+                body = e.route() + when + ": " + e.message() + (e.paused()
+                        ? " La programación se pausó tras varios fallos seguidos." : " No se reintentará.");
+            }
+        }
+        publisher.publish(List.of(Notification.toPerson(e.organizationId(), e.profileId(), NotificationType.TEMPLATE_RUN,
+                title, body, target, related)));
+    }
+
+    /** 2.9: «invitar a ofertar» a los transportistas preferidos. */
+    void onCarriersInvited(@Observes @Outboxed CarriersInvited e) {
+        String when = e.pickupDate() == null ? "" : ", recojo el " + e.pickupDate();
+        publisher.publish(e.carrierOrgIds().stream().map(c -> Notification.to(c, NotificationType.REQUEST_INVITATION,
+                "Te invitan a ofertar", e.requesterName() + " te invita a ofertar por su carga " + e.route() + " ("
+                        + e.weightKg().stripTrailingZeros().toPlainString() + " kg" + when + ").",
+                NotificationTarget.REQUEST, e.requestId())).toList());
+    }
+
+    /** 2.9: la PYME pide al transportista de la segunda oferta que confirme. */
+    void onBackupRequested(@Observes @Outboxed BackupRequested e) {
+        publisher.publish(List.of(Notification.to(e.carrierOrgId(), NotificationType.BACKUP_REQUESTED,
+                "Confirma si puedes llevar la carga", e.requesterName() + " perdió a su transportista en " + e.route()
+                        + " y quiere adjudicarte la carga con tu oferta. Confirma si puedes llevarla.",
+                NotificationTarget.BID, e.bidId())));
+    }
+
+    /** 2.9: el transportista respondió. */
+    void onBackupResponded(@Observes @Outboxed BackupResponded e) {
+        publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.BACKUP_RESPONDED,
+                e.accepted() ? "Confirmó la segunda oferta" : "No puede llevar la carga",
+                e.accepted() ? e.carrierName() + " confirmó que lleva tu carga " + e.route() + ". Ya puedes adjudicársela."
+                        : e.carrierName() + " no puede llevar tu carga " + e.route() + ". Prueba con otra oferta.",
+                NotificationTarget.REQUEST, e.requestId())));
+    }
+
     void onBidWithdrawn(@Observes @Outboxed BidWithdrawn e) {
         publisher.publish(List.of(Notification.to(e.requesterOrgId(), NotificationType.BID_WITHDRAWN,
                 "Oferta retirada", e.carrierName() + " retiró su oferta por tu carga " + e.route() + ".",
@@ -221,7 +278,8 @@ public class NotificationObservers {
     void onIncidentReported(@Observes @Outboxed IncidentReported e) {
         UUID other = e.reportedByOrgId().equals(e.requesterOrgId()) ? e.carrierOrgId() : e.requesterOrgId();
         String text = "Se reportó una incidencia (" + label(e.category()) + ") en el envío " + e.route()
-                + ". El avance de paradas queda en pausa hasta que el operador la resuelva.";
+                + (e.freezes() ? ". El avance de paradas queda en pausa hasta que el operador la resuelva."
+                        : ". Es informativa: el viaje sigue.");
         List<Notification> out = new ArrayList<>();
         out.add(Notification.to(other, NotificationType.INCIDENT_REPORTED, "Incidencia reportada", text,
                 NotificationTarget.INCIDENT, e.incidentId()));
@@ -319,13 +377,6 @@ public class NotificationObservers {
     }
 
     private static String label(IncidentCategory c) {
-        return switch (c) {
-            case CARGO_DAMAGE -> "carga dañada";
-            case DELAY -> "retraso";
-            case LOST_CARGO -> "extravío";
-            case WRONG_DELIVERY -> "entrega incorrecta";
-            case DRIVER_CONDUCT -> "conducta del conductor";
-            case OTHER -> "otro";
-        };
+        return c.label();
     }
 }

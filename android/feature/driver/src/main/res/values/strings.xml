@@ -61,7 +61,7 @@
     <string name="driver_evidence_not_yet">La foto y la firma de entrega se piden cuando llegues a destino. Marca "Llegué a destino" y aquí aparecerán.</string>
     <string name="driver_evidence_closed">La entrega ya está cerrada, así que no se puede agregar más evidencia.</string>
     <string name="driver_evidence_closed_title">Evidencia que no se subió</string>
-    <string name="driver_evidence_closed_banner">Estas evidencias no se subieron: %1$s. La entrega ya se cerró o el envío ya no está a tu nombre; se descartaron y no se reintentarán.</string>
+    <string name="driver_evidence_closed_banner">Estas evidencias no se subieron: %1$s. La parada ya se cerró o el envío ya no está a tu nombre; se descartaron y no se reintentarán.</string>
     <string name="driver_evidence_closed_ok">Entendido</string>
     <plurals name="driver_evidence_closed_photos">
         <item quantity="one">%1$d foto</item>
@@ -81,4 +81,77 @@
     <string name="driver_evidence_offline">Se enviará al recuperar señal</string>
     <string name="driver_evidence_awaiting_hint">Tu foto se enviará al recuperar señal. Ya puedes marcar la entrega.</string>
     <string name="driver_evidence_pending">La entrega y su evidencia están guardadas en tu teléfono. Se enviarán al recuperar señal.</string>
+    <!-- Ola 2, zona X: evidencia del recojo y quién recibe (2.5) -->
+    <string name="driver_pickup_title">Evidencia del recojo</string>
+    <string name="driver_pickup_take_photo">Tomar foto de la carga</string>
+    <string name="driver_pickup_photo_required">Obligatoria: la empresa la pidió.</string>
+    <string name="driver_pickup_photo_optional">Opcional. Ayuda si luego hay un reclamo.</string>
+    <string name="driver_pickup_photo_caption">Carga %1$d</string>
+    <string name="driver_pickup_weight_label">Peso medido</string>
+    <string name="driver_pickup_weight_unit">kg</string>
+    <string name="driver_pickup_weight_hint_required">Lo que marcó la balanza. La empresa lo pidió.</string>
+    <string name="driver_pickup_weight_hint">Lo que marcó la balanza, si la hay.</string>
+    <string name="driver_pickup_weight_invalid">Ingresa un peso entre 1 y 60,000 kg.</string>
+    <string name="driver_pickup_guide">Tomar foto de la guía de remisión</string>
+    <string name="driver_pickup_guide_caption">Guía</string>
+    <string name="driver_pickup_hint_photo">Toma la foto de la carga para marcar «Carga recogida».</string>
+    <string name="driver_pickup_hint_photo_rejected">Falta la foto de la carga. Tómala para cerrar el recojo.</string>
+    <string name="driver_pickup_hint_weight">Ingresa el peso medido para marcar «Carga recogida».</string>
+    <string name="driver_pickup_hint_awaiting">Tu foto se enviará al recuperar señal. Ya puedes marcar «Carga recogida».</string>
+    <string name="driver_receiver_title">Quién recibe</string>
+    <string name="driver_receiver_name">Nombre de quien recibe</string>
+    <string name="driver_receiver_name_placeholder">Ana Torres Quispe</string>
+    <string name="driver_receiver_doc">DNI o carné de extranjería</string>
+    <string name="driver_receiver_doc_placeholder">45678912</string>
+    <string name="driver_receiver_doc_hint">DNI de 8 dígitos o CE de 9 a 12 caracteres.</string>
+    <string name="driver_receiver_doc_invalid">Ingresa un DNI de 8 dígitos o un carné de extranjería.</string>
+    <string name="driver_receiver_hint">Ingresa el nombre y el DNI de quien recibe para marcar la entrega.</string>
+    <string name="driver_confirm_picked_up_weight">Registraremos la carga como recogida con %1$s y seguirás hacia destino.</string>
+    <string name="driver_confirm_delivered_receiver">Recibe %1$s (%2$s). El viaje se cerrará y no podrás deshacerlo.</string>
+
+    <!-- Cola offline visible (2.5) -->
+    <string name="driver_sync_title">Por sincronizar</string>
+    <string name="driver_sync_intro">Se guardaron en tu teléfono y se enviarán en este orden. No cierres la sesión hasta que salgan.</string>
+    <string name="driver_sync_retry">Reintentar ahora</string>
+    <string name="driver_sync_next_attempt">Próximo intento automático a las %1$s.</string>
+    <string name="driver_sync_last_error">Último error: %1$s</string>
+    <string name="driver_sync_state_queued">En cola</string>
+    <string name="driver_sync_state_sending">Enviando…</string>
+    <string name="driver_sync_state_waiting_signal">Esperando señal</string>
+    <string name="driver_sync_state_waiting_photo">Sale cuando suba su foto</string>
+    <string name="driver_sync_state_failed">No se subió: %1$s</string>
+    <string name="driver_sync_state_failed_short">Falló</string>
+    <string name="driver_sync_arrive_pickup">Llegada al recojo</string>
+    <string name="driver_sync_arrive_destination">Llegada a destino</string>
+    <string name="driver_sync_arrive_stop">Llegada a la parada</string>
+    <string name="driver_sync_picked_up">Carga recogida</string>
+    <string name="driver_sync_delivered">Entrega</string>
+    <string name="driver_sync_complete_stop">Cierre de la parada</string>
+    <string name="driver_sync_incident">Emergencia: %1$s</string>
+    <string name="driver_sync_adjustment">Ajuste: %1$s</string>
+    <string name="driver_sync_saved_at">Guardado a las %1$s</string>
+    <string name="driver_notice_synced">Todo sincronizado</string>
+
+    <!-- Emergencia (2.7) -->
+    <string name="driver_emergency">Emergencia</string>
+    <string name="driver_emergency_title">¿Qué pasó?</string>
+    <string name="driver_emergency_intro">Avisaremos a tu transportista y a OnCargo con tu ubicación. Funciona sin señal.</string>
+    <string name="driver_emergency_accident">Accidente</string>
+    <string name="driver_emergency_accident_hint">Choque, volcadura o heridos.</string>
+    <string name="driver_emergency_theft">Robo</string>
+    <string name="driver_emergency_theft_hint">Robo o asalto de la carga o del vehículo.</string>
+    <string name="driver_emergency_breakdown">Avería</string>
+    <string name="driver_emergency_breakdown_hint">El vehículo no puede seguir.</string>
+    <string name="driver_emergency_details">Detalle</string>
+    <string name="driver_emergency_details_placeholder">Dónde estás y qué necesitas</string>
+    <string name="driver_emergency_submit">Reportar emergencia</string>
+    <string name="driver_emergency_confirm_title">¿Reportar %1$s?</string>
+    <string name="driver_emergency_confirm_message">Avisaremos a tu transportista y a OnCargo. El viaje quedará detenido hasta que OnCargo lo resuelva.</string>
+    <string name="driver_emergency_confirm_button">Reportar emergencia</string>
+    <string name="driver_emergency_back">Volver</string>
+    <string name="driver_emergency_sent">Emergencia reportada. Tu transportista ya fue avisado</string>
+    <string name="driver_emergency_queued">Emergencia guardada. Se enviará al recuperar señal</string>
+    <string name="driver_emergency_word_accident">un accidente</string>
+    <string name="driver_emergency_word_theft">un robo</string>
+    <string name="driver_emergency_word_breakdown">una avería</string>
 </resources>

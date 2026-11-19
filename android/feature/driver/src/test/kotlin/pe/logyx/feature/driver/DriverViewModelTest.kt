@@ -114,6 +114,8 @@ class DriverViewModelTest {
         vm.advance(); assertEquals(DriverStep.DELIVERED, vm.state.value.action?.step)
         assertEquals(false, vm.state.value.delivered)
         vm.onPhotoCaptured(byteArrayOf(1, 2, 3))
+        assertFalse(vm.state.value.canAdvance, "2.5: falta quién recibe")
+        vm.onReceiverName("Ana Torres"); vm.onReceiverDoc("45678912")
         vm.advance()
         assertTrue(vm.state.value.delivered)
         assertNull(vm.state.value.action)
@@ -158,6 +160,7 @@ class DriverViewModelTest {
     @Test fun `al subir la foto se habilita y la foto fallida no cuenta`() = runTest {
         val ev = FakeEvidenceRepository(uploadOk = false)
         val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev, FakeRealtime())
+        vm.onReceiverName("Ana Torres"); vm.onReceiverDoc("45678912")
         vm.onPhotoCaptured(byteArrayOf(1))
         assertFalse(vm.state.value.canAdvance)
         ev.uploadOk = true
@@ -170,6 +173,7 @@ class DriverViewModelTest {
         val shipments = FakeShipments(atDestination, failNext = ApiException(409, "LOGYX-TRK-006", "Falta evidencia"))
         val vm = DriverTripViewModel(shipments, FakeCatalog(), ev, FakeRealtime())
         vm.onPhotoCaptured(byteArrayOf(1))
+        vm.onReceiverName("Ana Torres"); vm.onReceiverDoc("45678912")
         val loadsBefore = ev.loads.size
         vm.advance()
         assertTrue(vm.state.value.photoMissingRejected)
@@ -188,26 +192,12 @@ class DriverViewModelTest {
         val shipments = FakeShipments(atDestination, failNext = ApiException(409, "LOGYX-TRK-005", "Incidencia activa"))
         val vm2 = DriverTripViewModel(shipments, FakeCatalog(), FakeEvidenceRepository(), FakeRealtime())
         vm2.onPhotoCaptured(byteArrayOf(1))
+        vm2.onReceiverName("Ana Torres"); vm2.onReceiverDoc("45678912")
         vm2.advance()
         assertTrue(vm2.state.value.incidentBlocked)
         assertFalse(vm2.state.value.canAdvance)
         vm2.refresh()
         assertFalse(vm2.state.value.incidentBlocked)
-    }
-
-    @Test fun `reintenta cada 20 segundos mientras haya evidencia fallida`() = runTest {
-        val ev = FakeEvidenceRepository(uploadOk = false)
-        val vm = DriverTripViewModel(FakeShipments(atDestination), FakeCatalog(), ev, FakeRealtime())
-        vm.onPhotoCaptured(byteArrayOf(1))
-        assertEquals(0, ev.retryAllCalls)
-        advanceTimeBy(20_001)
-        assertEquals(1, ev.retryAllCalls)
-        ev.uploadOk = true
-        advanceTimeBy(20_000)
-        assertEquals(2, ev.retryAllCalls)
-        advanceTimeBy(60_000)
-        assertEquals(2, ev.retryAllCalls)
-        assertTrue(vm.state.value.canAdvance)
     }
 
     @Test fun `tiempo real refresca el viaje en silencio con driver_assigned`() = runTest(UnconfinedTestDispatcher()) {

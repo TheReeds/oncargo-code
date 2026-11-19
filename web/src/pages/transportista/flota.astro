@@ -2,11 +2,14 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import FleetManager from '@/features/fleet/components/FleetManager';
-import { listDrivers, listVehicles } from '@/features/fleet/server';
+import { listDrivers, listFleetDocuments, listVehicles } from '@/features/fleet/server';
 const t = Astro.locals.session!.token;
-const [vehicles, drivers] = await Promise.all([listVehicles(t), listDrivers(t)]);
+const [vehicles, drivers, expiries] = await Promise.all([listVehicles(t), listDrivers(t), listFleetDocuments(t).catch(() => [])]);
+// Aviso «documento por vencer»: ?vehiculo=<id> o ?conductor=<id> abre sus documentos.
+const q = Astro.url.searchParams;
+const focus = q.get('vehiculo') ? { ownerType: 'VEHICLE' as const, id: q.get('vehiculo')! } : q.get('conductor') ? { ownerType: 'DRIVER' as const, id: q.get('conductor')! } : null;
 ---
 <AppShell title="Flota" active="flota">
-  <PageHeader title="Flota" subtitle="Administra tus vehículos y conductores. Solo los vehículos disponibles pueden ofertar." />
-  <FleetManager client:load vehicles={vehicles} drivers={drivers} />
+  <PageHeader title="Flota" subtitle="Administra tus vehículos, conductores y sus documentos. Un vehículo en mantenimiento no puede ofertar." />
+  <FleetManager client:load vehicles={vehicles} drivers={drivers} expiries={expiries} focus={focus} />
 </AppShell>

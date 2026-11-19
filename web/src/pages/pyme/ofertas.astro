@@ -1,0 +1,20 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import OffersInbox from '@/features/requests/components/OffersInbox';
+import { offersInbox } from '@/features/requests/server';
+const token = Astro.locals.session!.token;
+let inbox: Awaited<ReturnType<typeof offersInbox>> = { requests: 0, bids: 0, rows: [] };
+let loadError: string | null = null;
+try {
+  inbox = await offersInbox(token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus ofertas.';
+}
+---
+<AppShell title="Ofertas" active="ofertas">
+  <PageHeader title="Ofertas por revisar" subtitle="La mejor oferta de cada solicitud publicada, en un solo lugar" />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus ofertas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <OffersInbox client:load initial={inbox} />
+</AppShell>

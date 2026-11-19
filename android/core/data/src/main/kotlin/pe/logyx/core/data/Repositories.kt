@@ -40,6 +40,13 @@ interface LoadsRepository {
     suspend fun commissionRate(): Result<Double> = Result.failure(UnsupportedOperationException())
     /** Retira mi oferta pendiente con la subasta abierta (`BID-005`). Después no se puede volver a ofertar (`BID-003`). */
     suspend fun withdrawBid(bidId: String): Result<BidView> = Result.failure(UnsupportedOperationException())
+    /** Búsquedas guardadas (V22, 2.3): solo las mías. `ALT-001/002/003` llegan como `ApiException` en español. */
+    suspend fun savedSearches(): Result<List<pe.logyx.core.model.SavedSearch>> = Result.failure(UnsupportedOperationException())
+    suspend fun createSavedSearch(body: pe.logyx.core.model.SavedSearchRequest): Result<pe.logyx.core.model.SavedSearch> =
+        Result.failure(UnsupportedOperationException())
+    suspend fun updateSavedSearch(id: String, body: pe.logyx.core.model.SavedSearchRequest): Result<pe.logyx.core.model.SavedSearch> =
+        Result.failure(UnsupportedOperationException())
+    suspend fun deleteSavedSearch(id: String): Result<Unit> = Result.failure(UnsupportedOperationException())
 }
 
 /** Solicitudes de la PYME y ofertas recibidas. */
@@ -54,6 +61,19 @@ interface RequestsRepository {
     suspend fun reopen(requestId: String, pickupDate: String? = null): Result<RequestView> = Result.failure(UnsupportedOperationException())
     /** Republica una solicitud cancelada; devuelve la **nueva** solicitud. `REQ-004`/`REQ-003`. */
     suspend fun republish(requestId: String, pickupDate: String? = null): Result<RequestView> = Result.failure(UnsupportedOperationException())
+    /** Publica una solicitud nueva (2.16). Con la misma `idempotencyKey` un reintento devuelve la ya creada. Errores con `field` (RN07, ventanas). */
+    suspend fun create(body: pe.logyx.core.model.CreateRequestBody, idempotencyKey: String? = null): Result<RequestView> =
+        Result.failure(UnsupportedOperationException())
+    /** Cotización en vivo del formulario (`POST /pricing/calculate`). */
+    suspend fun quote(origin: String, destination: String, weightKg: Double, cargoType: pe.logyx.core.model.CargoType): Result<pe.logyx.core.model.QuoteView> =
+        Result.failure(UnsupportedOperationException())
+    /** Libreta de direcciones de la organización (activas). */
+    suspend fun places(): Result<List<pe.logyx.core.model.PlaceView>> = Result.failure(UnsupportedOperationException())
+    /** Plantillas de solicitud de la organización (2.1). */
+    suspend fun templates(): Result<List<pe.logyx.core.model.TemplateView>> = Result.failure(UnsupportedOperationException())
+    /** «Publicar ahora» una plantilla con la fecha de recojo dada. */
+    suspend fun publishTemplate(templateId: String, pickupDate: String, idempotencyKey: String? = null): Result<pe.logyx.core.model.PublishedFromTemplate> =
+        Result.failure(UnsupportedOperationException())
 }
 
 /** Envíos: seguimiento (PYME/transportista) y ejecución (conductor). */
@@ -81,6 +101,12 @@ interface ShipmentsRepository {
      */
     suspend fun arrive(shipmentId: String, stopId: String, occurredAt: String?): Result<ShipmentView> = arrive(shipmentId, stopId)
     suspend fun complete(shipmentId: String, stopId: String, occurredAt: String?): Result<ShipmentView> = complete(shipmentId, stopId)
+    /**
+     * Cierre con los datos de la parada (V23, 2.5): peso medido del recojo y quién recibe en la entrega. Por omisión delega en
+     * [complete] con la hora (los fakes viejos ignoran los datos).
+     */
+    suspend fun completeStop(shipmentId: String, stopId: String, event: pe.logyx.core.model.StopEventRequest): Result<ShipmentView> =
+        complete(shipmentId, stopId, event.occurredAt)
     /** Enlace público de seguimiento (PYME ADMIN/OPS). `SHL-002/003/004`, `AUTH-007` por `userMessage()`. */
     suspend fun createShareLink(shipmentId: String, expiresInDays: Int? = null): Result<ShareLinkCreated> =
         Result.failure(UnsupportedOperationException())
@@ -107,6 +133,10 @@ class DefaultLoadsRepository(private val api: LogyxApi) : LoadsRepository {
     override suspend fun withdrawBid(bidId: String) = apiCall { api.withdrawBid(bidId) }
     override suspend fun eligibility(requestId: String) = apiCall { api.vehicleEligibility(requestId) }
     override suspend fun commissionRate() = apiCall { api.commission().commissionRate }
+    override suspend fun savedSearches() = apiCall { api.savedSearches() }
+    override suspend fun createSavedSearch(body: pe.logyx.core.model.SavedSearchRequest) = apiCall { api.createSavedSearch(body) }
+    override suspend fun updateSavedSearch(id: String, body: pe.logyx.core.model.SavedSearchRequest) = apiCall { api.updateSavedSearch(id, body) }
+    override suspend fun deleteSavedSearch(id: String) = apiCall { api.deleteSavedSearch(id) }
 }
 
 class DefaultRequestsRepository(private val api: LogyxApi) : RequestsRepository {
@@ -117,6 +147,13 @@ class DefaultRequestsRepository(private val api: LogyxApi) : RequestsRepository 
     override suspend fun cancel(requestId: String, reason: String?) = apiCall { api.cancelRequest(requestId, reason) }
     override suspend fun reopen(requestId: String, pickupDate: String?) = apiCall { api.reopenRequest(requestId, pickupDate) }
     override suspend fun republish(requestId: String, pickupDate: String?) = apiCall { api.republishRequest(requestId, pickupDate) }
+    override suspend fun create(body: pe.logyx.core.model.CreateRequestBody, idempotencyKey: String?) = apiCall { api.createRequest(body, idempotencyKey) }
+    override suspend fun quote(origin: String, destination: String, weightKg: Double, cargoType: pe.logyx.core.model.CargoType) =
+        apiCall { api.quote(pe.logyx.core.model.QuoteRequestBody(origin, destination, weightKg, cargoType)) }
+    override suspend fun places() = apiCall { api.places().filter { !it.archived } }
+    override suspend fun templates() = apiCall { api.templates().filter { !it.archived } }
+    override suspend fun publishTemplate(templateId: String, pickupDate: String, idempotencyKey: String?) =
+        apiCall { api.publishTemplate(templateId, pickupDate, idempotencyKey) }
 }
 
 class DefaultShipmentsRepository(private val api: LogyxApi) : ShipmentsRepository {
@@ -141,5 +178,7 @@ class DefaultShipmentsRepository(private val api: LogyxApi) : ShipmentsRepositor
         apiCall { api.arriveAtStop(shipmentId, stopId, occurredAt) }
     override suspend fun complete(shipmentId: String, stopId: String, occurredAt: String?) =
         apiCall { api.completeStop(shipmentId, stopId, occurredAt) }
+    override suspend fun completeStop(shipmentId: String, stopId: String, event: pe.logyx.core.model.StopEventRequest) =
+        apiCall { api.completeStop(shipmentId, stopId, event) }
     override suspend fun createShareLink(shipmentId: String, expiresInDays: Int?) = apiCall { api.createShareLink(shipmentId, expiresInDays) }
 }

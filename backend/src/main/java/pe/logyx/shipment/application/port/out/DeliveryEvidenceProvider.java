@@ -8,4 +8,10 @@ import java.util.UUID;
  */
 public interface DeliveryEvidenceProvider {
     boolean hasDeliveryPhoto(UUID shipmentId, UUID stopId);
+
+    /** Roadmap 2.5: la parada de recojo tiene al menos una foto de la carga ({@code PICKUP_PHOTO}). */
+    default boolean hasPickupPhoto(UUID shipmentId, UUID stopId) { return false; }
+
+    /** 2.6/2.7: el documento es de ese envío y quien llama lo ve (evidencia de un ajuste, adjunto de incidencia). */
+    default boolean belongsToShipment(UUID shipmentId, UUID documentId) { return false; }
 }

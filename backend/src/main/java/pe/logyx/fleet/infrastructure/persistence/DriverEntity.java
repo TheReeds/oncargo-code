@@ -30,8 +30,17 @@ public class DriverEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
+    @Column(name = "license_category")
+    public String licenseCategory;
+
+    @Column(name = "license_expires_at")
+    public java.time.LocalDate licenseExpiresAt;
+
+    public String dni;
+
     Driver toDomain() {
-        return new Driver(id, organizationId, profileId, licenseNumber, status, createdAt);
+        return new Driver(id, organizationId, profileId, licenseNumber, status, createdAt, licenseCategory,
+                licenseExpiresAt, dni);
     }
 
     void apply(Driver d) {
@@ -41,5 +50,8 @@ public class DriverEntity extends PanacheEntityBase {
         licenseNumber = d.licenseNumber();
         status = d.status();
         createdAt = d.createdAt();
+        licenseCategory = d.licenseCategory();
+        licenseExpiresAt = d.licenseExpiresAt();
+        dni = d.dni();
     }
 }

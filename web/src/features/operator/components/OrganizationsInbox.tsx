@@ -152,6 +152,7 @@ export default function OrganizationsInbox({ rows, filters, page, size, total, c
               { label: 'Registrada', value: formatDateTime(detail.createdAt) },
               { label: detail.verificationStatus === 'PENDING' ? 'Nota' : 'Última decisión', value: detail.verificationUpdatedAt ? formatDateTime(detail.verificationUpdatedAt) : undefined, hint: detail.verificationNote },
             ]} />
+            <a href={`/operador/organizaciones/${detail.id}`} className="inline-flex text-sm font-medium text-petrol-700 hover:underline">Ver ficha completa</a>
             <p className="rounded-input bg-steel-100 px-3 py-2.5 text-xs text-ink-700"><Building2 className="mr-1 inline size-3.5 align-text-bottom" aria-hidden="true" />El dígito verificador solo confirma el formato del RUC. Antes de verificar, contrasta la razón social y el RUC con la ficha de SUNAT.</p>
             <div className="flex flex-col gap-2 border-t border-steel-200 pt-4">
               {detail.verificationStatus !== 'VERIFIED' && <Button variant="money" onClick={() => setDecision('verify')}><ShieldCheck />{detail.verificationStatus === 'PENDING' ? 'Verificar empresa' : 'Reactivar y verificar'}</Button>}

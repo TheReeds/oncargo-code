@@ -37,4 +37,19 @@ class NotificationRoutingTest {
         assertNull(n(NotificationType.UNKNOWN, null).destination())
         assertNull(n(NotificationType.NEW_BID, NotificationTarget.REQUEST, null).destination())
     }
+
+    // Ola 2, zona T (V22)
+    @Test fun `alerta de carga nueva abre el detalle de la carga`() {
+        assertEquals(NotificationDestination.Request("x"), n(NotificationType.NEW_LOAD_MATCH, NotificationTarget.REQUEST).destination())
+    }
+
+    @Test fun `documento de flota por vencer solo se lista, sin navegar`() {
+        assertNull(n(NotificationType.FLEET_DOCUMENT_EXPIRING, NotificationTarget.VEHICLE).destination())
+        assertNull(n(NotificationType.FLEET_DOCUMENT_EXPIRING, NotificationTarget.DRIVER).destination())
+    }
+
+    @Test fun `oferta mejorada lleva a la solicitud`() {
+        assertEquals(NotificationDestination.Request("x"), n(NotificationType.BID_IMPROVED, NotificationTarget.REQUEST).destination())
+        assertEquals(NotificationDestination.BidsOrRequests, n(NotificationType.BID_IMPROVED, NotificationTarget.BID).destination())
+    }
 }

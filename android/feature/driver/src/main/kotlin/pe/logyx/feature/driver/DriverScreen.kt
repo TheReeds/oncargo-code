@@ -22,6 +22,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import pe.logyx.core.data.SyncItem
+import pe.logyx.core.data.SyncItemKind
+import pe.logyx.core.data.SyncItemState
+import pe.logyx.core.designsystem.components.LogyxTextField
+import pe.logyx.core.designsystem.components.NumberField
+import pe.logyx.core.designsystem.components.RadioCardRow
+import pe.logyx.core.designsystem.components.SyncChipState
+import pe.logyx.core.designsystem.components.SyncStatusChip
+import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.data.EvidenceItem
 import pe.logyx.core.data.EvidenceState
 import pe.logyx.core.designsystem.components.ButtonVariant
@@ -46,6 +58,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -119,30 +132,44 @@ fun DriverTripRoute(
     val scope = rememberCoroutineScope()
     val injected = LocalPhotoCapture.current
     var tempPath by rememberSaveable { mutableStateOf<String?>(null) }
+    // Qué se está fotografiando (foto de entrega, foto de la carga o guía de remisión): sobrevive a la cámara.
+    var captureType by rememberSaveable { mutableStateOf<String?>(null) }
+    fun deliver(bytes: ByteArray, type: DocumentType) =
+        if (type == DocumentType.REMISSION_GUIDE) viewModel.onGuideCaptured(bytes) else viewModel.onPhotoCaptured(bytes, type)
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val file = tempPath?.let(::File)
+        val type = captureType?.let { runCatching { DocumentType.valueOf(it) }.getOrNull() }
         tempPath = null
+        captureType = null
         if (file != null) scope.launch {
             val bytes = withContext(Dispatchers.IO) {
                 val data = if (ok) runCatching { file.readBytes() }.getOrNull() else null
                 file.delete()
                 data
             }
-            if (bytes != null && bytes.isNotEmpty()) viewModel.onPhotoCaptured(bytes)
+            if (bytes != null && bytes.isNotEmpty()) deliver(bytes, type ?: DocumentType.DELIVERY_PHOTO)
         }
+    }
+    // Emergencia: se pide el permiso de ubicación al confirmar; si se niega, se reporta sin ubicación.
+    var pendingEmergency by remember { mutableStateOf<Pair<EmergencyKind, String>?>(null) }
+    val locate: suspend () -> DeviceLocation? = { context.currentDeviceLocation() }
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        pendingEmergency?.let { (kind, text) -> viewModel.reportEmergency(kind, text, locate) }
+        pendingEmergency = null
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
     LiveEffect(viewModel) { viewModel.liveLoop() }
     val shipmentId = state.trip?.id
     DriverTripScreen(
         state, viewModel::refresh, viewModel::advance, viewModel::onNoticeShown, viewModel::dismissActionError,
-        onTakePhoto = {
-            if (injected != null) injected.capture()?.let(viewModel::onPhotoCaptured)
+        onTakePhoto = { type ->
+            if (injected != null) injected.capture()?.let { deliver(it, type) }
             else scope.launch {
                 val file = withContext(Dispatchers.IO) {
-                    File.createTempFile("entrega_", ".jpg", File(context.cacheDir, "evidence").apply { mkdirs() })
+                    File.createTempFile("evidencia_", ".jpg", File(context.cacheDir, "evidence").apply { mkdirs() })
                 }
                 tempPath = file.absolutePath
+                captureType = type.name
                 val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 launcher.launch(uri)
             }
@@ -153,8 +180,24 @@ fun DriverTripRoute(
         onDismissClosedEvidence = viewModel::dismissClosedEvidence,
         onReportIncident = { shipmentId?.let(onReportIncident) },
         onOpenIncidents = { shipmentId?.let(onOpenIncidents) },
+        form = DriverFormActions(viewModel::onWeight, viewModel::onReceiverName, viewModel::onReceiverDoc),
+        onRetrySync = viewModel::retrySyncNow,
+        onEmergency = { kind, text ->
+            if (context.hasLocationPermission()) viewModel.reportEmergency(kind, text, locate)
+            else {
+                pendingEmergency = kind to text
+                permissions.launch(LOCATION_PERMISSIONS)
+            }
+        },
     )
 }
+
+/** Intenciones de los campos de la parada (peso del recojo, quién recibe). */
+class DriverFormActions(
+    val onWeight: (String) -> Unit = {},
+    val onReceiverName: (String) -> Unit = {},
+    val onReceiverDoc: (String) -> Unit = {},
+)
 
 @Composable
 private fun DriverStep.actionText() = stringResource(
@@ -174,13 +217,16 @@ fun DriverTripScreen(
     onAdvance: () -> Unit,
     onNoticeShown: () -> Unit = {},
     onDismissError: () -> Unit = {},
-    onTakePhoto: () -> Unit = {},
+    onTakePhoto: (DocumentType) -> Unit = {},
     onSignature: (ByteArray) -> Unit = {},
     onRetryEvidence: (String) -> Unit = {},
     onDiscardEvidence: (String) -> Unit = {},
     onDismissClosedEvidence: () -> Unit = {},
     onReportIncident: () -> Unit = {},
     onOpenIncidents: () -> Unit = {},
+    form: DriverFormActions = DriverFormActions(),
+    onRetrySync: () -> Unit = {},
+    onEmergency: (EmergencyKind, String) -> Unit = { _, _ -> },
 ) {
     val trip = state.trip
     val snackbar = rememberLogyxSnackbarState()
@@ -188,10 +234,15 @@ fun DriverTripScreen(
         DriverNotice.DELIVERED -> UiMessage.success(stringResource(R.string.driver_notice_delivered))
         DriverNotice.STOP_UPDATED -> UiMessage.success(stringResource(R.string.driver_notice_stop_updated))
         DriverNotice.QUEUED -> UiMessage.info(stringResource(R.string.driver_notice_queued))
+        DriverNotice.EMERGENCY_SENT -> UiMessage.success(stringResource(R.string.driver_emergency_sent))
+        DriverNotice.EMERGENCY_QUEUED -> UiMessage.info(stringResource(R.string.driver_emergency_queued))
+        DriverNotice.SYNCED -> UiMessage.success(stringResource(R.string.driver_notice_synced))
         null -> null
     }
     MessageEffect(notice, snackbar, onNoticeShown)
     var confirming by remember { mutableStateOf(false) }
+    var showSync by remember { mutableStateOf(false) }
+    var showEmergency by remember { mutableStateOf(false) }
 
     val title = if (trip != null) "${cityLabel(trip.originCity)} → ${cityLabel(trip.destinationCity)}" else stringResource(R.string.driver_title_default)
     LogyxScreen(
@@ -209,6 +260,7 @@ fun DriverTripScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                     ) {
                         ClosedEvidenceNotice(state.closedEvidence, onDismissClosedEvidence)
+                        SyncIndicator(state) { showSync = true }
                         EmptyState(stringResource(R.string.driver_empty_title), stringResource(R.string.driver_empty_message))
                         HistorySection(state.history)
                     }
@@ -216,9 +268,21 @@ fun DriverTripScreen(
                 else -> TripContent(
                     state, trip, onRefresh, onDismissError, onConfirm = { confirming = true },
                     onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence, onDismissClosedEvidence, onReportIncident, onOpenIncidents,
+                    form = form, onOpenSync = { showSync = true }, onEmergency = { showEmergency = true },
                 )
             }
         }
+    }
+    if (showSync) {
+        if (state.syncCount == 0 && !state.retrying) showSync = false
+        else SyncSheet(state, onRetrySync) { showSync = false }
+    }
+    if (showEmergency) {
+        EmergencySheet(
+            sending = state.emergencySending,
+            onDismiss = { showEmergency = false },
+            onSubmit = { kind, text -> showEmergency = false; onEmergency(kind, text) },
+        )
     }
 
     val action = state.action
@@ -230,9 +294,16 @@ fun DriverTripScreen(
             DriverStep.ARRIVE_DESTINATION -> Triple(R.string.driver_confirm_arrive_destination_title, R.string.driver_confirm_arrive_destination_message, R.string.driver_confirm_arrive_destination_button)
             DriverStep.DELIVERED -> Triple(R.string.driver_confirm_delivered_title, R.string.driver_confirm_delivered_message, R.string.driver_confirm_delivered_button)
         }
+        val message = when {
+            action.step == DriverStep.PICKED_UP && state.weightKg != null && state.weightValid ->
+                stringResource(R.string.driver_confirm_picked_up_weight, Fmt.kg(state.weightKg))
+            action.step == DriverStep.DELIVERED && state.receiverValid ->
+                stringResource(R.string.driver_confirm_delivered_receiver, state.form.receiverName.trim(), pe.logyx.core.model.ReceiverDoc.normalize(state.form.receiverDoc))
+            else -> stringResource(m)
+        }
         LogyxConfirmDialog(
             title = stringResource(t),
-            message = stringResource(m),
+            message = message,
             confirmLabel = stringResource(b),
             dismissLabel = stringResource(R.string.driver_confirm_not_yet),
             onConfirm = {
@@ -265,13 +336,16 @@ private fun TripContent(
     onRefresh: () -> Unit,
     onDismissError: () -> Unit,
     onConfirm: () -> Unit,
-    onTakePhoto: () -> Unit,
+    onTakePhoto: (DocumentType) -> Unit,
     onSignature: (ByteArray) -> Unit,
     onRetryEvidence: (String) -> Unit,
     onDiscardEvidence: (String) -> Unit,
     onDismissClosedEvidence: () -> Unit,
     onReportIncident: () -> Unit,
     onOpenIncidents: () -> Unit,
+    form: DriverFormActions,
+    onOpenSync: () -> Unit,
+    onEmergency: () -> Unit,
 ) {
     val total = trip.stops.size
     val done = trip.stops.count { it.status == StopStatus.COMPLETED }
@@ -285,7 +359,7 @@ private fun TripContent(
                 kind = MessageKind.Warning,
             )
         }
-        val evidenceStep = state.action?.step == DriverStep.DELIVERED
+        val evidenceStep = state.action?.step == DriverStep.DELIVERED || state.pickupStep
         // En la entrega el panel de evidencia necesita espacio: el mapa se achica.
         Box(Modifier.fillMaxWidth().weight(if (evidenceStep) 0.3f else 0.8f)) {
             val mapDescription = stringResource(R.string.driver_map_a11y, cityLabel(trip.originCity), cityLabel(trip.destinationCity))
@@ -308,10 +382,14 @@ private fun TripContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 ClosedEvidenceNotice(state.closedEvidence, onDismissClosedEvidence)
-                if (state.pendingSync) PendingSyncNotice()
+                SyncIndicator(state, onOpenSync)
                 if (state.delivered) DeliveredCard(trip) else trip.nextStop()?.let { NextStopCard(it, current, total) }
+                if (state.pickupStep) PickupPanel(state, onTakePhoto, form.onWeight, onRetryEvidence, onDiscardEvidence)
                 when (state.evidencePhase) {
-                    EvidencePhase.OPEN -> EvidencePanel(state.evidence, onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence)
+                    EvidencePhase.OPEN -> {
+                        EvidencePanel(state.evidence, { onTakePhoto(DocumentType.DELIVERY_PHOTO) }, onSignature, onRetryEvidence, onDiscardEvidence)
+                        ReceiverCard(state, form)
+                    }
                     // RN06: la foto y la firma solo se piden entre la llegada y el cierre de la entrega; se explica por qué no hay botones.
                     EvidencePhase.NOT_YET -> EvidenceHint(R.string.driver_evidence_not_yet)
                     // Entrega guardada en el teléfono: la foto y el cierre salen al recuperar señal.
@@ -343,25 +421,25 @@ private fun TripContent(
                 }
                 if (action != null) {
                     LogyxButton(action.step.actionText(), onConfirm, size = ButtonSize.Xl, loading = state.acting, enabled = state.canAdvance)
-                    val hint = when {
-                        state.incidentBlocked -> null // ya lo explica el banner de arriba
-                        state.photoBlocked && state.photoMissingRejected -> R.string.driver_evidence_missing
-                        state.photoBlocked -> R.string.driver_evidence_required_hint
-                        state.needsEvidence && !state.hasUploadedPhoto && state.hasPhotoAwaitingSignal -> R.string.driver_evidence_awaiting_hint
-                        else -> null
-                    }
-                    hint?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    actionHint(state)?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LogyxButton(
-                            stringResource(R.string.driver_incident_report), onReportIncident, Modifier.weight(1f),
-                            variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
-                        )
                         if (state.incidentBlocked) {
                             LogyxButton(
                                 stringResource(R.string.driver_incident_view), onOpenIncidents, Modifier.weight(1f),
                                 variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
                             )
+                        } else {
+                            LogyxButton(
+                                stringResource(R.string.driver_incident_report), onReportIncident, Modifier.weight(1f),
+                                variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
+                            )
                         }
+                        // Roadmap 2.7: accidente, robo o avería con ubicación; funciona sin señal (cola offline).
+                        LogyxButton(
+                            stringResource(R.string.driver_emergency), onEmergency, Modifier.weight(1f),
+                            variant = ButtonVariant.Destructive, size = ButtonSize.Medium, icon = Icons.Rounded.WarningAmber,
+                            loading = state.emergencySending,
+                        )
                     }
                 }
             }
@@ -386,7 +464,7 @@ private fun EvidenceHint(@androidx.annotation.StringRes text: Int) {
 @Composable
 private fun ClosedEvidenceNotice(items: List<EvidenceItem>, onDismiss: () -> Unit) {
     if (items.isEmpty()) return
-    val photos = items.count { it.type == DocumentType.DELIVERY_PHOTO }
+    val photos = items.count { it.type != DocumentType.SIGNATURE }
     val signatures = items.count { it.type == DocumentType.SIGNATURE }
     val what = buildList {
         if (photos > 0) add(androidx.compose.ui.res.pluralStringResource(R.plurals.driver_evidence_closed_photos, photos, photos))
@@ -476,31 +554,7 @@ private fun EvidencePanel(
                 if (it.type == DocumentType.SIGNATURE) stringResource(R.string.driver_evidence_signature_caption)
                 else stringResource(R.string.driver_evidence_photo_caption, ++photoNo)
             }
-            shown.indices.chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { i -> EvidenceThumb(shown[i], captions[i], Modifier.weight(1f)) }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-            shown.forEachIndexed { i, item ->
-                if (item.awaitingSignal && item.state != EvidenceState.UPLOADING) {
-                    Text(
-                        "${captions[i]}: " + stringResource(R.string.driver_evidence_offline),
-                        style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.onWarningContainer,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                } else if (item.state == EvidenceState.FAILED) {
-                    Text(
-                        "${captions[i]}: " + (item.error?.let { stringResource(R.string.driver_evidence_failed, it) } ?: stringResource(R.string.driver_evidence_failed_generic)),
-                        style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.dangerText,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LogyxButton(stringResource(R.string.driver_evidence_retry), { onRetry(item.id) }, Modifier.weight(1f), ButtonVariant.Secondary, ButtonSize.Medium)
-                        LogyxButton(stringResource(R.string.driver_evidence_discard), { onDiscard(item.id) }, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Medium)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-            }
+            EvidenceThumbs(shown, captions, onRetry, onDiscard)
         }
     }
     if (signing) {
@@ -568,16 +622,6 @@ private fun OfflineBanner(cachedAt: String?) {
     )
 }
 
-/** Toques guardados en el teléfono que el servidor aún no confirmó (roadmap 1.11). */
-@Composable
-private fun PendingSyncNotice() {
-    AlertBanner(
-        stringResource(R.string.driver_pending_message),
-        Modifier.fillMaxWidth(),
-        kind = MessageKind.Info,
-        title = stringResource(R.string.driver_pending_title),
-    )
-}
 
 @Composable
 private fun DeliveredCard(trip: ShipmentView) {
@@ -595,6 +639,256 @@ private fun DeliveredCard(trip: ShipmentView) {
             )
         }
     }
+}
+
+/** Texto bajo el botón XL que explica qué falta (o que la foto saldrá al recuperar señal). */
+private fun actionHint(state: DriverUiState): Int? = when {
+    state.incidentBlocked -> null // ya lo explica el banner de arriba
+    state.photoBlocked && state.photoMissingRejected -> R.string.driver_evidence_missing
+    state.photoBlocked -> R.string.driver_evidence_required_hint
+    state.receiverBlocked -> R.string.driver_receiver_hint
+    state.needsEvidence && !state.hasUploadedPhoto && state.hasPhotoAwaitingSignal -> R.string.driver_evidence_awaiting_hint
+    state.pickupStep && state.pickupPhotoRequired && !state.hasPickupPhoto ->
+        if (state.photoMissingRejected) R.string.driver_pickup_hint_photo_rejected else R.string.driver_pickup_hint_photo
+    state.pickupStep && !state.weightValid -> R.string.driver_pickup_hint_weight
+    state.pickupStep && state.evidence.any { it.type == DocumentType.PICKUP_PHOTO && it.awaitingSignal && it.state != EvidenceState.UPLOADING } ->
+        R.string.driver_pickup_hint_awaiting
+    else -> null
+}
+
+/** «3 acciones por sincronizar»: abre la hoja con la lista, su estado y «Reintentar ahora». */
+@Composable
+private fun SyncIndicator(state: DriverUiState, onOpen: () -> Unit) {
+    val chip = when (state.syncState) {
+        SyncItemState.FAILED -> SyncChipState.Failed
+        SyncItemState.SENDING -> SyncChipState.Sending
+        SyncItemState.WAITING_SIGNAL -> SyncChipState.WaitingSignal
+        else -> SyncChipState.Queued
+    }
+    SyncStatusChip(state.syncCount, chip, onOpen)
+}
+
+@Composable
+private fun SyncItem.title(trip: ShipmentView?): String {
+    val stopType = trip?.stops?.firstOrNull { it.id == stopId }?.type
+    return when (kind) {
+        SyncItemKind.ARRIVE -> stringResource(
+            when (stopType) { StopType.PICKUP -> R.string.driver_sync_arrive_pickup; StopType.DELIVERY -> R.string.driver_sync_arrive_destination; null -> R.string.driver_sync_arrive_stop },
+        )
+        SyncItemKind.COMPLETE -> stringResource(
+            when (stopType) { StopType.PICKUP -> R.string.driver_sync_picked_up; StopType.DELIVERY -> R.string.driver_sync_delivered; null -> R.string.driver_sync_complete_stop },
+        )
+        SyncItemKind.EVIDENCE -> evidence?.type?.label ?: stringResource(R.string.driver_evidence_title)
+        SyncItemKind.INCIDENT -> stringResource(R.string.driver_sync_incident, operation?.incident?.category?.label ?: "")
+        SyncItemKind.ADJUSTMENT -> stringResource(R.string.driver_sync_adjustment, operation?.adjustment?.type?.label ?: "")
+    }
+}
+
+@Composable
+private fun SyncItem.stateText(): String = when (state) {
+    SyncItemState.QUEUED -> stringResource(R.string.driver_sync_state_queued)
+    SyncItemState.SENDING -> stringResource(R.string.driver_sync_state_sending)
+    SyncItemState.WAITING_SIGNAL -> stringResource(R.string.driver_sync_state_waiting_signal)
+    SyncItemState.WAITING_PHOTO -> stringResource(R.string.driver_sync_state_waiting_photo)
+    SyncItemState.FAILED -> stringResource(R.string.driver_sync_state_failed, error ?: stringResource(R.string.driver_evidence_failed_generic))
+}
+
+/** Hoja de pendientes: cada operación en el orden en que saldrá, su estado, el próximo intento y «Reintentar ahora». */
+@Composable
+private fun SyncSheet(state: DriverUiState, onRetry: () -> Unit, onDismiss: () -> Unit) {
+    val items = state.syncList
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.driver_sync_title)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.driver_sync_intro), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            items.forEach { item ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(item.title(state.trip), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                        item.operation?.createdAt?.let {
+                            Text(stringResource(R.string.driver_sync_saved_at, Fmt.time(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    val tone = when (item.state) {
+                        SyncItemState.FAILED -> PillTone.Red
+                        SyncItemState.WAITING_SIGNAL, SyncItemState.WAITING_PHOTO -> PillTone.Amber
+                        SyncItemState.SENDING -> PillTone.Petrol
+                        SyncItemState.QUEUED -> PillTone.Neutral
+                    }
+                    if (item.state == SyncItemState.FAILED) StatusPill(stringResource(R.string.driver_sync_state_failed_short), tone)
+                    else StatusPill(item.stateText(), tone)
+                }
+                if (item.state == SyncItemState.FAILED) {
+                    Text(item.stateText(), style = MaterialTheme.typography.bodySmall, color = LogyxTheme.colors.dangerText)
+                }
+            }
+            state.sync.nextAttemptAt?.let { at ->
+                Text(
+                    stringResource(R.string.driver_sync_next_attempt, Fmt.time(java.time.Instant.ofEpochMilli(at).toString())),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            state.sync.lastError?.let {
+                Text(stringResource(R.string.driver_sync_last_error, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            LogyxButton(stringResource(R.string.driver_sync_retry), onRetry, size = ButtonSize.Large, loading = state.retrying)
+        }
+    }
+}
+
+/** Lista de miniaturas de evidencia con su estado, «Reintentar» y «Descartar» para las fallidas. */
+@Composable
+private fun EvidenceThumbs(shown: List<EvidenceItem>, captions: List<String>, onRetry: (String) -> Unit, onDiscard: (String) -> Unit) {
+    shown.indices.chunked(3).forEach { row ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { i -> EvidenceThumb(shown[i], captions[i], Modifier.weight(1f)) }
+            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+    shown.forEachIndexed { i, item ->
+        if (item.awaitingSignal && item.state != EvidenceState.UPLOADING) {
+            Text(
+                "${captions[i]}: " + stringResource(R.string.driver_evidence_offline),
+                style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.onWarningContainer,
+            )
+            Spacer(Modifier.height(8.dp))
+        } else if (item.state == EvidenceState.FAILED) {
+            Text(
+                "${captions[i]}: " + (item.error?.let { stringResource(R.string.driver_evidence_failed, it) } ?: stringResource(R.string.driver_evidence_failed_generic)),
+                style = MaterialTheme.typography.bodyMedium, color = LogyxTheme.colors.dangerText,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LogyxButton(stringResource(R.string.driver_evidence_retry), { onRetry(item.id) }, Modifier.weight(1f), ButtonVariant.Secondary, ButtonSize.Medium)
+                LogyxButton(stringResource(R.string.driver_evidence_discard), { onDiscard(item.id) }, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Medium)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * Recojo (2.5), entre «Llegué» y «Carga recogida»: foto de la carga (obligatoria si la PYME la pidió), peso medido (obligatorio
+ * si lo pidió) y foto de la guía de remisión (opcional). Una foto tomada y en cola cuenta, como en la entrega.
+ */
+@Composable
+private fun PickupPanel(
+    state: DriverUiState,
+    onTakePhoto: (DocumentType) -> Unit,
+    onWeight: (String) -> Unit,
+    onRetry: (String) -> Unit,
+    onDiscard: (String) -> Unit,
+) {
+    val shown = state.evidence.filter { (it.type == DocumentType.PICKUP_PHOTO || it.type == DocumentType.REMISSION_GUIDE) && it.state != EvidenceState.CLOSED }
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.driver_pickup_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(12.dp))
+        LogyxButton(
+            stringResource(R.string.driver_pickup_take_photo), { onTakePhoto(DocumentType.PICKUP_PHOTO) }, size = ButtonSize.Large,
+            variant = if (state.pickupPhotoRequired) ButtonVariant.Primary else ButtonVariant.Secondary,
+        )
+        Text(
+            stringResource(if (state.pickupPhotoRequired) R.string.driver_pickup_photo_required else R.string.driver_pickup_photo_optional),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        val weightError = state.form.weightError?.asString()
+            ?: if (state.form.weight.isNotBlank() && !state.weightValid) stringResource(R.string.driver_pickup_weight_invalid) else null
+        NumberField(
+            state.form.weight, onWeight, stringResource(R.string.driver_pickup_weight_label), stringResource(R.string.driver_pickup_weight_unit),
+            hint = stringResource(if (state.pickupWeightRequired) R.string.driver_pickup_weight_hint_required else R.string.driver_pickup_weight_hint),
+            error = weightError, optional = !state.pickupWeightRequired,
+        )
+        Spacer(Modifier.height(12.dp))
+        LogyxButton(stringResource(R.string.driver_pickup_guide), { onTakePhoto(DocumentType.REMISSION_GUIDE) }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium)
+        if (shown.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            var n = 0
+            val captions = shown.map {
+                if (it.type == DocumentType.REMISSION_GUIDE) stringResource(R.string.driver_pickup_guide_caption)
+                else stringResource(R.string.driver_pickup_photo_caption, ++n)
+            }
+            EvidenceThumbs(shown, captions, onRetry, onDiscard)
+        }
+    }
+}
+
+/** Entrega (2.5): nombre y DNI/CE de quien recibe, antes de habilitar «Entregado». */
+@Composable
+private fun ReceiverCard(state: DriverUiState, form: DriverFormActions) {
+    LogyxCard(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.driver_receiver_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(12.dp))
+        LogyxTextField(
+            state.form.receiverName, form.onReceiverName, stringResource(R.string.driver_receiver_name),
+            placeholder = stringResource(R.string.driver_receiver_name_placeholder), error = state.form.receiverNameError?.asString(),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.height(12.dp))
+        val doc = state.form.receiverDoc
+        val docError = state.form.receiverDocError?.asString()
+            ?: if (pe.logyx.core.model.ReceiverDoc.normalize(doc).length >= 8 && !pe.logyx.core.model.ReceiverDoc.isValid(doc)) stringResource(R.string.driver_receiver_doc_invalid) else null
+        LogyxTextField(
+            doc, form.onReceiverDoc, stringResource(R.string.driver_receiver_doc),
+            placeholder = stringResource(R.string.driver_receiver_doc_placeholder), hint = stringResource(R.string.driver_receiver_doc_hint), error = docError,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
+        )
+    }
+}
+
+/** Botón «Emergencia» (2.7): elige Accidente / Robo / Avería, detalle opcional y confirma (envío detenido, RN11). */
+@Composable
+private fun EmergencySheet(sending: Boolean, onDismiss: () -> Unit, onSubmit: (EmergencyKind, String) -> Unit) {
+    var kind by rememberSaveable { mutableStateOf<EmergencyKind?>(null) }
+    var text by rememberSaveable { mutableStateOf("") }
+    var confirming by remember { mutableStateOf(false) }
+    LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.driver_emergency_title)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.driver_emergency_intro), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmergencyKind.entries.forEach { k ->
+                RadioCardRow(selected = kind == k, onClick = { kind = k }) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(k.titleRes), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(k.hintRes), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            LogyxTextField(
+                text, { text = it.take(2000) }, stringResource(R.string.driver_emergency_details),
+                placeholder = stringResource(R.string.driver_emergency_details_placeholder), optional = true, singleLine = false, minLines = 2, maxLines = 4,
+            )
+            LogyxButton(
+                stringResource(R.string.driver_emergency_submit), { confirming = true },
+                variant = ButtonVariant.Destructive, size = ButtonSize.Large, enabled = kind != null, loading = sending,
+            )
+        }
+    }
+    val chosen = kind
+    if (confirming && chosen != null) {
+        LogyxConfirmDialog(
+            title = stringResource(R.string.driver_emergency_confirm_title, stringResource(chosen.wordRes)),
+            message = stringResource(R.string.driver_emergency_confirm_message),
+            confirmLabel = stringResource(R.string.driver_emergency_confirm_button),
+            dismissLabel = stringResource(R.string.driver_emergency_back),
+            destructive = true,
+            onConfirm = { confirming = false; onSubmit(chosen, text) },
+            onDismiss = { confirming = false },
+        )
+    }
+}
+
+private val EmergencyKind.titleRes get() = when (this) {
+    EmergencyKind.ACCIDENT -> R.string.driver_emergency_accident
+    EmergencyKind.THEFT -> R.string.driver_emergency_theft
+    EmergencyKind.BREAKDOWN -> R.string.driver_emergency_breakdown
+}
+private val EmergencyKind.hintRes get() = when (this) {
+    EmergencyKind.ACCIDENT -> R.string.driver_emergency_accident_hint
+    EmergencyKind.THEFT -> R.string.driver_emergency_theft_hint
+    EmergencyKind.BREAKDOWN -> R.string.driver_emergency_breakdown_hint
+}
+private val EmergencyKind.wordRes get() = when (this) {
+    EmergencyKind.ACCIDENT -> R.string.driver_emergency_word_accident
+    EmergencyKind.THEFT -> R.string.driver_emergency_word_theft
+    EmergencyKind.BREAKDOWN -> R.string.driver_emergency_word_breakdown
 }
 
 private fun previewTrip(vararg status: StopStatus, shipment: ShipmentStatus = ShipmentStatus.IN_TRANSIT) = ShipmentView(

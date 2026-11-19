@@ -48,4 +48,20 @@
     <string name="incidents_comment_placeholder">Escribe un comentario</string>
     <string name="incidents_operator">OnCargo</string>
     <string name="incidents_comment_empty">Escribe un comentario antes de enviarlo.</string>
+    <!-- V23 (roadmap 2.7) -->
+    <string name="incidents_confirm_message_informative">Avisaremos a la otra parte y a OnCargo. Es informativa: el viaje sigue.</string>
+    <string name="incidents_informative">Informativa: el viaje sigue</string>
+    <string name="incidents_informative_short">Informativa</string>
+    <string name="incidents_holds_shipment">El envío está detenido hasta que OnCargo la resuelva.</string>
+    <string name="incidents_sla_breached">Plazo de respuesta vencido</string>
+    <string name="incidents_claimed_amount">Monto reclamado</string>
+    <string name="incidents_declared_value">Valor declarado</string>
+    <string name="incidents_attachments">Adjuntos: %1$d</string>
+    <string name="incidents_withdrawn_at">Retirada %1$s</string>
+    <string name="incidents_location">Reportada con la ubicación del teléfono</string>
+    <string name="incidents_withdraw">Retirar incidencia</string>
+    <string name="incidents_withdraw_title">¿Retirar esta incidencia?</string>
+    <string name="incidents_withdraw_message">Se cerrará y OnCargo ya no la revisará. No se puede deshacer.</string>
+    <string name="incidents_withdraw_back">Volver</string>
+    <string name="incidents_withdrawn">Incidencia retirada</string>
 </resources>

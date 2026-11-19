@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import pe.logyx.fleet.application.FleetDocumentService;
 import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.application.port.out.BidRepository;
@@ -11,6 +12,7 @@ import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
 import pe.logyx.marketplace.domain.BidEligibilityPolicy;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.shared.config.SystemParameters;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shipment.application.ResourceScheduler;
 import pe.logyx.shipment.domain.ResourceSchedulePolicy;
@@ -54,6 +56,8 @@ public class VehicleAgenda {
     @Inject ResourceScheduler schedule;
     @Inject BidRepository bids;
     @Inject ShipmentRequestRepository requests;
+    @Inject FleetDocumentService fleetDocs;
+    @Inject SystemParameters parameters;
     @ConfigProperty(name = "logyx.bids.max-overlapping-per-vehicle", defaultValue = "3")
     int maxOverlapping;
 
@@ -103,9 +107,36 @@ public class VehicleAgenda {
                 blocker = e;                                                                         // CAP-007
             }
         }
+        if (blocker == null) {
+            // 2.4: documentos de flota vencidos (SOAT, revisión técnica, póliza, MTC): aviso, o bloqueo si el operador lo activó.
+            var issues = fleetDocs.issuesForBid(v.id(), r.cargo().pickupDate());
+            boolean block = parameters.fleetDocsBlock();
+            for (var issue : issues) {
+                if (block && issue.expired()) {
+                    blocker = BusinessException.conflict(issue.code(), v.plate() + ": " + issue.message(), "vehicleId");
+                    break;
+                }
+                warnings.add(new BidWarning(issue.code(), v.plate() + ": " + issue.message()));
+            }
+        }
         LocalDate freeFrom = shipmentConflicts.stream().map(Slot::to).max(Comparator.naturalOrder())
                 .map(d -> d.plusDays(1)).orElse(null);
         return new Assessment(v, w, blocker, shipmentConflicts, bidOverlaps, List.copyOf(warnings), freeFrom);
+    }
+
+    /**
+     * Evalúa un vehículo contra una solicitud publicada por id (matching de alertas, sin usuario: lee como sistema).
+     * Vacío si la solicitud ya no está publicada.
+     */
+    @Transactional
+    public java.util.Optional<Assessment> assessPublished(Vehicle v, UUID requestId) {
+        return requests.findById(requestId).filter(ShipmentRequest::isPublished).map(r -> assess(v, r, null));
+    }
+
+    /** Ofertas pendientes del vehículo con su ventana, para la agenda de flota (2.13). Bajo el RLS del transportista. */
+    @Transactional
+    public List<Slot> pendingBidSlots(UUID vehicleId) {
+        return bidSlots(vehicleId, null, null);
     }
 
     /**

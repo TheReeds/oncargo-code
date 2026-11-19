@@ -1,0 +1,13 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import EscalatedAdjustments from '@/features/operator/components/EscalatedAdjustments';
+import { escalatedAdjustments } from '@/features/operator/server';
+
+const s = Astro.locals.session!;
+const rows = await escalatedAdjustments(s.token);
+---
+<AppShell title="Ajustes por decidir" active="operador-ajustes" wide>
+  <PageHeader title="Ajustes por decidir" subtitle="La PYME no respondió a tiempo. Acepta o rechaza con nota; se avisa a las dos partes." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Ajustes' }]} />
+  <EscalatedAdjustments client:load initial={rows ?? []} />
+</AppShell>

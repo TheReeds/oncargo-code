@@ -76,12 +76,19 @@ fun dataModule(baseUrl: String) = module {
         val auth = get<AuthRepository>()
         DriverTripCache(TextStore.InFile(java.io.File(androidContext().filesDir, "driver/active-trip.json")), { auth.sessionUser?.id })
     }
+    single<AdjustmentsRepository> { DefaultAdjustmentsRepository(get()) }
+    // Cola offline completa (Ola 2, 2.5): paradas, evidencia, emergencias y ajustes; reintento con espera exponencial en un
+    // scope de la app, WorkManager con red en segundo plano y reintento inmediato al recuperar la red.
+    single<SyncScheduler> { WorkManagerSyncScheduler(androidContext()) }
     single {
         val auth = get<AuthRepository>()
         val evidence = get<EvidenceRepository>()
         DriverActionQueue(
             repo = get(), store = TextStore.InFile(java.io.File(androidContext().filesDir, "driver/actions.json")),
             evidence = { evidence.items.value }, currentUserId = { auth.sessionUser?.id },
+            incidents = get(), adjustments = get(), uploader = evidence,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default), scheduler = get(),
         )
     }
+    single(createdAtStart = true) { NetworkMonitor(androidContext()) { get<DriverActionQueue>().onNetworkAvailable() } }
 }

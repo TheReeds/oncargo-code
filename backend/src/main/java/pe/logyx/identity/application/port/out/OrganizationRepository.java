@@ -12,6 +12,8 @@ public interface OrganizationRepository {
     Optional<Organization> findById(UUID id);
     List<Organization> findAllById(Collection<UUID> ids);
     boolean existsByRuc(String ruc);
+    /** V23 (2.15): por RUC (registro → «Pedir acceso a la organización»). */
+    default Optional<Organization> findByRuc(String ruc) { return Optional.empty(); }
     List<UUID> findIdsByType(OrgType type);
     long countByType(OrgType type);
     void insert(Organization organization);

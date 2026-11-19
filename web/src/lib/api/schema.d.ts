@@ -62,6 +62,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/adjustments/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acepta un ajuste: la PYME del envío o, si ya se escaló, el operador (LOGYX-ADJ-006) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DecideAdjustment"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdjustmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/adjustments/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rechaza un ajuste con motivo (LOGYX-ADJ-004): la PYME o, si ya se escaló, el operador */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DecideAdjustment"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdjustmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/adjustments/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** El transportista retira un ajuste pendiente (LOGYX-ADJ-007 si ya se resolvió) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdjustmentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -572,6 +750,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bids/backup-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pedidos de confirmación de PYMEs que quieren adjudicarte su carga como segunda oferta */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListBackupRequestView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bids/{id}/accept": {
         parameters: {
             query?: never;
@@ -600,6 +828,214 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseAcceptResult"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/backup/award": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjudica la solicitud a la oferta de respaldo que el transportista ya confirmó (nuevo envío con la comisión vigente). LOGYX-BCK-004 si aún no confirmó */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAcceptResult"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/backup/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma que puedes llevar la carga si la PYME te la adjudica */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBackupRequestView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/backup/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Declina llevar la carga */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBackupRequestView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/backup/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pide al transportista de una oferta de respaldo que confirme que lleva la carga (aviso). LOGYX-BCK-001/002/003 si no corresponde */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBackupItemView"];
                     };
                 };
                 /** @description Not Authorized */
@@ -723,6 +1159,124 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bids/{id}/improve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 2.8: mejora la oferta con la subasta abierta: baja el monto y/o cambia el vehículo
+         * @description Solo bajar (400 LOGYX-BID-006 si sube; 400 LOGYX-BID-007 si no cambia nada). El vehículo nuevo debe ser apto (RN02 por fecha, CAP-001..007 y documentos FLT-007/008, como al ofertar). No cuenta como oferta nueva (RN04) y queda el historial. La PYME ve improvedCount/improvedAt en la oferta.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ImproveBid"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBidView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bids/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historial de mejoras de mi oferta, la más antigua primero (solo el transportista dueño) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListBidRevisionView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bids/{id}/withdraw": {
         parameters: {
             query?: never;
@@ -770,6 +1324,158 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/carrier-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Transportistas que la PYME marcó como preferidos o bloqueados (la marca es privada de la PYME) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description PREFERRED o BLOCKED; sin valor trae ambas. */
+                    kind?: components["schemas"]["PreferenceKind"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListCarrierPreferenceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/carrier-preferences/{carrierOrgId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Marca o cambia la marca de un transportista. Bloqueado: no ve tus solicitudes ni puede ofertar; preferido: se destaca y se le invita a ofertar. Idempotente */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    carrierOrgId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetPreference"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseCarrierPreferenceView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Quita la marca de un transportista. Idempotente */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    carrierOrgId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUnmarked"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1313,6 +2019,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/drivers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Categoría de licencia y DNI del conductor (2.4)
+         * @description Solo ADMIN. El vencimiento de la licencia se registra al subir el documento DRIVER_LICENSE.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverPatch"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDriverView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/drivers/{id}/deactivate": {
         parameters: {
             query?: never;
@@ -1344,6 +2109,109 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseDriverView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drivers/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentos del conductor (licencia, DNI): vigentes e historial */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListFleetDocumentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Sube un documento del conductor (multipart: file, type, number, expiresAt)
+         * @description type: DRIVER_LICENSE (exige expiresAt) o DNI. Subir la licencia actualiza licenseExpiresAt del conductor.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        /** @enum {string} */
+                        type?: "DRIVER_LICENSE" | "DNI";
+                        number?: string;
+                        /** Format: date */
+                        expiresAt?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseFleetDocumentView"];
                     };
                 };
                 /** @description Not Authorized */
@@ -1555,6 +2423,221 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/assignment-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 2.13: conductores libres en las fechas del envío (por cercanía al recojo y carga de trabajo) y vehículos aptos
+         * @description Para asignar con PUT /shipments/{id}/assignment. Un conductor es assignable si su cuenta está activa y no tiene otro envío solapado; un vehículo es eligible con las mismas reglas de ofertar (RN02 por fecha, agenda y documentos).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    shipmentId?: components["schemas"]["UUID"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSuggestionsView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentos vigentes de toda mi flota, por vencimiento (tablero de vencimientos) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListFleetDocumentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/documents/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Descarga el archivo de un documento de flota (solo el transportista dueño) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Contenido del archivo */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                        "image/png": string;
+                        "application/pdf": string;
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 2.13: calendario de la flota de 1 a 14 días: por vehículo y conductor, con envíos, ofertas pendientes, viajes y vencimientos de documentos
+         * @description from y to inclusive (yyyy-MM-dd); más de 14 días da 400 LOGYX-FLT-011. Cada compromiso usa la ventana recojo + ⌈km/500⌉ días de ResourceSchedulePolicy. Solo mi organización (RLS).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseScheduleView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidents": {
         parameters: {
             query?: never;
@@ -1666,6 +2749,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/incidents/{id}/assignee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Operador: toma la incidencia (sin cuerpo o assigneeProfileId nulo), la asigna a otra persona del operador (LOGYX-INC-012) o la deja sin responsable (unassign) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssignIncident"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseIncidentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidents/{id}/comments": {
         parameters: {
             query?: never;
@@ -1675,7 +2821,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Comment */
+        /** Comenta una incidencia. internal=true: nota interna del operador (LOGYX-INC-009 si la intenta una parte); las partes no la ven */
         post: {
             parameters: {
                 query?: never;
@@ -1688,6 +2834,69 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["AddIncidentComment"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseIncidentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incidents/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operador: reabre una incidencia resuelta o cerrada con motivo (2.7, LOGYX-INC-008); vuelve a IN_REVIEW con un SLA nuevo y, si congela, vuelve a detener el envío en curso */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReopenIncident"];
                 };
             };
             responses: {
@@ -1769,6 +2978,58 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incidents/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quien la reportó retira una incidencia informativa activa (2.7, LOGYX-INC-007) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseIncidentView"];
+                    };
                 };
                 /** @description Not Authorized */
                 401: {
@@ -2107,6 +3368,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/offers/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bandeja de ofertas: una fila por solicitud publicada con ofertas pendientes (mejor monto, mejor Trust Score y cierre de la subasta). No incluye ofertas de transportistas bloqueados */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOffersInboxView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ajustes escalados: la PYME no respondió a tiempo y los decide el operador (2.6) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListEscalatedAdjustmentRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/audit": {
         parameters: {
             query?: never;
@@ -2226,6 +3587,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bandeja de incidencias del operador con SLA por severidad (2.7) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description me = mías; none = sin responsable. */
+                    assignee?: string;
+                    /** @description true = solo con el SLA vencido. */
+                    breached?: boolean;
+                    /** @description due = las que vencen antes primero (por omisión); recent = recientes primero. */
+                    order?: string;
+                    /** @description Organización (PYME o transportista) parte del envío. */
+                    organizationId?: components["schemas"]["UUID"];
+                    page?: number;
+                    /** @description Severidades separadas por coma (LOW, MEDIUM, HIGH, CRITICAL). */
+                    severity?: string;
+                    size?: number;
+                    /** @description Estados separados por coma; por omisión OPEN,IN_REVIEW. */
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorIncidentRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/legal-changes/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Descarga el documento de sustento de un cambio de razón social o RUC */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Contenido del archivo */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                        "image/png": string;
+                        "application/pdf": string;
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/metrics": {
         parameters: {
             query?: never;
@@ -2311,6 +3791,123 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseListOrganizationReviewRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/legal-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambio asistido de razón social o RUC con documento (PDF/JPG/PNG) y motivo (2.15)
+         * @description Mismo RUC: corrige la razón social. RUC nuevo: crea una organización sucesora VERIFIED que hereda la reputación, las personas y la flota; la anterior queda SUSPENDED (LOGYX-ORG-008 si tiene envíos, solicitudes, ofertas o viajes vivos; LOGYX-ORG-002 RUC ya registrado; LOGYX-ORG-009 sin cambios).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        legalName?: string;
+                        ruc?: string;
+                        reason?: string;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseLegalChangeResult"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ficha 360 de una organización: usuarios, flota, envíos, incidencias, reputación, tasas, verificación, cambios legales, auditoría y señales (2.15) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganization360View"];
                     };
                 };
                 /** @description Not Authorized */
@@ -3124,6 +4721,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Señales de fraude: teléfono, placa, licencia o IP de registro repetidos entre organizaciones, tasas de retiro o cancelación altas y cuentas nuevas con muchas ofertas bajo el sugerido (2.15) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListFraudSignalView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/sla-alerts": {
         parameters: {
             query?: never;
@@ -3168,6 +4815,132 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/users/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Levanta la suspensión del operador y reactiva a la persona */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccountReactivation"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrgMemberView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/users/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspende a una persona de una PYME o transportista con motivo: cierra sus sesiones y su ADMIN no la reactiva (LOGYX-USR-007). Las cuentas del operador no (LOGYX-USR-008) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccountActionReason"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrgMemberView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -4271,6 +6044,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/organization-access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pide unirse a una organización ya registrada (tras LOGYX-ORG-002): avisa por correo a sus ADMIN
+         * @description Sin sesión. Responde siempre 202 con el mismo cuerpo (no revela si la organización existe ni a quién se avisó). Límite por IP (429 LOGYX-AUTH-429) y un aviso por organización cada 10 min.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OrganizationAccessRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOrganizationAccessRequestAccepted"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/pricing/commission": {
         parameters: {
             query?: never;
@@ -4401,6 +6224,793 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/request-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plantillas de la organización con su programación y últimas ocurrencias: la publicada más recientemente primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Incluye las archivadas (por omisión no). */
+                    includeArchived?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Guarda una plantilla (RN07 se valida aquí y en cada publicación). Nombre único entre las activas: LOGYX-TPL-001 */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Borradores que dejó la programación (modo DRAFT) y esperan confirmación */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListTemplateDraftView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/from-request/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Guarda como plantilla una solicitud tuya (carga, contactos y ventanas incluidos) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    requestId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TemplateFromRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/runs/{runId}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Descarta un borrador de la programación */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    runId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateRunView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/runs/{runId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publica un borrador de la programación con su fecha de recojo (RN01, RN03 y RN07 al publicar) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    runId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePublishedFromTemplate"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Reemplaza los campos de una plantilla activa (archivada: LOGYX-TPL-002) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archiva la plantilla (no se borra) y pausa su programación */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publicar ahora: crea una solicitud con la fecha de recojo dada. Con Idempotency-Key un reintento devuelve la ya creada (Idempotent-Replayed: true) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Clave de idempotencia (UUID recomendado), válida 24 h por organización. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TemplatePublishNow"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePublishedFromTemplate"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Programa la plantilla (semanal o quincenal, día de recojo, anticipación, fin, feriados y modo). Reemplaza la programación anterior y la reanuda */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TemplateScheduleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Quita la programación; la plantilla y el historial quedan */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/schedule/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-templates/{id}/schedule/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseTemplateView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/return-loads": {
         parameters: {
             query?: never;
@@ -4499,6 +7109,203 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/saved-searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mis búsquedas guardadas (solo las de quien consulta), las nuevas primero */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListSavedSearchView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Guarda una búsqueda del marketplace para recibir avisos de cargas nuevas
+         * @description Nombre (máx. 80) y al menos un filtro (400 LOGYX-ALT-001); filtros incoherentes 400 LOGYX-ALT-003; tope por persona (409 LOGYX-ALT-002, 20 por omisión). Los canales del aviso se eligen en la categoría «Alertas de carga» de las preferencias de aviso. Máximo 10 avisos por búsqueda y hora.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavedSearchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSavedSearchView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/saved-searches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reemplaza el nombre y los filtros de una búsqueda; con active pausa o reanuda los avisos */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavedSearchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSavedSearchView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Borra una búsqueda guardada */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseObject"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -4645,6 +7452,192 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseRequestView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/batch/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancela varias solicitudes publicadas con un motivo común. Resultado por solicitud (éxito o código de error); NO es atómico: las que se pueden se cancelan aunque otras fallen */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchCancel"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBatchResultView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/batch/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publica una copia de cada solicitud con el recojo el mismo día de la semana siguiente (RN01, RN03 y RN07 por ítem). Con Idempotency-Key, reintentar el lote no duplica las copias ya creadas. No es atómico */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Clave de idempotencia del lote (8-80 caracteres); cada copia deriva la suya. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchDuplicate"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBatchResultView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/batch/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cambia la fecha de recojo de varias solicitudes publicadas sin ofertas pendientes (LOGYX-REQ-009 si ya tienen). Resultado por solicitud; no es atómico */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BatchReschedule"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBatchResultView"];
                     };
                 };
                 /** @description Bad Request */
@@ -5073,6 +8066,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipment-requests/{id}/backup-bids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ofertas de respaldo de la solicitud y si se puede adjudicar a otra: el envío adjudicado debe haberse cancelado en las 24 h siguientes a la adjudicación y el recojo no haber pasado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBackupOptionsView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipment-requests/{id}/bids": {
         parameters: {
             query?: never;
@@ -5229,6 +8274,113 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/{id}/invite-preferred": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invita a ofertar a tus transportistas preferidos (aviso a cada uno). Solo solicitudes publicadas */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseInviteResult"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/{id}/lane-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 2.8: mediana adjudicada de la ruta y el tipo de carga de la solicitud (90 días, k >= 5)
+         * @description data es null cuando no hay al menos 5 envíos de 3 transportistas en la ruta: no se muestra nada. Montos con IGV, redondeados a S/ 5; nunca montos individuales ni nombres.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseLaneStatsView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5747,6 +8899,180 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipments/{id}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ajustes del envío con el precio final (acordado + aceptados) y sugerencias (2.6)
+         * @description Solo las partes, el conductor asignado y el operador. suggestions (estadía por parada y diferencia de peso) solo para el transportista.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentAdjustmentsView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * El transportista (o su conductor) propone un ajuste: peso real, estadía, peaje, maniobras (2.6)
+         * @description Monto con IGV ≠ 0 y |monto| ≤ precio acordado; descuento solo en WEIGHT_DIFF/OTHER (LOGYX-ADJ-003). Nota obligatoria en OTHER (LOGYX-ADJ-004), sin datos de contacto (RN07). Hasta 10 por envío (LOGYX-ADJ-005). Envío cancelado LOGYX-ADJ-001; entregado hace más de 7 días LOGYX-ADJ-002. evidenceDocumentId: documento del mismo envío (LOGYX-ADJ-008). La PYME responde dentro de adjustment_response_hours; luego decide el operador.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Clave de idempotencia, 24 h. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProposeAdjustment"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdjustmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 2.13: asigna conductor y vehículo en un solo paso (atómico)
+         * @description Aplica las reglas de PUT /shipments/{id}/vehicle y PUT /shipments/{id}/driver juntas: RN02, sin solapes (CAP-005, SHP-004) y motivo si ya se recogió. Si algo falla no queda ningún cambio. Las sugerencias salen de GET /fleet/assignment-suggestions.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssignResources"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipments/{id}/cancel": {
         parameters: {
             query?: never;
@@ -5857,7 +9183,7 @@ export interface paths {
         put?: never;
         /**
          * Sube un documento o evidencia de entrega (multipart: file, type, stopId)
-         * @description JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes (10 MB). DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor, stopId de la parada de entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO.
+         * @description JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes (10 MB). DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor, stopId de la parada de entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO. PICKUP_PHOTO (V23): foto de la carga, mismas reglas en la parada de recojo (LOGYX-DOC-009 si stopId no es el recojo); el recojo la exige si la PYME lo pidió (pickupPhotoRequired).
          */
         post: {
             parameters: {
@@ -5874,7 +9200,7 @@ export interface paths {
                         /** Format: binary */
                         file?: string;
                         /** @enum {string} */
-                        type?: "SERVICE_ORDER" | "REMISSION_GUIDE" | "RECEIPT" | "DELIVERY_PHOTO" | "SIGNATURE" | "OTHER";
+                        type?: "SERVICE_ORDER" | "REMISSION_GUIDE" | "RECEIPT" | "DELIVERY_PHOTO" | "SIGNATURE" | "OTHER" | "PICKUP_PHOTO";
                         /** Format: uuid */
                         stopId?: string;
                     };
@@ -6020,11 +9346,17 @@ export interface paths {
             };
         };
         put?: never;
-        /** Reporta una incidencia; congela el avance de paradas hasta que el operador la resuelva (RN11) */
+        /**
+         * Reporta una incidencia; si su categoría congela (blocking), el avance de paradas queda en pausa hasta que el operador la resuelva (RN11)
+         * @description V23 (2.7): DELAY, ROAD_BLOCKED y PAYMENT_DISPUTE son informativas (no congelan). Una activa que congela por envío y una activa por categoría (LOGYX-INC-001). Adjuntos: documentos de este envío (LOGYX-INC-011). Con la cabecera Idempotency-Key un reintento devuelve la ya creada.
+         */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Clave de idempotencia (UUID recomendado), 24 h. */
+                    "Idempotency-Key"?: string;
+                };
                 path: {
                     id: components["schemas"]["UUID"];
                 };
@@ -6068,6 +9400,72 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/pickup-requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * La PYME fija qué pide el recojo: foto de la carga y peso medido (2.5)
+         * @description Solo mientras el envío espera el recojo (LOGYX-SHP-008). Por omisión no pide nada.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PickupRequirementsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6421,6 +9819,140 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["StopEvent"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/stops/{stopId}/office-arrive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * La oficina del transportista registra «Llegué» por el conductor, con motivo (2.5)
+         * @description ADMIN u OPS del transportista. Motivo obligatorio (LOGYX-SHP-006). Mismas reglas que la app (RN08, RN11, occurredAt) e idempotente. La parada queda marcada (arrivalOfficeReason) y auditada (STOP_REGISTERED_BY_OFFICE).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                    stopId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OfficeStopEvent"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseShipmentView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/stops/{stopId}/office-complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * La oficina del transportista cierra la parada por el conductor, con motivo (2.5)
+         * @description RN06: la oficina no sube la foto de entrega ni la de la carga. Si la parada la exige y el conductor no la subió, responde LOGYX-TRK-006 / LOGYX-TRK-009 igual que la app.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                    stopId: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OfficeStopEvent"];
                 };
             };
             responses: {
@@ -7653,6 +11185,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{id}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Equipamiento y tipos de carga aceptados por el vehículo (2.4)
+         * @description Reemplaza ambas listas. acceptedCargoTypes restringe la matriz RN02 de ese vehículo, nunca la amplía (400 LOGYX-FLT-009); vacío = todo lo que la matriz permite. Ofertar con un tipo no aceptado da 400 LOGYX-CAP-003.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VehicleConfig"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVehicleView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentos del vehículo (SOAT, revisión técnica, MTC…): vigentes e historial */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListFleetDocumentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Sube un documento del vehículo (multipart: file, type, number, expiresAt)
+         * @description type: SOAT, TECHNICAL_INSPECTION, PROPERTY_CARD, INSURANCE_POLICY o MTC_PERMIT. Los que tienen vencimiento exigen expiresAt (400 LOGYX-FLT-010). JPG, PNG o PDF. Reemplaza al vigente del mismo tipo (queda en el historial). Avisos a 30 y 7 días y el día que vence.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        /** @enum {string} */
+                        type?: "SOAT" | "TECHNICAL_INSPECTION" | "PROPERTY_CARD" | "INSURANCE_POLICY" | "MTC_PERMIT";
+                        number?: string;
+                        /** Format: date */
+                        expiresAt?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseFleetDocumentView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles/{id}/status": {
         parameters: {
             query?: never;
@@ -7727,6 +11428,12 @@ export interface components {
             /** Format: int32 */
             notifiedAdmins?: number;
         };
+        AccountActionReason: {
+            reason: string;
+        };
+        AccountReactivation: {
+            reason?: string;
+        };
         ActivityEntryView: {
             at?: components["schemas"]["OffsetDateTime"];
             action?: string;
@@ -7748,6 +11455,36 @@ export interface components {
         };
         AddIncidentComment: {
             body: string;
+            internal?: boolean;
+        };
+        /** @enum {string} */
+        AdjustmentStatus: "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
+        AdjustmentSuggestionView: {
+            type?: components["schemas"]["AdjustmentType"];
+            stopId?: components["schemas"]["UUID"];
+            amount?: number;
+            detail?: string;
+        };
+        /** @enum {string} */
+        AdjustmentType: "WEIGHT_DIFF" | "DETENTION" | "TOLL" | "HANDLING" | "OTHER";
+        AdjustmentView: {
+            id?: components["schemas"]["UUID"];
+            shipmentId?: components["schemas"]["UUID"];
+            stopId?: components["schemas"]["UUID"];
+            type?: components["schemas"]["AdjustmentType"];
+            amount?: number;
+            note?: string;
+            evidenceDocumentId?: components["schemas"]["UUID"];
+            status?: components["schemas"]["AdjustmentStatus"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            respondBy?: components["schemas"]["OffsetDateTime"];
+            escalated?: boolean;
+            escalatedAt?: components["schemas"]["OffsetDateTime"];
+            decidedAt?: components["schemas"]["OffsetDateTime"];
+            decisionNote?: string;
+            decidedByOrgId?: components["schemas"]["UUID"];
+            requesterOrgId?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
         };
         ApiResponseAcceptResult: {
             data?: components["schemas"]["AcceptResult"];
@@ -7761,6 +11498,10 @@ export interface components {
             data?: components["schemas"]["ActivityView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseAdjustmentView: {
+            data?: components["schemas"]["AdjustmentView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseAuthMessage: {
             data?: components["schemas"]["AuthMessage"];
             meta?: components["schemas"]["Meta"];
@@ -7769,8 +11510,28 @@ export interface components {
             data?: components["schemas"]["AuthResponse"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseBackupItemView: {
+            data?: components["schemas"]["BackupItemView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseBackupOptionsView: {
+            data?: components["schemas"]["BackupOptionsView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseBackupRequestView: {
+            data?: components["schemas"]["BackupRequestView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseBatchResultView: {
+            data?: components["schemas"]["BatchResultView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseBidView: {
             data?: components["schemas"]["BidView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseCarrierPreferenceView: {
+            data?: components["schemas"]["CarrierPreferenceView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseCommissionInfo: {
@@ -7797,8 +11558,24 @@ export interface components {
             data?: components["schemas"]["EligibilityView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseFleetDocumentView: {
+            data?: components["schemas"]["FleetDocumentView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseIncidentView: {
             data?: components["schemas"]["IncidentView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseInviteResult: {
+            data?: components["schemas"]["InviteResult"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseLaneStatsView: {
+            data?: components["schemas"]["LaneStatsView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseLegalChangeResult: {
+            data?: components["schemas"]["LegalChangeResult"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseLegalInfo: {
@@ -7813,12 +11590,24 @@ export interface components {
             data?: components["schemas"]["AuditRow"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListBackupRequestView: {
+            data?: components["schemas"]["BackupRequestView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListBidRevisionView: {
+            data?: components["schemas"]["BidRevisionView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListBidView: {
             data?: components["schemas"]["BidView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListCargoItem: {
             data?: components["schemas"]["CargoItem"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListCarrierPreferenceView: {
+            data?: components["schemas"]["CarrierPreferenceView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListChatThreadView: {
@@ -7841,6 +11630,18 @@ export interface components {
             data?: components["schemas"]["DriverView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListEscalatedAdjustmentRow: {
+            data?: components["schemas"]["EscalatedAdjustmentRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListFleetDocumentView: {
+            data?: components["schemas"]["FleetDocumentView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListFraudSignalView: {
+            data?: components["schemas"]["FraudSignalView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListIncidentView: {
             data?: components["schemas"]["IncidentView"][];
             meta?: components["schemas"]["Meta"];
@@ -7859,6 +11660,10 @@ export interface components {
         };
         ApiResponseListOperatorBidRow: {
             data?: components["schemas"]["OperatorBidRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListOperatorIncidentRow: {
+            data?: components["schemas"]["OperatorIncidentRow"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListOperatorMessageRow: {
@@ -7909,6 +11714,10 @@ export interface components {
             data?: components["schemas"]["ReviewView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListSavedSearchView: {
+            data?: components["schemas"]["SavedSearchView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListSearchResultView: {
             data?: components["schemas"]["SearchResultView"][];
             meta?: components["schemas"]["Meta"];
@@ -7931,6 +11740,14 @@ export interface components {
         };
         ApiResponseListString: {
             data?: string[];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListTemplateDraftView: {
+            data?: components["schemas"]["TemplateDraftView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListTemplateView: {
+            data?: components["schemas"]["TemplateView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListTripBookingView: {
@@ -7961,12 +11778,32 @@ export interface components {
             data?: components["schemas"]["NotificationView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseObject: {
+            data?: unknown;
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseOffersInboxView: {
+            data?: components["schemas"]["OffersInboxView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseOperatorAlertsView: {
             data?: components["schemas"]["OperatorAlertsView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseOperatorMetricsView: {
             data?: components["schemas"]["OperatorMetricsView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseOrgMemberView: {
+            data?: components["schemas"]["OrgMemberView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseOrganization360View: {
+            data?: components["schemas"]["Organization360View"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseOrganizationAccessRequestAccepted: {
+            data?: components["schemas"]["OrganizationAccessRequestAccepted"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseOrganizationProfile: {
@@ -8009,6 +11846,10 @@ export interface components {
             data?: components["schemas"]["PublicTrackingView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponsePublishedFromTemplate: {
+            data?: components["schemas"]["PublishedFromTemplate"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseQuote: {
             data?: components["schemas"]["Quote"];
             meta?: components["schemas"]["Meta"];
@@ -8033,12 +11874,24 @@ export interface components {
             data?: components["schemas"]["RouteView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseSavedSearchView: {
+            data?: components["schemas"]["SavedSearchView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseScheduleView: {
+            data?: components["schemas"]["ScheduleView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseShareLinkCreated: {
             data?: components["schemas"]["ShareLinkCreated"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseShareLinkView: {
             data?: components["schemas"]["ShareLinkView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseShipmentAdjustmentsView: {
+            data?: components["schemas"]["ShipmentAdjustmentsView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseShipmentReviewsView: {
@@ -8053,12 +11906,28 @@ export interface components {
             data?: components["schemas"]["SmartLoadView"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseSuggestionsView: {
+            data?: components["schemas"]["SuggestionsView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseTemplateRunView: {
+            data?: components["schemas"]["TemplateRunView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseTemplateView: {
+            data?: components["schemas"]["TemplateView"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseTripBookingView: {
             data?: components["schemas"]["TripBookingView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseTripView: {
             data?: components["schemas"]["TripView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseUnmarked: {
+            data?: components["schemas"]["Unmarked"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseUnreadCount: {
@@ -8075,6 +11944,15 @@ export interface components {
         };
         AssignDriver: {
             driverId: components["schemas"]["UUID"];
+            reason?: string;
+        };
+        AssignIncident: {
+            assigneeProfileId?: components["schemas"]["UUID"];
+            unassign?: boolean;
+        };
+        AssignResources: {
+            driverId?: components["schemas"]["UUID"];
+            vehicleId?: components["schemas"]["UUID"];
             reason?: string;
         };
         AssignmentCandidateView: {
@@ -8125,6 +12003,77 @@ export interface components {
             /** Format: int64 */
             refreshExpiresIn?: number;
         };
+        BackupItemView: {
+            bid?: components["schemas"]["BidView"];
+            /** Format: int32 */
+            rank?: number;
+            state?: components["schemas"]["BackupState"];
+            requestedAt?: components["schemas"]["OffsetDateTime"];
+            respondedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        BackupOptionsView: {
+            requestId?: components["schemas"]["UUID"];
+            eligible?: boolean;
+            blockerCode?: string;
+            blockerMessage?: string;
+            deadline?: components["schemas"]["OffsetDateTime"];
+            items?: components["schemas"]["BackupItemView"][];
+        };
+        BackupRequestView: {
+            bidId?: components["schemas"]["UUID"];
+            requestId?: components["schemas"]["UUID"];
+            requestCode?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            pickupDate?: components["schemas"]["LocalDate"];
+            weightKg?: number;
+            requesterName?: string;
+            amount?: number;
+            vehiclePlate?: string;
+            state?: components["schemas"]["BackupState"];
+            requestedAt?: components["schemas"]["OffsetDateTime"];
+            respondedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        /** @enum {string} */
+        BackupState: "AVAILABLE" | "REQUESTED" | "CONFIRMED" | "DECLINED" | "USED";
+        BatchCancel: {
+            ids: string[];
+            reason?: string;
+        };
+        BatchDuplicate: {
+            ids: string[];
+        };
+        BatchItemView: {
+            requestId?: components["schemas"]["UUID"];
+            ok?: boolean;
+            code?: string;
+            message?: string;
+            field?: string;
+            resultId?: components["schemas"]["UUID"];
+            resultCode?: string;
+        };
+        BatchReschedule: {
+            ids: string[];
+            pickupDate: components["schemas"]["LocalDate"];
+        };
+        BatchResultView: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            succeeded?: number;
+            /** Format: int32 */
+            failed?: number;
+            items?: components["schemas"]["BatchItemView"][];
+        };
+        /** @enum {string} */
+        BidPosition: "TOP_TWO" | "LOWER_HALF" | "UPPER_HALF";
+        BidRevisionView: {
+            at?: components["schemas"]["OffsetDateTime"];
+            previousAmount?: number;
+            newAmount?: number;
+            previousPlate?: string;
+            newPlate?: string;
+        };
         /** @enum {string} */
         BidStandingBand: "BEST" | "WITHIN_5_PCT" | "WITHIN_15_PCT" | "ABOVE_15_PCT";
         BidView: {
@@ -8143,6 +12092,11 @@ export interface components {
             carrierTrustScore?: number;
             assignedByOperator?: boolean;
             warnings?: components["schemas"]["BidWarningView"][];
+            /** Format: int32 */
+            improvedCount?: number;
+            improvedAt?: components["schemas"]["OffsetDateTime"];
+            soatValidUntil?: components["schemas"]["LocalDate"];
+            inspectionValidUntil?: components["schemas"]["LocalDate"];
         };
         BidWarningView: {
             code?: string;
@@ -8176,6 +12130,14 @@ export interface components {
         };
         /** @enum {string} */
         CargoType: "GENERAL" | "FRAGILE" | "PERISHABLE" | "HAZARDOUS" | "BULK" | "OVERSIZED";
+        CarrierPreferenceView: {
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            carrierRucVerified?: boolean;
+            carrierTrustScore?: number;
+            kind?: components["schemas"]["PreferenceKind"];
+            updatedAt?: components["schemas"]["OffsetDateTime"];
+        };
         ChangeIncidentStatus: {
             status: components["schemas"]["IncidentStatus"];
             resolutionNotes?: string;
@@ -8268,6 +12230,7 @@ export interface components {
             deliveryInstructions?: string;
             originPlaceId?: components["schemas"]["UUID"];
             destinationPlaceId?: components["schemas"]["UUID"];
+            invitePreferred?: boolean;
         };
         CreateShareLink: {
             /** Format: int32 */
@@ -8318,8 +12281,11 @@ export interface components {
             /** Format: int64 */
             activeTripBookings?: number;
         };
+        DecideAdjustment: {
+            note?: string;
+        };
         /** @enum {string} */
-        DocumentType: "SERVICE_ORDER" | "REMISSION_GUIDE" | "RECEIPT" | "DELIVERY_PHOTO" | "SIGNATURE" | "OTHER";
+        DocumentType: "SERVICE_ORDER" | "REMISSION_GUIDE" | "RECEIPT" | "DELIVERY_PHOTO" | "SIGNATURE" | "OTHER" | "PICKUP_PHOTO";
         DocumentView: {
             id?: components["schemas"]["UUID"];
             shipmentId?: components["schemas"]["UUID"];
@@ -8333,8 +12299,24 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
             downloadUrl?: string;
         };
+        DriverOptionView: {
+            driverId?: components["schemas"]["UUID"];
+            name?: string;
+            active?: boolean;
+            free?: boolean;
+            assignable?: boolean;
+            /** Format: int32 */
+            workloadDays?: number;
+            /** Format: double */
+            distanceKm?: number;
+            current?: boolean;
+        };
         DriverPasswordReset: {
             newPassword: string;
+        };
+        DriverPatch: {
+            licenseCategory?: string;
+            dni?: string;
         };
         DriverRequest: {
             fullName: string;
@@ -8349,6 +12331,9 @@ export interface components {
             licenseNumber?: string;
             status?: components["schemas"]["Status1"];
             active?: boolean;
+            licenseCategory?: string;
+            licenseExpiresAt?: components["schemas"]["LocalDate"];
+            dni?: string;
         };
         EligibilityView: {
             windowFrom?: components["schemas"]["LocalDate"];
@@ -8357,8 +12342,69 @@ export interface components {
             maxOverlappingBids?: number;
             vehicles?: components["schemas"]["VehicleEligibilityView"][];
         };
+        /** @enum {string} */
+        Equipment: "GPS" | "RAMP" | "LIFTGATE" | "TARP" | "REEFER_CERTIFIED" | "STRAPS";
+        EscalatedAdjustmentRow: {
+            id?: components["schemas"]["UUID"];
+            shipmentId?: components["schemas"]["UUID"];
+            shipmentCode?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            requesterName?: string;
+            carrierName?: string;
+            type?: components["schemas"]["AdjustmentType"];
+            amount?: number;
+            note?: string;
+            status?: components["schemas"]["AdjustmentStatus"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            respondBy?: components["schemas"]["OffsetDateTime"];
+            escalatedAt?: components["schemas"]["OffsetDateTime"];
+            agreedPrice?: number;
+        };
+        ExpiryView: {
+            label?: string;
+            on?: components["schemas"]["LocalDate"];
+            expired?: boolean;
+        };
+        /** @enum {string} */
+        FleetDocumentType: "SOAT" | "TECHNICAL_INSPECTION" | "PROPERTY_CARD" | "INSURANCE_POLICY" | "MTC_PERMIT" | "DRIVER_LICENSE" | "DNI";
+        FleetDocumentView: {
+            id?: components["schemas"]["UUID"];
+            type?: components["schemas"]["FleetDocumentType"];
+            typeLabel?: string;
+            ownerType?: string;
+            ownerId?: components["schemas"]["UUID"];
+            number?: string;
+            expiresAt?: components["schemas"]["LocalDate"];
+            status?: components["schemas"]["Vigency"];
+            /** Format: int64 */
+            daysLeft?: number;
+            fileName?: string;
+            contentType?: string;
+            /** Format: int64 */
+            sizeBytes?: number;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            current?: boolean;
+        };
         ForgotPasswordRequest: {
             email: string;
+        };
+        /** @enum {string} */
+        FraudSignalKind: "SHARED_PHONE" | "SHARED_PLATE" | "SHARED_LICENSE" | "SHARED_SIGNUP_IP" | "HIGH_WITHDRAWAL_RATE" | "HIGH_CANCELLATION_RATE" | "LOW_BIDS_NEW_ACCOUNT";
+        /** @enum {string} */
+        FraudSignalSeverity: "HIGH" | "MEDIUM";
+        FraudSignalView: {
+            kind?: components["schemas"]["FraudSignalKind"];
+            severity?: components["schemas"]["FraudSignalSeverity"];
+            value?: string;
+            rate?: number;
+            /** Format: int64 */
+            sample?: number;
+            organizations?: components["schemas"]["SignalOrganization"][];
+        };
+        ImproveBid: {
+            amount?: number;
+            vehicleId?: components["schemas"]["UUID"];
         };
         IncidentAlertView: {
             incidentId?: components["schemas"]["UUID"];
@@ -8373,15 +12419,24 @@ export interface components {
             /** Format: int64 */
             hoursOpen?: number;
         };
+        IncidentAttachmentView: {
+            documentId?: components["schemas"]["UUID"];
+            fileName?: string;
+            type?: string;
+            contentType?: string;
+        };
         /** @enum {string} */
-        IncidentCategory: "CARGO_DAMAGE" | "DELAY" | "LOST_CARGO" | "WRONG_DELIVERY" | "DRIVER_CONDUCT" | "OTHER";
+        IncidentCategory: "CARGO_DAMAGE" | "DELAY" | "LOST_CARGO" | "WRONG_DELIVERY" | "DRIVER_CONDUCT" | "OTHER" | "PICKUP_NO_SHOW" | "SHIPPER_NO_SHOW" | "BREAKDOWN" | "ACCIDENT" | "THEFT" | "ROAD_BLOCKED" | "PARTIAL_DELIVERY" | "PAYMENT_DISPUTE";
         IncidentCommentView: {
             id?: components["schemas"]["UUID"];
             authorOrgId?: components["schemas"]["UUID"];
             authorName?: string;
             body?: string;
             createdAt?: components["schemas"]["OffsetDateTime"];
+            internal?: boolean;
         };
+        /** @enum {string} */
+        IncidentSeverity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         /** @enum {string} */
         IncidentShipmentOutcome: "RESUME" | "DELIVERED" | "CANCELLED";
         /** @enum {string} */
@@ -8404,17 +12459,69 @@ export interface components {
             resolvedAt?: components["schemas"]["OffsetDateTime"];
             comments?: components["schemas"]["IncidentCommentView"][];
             shipmentOutcome?: components["schemas"]["IncidentShipmentOutcome"];
+            severity?: components["schemas"]["IncidentSeverity"];
+            blocking?: boolean;
+            holdsShipment?: boolean;
+            claimedAmount?: number;
+            declaredValue?: number;
+            dueAt?: components["schemas"]["OffsetDateTime"];
+            slaBreached?: boolean;
+            assigneeProfileId?: components["schemas"]["UUID"];
+            assigneeName?: string;
+            withdrawnAt?: components["schemas"]["OffsetDateTime"];
+            reopenedAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int32 */
+            reopenCount?: number;
+            latitude?: number;
+            longitude?: number;
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+            adjustmentId?: components["schemas"]["UUID"];
+            attachments?: components["schemas"]["IncidentAttachmentView"][];
+            canWithdraw?: boolean;
         };
         /**
          * Format: date-time
          * @example 2022-03-10T16:15:50Z
          */
         Instant: string;
+        InviteResult: {
+            /** Format: int32 */
+            invited?: number;
+        };
         InviteUserRequest: {
             email: string;
             fullName: string;
             /** @description ADMIN, OPS o VIEWER (DRIVER no: los conductores se crean en la flota) */
             role: components["schemas"]["Role"];
+        };
+        LaneStatsView: {
+            /** Format: int32 */
+            samples?: number;
+            /** Format: int32 */
+            windowDays?: number;
+            median?: number;
+            low?: number;
+            high?: number;
+        };
+        LegalChangeResult: {
+            organizationId?: components["schemas"]["UUID"];
+            successorCreated?: boolean;
+            change?: components["schemas"]["LegalChangeView"];
+        };
+        LegalChangeView: {
+            id?: components["schemas"]["UUID"];
+            organizationId?: components["schemas"]["UUID"];
+            successorId?: components["schemas"]["UUID"];
+            oldLegalName?: string;
+            newLegalName?: string;
+            oldRuc?: string;
+            newRuc?: string;
+            reason?: string;
+            documentName?: string;
+            documentContentType?: string;
+            /** Format: int64 */
+            documentSizeBytes?: number;
+            createdAt?: components["schemas"]["OffsetDateTime"];
         };
         LegalInfo: {
             termsVersion?: string;
@@ -8486,9 +12593,10 @@ export interface components {
             isBest?: boolean;
             vsBest?: components["schemas"]["BidStandingBand"];
             finalStanding?: boolean;
+            position?: components["schemas"]["BidPosition"];
         };
         /** @enum {string} */
-        NotificationCategory: "BIDS" | "AWARDS" | "REQUESTS" | "NEGOTIATION" | "SHIPMENTS" | "INCIDENTS" | "REVIEWS" | "TRIPS" | "SMART_LOAD" | "ACCOUNT";
+        NotificationCategory: "BIDS" | "AWARDS" | "REQUESTS" | "NEGOTIATION" | "SHIPMENTS" | "INCIDENTS" | "REVIEWS" | "TRIPS" | "SMART_LOAD" | "ALERTS" | "FLEET" | "ACCOUNT";
         NotificationPreferenceChange: {
             category: components["schemas"]["NotificationCategory"];
             inApp: boolean;
@@ -8503,9 +12611,9 @@ export interface components {
             inAppLocked?: boolean;
         };
         /** @enum {string} */
-        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION" | "USER";
+        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION" | "USER" | "VEHICLE" | "DRIVER" | "TEMPLATE";
         /** @enum {string} */
-        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED" | "AUCTION_CLOSED" | "REQUEST_CANCELLED" | "SHIPMENT_CANCELLED" | "BID_WITHDRAWN" | "ORGANIZATION_VERIFICATION" | "ACCESS_REQUESTED";
+        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED" | "AUCTION_CLOSED" | "REQUEST_CANCELLED" | "SHIPMENT_CANCELLED" | "BID_WITHDRAWN" | "ORGANIZATION_VERIFICATION" | "ACCESS_REQUESTED" | "NEW_LOAD_MATCH" | "FLEET_DOCUMENT_EXPIRING" | "BID_IMPROVED" | "TEMPLATE_RUN" | "REQUEST_INVITATION" | "BACKUP_REQUESTED" | "BACKUP_RESPONDED" | "ADJUSTMENT_PROPOSED" | "ADJUSTMENT_DECIDED" | "ADJUSTMENT_ESCALATED" | "INCIDENT_ASSIGNED";
         NotificationView: {
             id?: components["schemas"]["UUID"];
             type?: components["schemas"]["NotificationType"];
@@ -8517,6 +12625,50 @@ export interface components {
             readAt?: components["schemas"]["OffsetDateTime"];
             createdAt?: components["schemas"]["OffsetDateTime"];
             mine?: boolean;
+        };
+        OfferBidView: {
+            bidId?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            carrierRucVerified?: boolean;
+            carrierTrustScore?: number;
+            amount?: number;
+            vehicleType?: components["schemas"]["Type"];
+            vehiclePlate?: string;
+            notes?: string;
+            preferred?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        OfferInboxRow: {
+            requestId?: components["schemas"]["UUID"];
+            code?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoType?: components["schemas"]["CargoType"];
+            weightKg?: number;
+            pickupDate?: components["schemas"]["LocalDate"];
+            suggestedPrice?: number;
+            priceFloor?: number;
+            closesAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int32 */
+            bidCount?: number;
+            best?: components["schemas"]["OfferBidView"];
+            bestTrust?: components["schemas"]["OfferBidView"];
+            bids?: components["schemas"]["OfferBidView"][];
+        };
+        OffersInboxView: {
+            /** Format: int32 */
+            requests?: number;
+            /** Format: int32 */
+            bids?: number;
+            rows?: components["schemas"]["OfferInboxRow"][];
+        };
+        OfficeStopEvent: {
+            reason: string;
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+            weightKg?: number;
+            receivedByName?: string;
+            receivedByDoc?: string;
         };
         /**
          * Format: date-time
@@ -8546,6 +12698,26 @@ export interface components {
             vehiclePlate?: string;
             assignedByOperator?: boolean;
             createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        OperatorIncidentRow: {
+            id?: components["schemas"]["UUID"];
+            shipmentId?: components["schemas"]["UUID"];
+            category?: components["schemas"]["IncidentCategory"];
+            severity?: components["schemas"]["IncidentSeverity"];
+            status?: components["schemas"]["IncidentStatus"];
+            blocking?: boolean;
+            description?: string;
+            requesterOrgId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            reportedByOrgId?: components["schemas"]["UUID"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            dueAt?: components["schemas"]["OffsetDateTime"];
+            slaBreached?: boolean;
+            assigneeProfileId?: components["schemas"]["UUID"];
+            assigneeName?: string;
+            claimedAmount?: number;
         };
         OperatorMessageRow: {
             id?: components["schemas"]["UUID"];
@@ -8635,10 +12807,145 @@ export interface components {
             lastMessage?: string;
             lastMessageAt?: components["schemas"]["OffsetDateTime"];
         };
+        OrgAuditRow: {
+            /** Format: int64 */
+            id?: number;
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+            actorName?: string;
+            organizationName?: string;
+            action?: string;
+            entity?: string;
+            entityId?: components["schemas"]["UUID"];
+            detail?: string;
+        };
+        OrgCountsView: {
+            /** Format: int64 */
+            vehicles?: number;
+            /** Format: int64 */
+            vehiclesArchived?: number;
+            /** Format: int64 */
+            drivers?: number;
+            /** Format: int64 */
+            shipmentsPending?: number;
+            /** Format: int64 */
+            shipmentsInTransit?: number;
+            /** Format: int64 */
+            shipmentsDelivered?: number;
+            /** Format: int64 */
+            shipmentsCancelled?: number;
+            /** Format: int64 */
+            cancelledByThisOrg?: number;
+            /** Format: int64 */
+            bids?: number;
+            /** Format: int64 */
+            bidsWithdrawn?: number;
+            /** Format: int64 */
+            bidsAccepted?: number;
+            /** Format: int64 */
+            requests?: number;
+            /** Format: int64 */
+            requestsCancelled?: number;
+            /** Format: int64 */
+            incidents?: number;
+            /** Format: int64 */
+            incidentsActive?: number;
+            /** Format: int64 */
+            incidentsReported?: number;
+        };
+        OrgIncidentRow: {
+            id?: components["schemas"]["UUID"];
+            shipmentId?: components["schemas"]["UUID"];
+            category?: components["schemas"]["IncidentCategory"];
+            severity?: components["schemas"]["IncidentSeverity"];
+            status?: components["schemas"]["IncidentStatus"];
+            blocking?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            dueAt?: components["schemas"]["OffsetDateTime"];
+            slaBreached?: boolean;
+            reportedByOrgId?: components["schemas"]["UUID"];
+            assigneeName?: string;
+        };
+        OrgMemberView: {
+            id?: components["schemas"]["UUID"];
+            fullName?: string;
+            email?: string;
+            role?: components["schemas"]["Role"];
+            active?: boolean;
+            invitationPending?: boolean;
+            lastLoginAt?: components["schemas"]["OffsetDateTime"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            operatorSuspendedAt?: components["schemas"]["OffsetDateTime"];
+            operatorSuspensionReason?: string;
+        };
         /** @enum {string} */
         OrgPermission: "READ" | "OPERATE" | "MANAGE_USERS" | "MANAGE_ORGANIZATION" | "MANAGE_DRIVERS";
+        OrgRatesView: {
+            cancellation?: number;
+            withdrawal?: number;
+            requestCancellation?: number;
+        };
+        OrgReputationView: {
+            trustScore?: number;
+            /** Format: int32 */
+            totalReviews?: number;
+            avgRating?: number;
+        };
+        OrgShipmentRow: {
+            id?: components["schemas"]["UUID"];
+            code?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            status?: components["schemas"]["Status5"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            agreedPrice?: number;
+            finalPrice?: number;
+            requesterOrgId?: components["schemas"]["UUID"];
+            requesterName?: string;
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+        };
         /** @enum {string} */
         OrgType: "PYME" | "CARRIER" | "OPERATOR";
+        OrgVehicleView: {
+            id?: components["schemas"]["UUID"];
+            plate?: string;
+            type?: string;
+            status?: string;
+            archived?: boolean;
+        };
+        Organization360View: {
+            id?: components["schemas"]["UUID"];
+            type?: components["schemas"]["OrgType"];
+            legalName?: string;
+            ruc?: string;
+            city?: string;
+            phone?: string;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            verificationStatus?: components["schemas"]["VerificationStatus"];
+            verificationNote?: string;
+            verificationUpdatedAt?: components["schemas"]["OffsetDateTime"];
+            predecessorId?: components["schemas"]["UUID"];
+            successorIds?: string[];
+            counts?: components["schemas"]["OrgCountsView"];
+            rates?: components["schemas"]["OrgRatesView"];
+            reputation?: components["schemas"]["OrgReputationView"];
+            users?: components["schemas"]["OrgMemberView"][];
+            vehicles?: components["schemas"]["OrgVehicleView"][];
+            recentShipments?: components["schemas"]["OrgShipmentRow"][];
+            recentIncidents?: components["schemas"]["OrgIncidentRow"][];
+            verificationHistory?: components["schemas"]["OrgAuditRow"][];
+            activity?: components["schemas"]["OrgAuditRow"][];
+            legalChanges?: components["schemas"]["LegalChangeView"][];
+            signals?: components["schemas"]["FraudSignalView"][];
+        };
+        OrganizationAccessRequest: {
+            ruc: string;
+            fullName: string;
+            email: string;
+        };
+        OrganizationAccessRequestAccepted: {
+            accepted?: boolean;
+        };
         OrganizationDecision: {
             reason: string;
         };
@@ -8723,6 +13030,10 @@ export interface components {
         PasswordTokenRequest: {
             token: string;
         };
+        PickupRequirementsRequest: {
+            photoRequired?: boolean;
+            weightRequired?: boolean;
+        };
         PlaceBid: {
             vehicleId: components["schemas"]["UUID"];
             amount: number;
@@ -8761,6 +13072,8 @@ export interface components {
         PostMessage: {
             body: string;
         };
+        /** @enum {string} */
+        PreferenceKind: "PREFERRED" | "BLOCKED";
         PriceBreakdownView: {
             amount?: number;
             vatRate?: number;
@@ -8770,6 +13083,13 @@ export interface components {
             commission?: number;
             commissionVat?: number;
             carrierNet?: number;
+        };
+        ProposeAdjustment: {
+            type: components["schemas"]["AdjustmentType"];
+            amount: number;
+            note?: string;
+            stopId?: components["schemas"]["UUID"];
+            evidenceDocumentId?: components["schemas"]["UUID"];
         };
         ProposeCounterOffer: {
             amount: number;
@@ -8842,6 +13162,13 @@ export interface components {
             updatedAt?: components["schemas"]["OffsetDateTime"];
             linkExpiresAt?: components["schemas"]["OffsetDateTime"];
         };
+        PublishedFromTemplate: {
+            requestId?: components["schemas"]["UUID"];
+            code?: string;
+            status?: components["schemas"]["Status2"];
+            pickupDate?: components["schemas"]["LocalDate"];
+            replayed?: boolean;
+        };
         Quote: {
             distanceKm?: number;
             fuelCost?: number;
@@ -8893,9 +13220,19 @@ export interface components {
         RejectTripBookingRequest: {
             reason?: string;
         };
+        ReopenIncident: {
+            reason: string;
+        };
         ReportIncident: {
             category: components["schemas"]["IncidentCategory"];
             description: string;
+            severity?: components["schemas"]["IncidentSeverity"];
+            claimedAmount?: number;
+            attachmentIds?: string[];
+            latitude?: number;
+            longitude?: number;
+            occurredAt?: components["schemas"]["OffsetDateTime"];
+            adjustmentId?: components["schemas"]["UUID"];
         };
         ReputationView: {
             organizationId?: components["schemas"]["UUID"];
@@ -9057,6 +13394,51 @@ export interface components {
             polylinePrecision?: number;
             attribution?: string;
         };
+        SavedSearchRequest: {
+            name: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoType?: components["schemas"]["CargoType"];
+            pickupFrom?: components["schemas"]["LocalDate"];
+            pickupTo?: components["schemas"]["LocalDate"];
+            maxWeightKg?: number;
+            vehicleId?: components["schemas"]["UUID"];
+            active?: boolean;
+        };
+        SavedSearchView: {
+            id?: components["schemas"]["UUID"];
+            name?: string;
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoType?: components["schemas"]["CargoType"];
+            pickupFrom?: components["schemas"]["LocalDate"];
+            pickupTo?: components["schemas"]["LocalDate"];
+            maxWeightKg?: number;
+            vehicleId?: components["schemas"]["UUID"];
+            active?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        /** @enum {string} */
+        ScheduleFrequency: "WEEKLY" | "BIWEEKLY";
+        /** @enum {string} */
+        ScheduleMode: "PUBLISH" | "DRAFT";
+        ScheduleRowView: {
+            id?: components["schemas"]["UUID"];
+            label?: string;
+            detail?: string;
+            blocked?: boolean;
+            blockedReason?: string;
+            slots?: components["schemas"]["SlotView"][];
+            expiries?: components["schemas"]["ExpiryView"][];
+        };
+        /** @enum {string} */
+        ScheduleRunStatus: "PUBLISHED" | "DRAFT" | "FAILED" | "SKIPPED" | "DISCARDED";
+        ScheduleView: {
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
+            vehicles?: components["schemas"]["ScheduleRowView"][];
+            drivers?: components["schemas"]["ScheduleRowView"][];
+        };
         /** @enum {string} */
         SearchHitType: "REQUEST" | "SHIPMENT" | "COUNTERPART";
         SearchResultView: {
@@ -9066,6 +13448,9 @@ export interface components {
             title?: string;
             subtitle?: string;
             href?: string;
+        };
+        SetPreference: {
+            kind: components["schemas"]["PreferenceKind"];
         };
         ShareLinkCreated: {
             link?: components["schemas"]["ShareLinkView"];
@@ -9083,6 +13468,14 @@ export interface components {
             lastViewedAt?: components["schemas"]["OffsetDateTime"];
             /** Format: int32 */
             views?: number;
+        };
+        ShipmentAdjustmentsView: {
+            agreedPrice?: number;
+            acceptedTotal?: number;
+            finalPrice?: number;
+            finalPriceBreakdown?: components["schemas"]["PriceBreakdownView"];
+            adjustments?: components["schemas"]["AdjustmentView"][];
+            suggestions?: components["schemas"]["AdjustmentSuggestionView"][];
         };
         ShipmentReviewsView: {
             canReview?: boolean;
@@ -9119,6 +13512,30 @@ export interface components {
             customerReference?: string;
             requesterOrgId?: components["schemas"]["UUID"];
             carrierOrgId?: components["schemas"]["UUID"];
+            pickupPhotoRequired?: boolean;
+            pickupWeightRequired?: boolean;
+            adjustmentsTotal?: number;
+            /** Format: int64 */
+            pendingAdjustments?: number;
+            finalPrice?: number;
+            finalPriceBreakdown?: components["schemas"]["PriceBreakdownView"];
+        };
+        ShipmentWindowView: {
+            shipmentId?: components["schemas"]["UUID"];
+            routeLabel?: string;
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
+            weightKg?: number;
+            vehicleId?: components["schemas"]["UUID"];
+            driverId?: components["schemas"]["UUID"];
+            assignable?: boolean;
+        };
+        SignalOrganization: {
+            id?: components["schemas"]["UUID"];
+            legalName?: string;
+            type?: components["schemas"]["OrgType"];
+            ruc?: string;
+            verificationStatus?: components["schemas"]["VerificationStatus"];
         };
         SimilarRequest: {
             id?: components["schemas"]["UUID"];
@@ -9143,6 +13560,14 @@ export interface components {
             hoursWithoutBids?: number;
             auctionStatus?: components["schemas"]["Status4"];
             auctionClosesAt?: components["schemas"]["OffsetDateTime"];
+        };
+        SlotView: {
+            kind?: string;
+            refId?: components["schemas"]["UUID"];
+            label?: string;
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
+            driverId?: components["schemas"]["UUID"];
         };
         SmartLoadBidView: {
             requestId?: components["schemas"]["UUID"];
@@ -9208,6 +13633,9 @@ export interface components {
         };
         StopEvent: {
             occurredAt?: components["schemas"]["OffsetDateTime"];
+            weightKg?: number;
+            receivedByName?: string;
+            receivedByDoc?: string;
         };
         /** @enum {string} */
         StopType: "PICKUP" | "DELIVERY";
@@ -9228,6 +13656,11 @@ export interface components {
             windowFrom?: string;
             windowTo?: string;
             instructions?: string;
+            loadedWeightKg?: number;
+            receivedByName?: string;
+            receivedByDoc?: string;
+            arrivalOfficeReason?: string;
+            completionOfficeReason?: string;
         };
         SubmitReview: {
             /** Format: int32 */
@@ -9237,6 +13670,123 @@ export interface components {
             /** Format: int32 */
             communication: number;
             comment?: string;
+        };
+        SuggestionsView: {
+            shipment?: components["schemas"]["ShipmentWindowView"];
+            drivers?: components["schemas"]["DriverOptionView"][];
+            vehicles?: components["schemas"]["VehicleOptionView"][];
+        };
+        TemplateDraftView: {
+            runId?: components["schemas"]["UUID"];
+            templateId?: components["schemas"]["UUID"];
+            templateName?: string;
+            pickupDate?: components["schemas"]["LocalDate"];
+            originCity?: components["schemas"]["City"];
+            destinationCity?: components["schemas"]["City"];
+            cargoType?: components["schemas"]["CargoType"];
+            weightKg?: number;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        TemplateFromRequest: {
+            name: string;
+            invitePreferred?: boolean;
+        };
+        TemplatePublishNow: {
+            pickupDate: components["schemas"]["LocalDate"];
+        };
+        TemplateRequest: {
+            name: string;
+            originCity: string;
+            originAddress: string;
+            destinationCity: string;
+            destinationAddress: string;
+            cargoType: components["schemas"]["CargoType"];
+            cargoDescription: string;
+            weightKg: number;
+            volumeM3?: number;
+            customerReference?: string;
+            declaredValue?: number;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            pickupWindowFrom?: string;
+            pickupWindowTo?: string;
+            pickupInstructions?: string;
+            deliveryContactName?: string;
+            deliveryContactPhone?: string;
+            deliveryWindowFrom?: string;
+            deliveryWindowTo?: string;
+            deliveryInstructions?: string;
+            originPlaceId?: components["schemas"]["UUID"];
+            destinationPlaceId?: components["schemas"]["UUID"];
+            invitePreferred?: boolean;
+        };
+        TemplateRunView: {
+            id?: components["schemas"]["UUID"];
+            pickupDate?: components["schemas"]["LocalDate"];
+            status?: components["schemas"]["ScheduleRunStatus"];
+            requestId?: components["schemas"]["UUID"];
+            errorCode?: string;
+            errorMessage?: string;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        TemplateScheduleRequest: {
+            frequency: components["schemas"]["ScheduleFrequency"];
+            /** Format: int32 */
+            pickupWeekday: number;
+            /** Format: int32 */
+            leadDays?: number;
+            endsOn?: components["schemas"]["LocalDate"];
+            skipHolidays?: boolean;
+            mode?: components["schemas"]["ScheduleMode"];
+        };
+        TemplateScheduleView: {
+            frequency?: components["schemas"]["ScheduleFrequency"];
+            /** Format: int32 */
+            pickupWeekday?: number;
+            /** Format: int32 */
+            leadDays?: number;
+            endsOn?: components["schemas"]["LocalDate"];
+            skipHolidays?: boolean;
+            mode?: components["schemas"]["ScheduleMode"];
+            paused?: boolean;
+            finished?: boolean;
+            nextPickupDate?: components["schemas"]["LocalDate"];
+            nextRunAt?: components["schemas"]["OffsetDateTime"];
+            lastRunAt?: components["schemas"]["OffsetDateTime"];
+            /** Format: int32 */
+            failures?: number;
+        };
+        TemplateView: {
+            id?: components["schemas"]["UUID"];
+            name?: string;
+            originCity?: components["schemas"]["City"];
+            originAddress?: string;
+            destinationCity?: components["schemas"]["City"];
+            destinationAddress?: string;
+            cargoType?: components["schemas"]["CargoType"];
+            cargoDescription?: string;
+            weightKg?: number;
+            volumeM3?: number;
+            customerReference?: string;
+            declaredValue?: number;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            pickupWindowFrom?: string;
+            pickupWindowTo?: string;
+            pickupInstructions?: string;
+            deliveryContactName?: string;
+            deliveryContactPhone?: string;
+            deliveryWindowFrom?: string;
+            deliveryWindowTo?: string;
+            deliveryInstructions?: string;
+            originPlaceId?: components["schemas"]["UUID"];
+            destinationPlaceId?: components["schemas"]["UUID"];
+            invitePreferred?: boolean;
+            archived?: boolean;
+            lastPublishedAt?: components["schemas"]["OffsetDateTime"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+            schedule?: components["schemas"]["TemplateScheduleView"];
+            recentRuns?: components["schemas"]["TemplateRunView"][];
         };
         TripBookingView: {
             id?: components["schemas"]["UUID"];
@@ -9295,6 +13845,9 @@ export interface components {
         Type1: "PICKUP" | "DELIVERY";
         /** Format: uuid */
         UUID: string;
+        Unmarked: {
+            carrierOrgId?: components["schemas"]["UUID"];
+        };
         UnreadCount: {
             /** Format: int64 */
             unread?: number;
@@ -9333,6 +13886,10 @@ export interface components {
             /** @description Permisos por rol de organización (V14): READ, OPERATE, MANAGE_USERS, MANAGE_ORGANIZATION, MANAGE_DRIVERS. Úsalos para mostrar u ocultar acciones; el backend los hace cumplir igual */
             permissions?: components["schemas"]["OrgPermission"][];
         };
+        VehicleConfig: {
+            equipment?: components["schemas"]["Equipment"][];
+            acceptedCargoTypes?: components["schemas"]["CargoType"][];
+        };
         VehicleEligibilityView: {
             vehicleId?: components["schemas"]["UUID"];
             plate?: string;
@@ -9346,6 +13903,15 @@ export interface components {
             freeFrom?: components["schemas"]["LocalDate"];
             busy?: components["schemas"]["BusySlot"][];
             warnings?: components["schemas"]["BidWarningView"][];
+        };
+        VehicleOptionView: {
+            vehicleId?: components["schemas"]["UUID"];
+            plate?: string;
+            type?: components["schemas"]["Type"];
+            eligible?: boolean;
+            blockerCode?: string;
+            blockerMessage?: string;
+            current?: boolean;
         };
         VehiclePatch: {
             type?: components["schemas"]["Type"];
@@ -9365,12 +13931,16 @@ export interface components {
             maxWeightKg?: number;
             maxVolumeM3?: number;
             status?: components["schemas"]["Status"];
+            equipment?: components["schemas"]["Equipment"][];
+            acceptedCargoTypes?: components["schemas"]["CargoType"][];
         };
         /** @enum {string} */
         VerificationStatus: "PENDING" | "VERIFIED" | "REJECTED" | "SUSPENDED";
         VerifyOrganization: {
             note?: string;
         };
+        /** @enum {string} */
+        Vigency: "VALID" | "EXPIRING" | "EXPIRED" | "NO_EXPIRY";
     };
     responses: never;
     parameters: never;

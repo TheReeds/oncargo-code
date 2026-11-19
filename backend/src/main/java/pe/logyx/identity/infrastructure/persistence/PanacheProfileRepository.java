@@ -53,6 +53,12 @@ public class PanacheProfileRepository implements ProfileRepository {
     }
 
     @Override
+    public List<Profile> listByOrganization(UUID organizationId) {
+        return ProfileEntity.<ProfileEntity>list("organizationId = ?1 order by createdAt, id", organizationId)
+                .stream().map(ProfileEntity::toDomain).toList();
+    }
+
+    @Override
     public long countActiveAdmins(UUID organizationId) {
         return ProfileEntity.count("organizationId = ?1 and role = ?2 and active = true and invitationPending = false",
                 organizationId, Profile.Role.ADMIN);

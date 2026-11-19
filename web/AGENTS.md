@@ -235,3 +235,53 @@ Contrato: `docs/api/CHANGELOG.md` (2026-11-18, V20). Reglas: `docs/domain/busine
 - **Flota (1.12).** `FleetManager`: Editar (`VehicleDialog` con `vehicle`), Archivar, sin «Marcar en ruta»; errores `FLT-004/005/006` por toast o bajo el campo (`licenseNumber`, `weight`, `volume`).
 - **Viajes.** «Duplicar» (tabla y detalle) → `/transportista/viajes/nuevo?from=<id>` (`PublishTripForm initial`, fecha +7 días a la misma hora de Lima). El detalle del viaje monta `ActivityTrail subject="TRIP"`.
 - Tras añadir actions con el `astro dev` levantado: `touch src/actions/index.ts`. e2e: `tests/e2e/ola1-c.spec.ts` (oferta encadenada sin recargar, agenda, atajo al piso, axe claro y oscuro, precio con IGV, historial, flota, duplicar viaje).
+
+## Ola 2 zona P: plantillas, preferidos, segunda oferta, bandeja y acciones masivas (2026-11-19, agente P)
+Contrato: `docs/api/CHANGELOG.md` (2026-11-19, V21). Roadmap v2: 2.1, 2.9, 2.10 (lado PYME).
+- **Plantillas** (`features/templates/`: `server`, `actions` → `actions.templates.*`, `labels.ts`, `components/{TemplatesManager,ScheduleDialog,PublishTemplateDialog,SaveTemplateDialog}`; página `/pyme/plantillas`). «Guardar como plantilla» en `RequestForm` y en el detalle (`RequestDemandActions`); «Abrir en el formulario» = `/pyme/solicitudes/nueva?plantilla=<id>` (precarga todo menos la fecha y muestra «Actualizar plantilla»). La programación (frecuencia, día, anticipación, fin, feriados, publicar o dejar borrador) se edita en `ScheduleDialog`, que calcula el primer recojo con `firstPickup` (espejo de `RecurrencePolicy`). Los borradores del modo `DRAFT` salen arriba en «Borradores por confirmar». Todo lo que escribe va en `<Can>`.
+- **Bandeja de ofertas** (`/pyme/ofertas`, `requests/components/OffersInbox`, `actions.requests.inbox`): una fila por solicitud, mejor monto y mejor Trust Score, `Countdown`, «Aceptar la mejor» con `confirm()` que muestra transportista, vehículo y monto. En vivo con `useLiveRefresh` (`bid.placed`, `auction.updated`…).
+- **Acciones masivas** (`requests/components/BatchActions`): selección con checkbox por fila y «todas» en `RequestsTable` (solo con `OPERATE`; se pierde al cambiar de página/filtro) → barra con Cancelar (`ReasonDialog` con motivo común), Reprogramar (fecha) y Duplicar para la semana siguiente (`Idempotency-Key` por selección). **No es atómico**: `BatchResultDialog` lista por solicitud lo que falló (`message` de la API) y recarga al cerrar. `actions.requests.batchCancel|batchReschedule|batchDuplicate`.
+- **Preferidos y bloqueados** (`features/preferences/`: `CarrierMarkMenu` en cada oferta de `BidComparison` (`marks` desde el servidor), `/pyme/transportistas` con `CarrierPreferencesManager`). Bloquear pide `confirm` y oculta «Aceptar oferta» de ese transportista; la marca es privada. `RequestForm` y las plantillas tienen «Avisar a mis transportistas preferidos» (`invitePreferred`); el detalle trae «Invitar a ofertar».
+- **Segunda oferta** (`requests/components/DemandPanels#BackupBidsPanel`): aparece en una solicitud `CANCELLED` con respaldos: pedir confirmación → esperar → «Adjudicar carga» (`actions.backup.*`). El transportista responde en `/transportista/confirmaciones` (`preferences/components/BackupRequests`, entrada «Confirmaciones» en el menú del transportista y enlace del aviso `BACKUP_REQUESTED`).
+- Avisos: `TEMPLATE` → `/pyme/plantillas`; metadatos de `TEMPLATE_RUN`, `REQUEST_INVITATION`, `BACKUP_REQUESTED`, `BACKUP_RESPONDED` en `lib/notification-links.ts`.
+- Tras añadir actions con el `astro dev` levantado: `touch src/actions/index.ts`. e2e: `tests/e2e/ola2-p.spec.ts` (claro y oscuro, axe). El modo borrador y los fallos del job se prueban en el backend (`TemplatesFlowTest`): el e2e no puede adelantar el reloj del job.
+
+## Ola 2 · zona T: alertas de carga, mejorar oferta, documentos y agenda de flota (2026-11-19, agente T)
+Contrato: `docs/api/CHANGELOG.md` (2026-11-19, V22). Roadmap: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.3, 2.4, 2.8 y 2.13. Componentes: `.claude/skills/logyx-design-system/references/web.md` («Ola 2 · zona T»).
+- **2.3 Búsquedas guardadas.** `marketplace/components/SavedSearches` (en la barra de `MarketplaceTable`): guardar los filtros actuales (+ vehículo opcional), «Mis búsquedas» (aplicar, pausar/reanudar, borrar), todo lo que escribe bajo `<Can>`. Actions `marketplace.savedSearches|saveSearch|updateSavedSearch|deleteSavedSearch`. Canales en `/cuenta/avisos` (la página pinta las categorías `ALERTS` y `FLEET` tal como las manda la API). `lib/notification-links.ts`: `NEW_LOAD_MATCH` → `/transportista/marketplace?solicitud=<id>` (abre la hoja de oferta; si ya no está abierta, un `Alert`), `VEHICLE`/`DRIVER` → `/transportista/flota?vehiculo=|conductor=<id>` (abre sus documentos), `BID_IMPROVED` → la solicitud.
+- **2.8 Mejorar oferta.** `ImproveBidDialog` desde «Mis ofertas» (solo PENDING con la subasta abierta; actualiza la fila en sitio), historial por `marketplace.bidRevisions`; posición aproximada en `standingText().position`; `BidSheet` muestra «Precio de esta ruta» (`marketplace.laneStats`, nada si `null`) y las advertencias de documentos (`LOGYX-FLT-007/008`, bloqueo `FLT-007` como «Bloqueado: SOAT vencido…»). La PYME ve `BidSeals` («Mejorada», «SOAT vigente», «Revisión técnica vigente») en `BidComparison`.
+- **2.4 Flota.** `FleetManager` suma columna «Documentos» (vehículos y conductores), `FleetDocumentsSheet`, `VehicleConfigDialog` («Configurar vehículo» en el menú) y `ExpirySummary` arriba. Proxies autenticados: `pages/flota/documentos/[id].ts` (GET, descarga) y `subir.ts` (POST multipart). Categoría de licencia y DNI: `fleet.patchDriver` bajo `<Can permission="MANAGE_DRIVERS">`. Operador: `fleet_docs_block` (`FLAG`) en `ParametersEditor`.
+- **2.13 Agenda.** `/transportista/agenda` (`FleetAgenda`, `AssignSheet`; entrada «Agenda» en `AppShell`): filas vehículos/conductores × 7 o 14 días (`?desde=&dias=`), «Sin conductor» con «Asignar» y «Asignar en lote». Actions `fleet.schedule|unassigned|suggestions|assign|documents|expiries|vehicleConfig|patchDriver`. `lib/lima-date.ts` para fechas calendario.
+- e2e: `tests/e2e/ola2-t.spec.ts` (todo lo anterior + Lector + axe en claro y oscuro). Corre con `E2E_BASE_URL=http://127.0.0.1:4321 E2E_API_URL=http://localhost:8080 npx playwright test ola2-t.spec.ts --workers=1`. El precio de la ruta con datos (≥ 5 envíos de ≥ 3 transportistas) no se prueba con datos reales: solo que no aparece sin ellos.
+
+
+## Ola 2 zona X: ejecución y operación (V23, 2026-11-19, agente X; roadmap 2.5, 2.6, 2.7, 2.15)
+Contrato: `docs/api/CHANGELOG.md` (zona X). ADR-0012 (ajustes y precio final).
+- **Envío (`ShipmentExtras`)**: ahora guarda el envío en estado local y lo refresca con `actions.shipments.get` tras una acción. `ExecutionPanel`:
+  la PYME elige «Qué pide el recojo» (switches foto/peso, solo PENDING) y el transportista «Registrar llegada/carga recogida/entrega» desde la
+  oficina (`ReasonDialog` con motivo + peso o receptor; la foto de entrega no la sube la oficina). Pestaña **Ajustes** (`AdjustmentsPanel`,
+  también en `/operador/envios/[id]` con `perspective="OPERATOR"`): resumen acordado/aceptados/final + `PriceBreakdown totalLabel="Precio final"`,
+  sugerencias de estadía/peso con «Proponer», diálogo con `RadioGroup` de tipos, `MoneyInput`, «Es un descuento», parada y nota (clave de
+  idempotencia por diálogo); PYME acepta (`confirm`) o rechaza (`ReasonDialog`, `reasonField="note"`), transportista retira. Tiempo real:
+  `shipment.adjustment_updated`. `ShipmentFacts` muestra «Precio final» y «N ajustes por responder». `StopTimeline` agrega peso medido, quién
+  recibió y «registrada por la oficina: motivo».
+- **Incidencias v2**: `CATEGORY_OPTIONS` (14, con «Detiene el viaje»/«Informativa»), `SEVERITY_OPTIONS`, `INFORMATIVE_CATEGORIES`, `CANNED_REPLIES`
+  (`features/incidents/lib.ts`). Alta con severidad, monto reclamado y adjunto (se sube primero por `/documentos/subir` como `OTHER` y se pasa en
+  `attachmentIds`) e `Idempotency-Key`; el botón ya no se bloquea por una activa (la API responde `INC-001`). Detalle: aviso «El envío está
+  detenido» solo si `holdsShipment`, «Retirar incidencia» (`canWithdraw`), plazo, adjuntos, ubicación; operador: «Tomar incidencia»/«Dejar sin
+  responsable», nota interna (casilla) y respuestas frecuentes, «Reabrir incidencia». `/operador/incidencias` usa `OperatorIncidentInbox`
+  (`GET /operator/incidents`, filtros Activas/Mías/Sin responsable/Plazo vencido + severidad, «Pasar a revisión» y «Tomar»; el «Vencido» sale de
+  un reloj local, no de re-pedir).
+- **Operador 360**: `/operador/organizaciones/[id]` (`Organization360`: KPIs, pestañas Resumen/Usuarios/Flota/Envíos/Incidencias/Verificación/
+  Auditoría, suspender/reactivar usuario, «Cambiar razón social o RUC» por el proxy multipart `/operador/organizaciones/[id]/cambio-legal`;
+  descarga del sustento por `/operador/cambios-legales/[id]`). Enlace «Ver ficha completa» desde la hoja de `OrganizationsInbox`.
+  `/operador/senales` (`SignalsList`, etiquetas en `features/operator/signals.ts`) y `/operador/ajustes` (`EscalatedAdjustments`); entradas
+  «Ajustes» y «Señales» en el `AppShell` del operador. `ParametersEditor` acepta `kind = AMOUNT` (`MoneyInput`, `S/`).
+- **Registro**: tras `LOGYX-ORG-002`, `RequestOrgAccess` (bajo el RUC) abre «Pedir acceso a la empresa» → action pública `orgAccess.request`.
+- `StatusPill kind="adjustment" | "severity"`. Avisos nuevos en `lib/notification-links.ts` (`ADJUSTMENT_*`, `INCIDENT_ASSIGNED`; el escalado
+  lleva al operador a `/operador/ajustes`).
+- **Trampa (dev):** con el `astro dev` levantado, una action nueva que importa `LIMITS` de `lib/limits.ts` recién editado puede quedarse con el
+  módulo viejo (`max(undefined)` → «Cannot read properties of undefined»): en las actions de esta zona los topes van como literales.
+- e2e: `tests/e2e/ola2-x.spec.ts` (ajuste propuesto/aceptado/rechazado, recojo, registro por la oficina, informativa retirada, bandeja y nota
+  interna del operador, 360 con suspender/reactivar, señales y ajustes; axe en claro y oscuro). `incidents.spec.ts` y `shipment-actions.spec.ts`
+  se ajustaron a que `DELAY` es informativa.

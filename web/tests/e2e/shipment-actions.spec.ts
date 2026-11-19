@@ -60,7 +60,8 @@ test.describe('Envío: cancelar con motivo (F06, F36)', () => {
 
   test('con una incidencia activa las partes no pueden cancelar (TRK-005): botón deshabilitado y motivo visible', async ({ page }) => {
     const sc = await acceptedShipment();
-    await api.reportIncident(sc.pyme.token, sc.shipmentId);
+    // Una que detiene el viaje (desde la Ola 2 DELAY es informativa)
+    await api.reportIncident(sc.pyme.token, sc.shipmentId, 'CARGO_DAMAGE', 'Cajas mojadas en el almacén de recojo.');
     await setSession(page.context(), sc.pyme.token, BASE);
     await goto(page, `/pyme/envios?id=${sc.shipmentId}`);
     await expect(page.getByRole('button', { name: 'Cancelar envío' })).toBeDisabled();

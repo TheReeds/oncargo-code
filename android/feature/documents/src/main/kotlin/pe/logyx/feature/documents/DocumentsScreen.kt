@@ -61,7 +61,9 @@ import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.components.EmptyState
+import pe.logyx.core.designsystem.components.ButtonVariant
 import pe.logyx.core.designsystem.components.ErrorState
+import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.EvidenceTile
 import pe.logyx.core.designsystem.components.LogyxScreen
 import pe.logyx.core.designsystem.components.LogyxSnackbarState
@@ -91,9 +93,11 @@ fun DocumentsRoute(shipmentId: String, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var viewing by remember { mutableStateOf<DocumentView?>(null) }
     var opening by remember { mutableStateOf<String?>(null) }
+    var uploadOpen by remember { mutableStateOf(false) }
 
     DocumentsScreen(
         state = state,
+        onUpload = { uploadOpen = true },
         snackbar = snackbar,
         loadThumbnail = { doc -> loadThumbnail(doc) { vm.fetch(it) } },
         openingId = opening,
@@ -110,6 +114,13 @@ fun DocumentsRoute(shipmentId: String, onBack: () -> Unit) {
             } else viewing = doc
         },
     )
+    if (uploadOpen) {
+        UploadDocumentSheet(
+            onDismiss = { uploadOpen = false },
+            onPicked = vm::upload,
+            onCameraError = { vm.showError(UiMessage.error(R.string.docs_upload_camera_error)) },
+        )
+    }
     viewing?.let { doc ->
         ImageViewer(doc.type.label, loader = { vm.fetch(doc.id).getOrThrow() }, onClose = { viewing = null })
     }
@@ -133,8 +144,18 @@ internal fun DocumentsScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onOpen: (DocumentView) -> Unit,
+    onUpload: () -> Unit = {},
 ) {
-    LogyxScreen(stringResource(R.string.docs_title), onBack = onBack, snackbar = snackbar) { padding ->
+    LogyxScreen(
+        stringResource(R.string.docs_title), onBack = onBack, snackbar = snackbar,
+        bottomBar = {
+            if (!state.loading && state.error == null) {
+                Box(Modifier.padding(16.dp)) {
+                    LogyxButton(stringResource(R.string.docs_upload_action), onUpload, variant = ButtonVariant.Secondary, loading = state.uploading, requiresOperate = true)
+                }
+            }
+        },
+    ) { padding ->
         when {
             state.loading -> LazyVerticalGrid(
                 GridCells.Fixed(3), Modifier.padding(padding), contentPadding = PaddingValues(16.dp),

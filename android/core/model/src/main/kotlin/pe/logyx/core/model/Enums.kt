@@ -38,9 +38,21 @@ import kotlinx.serialization.Serializable
 @Serializable enum class DriverStatus { AVAILABLE, ON_DUTY, OFF_DUTY }
 
 // --- Fase 2 del contrato ---
-@Serializable enum class DocumentType { SERVICE_ORDER, REMISSION_GUIDE, RECEIPT, DELIVERY_PHOTO, SIGNATURE, OTHER }
+/** `PICKUP_PHOTO` (V23, roadmap 2.5): foto de la carga en el recojo (solo el conductor, entre la llegada y el cierre). */
+@Serializable enum class DocumentType { SERVICE_ORDER, REMISSION_GUIDE, RECEIPT, DELIVERY_PHOTO, SIGNATURE, OTHER, PICKUP_PHOTO }
 
-@Serializable enum class IncidentCategory { CARGO_DAMAGE, DELAY, LOST_CARGO, WRONG_DELIVERY, DRIVER_CONDUCT, OTHER }
+/**
+ * V23 (roadmap 2.7) suma las de la Ola 2. `DELAY`, `ROAD_BLOCKED` y `PAYMENT_DISPUTE` son informativas (no congelan el
+ * viaje, RN11; ver [IncidentCategory.informative]). `UNKNOWN` = valor que este cliente no conoce (no se reporta).
+ */
+@Serializable enum class IncidentCategory {
+    CARGO_DAMAGE, DELAY, LOST_CARGO, WRONG_DELIVERY, DRIVER_CONDUCT, OTHER,
+    PICKUP_NO_SHOW, SHIPPER_NO_SHOW, BREAKDOWN, ACCIDENT, THEFT, ROAD_BLOCKED, PARTIAL_DELIVERY, PAYMENT_DISPUTE,
+    UNKNOWN,
+}
+
+/** Severidad de una incidencia (V23): fija su SLA. `UNKNOWN` = valor nuevo del servidor. */
+@Serializable enum class IncidentSeverity { LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN }
 
 @Serializable enum class IncidentStatus { OPEN, IN_REVIEW, RESOLVED, CLOSED }
 
@@ -58,12 +70,14 @@ enum class NotificationType {
     AUCTION_CLOSED, REQUEST_CANCELLED, SHIPMENT_CANCELLED, BID_WITHDRAWN, ORGANIZATION_VERIFICATION,
     // V16: un Lector pidió acceso (llega a cada ADMIN)
     ACCESS_REQUESTED,
+    // V22 (Ola 2, zona T): alerta de carga que calza con una búsqueda guardada, documento de flota por vencer, oferta mejorada
+    NEW_LOAD_MATCH, FLEET_DOCUMENT_EXPIRING, BID_IMPROVED,
     /** Valor que este cliente no conoce (se mapea con `coerceInputValues`). */
     UNKNOWN,
 }
 
 /** V16: `USER` = una persona de tu organización (quien pidió acceso). */
-@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION, USER }
+@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION, USER, VEHICLE, DRIVER }
 
 @Serializable enum class ReviewDirection { PYME_TO_CARRIER, CARRIER_TO_PYME }
 
@@ -83,6 +97,9 @@ enum class NotificationType {
 
 /** Banda cualitativa de mi oferta frente a la mejor (`MyBidStanding.vsBest`); nunca trae montos (RN04). */
 @Serializable enum class BidStandingBand { BEST, WITHIN_5_PCT, WITHIN_15_PCT, ABOVE_15_PCT, UNKNOWN }
+
+/** Posición aproximada de mi oferta (V22, 2.8) sin montos (RN04): `TOP_TWO` entre las 2 más bajas; `LOWER_HALF` por debajo de la mediana; `UPPER_HALF` por encima. */
+@Serializable enum class BidPosition { TOP_TWO, LOWER_HALF, UPPER_HALF, UNKNOWN }
 
 /** `GET /driver/shipments?scope=` (V15, F22). */
 enum class DriverShipmentScope { ACTIVE, HISTORY, ALL }

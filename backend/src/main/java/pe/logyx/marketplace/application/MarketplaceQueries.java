@@ -178,6 +178,11 @@ public class MarketplaceQueries {
         return summaries.of(r, !isOwner);
     }
 
+    /** Solicitud aún publicada, sin filtro de usuario: solo para jobs y observadores de sistema (alertas, 2.3). */
+    public java.util.Optional<ShipmentRequest> publishedForSystem(UUID requestId) {
+        return requests.findById(requestId).filter(ShipmentRequest::isPublished);
+    }
+
     // ----- Para negotiation
 
     /**

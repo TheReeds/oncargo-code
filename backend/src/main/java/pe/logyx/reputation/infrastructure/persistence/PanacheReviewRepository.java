@@ -42,4 +42,19 @@ public class PanacheReviewRepository implements ReviewRepository {
     private static List<Review> map(List<ReviewEntity> list) {
         return list.stream().map(ReviewEntity::toDomain).toList();
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<Review> listReceivedWithPredecessors(UUID reviewedOrgId) {
+        List<UUID> chain = ReviewEntity.getEntityManager().createNativeQuery("""
+                WITH RECURSIVE chain(id, depth) AS (
+                    SELECT CAST(?1 AS uuid), 0
+                    UNION ALL
+                    SELECT o.predecessor_id, c.depth + 1 FROM organizations o JOIN chain c ON o.id = c.id
+                     WHERE o.predecessor_id IS NOT NULL AND c.depth < 10)
+                SELECT id FROM chain""", UUID.class).setParameter(1, reviewedOrgId).getResultList();
+        if (chain.size() <= 1) return listReceived(reviewedOrgId);
+        return ReviewEntity.<ReviewEntity>list("reviewedOrgId in ?1", chain).stream().map(ReviewEntity::toDomain)
+                .toList();
+    }
 }

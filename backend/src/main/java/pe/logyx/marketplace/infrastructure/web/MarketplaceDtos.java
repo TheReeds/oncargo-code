@@ -8,6 +8,7 @@ import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.application.AcceptOutcome;
 import pe.logyx.marketplace.application.BidStanding;
 import pe.logyx.marketplace.application.BidSummary;
+import pe.logyx.marketplace.domain.BidPosition;
 import pe.logyx.marketplace.domain.BidStandingBand;
 import pe.logyx.marketplace.application.PlaceBidCommand;
 import pe.logyx.marketplace.application.PublishRequestCommand;
@@ -54,7 +55,9 @@ public final class MarketplaceDtos {
             @Pattern(regexp = TimeOfDay.PATTERN, message = "Usa el formato HH:mm") String deliveryWindowTo,
             @Size(max = 300) String deliveryInstructions,
             /** Direcciones guardadas de las que se publica: solo sirven para ordenar la libreta por uso. */
-            UUID originPlaceId, UUID destinationPlaceId) {
+            UUID originPlaceId, UUID destinationPlaceId,
+            /** Al publicar, invita a ofertar a los transportistas preferidos de la PYME (roadmap 2.9). */
+            Boolean invitePreferred) {
 
         PublishRequestCommand toCommand(String idempotencyKey) {
             var details = new ShipmentRequest.Details(customerReference, declaredValue,
@@ -66,7 +69,7 @@ public final class MarketplaceDtos {
                             TimeOfDay.parse(deliveryWindowTo, "deliveryWindowTo"), deliveryInstructions));
             return new PublishRequestCommand(originCity, originAddress, destinationCity, destinationAddress,
                     cargoType, cargoDescription, weightKg, volumeM3, pickupDate, details, originPlaceId,
-                    destinationPlaceId, idempotencyKey);
+                    destinationPlaceId, idempotencyKey, Boolean.TRUE.equals(invitePreferred));
         }
     }
 
@@ -100,9 +103,12 @@ public final class MarketplaceDtos {
             /** Banda frente a la mejor oferta; null si la solicitud ya se adjudicó o canceló. */
             BidStandingBand vsBest,
             /** true si la subasta cerró o la solicitud ya no está publicada: es la posición final. */
-            boolean finalStanding) {
+            boolean finalStanding,
+            /** Posición aproximada entre las ofertas (2.8): entre las 2 más bajas, bajo o sobre la mediana. */
+            BidPosition position) {
         static MyBidStanding of(BidStanding s) {
-            return s == null ? null : new MyBidStanding(s.rank(), s.bidCount(), s.best(), s.vsBest(), s.finalStanding());
+            return s == null ? null : new MyBidStanding(s.rank(), s.bidCount(), s.best(), s.vsBest(), s.finalStanding(),
+                    s.position());
         }
     }
 
@@ -203,7 +209,13 @@ public final class MarketplaceDtos {
                           /** true si la registró el operador al asignar manualmente (RN10). */
                           boolean assignedByOperator,
                           /** Solo al ofertar (POST): avisos de agenda del vehículo, p. ej. LOGYX-CAP-006. Nulo en listados. */
-                          @JsonInclude(JsonInclude.Include.NON_NULL) List<BidWarningView> warnings) {
+                          @JsonInclude(JsonInclude.Include.NON_NULL) List<BidWarningView> warnings,
+                          /** 2.8: veces que el transportista mejoró (bajó el monto o cambió el vehículo); 0 = nunca. */
+                          int improvedCount,
+                          /** 2.8: cuándo fue la última mejora. */
+                          OffsetDateTime improvedAt,
+                          /** 2.4: vencimiento del SOAT / la revisión técnica al ofertar si estaban vigentes; null si no. */
+                          LocalDate soatValidUntil, LocalDate inspectionValidUntil) {
 
         static BidView of(BidSummary s) {
             return of(s, null);
@@ -213,7 +225,8 @@ public final class MarketplaceDtos {
             Bid b = s.bid();
             return new BidView(b.id(), b.requestId(), b.carrierOrgId(), s.carrierName(), s.carrierRucVerified(),
                     b.vehicleId(), b.amount(), b.notes(), b.status(), b.createdAt(),
-                    b.vehicleType(), b.vehiclePlate(), s.carrierTrustScore(), b.assignedByOperator(), warnings);
+                    b.vehicleType(), b.vehiclePlate(), s.carrierTrustScore(), b.assignedByOperator(), warnings,
+                    b.improvedCount(), b.improvedAt(), b.soatValidUntil(), b.inspectionValidUntil());
         }
     }
 

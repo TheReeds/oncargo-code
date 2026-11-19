@@ -17,4 +17,19 @@ public class DocumentsEvidenceProvider implements DeliveryEvidenceProvider {
     public boolean hasDeliveryPhoto(UUID shipmentId, UUID stopId) {
         return documents.hasDeliveryPhoto(shipmentId, stopId);
     }
+
+    @Override
+    public boolean belongsToShipment(UUID shipmentId, UUID documentId) {
+        try {
+            documents.ofShipment(shipmentId, documentId);
+            return true;
+        } catch (pe.logyx.shared.domain.BusinessException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean hasPickupPhoto(UUID shipmentId, UUID stopId) {
+        return documents.hasPickupPhoto(shipmentId, stopId);
+    }
 }

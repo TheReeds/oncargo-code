@@ -587,8 +587,9 @@ class LoadDetailViewModel(
                 onSuccess = { placed ->
                     val shortcut = s.matchingShortcut
                     viewModelScope.launch { prefs.remember(BidRecall(form.vehicleId, form.notes, shortcut)) }
-                    // CAP-006: la oferta se envió, pero el vehículo ya tiene otras para esas fechas.
-                    val warning = placed.warnings.firstOrNull()?.message
+                    // CAP-006 (el vehículo ya tiene otras ofertas para esas fechas) y FLT-007/008 (documento de flota vencido o que
+                    // vence antes del recojo): la oferta se envió, pero se avisa.
+                    val warning = bidWarningsText(placed.warnings)
                     _state.update { st ->
                         st.copy(form = null, message = if (warning != null) UiMessage(kind = MessageKind.Info, textRes = R.string.loads_bid_sent_warning, args = listOf(warning)) else UiMessage.success(R.string.loads_bid_sent))
                     }

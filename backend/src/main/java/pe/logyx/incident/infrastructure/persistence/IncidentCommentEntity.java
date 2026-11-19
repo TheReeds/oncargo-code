@@ -31,12 +31,15 @@ public class IncidentCommentEntity extends PanacheEntityBase {
 
     public String body;
 
+    /** V23: nota interna del operador. */
+    public boolean internal;
+
     @Column(name = "created_at")
     public OffsetDateTime createdAt;
 
     IncidentComment toDomain() {
         return new IncidentComment(id, incidentId, requesterOrgId, carrierOrgId, authorOrgId, authorProfileId, body,
-                createdAt);
+                createdAt, internal);
     }
 
     static IncidentCommentEntity from(IncidentComment c) {
@@ -49,6 +52,7 @@ public class IncidentCommentEntity extends PanacheEntityBase {
         e.authorProfileId = c.authorProfileId();
         e.body = c.body();
         e.createdAt = c.createdAt();
+        e.internal = c.internal();
         return e;
     }
 }

@@ -198,11 +198,14 @@ class DriverOfflineTest {
         assertTrue(queue.pending.value.isEmpty())
     }
 
-    @Test fun `sin foto local pendiente el cierre se manda y decide el servidor`() {
+    @Test fun `sin evidencia local pendiente el cierre se manda y decide el servidor`() {
         val action = PendingStopAction("a", "s1", "d", StopActionOp.COMPLETE, null, "x", needsPhoto = true)
         assertTrue(!action.waitsForPhoto(emptyList()))
+        // Ola 2 (2.5): una firma en cola también sale antes del cierre (después el servidor la rechazaría con DOC-008).
         val signatureOnly = listOf(EvidenceItem("f", "s1", "d", DocumentType.SIGNATURE, EvidenceState.QUEUED))
-        assertTrue(!action.waitsForPhoto(signatureOnly))
+        assertTrue(action.waitsForPhoto(signatureOnly))
+        val signatureUploaded = listOf(EvidenceItem("f", "s1", "d", DocumentType.SIGNATURE, EvidenceState.UPLOADED))
+        assertTrue(!action.waitsForPhoto(signatureUploaded))
     }
 
     // --- Aplicación optimista ---

@@ -45,9 +45,10 @@ test.describe('Notificaciones', () => {
   test('/notificaciones pagina de a 20 y filtra no leídas', async ({ page, context }) => {
     const pyme = await api.registerAccount('PYME');
     const carrier = await api.registerAccount('CARRIER');
-    const vehicle = await api.addVehicle(carrier.token);
-    // 22 solicitudes con oferta -> 22 notificaciones NEW_BID
+    // 22 solicitudes con oferta -> 22 notificaciones NEW_BID. Un vehículo nuevo por oferta: un mismo vehículo
+    // admite pocas ofertas solapadas en esas fechas (CAP-007), regla que no se relaja.
     for (let i = 0; i < 22; i++) {
+      const vehicle = await api.addVehicle(carrier.token);
       const r = await api.createRequest(pyme.token);
       await api.placeBid(carrier.token, r.id, vehicle.id, Math.ceil(r.priceFloor) + 10);
     }

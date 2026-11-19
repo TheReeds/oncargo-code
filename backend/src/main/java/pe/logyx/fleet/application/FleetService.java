@@ -91,6 +91,41 @@ public class FleetService {
         return v;
     }
 
+    /**
+     * Equipamiento y tipos de carga aceptados por el vehículo (2.4): restringen la matriz RN02, nunca la amplían
+     * (LOGYX-FLT-009). Con ofertas pendientes ya hechas no cambia nada para ellas: la restricción rige al ofertar y al aceptar.
+     */
+    public Vehicle configureVehicle(UUID id, java.util.Set<pe.logyx.fleet.domain.model.Equipment> equipment,
+                                    java.util.Set<pe.logyx.catalog.domain.CargoType> accepted) {
+        Vehicle v = ownVehicle(id);
+        if (v.isArchived()) {
+            throw BusinessException.conflict("LOGYX-FLT-004", "El vehículo está archivado y no se edita", "vehicleId");
+        }
+        v.configure(equipment, accepted);
+        vehicles.save(v);
+        audit.record(tenant.profileId(), tenant.orgId(), "VEHICLE_CONFIGURED", "vehicle", v.id(), v.plate());
+        return v;
+    }
+
+    /** Categoría de licencia y DNI del conductor (2.4). El vencimiento y el archivo van como documento. */
+    public DriverAccount updateDriverCredentials(UUID id, String licenseCategory, String dni) {
+        AccessDenied.requireOrgAdmin(tenant);
+        DriverAccount current = ownDriver(id);
+        if (dni != null && !dni.isBlank() && !dni.trim().matches("\\d{8}")) {
+            throw BusinessException.badRequest("LOGYX-VAL-001", "El DNI tiene 8 dígitos", "dni");
+        }
+        Driver d = current.driver();
+        d.updateCredentials(licenseCategory, d.licenseExpiresAt(), dni);
+        drivers.save(d);
+        audit.record(tenant.profileId(), tenant.orgId(), "DRIVER_UPDATED", "driver", d.id(), null);
+        return account(d, accounts.byId(d.profileId()).orElse(null));
+    }
+
+    /** Vehículos de una organización (para el matching de alertas, sin usuario): sin archivados. */
+    public List<Vehicle> vehiclesOf(UUID organizationId) {
+        return vehicles.listByOrganization(organizationId);
+    }
+
     /** Da de baja (archiva) el vehículo: sin envíos activos, ofertas pendientes ni viajes publicados (LOGYX-FLT-004). */
     public Vehicle archiveVehicle(UUID id) {
         Vehicle v = ownVehicle(id);

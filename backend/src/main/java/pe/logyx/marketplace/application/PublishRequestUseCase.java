@@ -1,12 +1,14 @@
 package pe.logyx.marketplace.application;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.identity.application.OrganizationGuard;
 import pe.logyx.identity.domain.model.Organization;
+import pe.logyx.marketplace.application.event.RequestPublished;
 import pe.logyx.marketplace.application.port.out.AuctionRepository;
 import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
 import pe.logyx.marketplace.domain.AuctionClosingPolicy;
@@ -38,6 +40,8 @@ public class PublishRequestUseCase {
     @Inject RequestCodes codes;
     @Inject IdempotencyKeys idempotency;
     @Inject PlaceService places;
+    @Inject Event<RequestPublished> requestPublished;
+    @Inject InviteCarriersUseCase invitations;
 
     /** Ámbito de {@code idempotency_keys} para esta escritura. */
     public static final String IDEMPOTENCY_SCOPE = "shipment_request";
@@ -96,6 +100,8 @@ public class PublishRequestUseCase {
 
         audit.record(tenant.profileId(), org.id(), republishedFrom == null ? "REQUEST_PUBLISHED" : "REQUEST_REPUBLISHED",
                 "shipment_request", r.id(), (republishedFrom == null ? "" : "desde=" + republishedFrom + " ") + "codigo=" + r.code());
+        if (cmd.invitePreferred()) invitations.invite(r);                                  // roadmap 2.9
+        requestPublished.fire(new RequestPublished(r.id(), org.id(), r.routeLabel(), origin.name(), destination.name()));
         return summaries.of(r, false);
     }
 }

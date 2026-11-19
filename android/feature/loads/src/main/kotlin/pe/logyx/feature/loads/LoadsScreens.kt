@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.NearMe
@@ -113,6 +114,7 @@ import pe.logyx.core.model.VehicleType
 import pe.logyx.core.model.CityItem
 import pe.logyx.core.model.CounterOfferView
 import pe.logyx.core.model.RequestView
+import pe.logyx.core.model.SavedSearch
 import pe.logyx.core.model.ReturnLoadHintView
 import pe.logyx.core.model.ShipmentView
 import pe.logyx.core.model.RequestStatus
@@ -341,14 +343,27 @@ private fun ActiveShipmentCard(s: ShipmentView, onClick: () -> Unit) {
 // ───────────────────────── Feed ─────────────────────────
 
 @Composable
-fun LoadsFeedRoute(onOpenLoad: (String) -> Unit, viewModel: LoadsFeedViewModel = koinViewModel()) {
+fun LoadsFeedRoute(
+    onOpenLoad: (String) -> Unit,
+    viewModel: LoadsFeedViewModel = koinViewModel(),
+    savedViewModel: SavedSearchesViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val saved by savedViewModel.state.collectAsStateWithLifecycle()
     LiveEffect(viewModel) { viewModel.liveLoop() }
     LoadsFeedScreen(
         state, viewModel::refresh, viewModel::toggle, onOpenLoad,
         onLoadMore = viewModel::loadMore, onOrigin = viewModel::setOrigin, onDestination = viewModel::setDestination,
         onDates = viewModel::setDates, onCargoType = viewModel::setCargoType, onClearFilters = viewModel::clearFilters,
         onMessageShown = viewModel::messageShown,
+        savedState = saved,
+        savedActions = SavedSearchesActions(
+            onRefresh = savedViewModel::refresh,
+            onSave = { name -> state.toSavedSearchRequest(name)?.let { savedViewModel.save(name, it) } },
+            onSetActive = savedViewModel::setActive, onAskDelete = savedViewModel::askDelete,
+            onConfirmDelete = savedViewModel::confirmDelete, onDismissDelete = savedViewModel::dismissDelete,
+            onResetSave = savedViewModel::resetSave, onMessageShown = savedViewModel::messageShown,
+        ),
     )
 }
 
@@ -373,10 +388,17 @@ fun LoadsFeedScreen(
     onCargoType: (CargoType?) -> Unit = {},
     onClearFilters: () -> Unit = {},
     onMessageShown: () -> Unit = {},
+    savedState: SavedSearchesUiState = SavedSearchesUiState(loading = false),
+    savedActions: SavedSearchesActions = SavedSearchesActions(),
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
     var showFilters by rememberSaveable { mutableStateOf(false) }
+    var showSaved by rememberSaveable { mutableStateOf(false) }
+    var showSave by rememberSaveable { mutableStateOf(false) }
+    // Con la hoja de búsquedas abierta el resultado se ve dentro de ella; al cerrarla sale como aviso.
+    MessageEffect(if (showSaved) null else savedState.message, snackbar, savedActions.onMessageShown)
+    val savable = state.toSavedSearchRequest() != null
     LogyxScreen(stringResource(R.string.loads_feed_title), snackbar = snackbar) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             ChipRow(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -390,6 +412,11 @@ fun LoadsFeedScreen(
                     label = if (state.advancedCount > 0) stringResource(R.string.loads_filter_more_count, state.advancedCount)
                     else stringResource(R.string.loads_filter_more),
                     selected = state.advancedCount > 0, onClick = { showFilters = true }, leadingIcon = Icons.Rounded.Tune,
+                )
+                LogyxFilterChip(
+                    label = if (savedState.items.isNotEmpty()) stringResource(R.string.loads_saved_chip_count, savedState.items.size)
+                    else stringResource(R.string.loads_saved_chip),
+                    selected = false, onClick = { showSaved = true }, leadingIcon = Icons.Rounded.BookmarkBorder,
                 )
             }
             when {
@@ -450,7 +477,25 @@ fun LoadsFeedScreen(
             }
         }
         if (showFilters) {
-            FiltersSheet(state, { showFilters = false }, onOrigin, onDestination, onDates, onCargoType, onClearFilters)
+            FiltersSheet(
+                state, { showFilters = false }, onOrigin, onDestination, onDates, onCargoType, onClearFilters,
+                canSave = savable && savedState.canWrite, onSave = { showFilters = false; savedActions.onResetSave(); showSave = true },
+            )
+        }
+        if (showSaved) {
+            SavedSearchesSheet(
+                savedState, state.cities, state.vehicles, canSaveCurrent = savable,
+                onSaveCurrent = { showSaved = false; savedActions.onResetSave(); showSave = true },
+                actions = savedActions, onDismiss = { showSaved = false; savedActions.onMessageShown() },
+            )
+        }
+        if (showSave) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val summary = state.toSavedSearchRequest()?.let { r ->
+                SavedSearch("", r.name, r.originCity, r.destinationCity, r.cargoType, r.pickupFrom, r.pickupTo, r.maxWeightKg)
+                    .summaryText(context, state.cities, state.vehicles)
+            }.orEmpty()
+            SaveSearchSheet(state.suggestedSearchName(), summary, savedState, savedActions, onDismiss = { showSave = false })
         }
     }
 }
@@ -464,6 +509,8 @@ private fun FiltersSheet(
     onDates: (LocalDate?, LocalDate?) -> Unit,
     onCargoType: (CargoType?) -> Unit,
     onClear: () -> Unit,
+    canSave: Boolean = false,
+    onSave: () -> Unit = {},
 ) {
     val anyCargo = stringResource(R.string.loads_filter_cargo_any)
     LogyxBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.loads_filters_title)) {
@@ -496,6 +543,12 @@ private fun FiltersSheet(
                 stringResource(R.string.loads_filter_apply, pluralStringResource(R.plurals.loads_feed_count, state.total, state.total)),
                 onDismiss, variant = ButtonVariant.Primary,
             )
+            if (canSave) {
+                LogyxButton(
+                    stringResource(R.string.loads_saved_save_filters), onSave,
+                    variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true,
+                )
+            }
             if (state.hasActiveFilters) {
                 LogyxButton(stringResource(R.string.loads_filter_clear), onClear, variant = ButtonVariant.Ghost, size = ButtonSize.Medium)
             }
@@ -691,11 +744,15 @@ private fun BidSheet(
                 blocked = agendaBlocked, hints = agendaHints,
             )
             // CAP-006: el vehículo elegido ya tiene ofertas pendientes para esas fechas; se puede ofertar, pero se avisa antes.
-            state.eligibility[form.vehicleId]?.warnings?.firstOrNull()?.let { w ->
+            state.eligibility[form.vehicleId]?.warnings?.firstOrNull { it.code?.startsWith("LOGYX-FLT-") != true }?.let { w ->
                 AlertBanner(
                     stringResource(R.string.loads_agenda_warning_text), kind = MessageKind.Warning,
                     title = w.message ?: stringResource(R.string.loads_agenda_busy),
                 )
+            }
+            // FLT-007/008: documento del vehículo vencido o que vence antes del recojo; se puede ofertar, pero se avisa.
+            state.eligibility[form.vehicleId]?.warnings.orEmpty().filter { it.code?.startsWith("LOGYX-FLT-") == true }.forEach { w ->
+                AlertBanner(w.message ?: stringResource(R.string.loads_fleet_doc_warning), kind = MessageKind.Warning)
             }
             MoneyField(
                 value = form.amountText, onValueChange = onAmountChange, label = stringResource(R.string.loads_sheet_amount),

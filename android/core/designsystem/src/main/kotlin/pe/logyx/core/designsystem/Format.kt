@@ -23,6 +23,9 @@ object Fmt {
 
     fun decimal1(value: Double): String = decimal("0.0").format(value)
 
+    /** Peso en kg con miles y hasta 1 decimal: `3,200 kg`, `2,450.5 kg`. */
+    fun kg(value: Double?): String = value?.let { decimal("#,##0.#").format(it) + " kg" } ?: "—"
+
     fun km(value: Double?): String = value?.let { decimal("#,##0").format(it) + " km" } ?: "—"
 
     fun tons(weightKg: Double?): String = weightKg?.let {

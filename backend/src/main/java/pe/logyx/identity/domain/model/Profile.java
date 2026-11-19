@@ -30,6 +30,9 @@ public final class Profile {
     private OffsetDateTime passwordChangedAt;
     private boolean invitationPending;
     private final UUID invitedBy;
+    /** V23 (2.15): suspensión por el operador; mientras exista, su ADMIN no lo reactiva (LOGYX-USR-007). */
+    private OffsetDateTime operatorSuspendedAt;
+    private String operatorSuspensionReason;
 
     public Profile(UUID id, UUID organizationId, String email, String passwordHash, String fullName, Role role,
                    boolean active, OffsetDateTime consentAcceptedAt, OffsetDateTime createdAt) {
@@ -113,8 +116,39 @@ public final class Profile {
     }
 
     public void reactivate() {
+        if (operatorSuspendedAt != null) {
+            throw pe.logyx.shared.domain.BusinessException.conflict("LOGYX-USR-007",
+                    "OnCargo suspendió este usuario: solo el operador lo reactiva");
+        }
         active = true;
     }
+
+    /** El operador suspende al usuario (2.15): no inicia sesión y se cierran sus sesiones. */
+    public void suspendByOperator(String reason, OffsetDateTime now) {
+        operatorSuspendedAt = now;
+        operatorSuspensionReason = reason;
+        if (active) {
+            active = false;
+            revokeSessions();
+        }
+    }
+
+    /** El operador levanta su suspensión y reactiva al usuario. */
+    public void reactivateByOperator() {
+        operatorSuspendedAt = null;
+        operatorSuspensionReason = null;
+        active = true;
+    }
+
+    /** Restaura lo guardado (persistencia). */
+    public Profile restoreOperatorSuspension(OffsetDateTime at, String reason) {
+        operatorSuspendedAt = at;
+        operatorSuspensionReason = reason;
+        return this;
+    }
+
+    public OffsetDateTime operatorSuspendedAt() { return operatorSuspendedAt; }
+    public String operatorSuspensionReason() { return operatorSuspensionReason; }
 
     /** "Cerrar sesión en todos los dispositivos" (y efecto de los cambios de arriba). */
     public void revokeSessions() {

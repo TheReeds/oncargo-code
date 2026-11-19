@@ -53,9 +53,14 @@ export const CITY_LABELS: Record<string, string> = {
 
 export const INCIDENT_CATEGORY_LABELS: Record<string, string> = {
   CARGO_DAMAGE: 'Daño en la carga', DELAY: 'Retraso', LOST_CARGO: 'Carga perdida', WRONG_DELIVERY: 'Entrega equivocada', DRIVER_CONDUCT: 'Conducta del conductor', OTHER: 'Otro',
+  // Ola 2 (2.7)
+  PICKUP_NO_SHOW: 'El transportista no llegó al recojo', SHIPPER_NO_SHOW: 'No había carga en el recojo', BREAKDOWN: 'Avería del vehículo',
+  ACCIDENT: 'Accidente', THEFT: 'Robo', ROAD_BLOCKED: 'Vía bloqueada', PARTIAL_DELIVERY: 'Entrega parcial', PAYMENT_DISPUTE: 'Disputa de pago',
 };
+export const INCIDENT_SEVERITY_LABELS: Record<string, string> = { LOW: 'Baja', MEDIUM: 'Media', HIGH: 'Alta', CRITICAL: 'Crítica' };
 export const INCIDENT_STATUS_LABELS: Record<string, string> = { OPEN: 'Abierta', IN_REVIEW: 'En revisión', RESOLVED: 'Resuelta', CLOSED: 'Cerrada' };
 export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  PICKUP_PHOTO: 'Foto de la carga',
   SERVICE_ORDER: 'Orden de servicio', REMISSION_GUIDE: 'Guía de remisión', RECEIPT: 'Comprobante', DELIVERY_PHOTO: 'Foto de entrega', SIGNATURE: 'Firma de recepción', OTHER: 'Otro documento',
 };
 

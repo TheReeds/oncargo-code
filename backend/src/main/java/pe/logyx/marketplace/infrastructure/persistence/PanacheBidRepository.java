@@ -140,6 +140,35 @@ public class PanacheBidRepository implements BidRepository {
         }
     }
 
+    @Override
+    public void recordRevision(UUID bidId, UUID carrierOrgId, Bid.Revision r) {
+        BidEntity.getEntityManager().createNativeQuery("INSERT INTO bid_revisions (bid_id, carrier_org_id, "
+                        + "previous_amount, new_amount, previous_vehicle_id, new_vehicle_id, previous_plate, new_plate) "
+                        + "VALUES (:bid, :org, :pa, :na, :pv, :nv, :pp, :np)")
+                .setParameter("bid", bidId).setParameter("org", carrierOrgId)
+                .setParameter("pa", r.previousAmount()).setParameter("na", r.newAmount())
+                .setParameter("pv", r.previousVehicleId()).setParameter("nv", r.newVehicleId())
+                .setParameter("pp", r.previousPlate()).setParameter("np", r.newPlate()).executeUpdate();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<RevisionRow> listRevisions(UUID bidId) {
+        List<Object[]> rows = BidEntity.getEntityManager().createNativeQuery("SELECT created_at, previous_amount, "
+                        + "new_amount, previous_vehicle_id, new_vehicle_id, previous_plate, new_plate FROM bid_revisions "
+                        + "WHERE bid_id = :bid ORDER BY created_at, id").setParameter("bid", bidId).getResultList();
+        return rows.stream().map(r -> new RevisionRow(toOffset(r[0]),
+                new Bid.Revision((java.math.BigDecimal) r[1], (java.math.BigDecimal) r[2], (UUID) r[3], (UUID) r[4],
+                        (String) r[5], (String) r[6]))).toList();
+    }
+
+    private static java.time.OffsetDateTime toOffset(Object o) {
+        if (o instanceof java.time.OffsetDateTime odt) return odt;
+        if (o instanceof java.sql.Timestamp ts) return ts.toInstant().atOffset(java.time.ZoneOffset.UTC);
+        if (o instanceof java.time.Instant i) return i.atOffset(java.time.ZoneOffset.UTC);
+        throw new IllegalStateException("Fecha inesperada: " + o);
+    }
+
     private static List<Bid> map(List<BidEntity> list) {
         return list.stream().map(BidEntity::toDomain).toList();
     }

@@ -13,7 +13,20 @@ import java.util.List;
  */
 public record ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName,
                               String carrierName, RequestInfo request, boolean activeIncident,
-                              boolean contactsVisible) {
+                              boolean contactsVisible, java.math.BigDecimal adjustmentsTotal,
+                              long pendingAdjustments) {
+
+    /** Sin ajustes (2.6). */
+    public ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName, String carrierName,
+                           RequestInfo request, boolean activeIncident, boolean contactsVisible) {
+        this(shipment, stops, requesterName, carrierName, request, activeIncident, contactsVisible,
+                java.math.BigDecimal.ZERO, 0);
+    }
+
+    /** Precio final = acordado + ajustes aceptados (2.6). */
+    public java.math.BigDecimal finalPrice() {
+        return pe.logyx.shipment.domain.AdjustmentPolicy.finalPrice(shipment.agreedPrice(), adjustmentsTotal);
+    }
 
     public ShipmentSummary(Shipment shipment, List<ShipmentStop> stops, String requesterName, String carrierName,
                            RequestInfo request, boolean activeIncident) {

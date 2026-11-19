@@ -18,7 +18,7 @@ class IncidentStatusPolicyTest {
 
     private static Incident incident() {
         UUID p = UUID.randomUUID();
-        return Incident.report(UUID.randomUUID(), p, UUID.randomUUID(), p, null, IncidentCategory.DELAY, " retraso ");
+        return Incident.report(UUID.randomUUID(), p, UUID.randomUUID(), p, null, IncidentCategory.CARGO_DAMAGE, " retraso ");
     }
 
     @Test

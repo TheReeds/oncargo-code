@@ -22,10 +22,14 @@ import kotlin.test.assertTrue
 
 private class FakeDocs(var result: Result<List<DocumentView>>) : DocumentsRepository {
     var listCalls = 0
+    var uploadResult: Result<DocumentView> = Result.success(DocumentView("n1", "s1", type = DocumentType.REMISSION_GUIDE, contentType = "application/pdf"))
+    var uploaded: Triple<String, DocumentType, Int>? = null
     override suspend fun list(shipmentId: String): Result<List<DocumentView>> { listCalls++; return result }
     override suspend fun file(documentId: String) = Result.success(byteArrayOf(1, 2, 3))
-    override suspend fun upload(shipmentId: String, bytes: ByteArray, fileName: String, mime: String, type: DocumentType, stopId: String?) =
-        Result.failure<DocumentView>(UnsupportedOperationException())
+    override suspend fun upload(shipmentId: String, bytes: ByteArray, fileName: String, mime: String, type: DocumentType, stopId: String?): Result<DocumentView> {
+        uploaded = Triple(mime, type, bytes.size)
+        return uploadResult
+    }
 }
 
 private fun doc(id: String, at: String, mime: String = "image/jpeg") =
@@ -69,5 +73,37 @@ class DocumentsViewModelTest {
     @Test fun `fetch devuelve los bytes del archivo`() = runTest {
         val vm = DocumentsViewModel("s1", FakeDocs(Result.success(emptyList())))
         assertContentEquals(byteArrayOf(1, 2, 3), vm.fetch("a").getOrThrow())
+    }
+
+    @Test fun `subir una guia valida llama al repositorio, avisa y recarga la lista`() {
+        val repo = FakeDocs(Result.success(listOf(doc("a", "2026-11-01"))))
+        val vm = DocumentsViewModel("s1", repo)
+        val before = repo.listCalls
+        vm.upload(ByteArray(2_000), "guia.pdf", "application/pdf", DocumentType.REMISSION_GUIDE)
+        assertEquals(Triple("application/pdf", DocumentType.REMISSION_GUIDE, 2_000), repo.uploaded)
+        assertFalse(vm.state.value.uploading)
+        assertNotNull(vm.state.value.message)
+        assertEquals(before + 1, repo.listCalls)
+    }
+
+    @Test fun `no sube formatos no admitidos, archivos vacios ni PDF de mas de 10 MB`() {
+        val repo = FakeDocs(Result.success(emptyList()))
+        val vm = DocumentsViewModel("s1", repo)
+        vm.upload(ByteArray(10), "a.gif", "image/gif", DocumentType.OTHER)
+        assertNull(repo.uploaded)
+        vm.upload(null, "a.pdf", "application/pdf", DocumentType.OTHER)
+        vm.upload(ByteArray(MAX_UPLOAD_BYTES + 1), "a.pdf", "application/pdf", DocumentType.OTHER)
+        assertNull(repo.uploaded)
+        assertNotNull(vm.state.value.message)
+        assertEquals(listOf(DocumentType.REMISSION_GUIDE, DocumentType.RECEIPT, DocumentType.SERVICE_ORDER, DocumentType.OTHER), UPLOADABLE_TYPES)
+    }
+
+    @Test fun `un error del servidor al subir queda como mensaje y el boton se libera`() {
+        val repo = FakeDocs(Result.success(emptyList()))
+        repo.uploadResult = Result.failure(ApiException(400, "LOGYX-DOC-001", "Tipo de archivo no permitido: solo JPG, PNG o PDF", "file"))
+        val vm = DocumentsViewModel("s1", repo)
+        vm.upload(ByteArray(10), "a.pdf", "application/pdf", DocumentType.RECEIPT)
+        assertFalse(vm.state.value.uploading)
+        assertNotNull(vm.state.value.message)
     }
 }

@@ -1,3 +1,5 @@
+import { INCIDENT_CATEGORY_LABELS, INCIDENT_SEVERITY_LABELS } from '@/lib/format';
+
 /** Horas que lleva (o llevó) abierta una incidencia. */
 export function hoursOpen(i: { createdAt?: string; resolvedAt?: string; active?: boolean }, now = Date.now()) {
   if (!i.createdAt) return 0;
@@ -19,9 +21,23 @@ export const DEFAULT_AGE_THRESHOLDS = { warn: 12, breach: 24 } as const;
 export const ageTone = (hours: number, active?: boolean, t: { warn: number; breach: number } = DEFAULT_AGE_THRESHOLDS) =>
   (!active ? 'text-ink-700' : hours > t.breach ? 'font-semibold text-red-600' : hours > t.warn ? 'font-semibold text-amber-700' : 'text-ink-700');
 
+/** Informativas (RN11, F21): avisan sin detener el viaje. Espejo de `IncidentCategory.blocking` en el backend. */
+export const INFORMATIVE_CATEGORIES = new Set(['DELAY', 'ROAD_BLOCKED', 'PAYMENT_DISPUTE']);
+
 export const CATEGORY_OPTIONS = [
-  ['CARGO_DAMAGE', 'Daño en la carga'], ['DELAY', 'Retraso'], ['LOST_CARGO', 'Carga perdida'], ['WRONG_DELIVERY', 'Entrega equivocada'], ['DRIVER_CONDUCT', 'Conducta del conductor'], ['OTHER', 'Otro'],
-].map(([value, label]) => ({ value, label }));
+  'CARGO_DAMAGE', 'LOST_CARGO', 'PARTIAL_DELIVERY', 'WRONG_DELIVERY', 'PICKUP_NO_SHOW', 'SHIPPER_NO_SHOW', 'BREAKDOWN', 'ACCIDENT', 'THEFT',
+  'DRIVER_CONDUCT', 'DELAY', 'ROAD_BLOCKED', 'PAYMENT_DISPUTE', 'OTHER',
+].map((value) => ({ value, label: INCIDENT_CATEGORY_LABELS[value], hint: INFORMATIVE_CATEGORIES.has(value) ? 'Informativa: el viaje sigue' : 'Detiene el viaje' }));
+
+export const SEVERITY_OPTIONS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((value) => ({ value, label: INCIDENT_SEVERITY_LABELS[value] }));
+
+/** Respuestas frecuentes del operador (2.7): se insertan en el comentario y se pueden editar antes de enviar. */
+export const CANNED_REPLIES = [
+  { value: 'revisando', label: 'Estamos revisando', text: 'Recibimos la incidencia y la estamos revisando. Te escribimos apenas tengamos novedades.' },
+  { value: 'fotos', label: 'Pedir fotos', text: 'Para avanzar necesitamos fotos de la carga y, si la hay, de la guía de remisión. Súbelas en Documentos del envío.' },
+  { value: 'coordinando', label: 'Coordinando con la contraparte', text: 'Estamos coordinando con la otra parte. Te avisamos en cuanto haya una propuesta.' },
+  { value: 'cierre', label: 'Propuesta de cierre', text: 'Con lo revisado proponemos cerrar la incidencia. Si no estás de acuerdo, respóndenos aquí hoy.' },
+];
 
 export const STATUS_LABEL_LONG: Record<string, string> = { OPEN: 'Abierta', IN_REVIEW: 'En revisión', RESOLVED: 'Resuelta', CLOSED: 'Cerrada' };
 

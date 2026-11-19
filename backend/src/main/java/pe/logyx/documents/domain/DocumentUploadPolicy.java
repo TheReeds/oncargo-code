@@ -22,6 +22,8 @@ public final class DocumentUploadPolicy {
         public StopInfo(boolean isDelivery, boolean arrivedOrCompleted) {
             this(isDelivery, arrivedOrCompleted, false);
         }
+
+        public boolean isPickup() { return !isDelivery; }
     }
 
     private DocumentUploadPolicy() {}
@@ -40,6 +42,10 @@ public final class DocumentUploadPolicy {
             throw BusinessException.badRequest("LOGYX-DOC-001",
                     "La foto y la firma de entrega deben ser una imagen JPG o PNG", "file");
         }
+        if (type.isPickupEvidence() && !f.image) {
+            throw BusinessException.badRequest("LOGYX-DOC-001", "La foto de la carga debe ser una imagen JPG o PNG",
+                    "file");
+        }
         return f;
     }
 
@@ -49,6 +55,10 @@ public final class DocumentUploadPolicy {
      */
     public static void ensureCanAttach(DocumentType type, boolean uploaderIsAssignedDriver, StopInfo stop,
                                        boolean shipmentClosed) {
+        if (type.isPickupEvidence()) {
+            ensurePickupEvidence(uploaderIsAssignedDriver, stop, shipmentClosed);
+            return;
+        }
         if (!type.isDeliveryEvidence()) return;
         if (!uploaderIsAssignedDriver) {
             throw new BusinessException(403, "LOGYX-DOC-007",
@@ -65,6 +75,31 @@ public final class DocumentUploadPolicy {
         if (!stop.arrived()) {
             throw BusinessException.conflict("LOGYX-DOC-005",
                     "Registra la llegada a la parada antes de subir la evidencia de entrega", "stopId");
+        }
+    }
+
+    /**
+     * Foto de la carga en el recojo (roadmap 2.5): mismas garantías que la de entrega (RN06, F14). Solo el conductor
+     * asignado (LOGYX-DOC-007; el despachador que registra la parada desde la oficina no la sube), con el
+     * {@code stopId} del recojo (LOGYX-DOC-009), con la llegada registrada (LOGYX-DOC-005) y antes de cerrar el recojo
+     * (LOGYX-DOC-008).
+     */
+    private static void ensurePickupEvidence(boolean uploaderIsAssignedDriver, StopInfo stop, boolean shipmentClosed) {
+        if (!uploaderIsAssignedDriver) {
+            throw new BusinessException(403, "LOGYX-DOC-007",
+                    "Solo el conductor asignado sube la foto de la carga, desde la parada de recojo");
+        }
+        if (stop == null || !stop.isPickup()) {
+            throw BusinessException.badRequest("LOGYX-DOC-009",
+                    "La foto de la carga debe indicar la parada de recojo (stopId)", "stopId");
+        }
+        if (shipmentClosed || stop.completed()) {
+            throw BusinessException.conflict("LOGYX-DOC-008",
+                    "El recojo ya se cerró: la foto de la carga no se puede agregar", "stopId");
+        }
+        if (!stop.arrived()) {
+            throw BusinessException.conflict("LOGYX-DOC-005",
+                    "Registra la llegada al recojo antes de subir la foto de la carga", "stopId");
         }
     }
 }

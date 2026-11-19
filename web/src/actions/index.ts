@@ -1,5 +1,6 @@
 import { auth } from '@/features/auth/actions';
 import { password } from '@/features/auth/password-actions';
+import { orgAccess } from '@/features/auth/org-access';
 import { requests } from '@/features/requests/actions';
 import { marketplace } from '@/features/marketplace/actions';
 import { fleet } from '@/features/fleet/actions';
@@ -19,5 +20,7 @@ import { activity } from '@/features/activity/actions';
 import { places } from '@/features/places/actions';
 import { searchActions } from '@/features/search/actions';
 import { landing } from '@/features/landing/actions';
+import { templates } from '@/features/templates/actions';
+import { preferences, backup } from '@/features/preferences/actions';
 
-export const server = { auth, password, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization, landing, access, activity, places, search: searchActions };
+export const server = { auth, password, orgAccess, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization, landing, access, activity, places, search: searchActions, templates, preferences, backup };

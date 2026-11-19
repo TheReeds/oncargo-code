@@ -42,6 +42,7 @@ public class AuthRateLimits {
     @ConfigProperty(name = "logyx.rate-limit.refresh.per-ip", defaultValue = "300") int refreshPerIp;
     @ConfigProperty(name = "logyx.rate-limit.public-quote.per-ip", defaultValue = "30") int publicQuotePerIp;
     @ConfigProperty(name = "logyx.rate-limit.public-tracking.per-ip", defaultValue = "120") int publicTrackingPerIp;
+    @ConfigProperty(name = "logyx.rate-limit.public-access-request.per-ip", defaultValue = "10") int publicAccessRequestPerIp;
     @ConfigProperty(name = "logyx.rate-limit.change-password.failures-per-user", defaultValue = "10")
     int changePasswordFailures;
 
@@ -90,6 +91,11 @@ public class AuthRateLimits {
     /** Enlace público de seguimiento (sin cuenta, ADR-0011): por IP → 429. Cuenta también los tokens inválidos. */
     public void beforePublicTracking(String ip) {
         acquireOr429("public-tracking-ip:" + ip, publicTrackingPerIp);
+    }
+
+    /** 2.15: «Pedir acceso a la organización» desde el registro, por IP → 429. */
+    public void beforePublicAccessRequest(String ip) {
+        acquireOr429("public-access-request-ip:" + ip, publicAccessRequestPerIp);
     }
 
     public void beforeRefresh(String ip) {

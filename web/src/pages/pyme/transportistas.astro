@@ -1,0 +1,20 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import CarrierPreferencesManager from '@/features/preferences/components/CarrierPreferencesManager';
+import { listPreferences } from '@/features/preferences/server';
+const token = Astro.locals.session!.token;
+let items: Awaited<ReturnType<typeof listPreferences>> = [];
+let loadError: string | null = null;
+try {
+  items = await listPreferences(token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus transportistas.';
+}
+---
+<AppShell title="Transportistas" active="transportistas">
+  <PageHeader title="Transportistas" subtitle="Tus preferidos y tus bloqueados" />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus transportistas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <CarrierPreferencesManager client:load initial={items} />
+</AppShell>

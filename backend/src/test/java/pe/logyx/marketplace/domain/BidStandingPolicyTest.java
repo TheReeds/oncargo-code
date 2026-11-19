@@ -28,4 +28,15 @@ class BidStandingPolicyTest {
     void unaOfertaMenorQueLaMejorNuncaSeDegrada() {
         assertEquals(BEST, band("900.00", "1000.00"));
     }
+
+    @Test
+    void posicionAproximadaSinMontos() {
+        assertEquals(BidPosition.TOP_TWO, BidStandingPolicy.position(1, 1));
+        assertEquals(BidPosition.TOP_TWO, BidStandingPolicy.position(2, 9));
+        assertEquals(BidPosition.LOWER_HALF, BidStandingPolicy.position(3, 5));    // la mediana: no está «por encima»
+        assertEquals(BidPosition.UPPER_HALF, BidStandingPolicy.position(4, 5));
+        assertEquals(BidPosition.LOWER_HALF, BidStandingPolicy.position(3, 6));
+        assertEquals(BidPosition.UPPER_HALF, BidStandingPolicy.position(4, 6));
+        assertEquals(BidPosition.UPPER_HALF, BidStandingPolicy.position(3, 3));
+    }
 }

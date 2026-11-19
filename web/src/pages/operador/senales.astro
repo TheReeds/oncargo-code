@@ -1,0 +1,14 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Card } from '@/components/ui/card';
+import SignalsList from '@/features/operator/components/SignalsList';
+import { getSignals } from '@/features/operator/server';
+
+const s = Astro.locals.session!;
+const signals = await getSignals(s.token);
+---
+<AppShell title="Señales" active="operador-senales" wide>
+  <PageHeader title="Señales" subtitle="Datos repetidos entre empresas y tasas fuera de lo normal. Son indicios para revisar, no sanciones." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Señales' }]} />
+  <Card><SignalsList signals={signals ?? []} /></Card>
+</AppShell>

@@ -44,7 +44,7 @@ class IncidentAndOperatorFlowTest {
         String sid = a.shipmentId();
 
         // La PYME reporta (RF52)
-        String incidentId = as(a.pyme()).body(Map.of("category", "DELAY", "description", "Lleva 6 h de retraso"))
+        String incidentId = as(a.pyme()).body(Map.of("category", "CARGO_DAMAGE", "description", "Lleva 6 h de retraso"))
                 .post("/api/v1/shipments/" + sid + "/incidents").then().statusCode(201)
                 .body("data.status", is("OPEN")).body("data.active", is(true))
                 .body("data.reportedByOrgId", is(a.pyme().orgId()))

@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -102,11 +104,15 @@ class DriverOfflineViewModelTest {
         stop("d", 2, StopType.DELIVERY, StopStatus.ARRIVED),
     )
 
-    private fun vm(repo: NetShipments, evidence: Evidence = Evidence(), cache: DriverTripCache = DriverTripCache.inMemory(clock)) =
-        DriverTripViewModel(
-            repo, Catalog(), evidence, FakeRealtime(), cache = cache,
-            queue = DriverActionQueue(repo, TextStore.InMemory(), { evidence.flow.value }, clock = clock),
-        )
+    private fun vm(
+        repo: NetShipments,
+        evidence: Evidence = Evidence(),
+        cache: DriverTripCache = DriverTripCache.inMemory(clock),
+        scope: kotlinx.coroutines.CoroutineScope? = null,
+    ) = DriverTripViewModel(
+        repo, Catalog(), evidence, FakeRealtime(), cache = cache,
+        queue = DriverActionQueue(repo, TextStore.InMemory(), { evidence.flow.value }, clock = clock, scope = scope, backoff = pe.logyx.core.data.Backoff(random = { 0.0 })),
+    )
 
     @Test fun `sin red muestra el viaje guardado con la hora de los datos`() = runTest {
         val cache = DriverTripCache.inMemory(clock)
@@ -147,9 +153,10 @@ class DriverOfflineViewModelTest {
         assertNull(vm.state.value.cachedAt)
     }
 
-    @Test fun `sin red el toque se aplica al instante, queda en cola y sale al recuperar senal`() = runTest {
+    @Test fun `sin red el toque se aplica al instante, queda en cola y sale al recuperar senal`() = runTest(timeout = 60.seconds) {
         val repo = NetShipments(fresh)
-        val vm = vm(repo)
+        // El reintento automático de la cola corre en backgroundScope: se cancela al terminar el test (sin bucles colgados).
+        val vm = vm(repo, scope = backgroundScope)
         repo.online = false
 
         vm.advance()
@@ -169,9 +176,9 @@ class DriverOfflineViewModelTest {
         assertEquals(DriverStep.ARRIVE_DESTINATION, vm.state.value.action?.step)
         assertEquals(2, vm.state.value.pendingActions.size)
 
-        // Vuelve la señal: el reintento de ~20 s vacía la cola en orden y el servidor manda.
+        // Vuelve la señal: el reintento con espera exponencial (5 s, luego 10 s) vacía la cola en orden y el servidor manda.
         repo.online = true
-        advanceTimeBy(20_001)
+        advanceTimeBy(10_001); runCurrent()
         s = vm.state.value
         assertTrue(s.pendingActions.isEmpty())
         assertFalse(s.offline)
@@ -190,6 +197,8 @@ class DriverOfflineViewModelTest {
         vm.onPhotoCaptured(byteArrayOf(1))
         assertTrue(vm.state.value.hasPhotoAwaitingSignal)
         assertFalse(vm.state.value.photoBlocked)
+        assertFalse(vm.state.value.canAdvance, "falta quién recibe (2.5)")
+        vm.onReceiverName("Ana Torres"); vm.onReceiverDoc("45678912")
         assertTrue(vm.state.value.canAdvance)
 
         vm.advance()

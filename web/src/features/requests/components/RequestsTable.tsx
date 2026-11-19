@@ -23,6 +23,8 @@ import { CancelRequestDialog } from './CancelRequestButton';
 import { RescheduleDialog } from './RecoveryDialogs';
 import { useCan } from '@/lib/use-can';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { Checkbox } from '@/components/ui/form-controls';
+import { BatchBar } from './BatchActions';
 
 export const PAGE_SIZE = 20;
 export type RequestFilters = { status: string; origin: string; dest: string; from: string; to: string; q: string; sort: string };
@@ -78,6 +80,12 @@ export default function RequestsTable({ rows, cities, filters, page, size, total
 
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [recover, setRecover] = useState<{ mode: 'reopen' | 'republish'; r: RequestView } | null>(null);
+  // Selección para acciones masivas (2.10): solo en la página visible; se pierde al cambiar de filtro o de página.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id!));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id!)));
+  const labels = Object.fromEntries(rows.map((r) => [r.id!, `${r.code} · ${CITY_LABELS[r.originCity!]} → ${CITY_LABELS[r.destinationCity!]}`]));
 
   if (!anyRequests)
     return (
@@ -131,9 +139,11 @@ export default function RequestsTable({ rows, cities, filters, page, size, total
           />
         ) : (
           <>
+            {canOperate && selected.size > 0 && <BatchBar ids={[...selected]} labels={labels} onClear={() => setSelected(new Set())} />}
             <Table label="Tus solicitudes" stack>
               <thead>
                 <tr>
+                  {canOperate && <Th className="w-10"><Checkbox aria-label="Seleccionar todas las solicitudes de la página" checked={allSelected ? true : selected.size > 0 ? 'indeterminate' : false} onCheckedChange={toggleAll} /></Th>}
                   <Th>Ruta</Th><Th>Carga</Th><Th>Recojo</Th><Th>Estado</Th><Th>Subasta</Th>
                   <Th className="text-right">Sugerido</Th>
                   <Th><span className="sr-only">Acciones</span></Th>
@@ -145,7 +155,8 @@ export default function RequestsTable({ rows, cities, filters, page, size, total
                   const open = r.status === 'PUBLISHED';
                   const route = `${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`;
                   return (
-                    <Tr key={r.id}>
+                    <Tr key={r.id} className={selected.has(r.id!) ? 'bg-petrol-50/60' : undefined}>
+                      {canOperate && <Td label="Seleccionar"><Checkbox aria-label={`Seleccionar ${route}`} checked={selected.has(r.id!)} onCheckedChange={() => toggle(r.id!)} /></Td>}
                       <Td primary>
                         <a href={`/pyme/solicitudes/${r.id}`} className="whitespace-nowrap font-medium text-petrol-700 hover:underline">{CITY_LABELS[r.originCity!]} → {CITY_LABELS[r.destinationCity!]}</a>
                         <div className="font-mono text-xs text-ink-500"><span className="font-semibold text-ink-700">{r.code}</span> · {formatKm(r.distanceKm)}</div>

@@ -13,10 +13,29 @@ export const listIncidents = (token: string, q: IncidentQuery = {}) =>
 export const shipmentIncidents = (token: string, shipmentId: string) =>
   unwrap(apiFor(token).GET('/api/v1/shipments/{id}/incidents', { params: { path: { id: shipmentId } } }));
 export const getIncident = (token: string, id: string) => unwrap(apiFor(token).GET('/api/v1/incidents/{id}', { params: { path: { id } } }));
-export const reportIncident = (token: string, shipmentId: string, category: IncidentCategory, description: string) =>
-  unwrap(apiFor(token).POST('/api/v1/shipments/{id}/incidents', { params: { path: { id: shipmentId } }, body: { category, description } }));
-export const addComment = (token: string, id: string, body: string) =>
-  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/comments', { params: { path: { id } }, body: { body } }));
+export type ReportIncidentBody = Schemas['ReportIncident'];
+/** Alta v2 (2.7): severidad, monto reclamado, adjuntos y clave de idempotencia (un doble clic no crea dos). */
+export const reportIncident = (token: string, shipmentId: string, body: ReportIncidentBody, idempotencyKey?: string) =>
+  unwrap(apiFor(token).POST('/api/v1/shipments/{id}/incidents', {
+    params: { path: { id: shipmentId }, header: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined } as never, body,
+  }));
+export const addComment = (token: string, id: string, body: string, internal = false) =>
+  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/comments', { params: { path: { id } }, body: internal ? { body, internal } : { body } }));
+export const withdrawIncident = (token: string, id: string) =>
+  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/withdraw', { params: { path: { id } } }));
+export const reopenIncident = (token: string, id: string, reason: string) =>
+  unwrap(apiFor(token).POST('/api/v1/incidents/{id}/reopen', { params: { path: { id } }, body: { reason } }));
+/** Operador: tomar (sin `assigneeProfileId`), asignar a otra persona del operador o dejar sin responsable. */
+export const assignIncident = (token: string, id: string, unassign = false) =>
+  unwrap(apiFor(token).PUT('/api/v1/incidents/{id}/assignee', { params: { path: { id } }, body: unassign ? { unassign: true } : {} }));
+
+export type OperatorIncidentRow = Schemas['OperatorIncidentRow'];
+export type OperatorIncidentQuery = { status?: string; severity?: string; assignee?: 'me' | 'none'; breached?: boolean; order?: 'due' | 'recent'; page?: number; size?: number };
+export const operatorIncidents = (token: string, q: OperatorIncidentQuery = {}) =>
+  unwrapPage<OperatorIncidentRow>(apiFor(token).GET('/api/v1/operator/incidents', { params: { query: {
+    status: q.status || undefined, severity: q.severity || undefined, assignee: q.assignee, breached: q.breached || undefined,
+    order: q.order, page: q.page ?? 0, size: q.size ?? 20,
+  } } }) as never);
 /** Estado final del envío al resolver o cerrar (RF55). */
 export type ShipmentOutcome = 'RESUME' | 'DELIVERED' | 'CANCELLED';
 export const changeStatus = (token: string, id: string, status: IncidentStatus, resolutionNotes?: string, shipmentOutcome?: ShipmentOutcome) =>

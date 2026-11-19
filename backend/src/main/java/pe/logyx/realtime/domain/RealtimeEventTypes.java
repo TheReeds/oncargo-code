@@ -21,6 +21,8 @@ public final class RealtimeEventTypes {
     public static final String SHIPMENT_STATUS_CHANGED = "shipment.status_changed";
     public static final String SHIPMENT_STOP_UPDATED = "shipment.stop_updated";
     public static final String SHIPMENT_DRIVER_ASSIGNED = "shipment.driver_assigned";
+    /** V23 (2.6): un ajuste del envío se propuso, decidió, retiró o escaló. Payload: shipmentId, adjustmentId, status. */
+    public static final String SHIPMENT_ADJUSTMENT_UPDATED = "shipment.adjustment_updated";
     // Incidencias
     public static final String INCIDENT_REPORTED = "incident.reported";
     public static final String INCIDENT_UPDATED = "incident.updated";

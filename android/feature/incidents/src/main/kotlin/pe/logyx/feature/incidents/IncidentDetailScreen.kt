@@ -24,6 +24,13 @@ import org.koin.core.parameter.parametersOf
 import pe.logyx.core.designsystem.Fmt
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.components.AlertBanner
+import pe.logyx.core.designsystem.components.ButtonSize
+import pe.logyx.core.designsystem.components.ButtonVariant
+import pe.logyx.core.designsystem.components.LogyxBadge
+import pe.logyx.core.designsystem.components.LogyxButton
+import pe.logyx.core.designsystem.components.LogyxConfirmDialog
+import pe.logyx.core.designsystem.components.PillTone
+import pe.logyx.core.designsystem.LogyxText
 import pe.logyx.core.designsystem.components.ChatBubble
 import pe.logyx.core.designsystem.components.ChatComposer
 import pe.logyx.core.designsystem.components.ErrorState
@@ -53,7 +60,10 @@ fun IncidentDetailRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LiveEffect(viewModel) { viewModel.liveLoop() }
-    IncidentDetailScreen(state, onBack, viewModel::refresh, viewModel::onDraft, viewModel::send, viewModel::onMessageShown)
+    IncidentDetailScreen(
+        state, onBack, viewModel::refresh, viewModel::onDraft, viewModel::send, viewModel::onMessageShown,
+        onAskWithdraw = viewModel::askWithdraw, onConfirmWithdraw = viewModel::withdraw, onDismissWithdraw = viewModel::dismissWithdraw,
+    )
 }
 
 @Composable
@@ -64,9 +74,13 @@ fun IncidentDetailScreen(
     onDraft: (String) -> Unit,
     onSend: () -> Unit,
     onMessageShown: () -> Unit,
+    onAskWithdraw: () -> Unit = {},
+    onConfirmWithdraw: () -> Unit = {},
+    onDismissWithdraw: () -> Unit = {},
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
+    WithdrawDialog(state, onConfirmWithdraw, onDismissWithdraw)
     LogyxScreen(
         stringResource(R.string.incidents_detail_title), onBack = onBack, snackbar = snackbar,
         bottomBar = {
@@ -87,6 +101,14 @@ fun IncidentDetailScreen(
                 else -> Refreshable(state.refreshing, onRefresh) {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         item { Summary(incident, state.organizationId) }
+                        if (state.canWithdraw) {
+                            item {
+                                LogyxButton(
+                                    stringResource(R.string.incidents_withdraw), onAskWithdraw, variant = ButtonVariant.Secondary,
+                                    size = ButtonSize.Medium, loading = state.withdrawing, requiresOperate = true,
+                                )
+                            }
+                        }
                         item {
                             Text(
                                 stringResource(R.string.incidents_detail_thread), style = MaterialTheme.typography.titleMedium,
@@ -113,6 +135,30 @@ fun IncidentDetailScreen(
 }
 
 @Composable
+private fun WithdrawDialog(state: IncidentDetailUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    if (!state.confirmingWithdraw) return
+    LogyxConfirmDialog(
+        title = stringResource(R.string.incidents_withdraw_title),
+        message = stringResource(R.string.incidents_withdraw_message),
+        confirmLabel = stringResource(R.string.incidents_withdraw),
+        dismissLabel = stringResource(R.string.incidents_withdraw_back),
+        onConfirm = onConfirm, onDismiss = onDismiss, destructive = true, loading = state.withdrawing,
+    )
+}
+
+/** Severidad, «Informativa» (no congela, RN11) y plazo vencido. */
+@Composable
+internal fun IncidentTags(incident: IncidentView, modifier: Modifier = Modifier) {
+    val severity = incident.severity
+    if (severity == null && incident.blocking && !incident.slaBreached) return
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        severity?.let { StatusPill(it.pill()) }
+        if (!incident.blocking) LogyxBadge(stringResource(R.string.incidents_informative_short), tone = PillTone.Petrol)
+        if (incident.slaBreached && incident.active) LogyxBadge(stringResource(R.string.incidents_sla_breached), tone = PillTone.Amber)
+    }
+}
+
+@Composable
 private fun Summary(incident: IncidentView, myOrgId: String?) {
     val you = stringResource(R.string.incidents_detail_you)
     val reporter = when (incident.reportedByOrgId) {
@@ -134,6 +180,25 @@ private fun Summary(incident: IncidentView, myOrgId: String?) {
         if (reporter != null) {
             Text(stringResource(R.string.incidents_detail_reported_by, reporter), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        IncidentTags(incident, Modifier.padding(top = 8.dp))
+        when {
+            // RN11 (V23): las informativas no detienen el viaje; las que congelan, mientras estén activas.
+            !incident.blocking && incident.active ->
+                AlertBanner(stringResource(R.string.incidents_informative), kind = MessageKind.Info, modifier = Modifier.padding(top = 12.dp))
+            incident.holdsShipment || (incident.active && incident.blocking) ->
+                AlertBanner(stringResource(R.string.incidents_holds_shipment), kind = MessageKind.Warning, modifier = Modifier.padding(top = 12.dp))
+        }
+        incident.withdrawnAt?.let {
+            Text(stringResource(R.string.incidents_withdrawn_at, Fmt.dateTime(it)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+        }
+        incident.claimedAmount?.let { Amount(stringResource(R.string.incidents_claimed_amount), it) }
+        incident.declaredValue?.let { Amount(stringResource(R.string.incidents_declared_value), it) }
+        if (incident.attachments.isNotEmpty()) {
+            Text(stringResource(R.string.incidents_attachments, incident.attachments.size), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        }
+        if (incident.latitude != null && incident.longitude != null) {
+            Text(stringResource(R.string.incidents_location), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
         Text(stringResource(R.string.incidents_detail_description), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
         Text(incident.description, style = MaterialTheme.typography.bodyMedium)
         incident.resolutionNotes?.takeIf { it.isNotBlank() }?.let {
@@ -143,10 +208,19 @@ private fun Summary(incident: IncidentView, myOrgId: String?) {
     }
 }
 
+@Composable
+private fun Amount(label: String, value: Double) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(Fmt.money(value), style = LogyxText.moneySmall, color = LogyxTheme.colors.moneyText)
+    }
+}
+
 private val sample = IncidentView(
     "1", "s1", requesterOrgId = "org-p", requesterName = "Ferretería Los Andes", carrierOrgId = "org-c", carrierName = "Transportes Inti",
     reportedByOrgId = "org-p", category = IncidentCategory.DELAY, description = "El camión lleva 3 horas detenido en el peaje.",
     status = IncidentStatus.IN_REVIEW, active = true, createdAt = "2026-11-05T14:00:00-05:00",
+    severity = pe.logyx.core.model.IncidentSeverity.LOW, blocking = false, canWithdraw = true,
     comments = listOf(
         IncidentCommentView("c1", "org-p", "Ferretería Los Andes", "Sigue detenido.", "2026-11-05T14:10:00-05:00"),
         IncidentCommentView("c2", "op", "OnCargo", "Estamos contactando al conductor.", "2026-11-05T14:20:00-05:00"),

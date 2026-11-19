@@ -87,7 +87,7 @@ fun IncidentsListScreen(
                 }
                 else -> Refreshable(state.refreshing, onRefresh) {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (state.hasActive) {
+                        if (state.holdsShipment) {
                             item {
                                 AlertBanner(
                                     stringResource(R.string.incidents_blocked_text), kind = MessageKind.Warning,
@@ -96,7 +96,7 @@ fun IncidentsListScreen(
                             }
                         }
                         items(state.items, key = { it.id }) { IncidentRow(it) { onOpen(it.id) } }
-                        if (!state.hasActive && onReport != null) {
+                        if (!state.holdsShipment && onReport != null) {
                             item { LogyxButton(stringResource(R.string.incidents_report_button), onReport, requiresOperate = true) }
                         }
                     }
@@ -114,6 +114,7 @@ private fun IncidentRow(incident: IncidentView, onClick: () -> Unit) {
             StatusPill(incident.status.pill())
         }
         Text(Fmt.dateTime(incident.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+        IncidentTags(incident, Modifier.padding(top = 8.dp))
         Text(
             incident.description, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp),

@@ -1,0 +1,20 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import BackupRequests from '@/features/preferences/components/BackupRequests';
+import { backupRequests } from '@/features/preferences/server';
+const token = Astro.locals.session!.token;
+let items: Awaited<ReturnType<typeof backupRequests>> = [];
+let loadError: string | null = null;
+try {
+  items = await backupRequests(token);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus confirmaciones.';
+}
+---
+<AppShell title="Confirmaciones" active="confirmaciones">
+  <PageHeader title="Confirmaciones" subtitle="Cargas que una PYME quiere adjudicarte como segunda opción" />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus confirmaciones" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <BackupRequests client:load initial={items} />
+</AppShell>

@@ -19,6 +19,7 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:network"))
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.coroutines.android)
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)

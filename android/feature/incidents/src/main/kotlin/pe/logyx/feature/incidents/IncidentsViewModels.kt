@@ -127,6 +127,9 @@ data class IncidentsListUiState(
     val items: List<IncidentView> = emptyList(),
 ) {
     val hasActive: Boolean get() = items.any { it.active }
+
+    /** Alguna activa congela el envío (RN11). Las informativas (`blocking = false`) no detienen el viaje. */
+    val holdsShipment: Boolean get() = items.any { it.holdsShipment || (it.active && it.blocking) }
 }
 
 class IncidentsListViewModel(
@@ -178,8 +181,14 @@ data class IncidentDetailUiState(
     val sending: Boolean = false,
     val commentError: String? = null,
     val message: UiMessage? = null,
+    /** Diálogo «¿Retirar esta incidencia?» abierto. */
+    val confirmingWithdraw: Boolean = false,
+    val withdrawing: Boolean = false,
 ) {
     val canComment: Boolean get() = incident?.status.let { it == pe.logyx.core.model.IncidentStatus.OPEN || it == pe.logyx.core.model.IncidentStatus.IN_REVIEW }
+
+    /** V23: quien la reportó retira una informativa activa (lo decide el servidor con `canWithdraw`). */
+    val canWithdraw: Boolean get() = incident?.canWithdraw == true
 }
 
 class IncidentDetailViewModel(
@@ -250,6 +259,29 @@ class IncidentDetailViewModel(
                         if (api?.field == "body") it.copy(sending = false, commentError = api.message)
                         else it.copy(sending = false, message = UiMessage.error(e.userMessage()))
                     }
+                },
+            )
+        }
+    }
+
+    // ── Retirar (V23, 2.7) ──
+
+    fun askWithdraw() = _state.update { if (it.canWithdraw) it.copy(confirmingWithdraw = true) else it }
+
+    fun dismissWithdraw() = _state.update { if (it.withdrawing) it else it.copy(confirmingWithdraw = false) }
+
+    /** `POST /incidents/{id}/withdraw`; `INC-007` (no la reportaste) u otro motivo llegan como mensaje y se recarga. */
+    fun withdraw() {
+        if (_state.value.withdrawing || !_state.value.canWithdraw) return
+        _state.update { it.copy(withdrawing = true) }
+        viewModelScope.launch {
+            repo.withdraw(incidentId).fold(
+                onSuccess = { i ->
+                    _state.update { it.copy(withdrawing = false, confirmingWithdraw = false, incident = i, message = UiMessage.success(R.string.incidents_withdrawn)) }
+                },
+                onFailure = { e ->
+                    _state.update { it.copy(withdrawing = false, confirmingWithdraw = false, message = UiMessage.error(e.userMessage())) }
+                    poll()
                 },
             )
         }

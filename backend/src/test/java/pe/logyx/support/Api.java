@@ -191,9 +191,13 @@ public final class Api {
         upload(driver, shipmentId, "DELIVERY_PHOTO", deliveryStopId, "entrega.png", PNG, "image/png").statusCode(201);
     }
 
+    /**
+     * Placa única por ejecución («T» + 5 caracteres base 36 del contador): con %1000 la suite ya repetía placas
+     * (FLT-001) al pasar de mil vehículos.
+     */
     public static String plate() {
-        int n = SEQ.incrementAndGet() % 1000;
-        char a = (char) ('A' + n % 26), b = (char) ('A' + (n / 26) % 26);
-        return "T" + a + b + "-" + String.format("%03d", n);
+        String n = Integer.toString(SEQ.incrementAndGet() % 60_466_176, 36).toUpperCase();
+        n = "0".repeat(Math.max(0, 5 - n.length())) + n;
+        return "T" + n.substring(0, 2) + "-" + n.substring(2, 5);
     }
 }

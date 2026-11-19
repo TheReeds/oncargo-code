@@ -6,6 +6,7 @@ import MarketplaceTable from '@/features/marketplace/components/MarketplaceTable
 import { listOpen } from '@/features/marketplace/server';
 import { listVehicles } from '@/features/fleet/server';
 import { getCatalog } from '@/features/catalog/server';
+import { getRequest } from '@/features/requests/server';
 import { can } from '@/lib/permissions';
 const t = Astro.locals.session!.token;
 const q = Astro.url.searchParams;
@@ -18,6 +19,19 @@ const userMax = Number(filters.maxKg) > 0 ? Number(filters.maxKg) : undefined;
 const maxWeightKg = filters.compat && maxCap > 0 ? Math.min(maxCap, userMax ?? maxCap) : userMax;
 let result = { items: [] as Awaited<ReturnType<typeof listOpen>>['items'], page: 0, size: 20, total: 0 };
 let loadError: string | null = null;
+// 2.3: un aviso de carga nueva (`?solicitud=<id>`) abre la carga para ofertar; si ya no está abierta o ya ofertaste, se explica.
+const wantedId = get('solicitud');
+let openRequest: Awaited<ReturnType<typeof getRequest>> | null = null;
+let openNotice: string | null = null;
+if (wantedId) {
+  try {
+    const r = await getRequest(t, wantedId);
+    if (r.status === 'PUBLISHED' && r.auction?.status === 'OPEN' && !r.myBid) openRequest = r;
+    else openNotice = r.myBid ? 'Ya enviaste una oferta por esa carga.' : 'Esa carga ya no está abierta.';
+  } catch {
+    openNotice = 'No encontramos esa carga. Puede que ya no esté disponible.';
+  }
+}
 try {
   result = await listOpen(t, {
     originCity: filters.origin || undefined, destinationCity: filters.dest || undefined,
@@ -35,6 +49,7 @@ try {
       Para ofertar necesitas al menos un vehículo disponible en tu flota. <a href="/transportista/flota" class="font-medium underline">Registrar un vehículo en Flota</a> y vuelve a las cargas.
     </Alert>
   )}
+  {openNotice && <Alert tone="info" className="mb-4">{openNotice} <a href="/transportista/ofertas" class="font-medium underline">Ver mis ofertas</a></Alert>}
   {loadError && <Alert tone="error" title="No pudimos cargar las cargas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
-  <MarketplaceTable client:load requests={result.items} page={result.page + 1} size={result.size} total={result.total} filters={filters} vehicles={vehicles} cities={cities} />
+  <MarketplaceTable client:load requests={result.items} page={result.page + 1} size={result.size} total={result.total} filters={filters} vehicles={vehicles} cities={cities} openRequest={openRequest} />
 </AppShell>

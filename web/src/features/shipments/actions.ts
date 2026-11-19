@@ -4,7 +4,8 @@ import { requireToken, run } from '@/lib/actions';
 import { listVehicles, listDrivers } from '@/features/fleet/server';
 import { getRequest } from '@/features/requests/server';
 import { LIMITS } from '@/lib/limits';
-import { assignDriver, cancelShipment, changeVehicle, createShareLink, listShareLinks, listShipments, listShipmentsPage, revokeShareLink } from './server';
+import { assignDriver, cancelShipment, changeVehicle, createShareLink, decideAdjustment, listShareLinks, listShipments, listShipmentsPage, officeStop, proposeAdjustment, revokeShareLink, setPickupRequirements, shipmentAdjustments, withdrawAdjustment } from './server';
+import { getShipment } from './server';
 
 const reason = z.string().trim().max(LIMITS.shipmentReason, `El motivo admite hasta ${LIMITS.shipmentReason} caracteres.`);
 const listQuery = z.object({
@@ -56,5 +57,44 @@ export const shipments = {
     accept: 'json',
     input: z.object({ id: z.uuid(), linkId: z.uuid() }),
     handler: ({ id, linkId }, ctx) => run(() => revokeShareLink(requireToken(ctx), id, linkId)),
+  }),
+  /** Envío por id (refresco en sitio tras una acción). */
+  get: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => getShipment(requireToken(ctx), id)) }),
+  // ----- Ajustes del envío (2.6)
+  adjustments: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => shipmentAdjustments(requireToken(ctx), id)) }),
+  proposeAdjustment: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.uuid(), type: z.enum(['WEIGHT_DIFF', 'DETENTION', 'TOLL', 'HANDLING', 'OTHER']),
+      amount: z.number().refine((n) => n !== 0, 'Indica un monto distinto de 0.'),
+      note: z.string().trim().max(500, 'La nota admite hasta 500 caracteres.').optional(),
+      stopId: z.uuid().optional(), evidenceDocumentId: z.uuid().optional(), idempotencyKey: z.string().min(8).max(80).optional(),
+    }),
+    handler: ({ id, idempotencyKey, note, ...body }, ctx) => run(() => proposeAdjustment(requireToken(ctx), id, { ...body, note: note || undefined }, idempotencyKey)),
+  }),
+  decideAdjustment: defineAction({
+    accept: 'json',
+    input: z.object({ adjustmentId: z.uuid(), accept: z.boolean(), note: z.string().trim().max(500).optional() }),
+    handler: ({ adjustmentId, accept, note }, ctx) => run(() => decideAdjustment(requireToken(ctx), adjustmentId, accept, note || undefined)),
+  }),
+  withdrawAdjustment: defineAction({
+    accept: 'json', input: z.object({ adjustmentId: z.uuid() }),
+    handler: ({ adjustmentId }, ctx) => run(() => withdrawAdjustment(requireToken(ctx), adjustmentId)),
+  }),
+  // ----- Recojo y registro desde la oficina (2.5)
+  pickupRequirements: defineAction({
+    accept: 'json', input: z.object({ id: z.uuid(), photoRequired: z.boolean(), weightRequired: z.boolean() }),
+    handler: ({ id, photoRequired, weightRequired }, ctx) => run(() => setPickupRequirements(requireToken(ctx), id, photoRequired, weightRequired)),
+  }),
+  officeStop: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.uuid(), stopId: z.uuid(), step: z.enum(['arrive', 'complete']),
+      reason: z.string().trim().min(3, 'Indica el motivo (mínimo 3 caracteres).').max(300),
+      weightKg: z.number().positive().optional(), receivedByName: z.string().trim().max(120).optional(), receivedByDoc: z.string().trim().max(20).optional(),
+    }),
+    handler: ({ id, stopId, step, ...body }, ctx) => run(() => officeStop(requireToken(ctx), id, stopId, step, {
+      reason: body.reason, weightKg: body.weightKg, receivedByName: body.receivedByName || undefined, receivedByDoc: body.receivedByDoc || undefined,
+    })),
   }),
 };

@@ -73,6 +73,33 @@ public class QuarkusAccountMailer implements AccountMailer {
         send(to, "Te invitaron a " + organizationName + " en OnCargo", text, html);
     }
 
+    @Override
+    public void sendOrganizationAccessRequest(String to, String adminName, String organizationName,
+                                              String requesterName, String requesterEmail, String link) {
+        String text = """
+                Hola %s:
+
+                %s (%s) intentó registrarse en OnCargo con el RUC de %s y pide unirse a tu organización.
+                No verificamos ese correo. Si conoces a esta persona, invítala desde Usuarios y roles:
+
+                %s
+
+                Si no la conoces, ignora este correo.
+
+                Equipo OnCargo
+                """.formatted(adminName, requesterName, requesterEmail, organizationName, link);
+        String html = layout("Piden unirse a tu organización", """
+                <p>Hola %s:</p>
+                <p><strong>%s</strong> (%s) intentó registrarse en OnCargo con el RUC de <strong>%s</strong> y pide
+                unirse a tu organización.</p>
+                <p style="color:#555;font-size:14px">No verificamos ese correo. Si conoces a esta persona, invítala
+                desde Usuarios y roles. Si no, ignora este correo.</p>
+                %s
+                """.formatted(esc(adminName), esc(requesterName), esc(requesterEmail), esc(organizationName),
+                button(link, "Abrir Usuarios y roles")), link);
+        send(to, "Piden unirse a " + organizationName + " en OnCargo", text, html);
+    }
+
     private void send(String to, String subject, String text, String html) {
         try {
             mailer.send(Mail.withText(to, subject, text).setHtml(html));

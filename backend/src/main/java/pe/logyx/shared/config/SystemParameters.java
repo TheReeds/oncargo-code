@@ -51,7 +51,15 @@ public class SystemParameters {
     @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H") Duration defaultSla;
     @ConfigProperty(name = "logyx.operator.incident-warn", defaultValue = "PT12H") Duration defaultIncidentWarn;
     @ConfigProperty(name = "logyx.operator.incident-breach", defaultValue = "PT24H") Duration defaultIncidentBreach;
+    @ConfigProperty(name = "logyx.fleet.block-on-expired-documents", defaultValue = "false") boolean defaultFleetDocsBlock;
     @ConfigProperty(name = "logyx.parameters.cache-ttl", defaultValue = "PT10S") Duration cacheTtl;
+    @ConfigProperty(name = "logyx.adjustments.response-window", defaultValue = "PT48H") Duration defaultAdjustmentWindow;
+    @ConfigProperty(name = "logyx.adjustments.detention-free", defaultValue = "PT3H") Duration defaultDetentionFree;
+    @ConfigProperty(name = "logyx.adjustments.detention-hourly-rate", defaultValue = "40") BigDecimal defaultDetentionRate;
+    @ConfigProperty(name = "logyx.incident.sla.critical", defaultValue = "PT4H") Duration defaultSlaCritical;
+    @ConfigProperty(name = "logyx.incident.sla.high", defaultValue = "PT12H") Duration defaultSlaHigh;
+    @ConfigProperty(name = "logyx.incident.sla.medium", defaultValue = "PT24H") Duration defaultSlaMedium;
+    @ConfigProperty(name = "logyx.incident.sla.low", defaultValue = "PT72H") Duration defaultSlaLow;
 
     private record Cached(Map<ParameterKey, ParameterValue> values, long loadedAt) {}
 
@@ -70,6 +78,32 @@ public class SystemParameters {
 
     /** RN11: antigüedad de una incidencia activa desde la que se muestra rojo (SLA incumplido). */
     public Duration incidentBreach() { return ParameterKey.INCIDENT_BREACH_HOURS.hours(get(ParameterKey.INCIDENT_BREACH_HOURS).value()); }
+
+    /** 2.4: ofertar con un vehículo con documentos vencidos se bloquea (true) o solo se advierte (false, por omisión). */
+    public boolean fleetDocsBlock() { return ParameterKey.FLEET_DOCS_BLOCK.flag(get(ParameterKey.FLEET_DOCS_BLOCK).value()); }
+
+    /** 2.6: plazo de la PYME para decidir un ajuste antes de escalarlo al operador. */
+    public Duration adjustmentResponseWindow() { return hoursOf(ParameterKey.ADJUSTMENT_RESPONSE_HOURS); }
+
+    /** 2.6: espera sin cargo en una parada. */
+    public Duration detentionFree() { return hoursOf(ParameterKey.DETENTION_FREE_HOURS); }
+
+    /** 2.6: tarifa por hora de estadía sugerida (soles con IGV). */
+    public BigDecimal detentionHourlyRate() {
+        return ParameterKey.DETENTION_HOURLY_RATE.decimal(get(ParameterKey.DETENTION_HOURLY_RATE).value());
+    }
+
+    /** 2.7: SLA de una incidencia según su severidad ({@code LOW}, {@code MEDIUM}, {@code HIGH}, {@code CRITICAL}). */
+    public Duration incidentSla(String severity) {
+        return switch (severity) {
+            case "CRITICAL" -> hoursOf(ParameterKey.INCIDENT_SLA_CRITICAL_HOURS);
+            case "HIGH" -> hoursOf(ParameterKey.INCIDENT_SLA_HIGH_HOURS);
+            case "LOW" -> hoursOf(ParameterKey.INCIDENT_SLA_LOW_HOURS);
+            default -> hoursOf(ParameterKey.INCIDENT_SLA_MEDIUM_HOURS);
+        };
+    }
+
+    private Duration hoursOf(ParameterKey k) { return k.hours(get(k).value()); }
 
     public ParameterValue get(ParameterKey key) { return snapshot().get(key); }
 
@@ -105,6 +139,14 @@ public class SystemParameters {
             case ASSIGNMENT_SLA_HOURS -> String.valueOf(defaultSla.toHours());
             case INCIDENT_WARN_HOURS -> String.valueOf(defaultIncidentWarn.toHours());
             case INCIDENT_BREACH_HOURS -> String.valueOf(defaultIncidentBreach.toHours());
+            case FLEET_DOCS_BLOCK -> defaultFleetDocsBlock ? "1" : "0";
+            case ADJUSTMENT_RESPONSE_HOURS -> String.valueOf(defaultAdjustmentWindow.toHours());
+            case DETENTION_FREE_HOURS -> String.valueOf(defaultDetentionFree.toHours());
+            case DETENTION_HOURLY_RATE -> k.normalize(defaultDetentionRate.toPlainString());
+            case INCIDENT_SLA_CRITICAL_HOURS -> String.valueOf(defaultSlaCritical.toHours());
+            case INCIDENT_SLA_HIGH_HOURS -> String.valueOf(defaultSlaHigh.toHours());
+            case INCIDENT_SLA_MEDIUM_HOURS -> String.valueOf(defaultSlaMedium.toHours());
+            case INCIDENT_SLA_LOW_HOURS -> String.valueOf(defaultSlaLow.toHours());
         };
     }
 

@@ -31,6 +31,14 @@ interface IncidentsRepository {
     suspend fun detail(id: String): Result<IncidentView>
     suspend fun comment(id: String, body: String): Result<IncidentView>
     suspend fun mine(active: Boolean? = null, page: Int = 0): Result<Page<IncidentView>>
+    /**
+     * Reporte completo (V23, 2.7): severidad, ubicación, hora del dispositivo, adjuntos. Con [idempotencyKey] un reintento
+     * devuelve la ya creada. Por omisión delega en el reporte simple (fakes viejos).
+     */
+    suspend fun report(shipmentId: String, request: ReportIncidentRequest, idempotencyKey: String?): Result<IncidentView> =
+        report(shipmentId, request.category, request.description)
+    /** Quien la reportó retira una incidencia informativa activa (`canWithdraw`). */
+    suspend fun withdraw(id: String): Result<IncidentView> = Result.failure(UnsupportedOperationException())
 }
 
 /** Chat por solicitud y contra-ofertas (RF25-28, RN07). */
@@ -78,6 +86,9 @@ class DefaultIncidentsRepository(private val api: LogyxApi) : IncidentsRepositor
     override suspend fun detail(id: String) = apiCall { api.incident(id) }
     override suspend fun comment(id: String, body: String) = apiCall { api.commentIncident(id, body.trim()) }
     override suspend fun mine(active: Boolean?, page: Int) = apiCall { api.incidents(active, page) }
+    override suspend fun report(shipmentId: String, request: ReportIncidentRequest, idempotencyKey: String?) =
+        apiCall { api.reportIncident(shipmentId, request.copy(description = request.description.trim()), idempotencyKey) }
+    override suspend fun withdraw(id: String) = apiCall { api.withdrawIncident(id) }
 }
 
 class DefaultNegotiationRepository(private val api: LogyxApi) : NegotiationRepository {

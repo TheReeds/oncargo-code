@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import pe.logyx.fleet.application.FleetDocumentService;
 import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.identity.application.OrganizationGuard;
@@ -48,6 +49,7 @@ public class PlaceBidUseCase {
     @Inject Event<BidWithdrawn> bidWithdrawn;
 
     @Inject VehicleAgenda agenda;
+    @Inject FleetDocumentService fleetDocs;
 
     /** Oferta sin avisos de agenda (Smart Load, viajes): los avisos solo importan a quien ofertó a mano. */
     @Transactional
@@ -85,6 +87,8 @@ public class PlaceBidUseCase {
         VehicleAgenda.requireEligible(agendaCheck);
 
         Bid b = Bid.place(a, r, me, v, cmd.amount(), cmd.notes(), cmd.loadGroupId());            // RN07 en notas
+        var seals = fleetDocs.sealsOf(v.id());                                                   // 2.4: sellos para la PYME
+        b.stampSeals(seals.soatValidUntil(), seals.inspectionValidUntil());
         bids.save(b);
 
         // RN04: cierre por número máximo de ofertas. Bajo RLS el transportista solo

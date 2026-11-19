@@ -34,12 +34,24 @@ const BAND_TEXT: Record<string, string> = {
   ABOVE_15_PCT: 'A más de 15 % de la mejor',
 };
 
-/** Texto de la posición: "Vas 2.º de 5 · A menos de 5 % de la mejor". Nunca muestra montos de otras ofertas (RN04). */
-export function standingText(s: RequestView['myBidStanding'] | undefined): { headline: string; band: string | null; tone: 'good' | 'warn' | 'neutral' } | null {
-  if (!s || s.rank == null || !s.bidCount) return null;
+/** Posición aproximada (2.8): solo una banda, nunca montos ajenos (RN04). */
+export const POSITION_TEXT: Record<string, string> = {
+  TOP_TWO: 'Entre las 2 más bajas',
+  LOWER_HALF: 'Por debajo de la mediana',
+  UPPER_HALF: 'Por encima de la mediana',
+};
+
+/**
+ * Texto de la posición: "Vas 2.º de 5 · A menos de 5 % de la mejor", más `position` («Entre las 2 más bajas», «Por debajo de la
+ * mediana»…) cuando la API la manda. Nunca muestra montos de otras ofertas (RN04).
+ */
+export function standingText(s: RequestView['myBidStanding'] | undefined): { headline: string; band: string | null; position: string | null; tone: 'good' | 'warn' | 'neutral' } | null {
+  const position = s?.position ? POSITION_TEXT[s.position] ?? null : null;
+  if (!s || s.rank == null || !s.bidCount) return position ? { headline: position, band: null, position: null, tone: s?.position === 'UPPER_HALF' ? 'warn' : 'neutral' } : null;
   const pos = `${s.rank}.º de ${s.bidCount}`;
   const headline = s.finalStanding ? `Quedaste ${pos}` : s.isBest ? `Vas primero de ${s.bidCount}` : `Vas ${pos}`;
   const band = s.vsBest ? BAND_TEXT[s.vsBest] ?? null : null;
-  const tone = s.isBest ? 'good' : s.vsBest === 'ABOVE_15_PCT' || s.vsBest === 'WITHIN_15_PCT' ? 'warn' : 'neutral';
-  return { headline, band, tone };
+  const tone = s.isBest ? 'good' : s.vsBest === 'ABOVE_15_PCT' || s.vsBest === 'WITHIN_15_PCT' || s.position === 'UPPER_HALF' ? 'warn' : 'neutral';
+  // Con 1.º la banda ya lo dice («Tu oferta es la mejor»): no se repite la posición.
+  return { headline, band, position: s.isBest ? null : position, tone };
 }

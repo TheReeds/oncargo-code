@@ -40,6 +40,8 @@ public class AcceptBidUseCase {
     @Inject OrganizationGuard guard;
     @Inject ResourceScheduler schedule;
     @Inject CommissionService commission;
+    @Inject CarrierPreferenceService preferences;
+    @Inject BackupBidService backups;
 
     @Transactional
     public AcceptOutcome accept(UUID bidId) {
@@ -49,6 +51,10 @@ public class AcceptBidUseCase {
                 .orElseThrow(() -> BusinessException.notFound("Solicitud"));
         if (!r.isPublished() || !bid.isPending()) {
             throw BusinessException.conflict("LOGYX-BID-004", "La solicitud ya no admite aceptar ofertas");
+        }
+        if (preferences.isBlocked(bid.carrierOrgId())) {                                         // roadmap 2.9
+            throw BusinessException.conflict("LOGYX-BID-006",
+                    "Bloqueaste a este transportista: quita el bloqueo para aceptar su oferta");
         }
         return award(r, bid, "BID_ACCEPTED");
     }
@@ -74,6 +80,7 @@ public class AcceptBidUseCase {
         List<Bid> others = bids.listPendingByRequest(r.id()).stream()
                 .filter(o -> !o.id().equals(bid.id())).toList();
         others.forEach(o -> { o.reject(); bids.save(o); });
+        backups.keep(others);                                   // 2.9: quedan de respaldo por si el envío se cae en 24 h
 
         r.matchTo(bid.carrierOrgId());
         requests.save(r);

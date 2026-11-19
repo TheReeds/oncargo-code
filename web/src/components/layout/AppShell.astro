@@ -11,7 +11,7 @@ import { me } from '@/features/auth/server';
 import { can, deniedRouteNotice, roleLabel as personRoleLabel } from '@/lib/permissions';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import RequestAccessHost from '@/features/access/components/RequestAccessDialog';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText, SlidersHorizontal, MapPinned } from '@lucide/astro';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText, SlidersHorizontal, MapPinned, Handshake, CalendarRange, Scale, ShieldAlert } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
@@ -28,7 +28,10 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus, needs: 'OPERATE' },
       { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
       { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
+      { id: 'ofertas', href: '/pyme/ofertas', label: 'Ofertas', icon: Gavel },
+      { id: 'plantillas', href: '/pyme/plantillas', label: 'Plantillas', icon: CalendarClock },
       { id: 'direcciones', href: '/pyme/direcciones', label: 'Mis direcciones', icon: MapPinned },
+      { id: 'transportistas', href: '/pyme/transportistas', label: 'Transportistas', icon: Users },
     ] },
     { label: 'Seguimiento', items: [
       { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
@@ -44,8 +47,10 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
     ] },
     { label: 'Mi operación', items: [
       { id: 'ofertas', href: '/transportista/ofertas', label: 'Mis ofertas', icon: Gavel },
+      { id: 'confirmaciones', href: '/transportista/confirmaciones', label: 'Confirmaciones', icon: Handshake },
       { id: 'viajes', href: '/transportista/viajes', label: 'Viajes', icon: CalendarClock },
       { id: 'envios', href: '/transportista/envios', label: 'Envíos', icon: Truck },
+      { id: 'agenda', href: '/transportista/agenda', label: 'Agenda', icon: CalendarRange },
       { id: 'flota', href: '/transportista/flota', label: 'Flota', icon: Warehouse },
       { id: 'incidencias', href: '/incidencias', label: 'Incidencias', icon: TriangleAlert },
     ] },
@@ -56,9 +61,11 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'operador-solicitudes', href: '/operador/solicitudes', label: 'Solicitudes', icon: FileText },
       { id: 'operador-envios', href: '/operador/envios', label: 'Envíos', icon: Truck },
       { id: 'operador-incidencias', href: '/operador/incidencias', label: 'Incidencias', icon: TriangleAlert },
+      { id: 'operador-ajustes', href: '/operador/ajustes', label: 'Ajustes', icon: Scale },
     ] },
     { label: 'Cuentas', items: [
       { id: 'operador-organizaciones', href: '/operador/organizaciones', label: 'Verificación', icon: Building2 },
+      { id: 'operador-senales', href: '/operador/senales', label: 'Señales', icon: ShieldAlert },
     ] },
     { label: 'Control', items: [
       { id: 'operador-auditoria', href: '/operador/auditoria', label: 'Auditoría', icon: ScrollText },

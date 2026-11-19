@@ -2,12 +2,14 @@ import { useCan } from '@/lib/use-can';
 import { useEffect, useRef, useState } from 'react';
 import { actions } from 'astro:actions';
 import { Gavel, Handshake, MessageSquare, Trophy, TrendingDown } from 'lucide-react';
+import { CarrierMarkMenu, MarkBadge, type Mark } from '@/features/preferences/components/CarrierMarkMenu';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
+import { BidSeals } from '@/components/domain/BidSeals';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { flash, toast } from '@/components/ui/toaster';
 import { splitActionError } from '@/lib/action-error';
@@ -27,7 +29,7 @@ import { OPEN_THREAD_EVENT } from '@/features/negotiation/usePolling';
 import { diffPct, formatDiff } from '../diff';
 export { diffPct };
 
-function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, onAccept }: { b: BidView; isBest: boolean; suggested?: number | null; canAccept: boolean; canNegotiate: boolean; floor?: number | null; busyId: string | null; onAccept: (b: BidView) => void }) {
+function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, onAccept, mark, onMark }: { mark?: Mark; onMark: (carrierOrgId: string, k: Mark) => void; b: BidView; isBest: boolean; suggested?: number | null; canAccept: boolean; canNegotiate: boolean; floor?: number | null; busyId: string | null; onAccept: (b: BidView) => void }) {
   const [dialog, setDialog] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const { offers, reload } = useCounterOffers(b.id, true);
@@ -86,7 +88,7 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
   const canCounter = canOperate && canNegotiate && b.status === 'PENDING';
   const dead = b.status === 'REJECTED' || b.status === 'WITHDRAWN';
   return (
-    <li className={cn('border-l-4 px-4 py-4 sm:px-5', isBest ? 'border-emerald-500 bg-emerald-50/60' : 'border-transparent', dead && 'opacity-70')}>
+    <li className={cn('border-l-4 px-4 py-4 sm:px-5', isBest ? 'border-emerald-500 bg-emerald-50/60' : 'border-transparent', dead && 'bg-steel-100/50')}>
       <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         {/* Transportista */}
         <div className="flex min-w-0 items-start gap-3">
@@ -96,11 +98,13 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
               <a href={`/organizaciones/${b.carrierOrgId}`} className="max-w-full truncate rounded-sm hover:text-petrol-700 hover:underline">{b.carrierName}</a>
               <VerifiedBadge verified={b.carrierRucVerified} variant="icon" />
               <TrustScore score={b.carrierTrustScore} />
+              <MarkBadge kind={mark} />
               {b.assignedByOperator && <Badge tone="petrol">Asignada por LOGYX</Badge>}
             </div>
             <div className="mt-0.5 text-xs text-ink-500">
               {b.vehicleType ? <>{VEHICLE_LABELS[b.vehicleType] ?? b.vehicleType}{b.vehiclePlate && <> · <span className="font-mono">{b.vehiclePlate}</span></>} · </> : null}{formatDateTime(b.createdAt)}
             </div>
+            <BidSeals className="mt-1.5 flex flex-wrap items-center gap-1.5" improvedCount={b.improvedCount} soatValidUntil={b.soatValidUntil} inspectionValidUntil={b.inspectionValidUntil} />
             {b.notes && <p className="mt-1.5 rounded-input bg-steel-100 px-2.5 py-1.5 text-sm text-ink-700">{b.notes}</p>}
           </div>
         </div>
@@ -120,8 +124,11 @@ function BidRow({ b, isBest, suggested, canAccept, canNegotiate, floor, busyId, 
           {canCounter && (
             <Button size="sm" variant="ghost" className="max-sm:flex-1" disabled={!!mine} onClick={() => setDialog(true)}><Handshake />{received ? 'Responder con otro monto' : 'Contraofertar'}<span className="sr-only"> a {b.carrierName}</span></Button>
           )}
+          {b.carrierOrgId && <CarrierMarkMenu carrierOrgId={b.carrierOrgId} carrierName={b.carrierName} kind={mark} onChange={(k) => onMark(b.carrierOrgId!, k)} />}
           <div className="flex max-sm:order-first max-sm:w-full sm:ml-auto">
-            {canAccept && canOperate && b.status === 'PENDING' ? (
+            {mark === 'BLOCKED' && b.status === 'PENDING' ? (
+              <span className="text-xs font-medium text-red-600">Bloqueado: quita el bloqueo para aceptar su oferta</span>
+            ) : canAccept && canOperate && b.status === 'PENDING' ? (
               <Button size="sm" className="max-sm:w-full" variant={isBest ? 'money' : 'outline'} loading={busyId === b.id} disabled={busyId !== null && busyId !== b.id} onClick={() => onAccept(b)}>Aceptar oferta</Button>
             ) : (
               <StatusPill status={b.status!} kind="bid" />
@@ -174,7 +181,9 @@ function Stat({ label, value, hint, tone }: { label: string; value: React.ReactN
   );
 }
 
-export default function BidComparison({ bids: initialBids, suggested, requestId, requestStatus, floor }: { bids: BidView[]; suggested?: number | null; requestId: string; requestStatus: string; floor?: number | null }) {
+export default function BidComparison({ bids: initialBids, suggested, requestId, requestStatus, floor, marks: initialMarks = {} }: { bids: BidView[]; suggested?: number | null; requestId: string; requestStatus: string; floor?: number | null; /** Preferidos y bloqueados de la PYME por id de organización (2.9). */ marks?: Record<string, 'PREFERRED' | 'BLOCKED'> }) {
+  const [marks, setMarks] = useState<Record<string, Mark>>(initialMarks);
+  const onMark = (id: string, k: Mark) => setMarks((m) => ({ ...m, [id]: k }));
   // Se actualiza en vivo (RequestLiveSync) sin recargar la página.
   const live = useRequestState({ request: { id: requestId, status: requestStatus }, bids: initialBids });
   const bids = live.bids;
@@ -186,7 +195,7 @@ export default function BidComparison({ bids: initialBids, suggested, requestId,
   // Las retiradas y rechazadas no compiten: van al final.
   const active = (b: BidView) => b.status !== 'REJECTED' && b.status !== 'WITHDRAWN';
   const sorted = [...bids].sort((a, b) => Number(active(b)) - Number(active(a)) || (a.amount ?? 0) - (b.amount ?? 0));
-  const best = sorted.find(active);
+  const best = sorted.find((b) => active(b) && marks[b.carrierOrgId ?? ''] !== 'BLOCKED');
   const saving = best && suggested ? suggested - (best.amount ?? 0) : null;
 
   async function accept(b: BidView) {
@@ -227,7 +236,7 @@ export default function BidComparison({ bids: initialBids, suggested, requestId,
       ) : (
         <ul className="divide-y divide-steel-200">
           {sorted.map((b) => (
-            <BidRow key={b.id} b={b} isBest={best?.id === b.id} suggested={suggested} canAccept={canAccept} canNegotiate={canNegotiate ?? canAccept} floor={floor} busyId={busyId} onAccept={accept} />
+            <BidRow key={b.id} mark={marks[b.carrierOrgId ?? '']} onMark={onMark} b={b} isBest={best?.id === b.id} suggested={suggested} canAccept={canAccept} canNegotiate={canNegotiate ?? canAccept} floor={floor} busyId={busyId} onAccept={accept} />
           ))}
         </ul>
       )}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { actions } from 'astro:actions';
-import { Calculator, ChevronUp, Copy, ChevronRight } from 'lucide-react';
+import { BookmarkPlus, Calculator, ChevronUp, Copy, ChevronRight, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea, Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -10,7 +10,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { NumberInput, MoneyInput } from '@/components/ui/number-input';
 import { TimeSelect } from '@/components/ui/time-select';
 import { Checkbox, InlineLabel } from '@/components/ui/form-controls';
-import { flash } from '@/components/ui/toaster';
+import { flash, toast } from '@/components/ui/toaster';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,8 @@ import { CITY_LABELS, formatDate, formatKm, formatMoney } from '@/lib/format';
 import { splitActionError, toFormErrors, isVerificationFailure, type ActionFailure } from '@/lib/action-error';
 import { LIMITS } from '@/lib/limits';
 import { VerificationBlock } from '@/components/domain/VerificationBlock';
+import { SaveTemplateDialog } from '@/features/templates/components/SaveTemplateDialog';
+import { Can } from '@/lib/permissions/react';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/lib/api/server';
 import type { PlaceView } from '@/features/places/server';
@@ -81,14 +83,17 @@ function validate(v: Values): Partial<Record<keyof Values, string>> {
 }
 
 export type DuplicateSource = { id: string; code?: string };
+/** Plantilla de la que se abrió el formulario (`?plantilla=<id>`): permite actualizarla con lo que se edite aquí. */
+export type TemplateSource = { id: string; name: string; invitePreferred?: boolean };
 
-export default function RequestForm({ cities, cargoTypes, today, places = [], initial, duplicatedFrom }: {
+export default function RequestForm({ cities, cargoTypes, today, places = [], initial, duplicatedFrom, template }: {
   cities: Item[]; cargoTypes: Item[]; today: string;
   /** Direcciones guardadas de la organización (activas). */
   places?: PlaceView[];
   /** «Duplicar»: valores precargados; la fecha ya viene propuesta. */
   initial?: Partial<Values>;
   duplicatedFrom?: DuplicateSource;
+  template?: TemplateSource;
 }) {
   const [v, setV] = useState<Values>({ ...EMPTY, ...initial });
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -102,6 +107,9 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
   const [contactsOpen, setContactsOpen] = useState(() => CONTACT_KEYS.some((k) => !!initial?.[k]));
   const [dupes, setDupes] = useState<{ id?: string; code?: string }[] | null>(null);
   const [save, setSave] = useState({ origin: false, destination: false, originName: '', destinationName: '' });
+  const [invitePreferred, setInvitePreferred] = useState(template?.invitePreferred ?? false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [updatingTemplate, setUpdatingTemplate] = useState(false);
   const seq = useRef(0);
   /** Una clave por formulario: un doble clic o un reintento de red devuelven la misma solicitud, no otra. */
   const idemKey = useRef<string>('');
@@ -202,6 +210,7 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
       pickupContactName: str(v.pickupContactName), pickupContactPhone: str(v.pickupContactPhone), pickupWindowFrom: v.pickupWindowFrom || undefined, pickupWindowTo: v.pickupWindowTo || undefined, pickupInstructions: str(v.pickupInstructions),
       deliveryContactName: str(v.deliveryContactName), deliveryContactPhone: str(v.deliveryContactPhone), deliveryWindowFrom: v.deliveryWindowFrom || undefined, deliveryWindowTo: v.deliveryWindowTo || undefined, deliveryInstructions: str(v.deliveryInstructions),
       originPlaceId: v.originPlaceId || undefined, destinationPlaceId: v.destinationPlaceId || undefined, idempotencyKey: idemKey.current,
+      invitePreferred: invitePreferred || undefined,
     });
     if (error) {
       // `field` de la API → error bajo el campo (RN07: `LOGYX-NEG-001` en dirección o descripción); `ORG-003/004` → explicación; el resto → Alert.
@@ -232,6 +241,46 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
     }
     flash('Solicitud publicada');
     window.location.href = `/pyme/solicitudes/${data.id}`;
+  }
+
+  /** Los datos del formulario como plantilla (sin fecha de recojo). `null` si falta algo: los errores quedan bajo cada campo. */
+  function templateValues() {
+    const errs = validate(v);
+    delete errs.pickupDate;
+    setErrors(errs);
+    const first = ORDER.find((k) => errs[k]);
+    if (first) {
+      if (CONTACT_KEYS.includes(first)) setContactsOpen(true);
+      requestAnimationFrame(() => document.getElementById(first)?.focus());
+      return null;
+    }
+    const vol = Number(v.volumeM3), declared = Number(v.declaredValue);
+    return {
+      originCity: v.originCity, originAddress: v.originAddress.trim(), destinationCity: v.destinationCity, destinationAddress: v.destinationAddress.trim(),
+      cargoType: v.cargoType as any, cargoDescription: v.cargoDescription.trim(), weightKg: weight, volumeM3: vol > 0 ? vol : undefined,
+      customerReference: str(v.customerReference), declaredValue: declared > 0 ? declared : undefined,
+      pickupContactName: str(v.pickupContactName), pickupContactPhone: str(v.pickupContactPhone), pickupWindowFrom: v.pickupWindowFrom || undefined, pickupWindowTo: v.pickupWindowTo || undefined, pickupInstructions: str(v.pickupInstructions),
+      deliveryContactName: str(v.deliveryContactName), deliveryContactPhone: str(v.deliveryContactPhone), deliveryWindowFrom: v.deliveryWindowFrom || undefined, deliveryWindowTo: v.deliveryWindowTo || undefined, deliveryInstructions: str(v.deliveryInstructions),
+      originPlaceId: v.originPlaceId || undefined, destinationPlaceId: v.destinationPlaceId || undefined,
+    };
+  }
+  function openSaveTemplate() { if (templateValues()) setSavingTemplate(true); }
+  async function saveTemplate(name: string, invite: boolean) {
+    const values = templateValues();
+    if (!values) return null;
+    const { error } = await actions.templates.create({ ...values, name, invitePreferred: invite });
+    if (error) return splitActionError(error);
+    toast.success('Plantilla guardada', 'La encuentras en Plantillas.');
+    return null;
+  }
+  async function updateTemplate() {
+    const values = templateValues();
+    if (!values || !template) return;
+    setUpdatingTemplate(true);
+    const { error } = await actions.templates.update({ ...values, id: template.id, name: template.name, invitePreferred });
+    setUpdatingTemplate(false);
+    if (error) { setError(splitActionError(error).message); return; }
+    toast.success('Plantilla actualizada');
   }
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); void publish(false); };
@@ -304,6 +353,11 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
             <Copy className="mr-1 inline size-3.5" aria-hidden="true" />Copiamos los datos de {duplicatedFrom.code ? <a className="font-medium underline" href={`/pyme/solicitudes/${duplicatedFrom.id}`}>{duplicatedFrom.code}</a> : 'tu solicitud anterior'}. Revisa la fecha de recojo, que ya propusimos, y publica.
           </Alert>
         )}
+        {template && (
+          <Alert tone="info" title="Plantilla cargada">
+            <FileText className="mr-1 inline size-3.5" aria-hidden="true" />Usamos «{template.name}». Elige la fecha de recojo y publica; si cambias algo y quieres conservarlo, actualiza la plantilla.
+          </Alert>
+        )}
         {error && <Alert tone="error" title="No pudimos publicar la solicitud">{error}</Alert>}
         {blocked && <VerificationBlock failure={blocked} />}
         {dupes && (
@@ -363,8 +417,17 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
               </div>
             </div>
           </details>
+          <div className="flex items-center gap-2 border-t border-steel-200 px-5 py-3.5">
+            <Checkbox id="invitePreferred" checked={invitePreferred} onCheckedChange={(c) => setInvitePreferred(c === true)} />
+            <InlineLabel htmlFor="invitePreferred">Avisar a mis transportistas preferidos al publicar</InlineLabel>
+          </div>
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-steel-200 bg-steel-100/50 px-5 py-3.5">
             <Button asChild variant="outline"><a href="/pyme/solicitudes">Volver</a></Button>
+            <Can fallback={null}>
+              {template
+                ? <Button type="button" variant="outline" loading={updatingTemplate} onClick={() => void updateTemplate()}><BookmarkPlus />Actualizar plantilla</Button>
+                : <Button type="button" variant="outline" onClick={openSaveTemplate}><BookmarkPlus />Guardar como plantilla</Button>}
+            </Can>
             <Button type="submit" loading={busy && !dupes}>{busy && !dupes ? 'Publicando…' : 'Publicar solicitud'}</Button>
           </div>
         </Card>
@@ -416,6 +479,8 @@ export default function RequestForm({ cities, cargoTypes, today, places = [], in
           {quote && ready && <p className="text-xs text-ink-500">Los transportistas ofertarán por debajo del precio sugerido, nunca por debajo del piso.</p>}
         </CardBody>
       </Card>
+      <SaveTemplateDialog open={savingTemplate} onOpenChange={setSavingTemplate} onSave={saveTemplate}
+        suggested={v.originCity && v.destinationCity ? `${CITY_LABELS[v.originCity] ?? v.originCity} a ${CITY_LABELS[v.destinationCity] ?? v.destinationCity}${weight > 0 ? `, ${new Intl.NumberFormat('es-PE').format(weight)} kg` : ''}` : ''} />
     </form>
   );
 }

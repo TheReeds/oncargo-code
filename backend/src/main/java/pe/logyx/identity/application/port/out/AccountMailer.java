@@ -10,4 +10,11 @@ public interface AccountMailer {
     void sendPasswordReset(String to, String fullName, String link, Duration validFor);
     void sendInvitation(String to, String fullName, String organizationName, String invitedByName, String link,
                         Duration validFor);
+
+    /**
+     * 2.15: alguien que intentó registrarse con el RUC de la organización pide acceso. Le llega a cada ADMIN activo.
+     * El correo del solicitante no está verificado: el texto lo dice.
+     */
+    default void sendOrganizationAccessRequest(String to, String adminName, String organizationName,
+                                               String requesterName, String requesterEmail, String link) {}
 }

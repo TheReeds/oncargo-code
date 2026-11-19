@@ -2,6 +2,7 @@ package pe.logyx.core.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -35,6 +36,13 @@ import pe.logyx.core.model.RefreshRequest
 import pe.logyx.core.model.AcceptResult
 import pe.logyx.core.model.AcceptSmartLoadRequest
 import pe.logyx.core.model.CancelRequestBody
+import pe.logyx.core.model.CreateRequestBody
+import pe.logyx.core.model.PlaceView
+import pe.logyx.core.model.PublishTemplateBody
+import pe.logyx.core.model.PublishedFromTemplate
+import pe.logyx.core.model.QuoteRequestBody
+import pe.logyx.core.model.QuoteView
+import pe.logyx.core.model.TemplateView
 import pe.logyx.core.model.CancelShipmentRequest
 import pe.logyx.core.model.ChangeVehicleRequest
 import pe.logyx.core.model.RescheduleRequest
@@ -178,8 +186,38 @@ class LogyxApi(
      */
     suspend fun withdrawBid(bidId: String): BidView = post("api/v1/bids/$bidId/withdraw")
 
+    // --- Búsquedas guardadas (V22, roadmap 2.3): solo las mías ---
+    suspend fun savedSearches(): List<pe.logyx.core.model.SavedSearch> = get("api/v1/saved-searches")
+    /** `ALT-001` (nombre o ningún filtro), `ALT-002` (tope por persona), `ALT-003` (filtros incoherentes). */
+    suspend fun createSavedSearch(body: pe.logyx.core.model.SavedSearchRequest): pe.logyx.core.model.SavedSearch =
+        post("api/v1/saved-searches", body)
+    /** Reemplaza nombre y filtros; con `active` pausa o reanuda los avisos. */
+    suspend fun updateSavedSearch(id: String, body: pe.logyx.core.model.SavedSearchRequest): pe.logyx.core.model.SavedSearch =
+        put("api/v1/saved-searches/$id", body)
+    suspend fun deleteSavedSearch(id: String) = callNoContent { client.delete("api/v1/saved-searches/$id") }
+
     // --- Solicitudes (PYME) ---
     suspend fun myRequests(): List<RequestView> = get("api/v1/shipment-requests/mine")
+
+    // --- Publicar desde el móvil (Ola 2, 2.16), libreta (1.2) y plantillas (2.1) ---
+    /** `Idempotency-Key`: un doble toque o un reintento de red devuelven la solicitud ya creada (24 h). */
+    suspend fun createRequest(body: CreateRequestBody, idempotencyKey: String? = null): RequestView = call {
+        client.post("api/v1/shipment-requests") {
+            contentType(ContentType.Application.Json)
+            idempotencyKey?.let { header("Idempotency-Key", it) }
+            setBody(body)
+        }
+    }
+    suspend fun quote(body: QuoteRequestBody): QuoteView = post("api/v1/pricing/calculate", body)
+    suspend fun places(): List<PlaceView> = get("api/v1/places")
+    suspend fun templates(): List<TemplateView> = get("api/v1/request-templates")
+    suspend fun publishTemplate(id: String, pickupDate: String, idempotencyKey: String? = null): PublishedFromTemplate = call {
+        client.post("api/v1/request-templates/$id/publish") {
+            contentType(ContentType.Application.Json)
+            idempotencyKey?.let { header("Idempotency-Key", it) }
+            setBody(PublishTemplateBody(pickupDate))
+        }
+    }
     suspend fun bids(requestId: String): List<BidView> = get("api/v1/shipment-requests/$requestId/bids")
     suspend fun acceptBid(bidId: String): AcceptResult = post("api/v1/bids/$bidId/accept")
     /** Cancela la solicitud con motivo opcional (máx. 500, RN07 en `reason`); se avisa a los transportistas que ofertaron (F16). */
@@ -236,10 +274,19 @@ class LogyxApi(
 
     /** Cierra la parada (recojo o entrega). Mismas reglas que [arriveAtStop]; también idempotente con el envío ya DELIVERED. */
     suspend fun completeStop(shipmentId: String, stopId: String, occurredAt: String? = null): ShipmentView =
-        stopEvent("api/v1/shipments/$shipmentId/stops/$stopId/complete", occurredAt)
+        stopEvent("api/v1/shipments/$shipmentId/stops/$stopId/complete", StopEventRequest(occurredAt))
 
-    private suspend fun stopEvent(path: String, occurredAt: String?): ShipmentView =
-        if (occurredAt == null) post(path) else post(path, StopEventRequest(occurredAt))
+    /**
+     * Cierre con los datos de la parada (V23, roadmap 2.5): recojo con `weightKg` (`TRK-010`, y la foto de la carga si la
+     * PYME la pidió, `TRK-009`); entrega con nombre y DNI/CE de quien recibe (`TRK-011`). Sin datos va sin cuerpo.
+     */
+    suspend fun completeStop(shipmentId: String, stopId: String, event: StopEventRequest): ShipmentView =
+        stopEvent("api/v1/shipments/$shipmentId/stops/$stopId/complete", event)
+
+    private suspend fun stopEvent(path: String, occurredAt: String?): ShipmentView = stopEvent(path, StopEventRequest(occurredAt))
+
+    private suspend fun stopEvent(path: String, event: StopEventRequest): ShipmentView =
+        if (event.isEmpty) post(path) else post(path, event)
 
     /**
      * Enlace público de seguimiento para el cliente final (PYME ADMIN/OPS; el Lector recibe 403 `AUTH-007`). 201 con la `url`.
@@ -295,8 +342,49 @@ class LogyxApi(
     }
 
     // --- Incidencias ---
-    suspend fun reportIncident(shipmentId: String, body: ReportIncidentRequest): IncidentView =
-        post("api/v1/shipments/$shipmentId/incidents", body)
+    /**
+     * Reporta una incidencia. Con [idempotencyKey] (8–80 `[A-Za-z0-9._:-]`, V23) un reintento devuelve la ya creada: la
+     * cola offline del conductor la genera al encolar el botón «Emergencia» y la repite en cada intento.
+     */
+    suspend fun reportIncident(shipmentId: String, body: ReportIncidentRequest, idempotencyKey: String? = null): IncidentView = call {
+        client.post("api/v1/shipments/$shipmentId/incidents") {
+            contentType(ContentType.Application.Json)
+            idempotencyKey?.let { header("Idempotency-Key", it) }
+            setBody(body)
+        }
+    }
+
+    /** Quien la reportó retira una incidencia informativa activa (`IncidentView.canWithdraw`; `INC-007` si no). */
+    suspend fun withdrawIncident(id: String): IncidentView = post("api/v1/incidents/$id/withdraw")
+
+    // --- Ajustes del envío (V23, roadmap 2.6) ---
+    /** Ajustes con el precio final (acordado + aceptados); `suggestions` solo para el transportista. */
+    suspend fun shipmentAdjustments(shipmentId: String): pe.logyx.core.model.ShipmentAdjustmentsView =
+        get("api/v1/shipments/$shipmentId/adjustments")
+
+    /** El transportista (o su conductor) propone un ajuste (201). `ADJ-001..008`; con [idempotencyKey] un reintento devuelve el mismo. */
+    suspend fun proposeAdjustment(
+        shipmentId: String,
+        body: pe.logyx.core.model.ProposeAdjustmentRequest,
+        idempotencyKey: String? = null,
+    ): pe.logyx.core.model.AdjustmentView = call {
+        client.post("api/v1/shipments/$shipmentId/adjustments") {
+            contentType(ContentType.Application.Json)
+            idempotencyKey?.let { header("Idempotency-Key", it) }
+            setBody(body)
+        }
+    }
+
+    /** La PYME acepta (nota opcional). */
+    suspend fun acceptAdjustment(id: String, note: String? = null): pe.logyx.core.model.AdjustmentView =
+        post("api/v1/adjustments/$id/accept", pe.logyx.core.model.DecideAdjustmentRequest(note?.trim()?.takeIf { it.isNotEmpty() }))
+
+    /** La PYME rechaza con motivo obligatorio (`ADJ-004`, field `note`). */
+    suspend fun rejectAdjustment(id: String, note: String): pe.logyx.core.model.AdjustmentView =
+        post("api/v1/adjustments/$id/reject", pe.logyx.core.model.DecideAdjustmentRequest(note.trim()))
+
+    /** El transportista retira su propuesta pendiente (`ADJ-007` si ya se resolvió). */
+    suspend fun withdrawAdjustment(id: String): pe.logyx.core.model.AdjustmentView = post("api/v1/adjustments/$id/withdraw")
 
     suspend fun shipmentIncidents(shipmentId: String): List<IncidentView> = get("api/v1/shipments/$shipmentId/incidents")
 

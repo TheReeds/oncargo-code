@@ -19,8 +19,13 @@ export const LIMITS = {
   contactPhone: 20,
   stopInstructions: 300,
   placeLabel: 80,
+  templateName: 80,
   placeHours: 120,
   shipmentReason: 500,
+  /** Nota de un ajuste del envío y de su decisión (2.6, `@Size(max = 500)`). */
+  adjustmentNote: 500,
+  /** Motivo del registro de una parada desde la oficina (2.5) y de la suspensión de un usuario (2.15). */
+  officeReason: 300,
   counterOfferMessage: 500,
   chatMessage: 1000,
   reviewComment: 1000,

@@ -56,6 +56,18 @@ public class DocumentQueries {
         return documents.existsForStop(shipmentId, stopId, DocumentType.DELIVERY_PHOTO);
     }
 
+    /** 2.5: la parada de recojo tiene al menos una foto de la carga. */
+    public boolean hasPickupPhoto(UUID shipmentId, UUID stopId) {
+        return documents.existsForStop(shipmentId, stopId, DocumentType.PICKUP_PHOTO);
+    }
+
+    /** 2.6/2.7: el documento existe, es del envío y quien llama lo ve (RLS); si no, 404. */
+    public Document ofShipment(UUID shipmentId, UUID documentId) {
+        Document d = documents.findById(documentId).orElseThrow(() -> BusinessException.notFound("Documento"));
+        if (!d.shipmentId().equals(shipmentId)) throw BusinessException.notFound("Documento");
+        return d;
+    }
+
     /** RN06: el envío tiene al menos una foto de evidencia de entrega. */
     public boolean hasDeliveryPhoto(UUID shipmentId) {
         return documents.existsForShipment(shipmentId, DocumentType.DELIVERY_PHOTO);

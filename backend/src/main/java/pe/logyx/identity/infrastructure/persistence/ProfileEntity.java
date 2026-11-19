@@ -51,10 +51,16 @@ public class ProfileEntity extends PanacheEntityBase {
     @Column(name = "invited_by")
     public UUID invitedBy;
 
+    @Column(name = "operator_suspended_at")
+    public OffsetDateTime operatorSuspendedAt;
+
+    @Column(name = "operator_suspension_reason")
+    public String operatorSuspensionReason;
+
     Profile toDomain() {
         return new Profile(id, organizationId, email, passwordHash, fullName, role, active,
                 consentAcceptedAt, createdAt, sessionVersion, lastLoginAt, passwordChangedAt, invitationPending,
-                invitedBy);
+                invitedBy).restoreOperatorSuspension(operatorSuspendedAt, operatorSuspensionReason);
     }
 
     static ProfileEntity from(Profile p) {
@@ -79,5 +85,7 @@ public class ProfileEntity extends PanacheEntityBase {
         e.passwordChangedAt = p.passwordChangedAt();
         e.invitationPending = p.invitationPending();
         e.invitedBy = p.invitedBy();
+        e.operatorSuspendedAt = p.operatorSuspendedAt();
+        e.operatorSuspensionReason = p.operatorSuspensionReason();
     }
 }

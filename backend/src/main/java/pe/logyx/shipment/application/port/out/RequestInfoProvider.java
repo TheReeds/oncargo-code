@@ -23,13 +23,22 @@ public interface RequestInfoProvider {
     record RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
                        BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
                        java.time.LocalDate pickupDate, BigDecimal distanceKm, String code, String customerReference,
-                       StopContact pickupContact, StopContact deliveryContact) {
+                       StopContact pickupContact, StopContact deliveryContact, BigDecimal declaredValue) {
+
+        /** Sin valor declarado (anterior a 2.7). */
+        public RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
+                           BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
+                           java.time.LocalDate pickupDate, BigDecimal distanceKm, String code, String customerReference,
+                           StopContact pickupContact, StopContact deliveryContact) {
+            this(id, originCity, destinationCity, cargoDescription, weightKg, cargoType, volumeM3, pickupDate,
+                    distanceKm, code, customerReference, pickupContact, deliveryContact, null);
+        }
 
         public RequestInfo(UUID id, City originCity, City destinationCity, String cargoDescription,
                            BigDecimal weightKg, pe.logyx.catalog.domain.CargoType cargoType, BigDecimal volumeM3,
                            java.time.LocalDate pickupDate, BigDecimal distanceKm) {
             this(id, originCity, destinationCity, cargoDescription, weightKg, cargoType, volumeM3, pickupDate,
-                    distanceKm, null, null, StopContact.NONE, StopContact.NONE);
+                    distanceKm, null, null, StopContact.NONE, StopContact.NONE, null);
         }
     }
 

@@ -2,6 +2,7 @@ import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { requireToken, run } from '@/lib/actions';
 import { assignRequest, getCandidates, getOverview, rejectOrganization, requestThreads, suspendOrganization, threadMessages, updateParameter, verifyOrganization } from './server';
+import { escalatedAdjustments, getOrganization360, reactivateUser, suspendUser } from './server';
 import { LIMITS } from '@/lib/limits';
 
 export const operator = {
@@ -64,4 +65,16 @@ export const operator = {
     input: z.object({ requestId: z.uuid(), carrierOrgId: z.uuid(), before: z.uuid().optional(), reason: z.string().trim().max(200).optional() }),
     handler: ({ requestId, carrierOrgId, ...opts }, ctx) => run(() => threadMessages(requireToken(ctx), requestId, carrierOrgId, { before: opts.before, reason: opts.reason || undefined })),
   }),
+  // ----- 2.15: ficha 360 y acciones sobre cuentas
+  organization360: defineAction({ accept: 'json', input: z.object({ id: z.uuid() }), handler: ({ id }, ctx) => run(() => getOrganization360(requireToken(ctx), id)) }),
+  suspendUser: defineAction({
+    accept: 'json', input: z.object({ id: z.uuid(), reason: z.string().trim().min(3, 'Indica el motivo (mínimo 3 caracteres).').max(300) }),
+    handler: ({ id, reason }, ctx) => run(() => suspendUser(requireToken(ctx), id, reason)),
+  }),
+  reactivateUser: defineAction({
+    accept: 'json', input: z.object({ id: z.uuid(), reason: z.string().trim().max(300).optional() }),
+    handler: ({ id, reason }, ctx) => run(() => reactivateUser(requireToken(ctx), id, reason || undefined)),
+  }),
+  // ----- 2.6: ajustes escalados
+  escalatedAdjustments: defineAction({ accept: 'json', handler: (_i, ctx) => run(() => escalatedAdjustments(requireToken(ctx))) }),
 };

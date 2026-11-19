@@ -92,6 +92,7 @@ import pe.logyx.core.designsystem.label
 import pe.logyx.core.model.hasContactInfo
 import pe.logyx.core.designsystem.components.UiText
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
+import pe.logyx.core.designsystem.components.LogyxSnackbarState
 import pe.logyx.core.designsystem.pill
 import pe.logyx.core.model.DriverStatus
 import pe.logyx.core.model.DriverView
@@ -228,20 +229,32 @@ fun ShipmentDetailRoute(
     onOpenIncidents: () -> Unit = {},
     onReportIncident: () -> Unit = {},
     onReview: () -> Unit = {},
+    onDuplicate: (requestId: String) -> Unit = {},
     viewModel: ShipmentDetailViewModel = koinViewModel { parametersOf(shipmentId) },
+    adjustmentsViewModel: ShipmentAdjustmentsViewModel = koinViewModel { parametersOf(shipmentId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LiveEffect(viewModel) { viewModel.liveLoop() }
+    // Roadmap 2.6: precio final y ajustes (tarjeta propia con su ViewModel y tiempo real `shipment.adjustment_updated`).
+    val adjustments by adjustmentsViewModel.state.collectAsStateWithLifecycle()
+    LiveEffect(adjustmentsViewModel) { adjustmentsViewModel.liveLoop() }
+    val adjustmentActions = AdjustmentActions(
+        onAccept = adjustmentsViewModel::askAccept, onReject = adjustmentsViewModel::askReject,
+        onRejectNote = adjustmentsViewModel::onRejectNote, onPropose = adjustmentsViewModel::askPropose,
+        onConfirmAccept = adjustmentsViewModel::confirmAccept, onConfirmReject = adjustmentsViewModel::confirmReject,
+        onConfirmPropose = adjustmentsViewModel::confirmPropose, onDismiss = adjustmentsViewModel::dismiss,
+        onMessageShown = adjustmentsViewModel::onMessageShown,
+    )
     // Al volver de documentos / incidencias / calificación el estado puede haber cambiado.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refresh() }
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) { viewModel.refresh(); adjustmentsViewModel.refresh() } }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     ShipmentDetailScreen(
         state, onBack, viewModel::refresh, viewModel::onMessageShown,
-        ShipmentLinks(onOpenDocuments, onOpenIncidents, onReportIncident, onReview),
+        ShipmentLinks(onOpenDocuments, onOpenIncidents, onReportIncident, onReview, onDuplicate),
         ShipmentActions(
             onOpenDrivers = viewModel::openDriverSheet, onDismissDrivers = viewModel::dismissDriverSheet,
             onPickDriver = viewModel::pickDriver, onCancelPick = viewModel::cancelPick,
@@ -253,6 +266,7 @@ fun ShipmentDetailRoute(
             onConfirmVehicle = viewModel::confirmVehicle,
             onShare = viewModel::share, onShareHandled = viewModel::onShareHandled,
         ),
+        adjustments = { snackbar -> AdjustmentsCard(adjustments, adjustmentActions, snackbar) },
     )
 }
 
@@ -262,6 +276,8 @@ data class ShipmentLinks(
     val onOpenIncidents: () -> Unit = {},
     val onReportIncident: () -> Unit = {},
     val onReview: () -> Unit = {},
+    /** Ola 2 (2.16): «Duplicar» lleva a Nueva solicitud con los datos de la solicitud de este envío (solo PYME). */
+    val onDuplicate: (requestId: String) -> Unit = {},
 )
 
 /** Intenciones del detalle: conductor (asignar/relevar), cancelar y cambiar vehículo. */
@@ -294,6 +310,8 @@ fun ShipmentDetailScreen(
     onMessageShown: () -> Unit,
     links: ShipmentLinks = ShipmentLinks(),
     actions: ShipmentActions = ShipmentActions(),
+    /** Tarjeta «Precio y ajustes» (2.6); usa el mismo snackbar de la pantalla. */
+    adjustments: @Composable (LogyxSnackbarState) -> Unit = {},
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
@@ -309,7 +327,7 @@ fun ShipmentDetailScreen(
                 state.loading -> SkeletonList(Modifier.padding(16.dp), count = 2)
                 s == null -> ErrorState(state.error ?: stringResource(R.string.shipments_detail_not_found), onRefresh)
                 else -> Refreshable(state.refreshing, onRefresh) {
-                    TrackingContent(state, s, actions, links)
+                    TrackingContent(state, s, actions, links) { adjustments(snackbar) }
                 }
             }
         }
@@ -376,7 +394,13 @@ fun ShipmentDetailScreen(
 }
 
 @Composable
-private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actions: ShipmentActions, links: ShipmentLinks) {
+private fun TrackingContent(
+    state: ShipmentDetailUiState,
+    s: ShipmentView,
+    actions: ShipmentActions,
+    links: ShipmentLinks,
+    adjustments: @Composable () -> Unit = {},
+) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val dash = stringResource(R.string.shipments_no_value)
     val mapDescription = stringResource(R.string.shipments_detail_map_description, cityLabel(s.originCity), cityLabel(s.destinationCity))
@@ -398,7 +422,14 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actio
         LogyxCard(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 StatusPill(s.status.pill())
-                Text(Fmt.money(s.agreedPrice), style = LogyxText.moneyMedium, color = LogyxTheme.colors.moneyText)
+                // 2.6: precio final = acordado + ajustes aceptados (el desglose está en «Precio y ajustes»).
+                Text(Fmt.money(s.finalPrice ?: s.agreedPrice), style = LogyxText.moneyMedium, color = LogyxTheme.colors.moneyText)
+            }
+            if (s.pendingAdjustments > 0) {
+                Text(
+                    androidx.compose.ui.res.pluralStringResource(R.plurals.shipments_adjustments_pending, s.pendingAdjustments, s.pendingAdjustments),
+                    style = MaterialTheme.typography.labelMedium, color = LogyxTheme.colors.onWarningContainer, modifier = Modifier.padding(top = 4.dp),
+                )
             }
             Spacer(Modifier.height(16.dp))
             RouteLine(cityLabel(s.originCity), cityLabel(s.destinationCity))
@@ -449,6 +480,7 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actio
                 StopTimeline(s.stops)
             }
         }
+        adjustments()
         // Roadmap 1.3: contacto, ventana e instrucciones por parada (solo las partes los reciben; sin datos no se pinta).
         val withContact = s.stops.sortedBy { it.sequence }.filter { it.hasContactInfo }
         if (withContact.isNotEmpty()) {
@@ -487,6 +519,9 @@ private fun TrackingContent(state: ShipmentDetailUiState, s: ShipmentView, actio
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LogyxButton(stringResource(R.string.shipments_documents_action), links.onOpenDocuments, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.Description)
+                if (state.isPyme && s.requestId != null) {
+                    LogyxButton(stringResource(R.string.shipments_duplicate_action), { s.requestId?.let(links.onDuplicate) }, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true)
+                }
                 LogyxButton(stringResource(R.string.shipments_incidents_action), links.onOpenIncidents, variant = ButtonVariant.Secondary, size = ButtonSize.Medium, icon = Icons.Rounded.ReportProblem)
                 if (s.status != ShipmentStatus.CANCELLED && !s.hasActiveIncident) {
                     LogyxButton(stringResource(R.string.shipments_report_action), links.onReportIncident, variant = ButtonVariant.Ghost, size = ButtonSize.Medium, requiresOperate = true)

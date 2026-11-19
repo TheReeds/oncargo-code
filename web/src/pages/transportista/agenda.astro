@@ -1,0 +1,31 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import FleetAgenda from '@/features/fleet/components/FleetAgenda';
+import { getSchedule, listDrivers, listUnassigned } from '@/features/fleet/server';
+import { addDays, limaToday } from '@/lib/lima-date';
+
+const t = Astro.locals.session!.token;
+const q = Astro.url.searchParams;
+const today = limaToday();
+// `?desde=YYYY-MM-DD&dias=7|14` (por omisión: hoy y 7 días).
+const desde = /^\d{4}-\d{2}-\d{2}$/.test(q.get('desde') ?? '') ? q.get('desde')! : today;
+const days = q.get('dias') === '14' ? 14 : 7;
+const to = addDays(desde, days - 1);
+
+let schedule: Awaited<ReturnType<typeof getSchedule>> | null = null;
+let loadError: string | null = null;
+try {
+  schedule = await getSchedule(t, desde, to);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar la agenda.';
+}
+const [unassigned, drivers] = await Promise.all([listUnassigned(t).catch(() => []), listDrivers(t).catch(() => [])]);
+const driverOptions = drivers.map((d) => ({ value: d.id!, label: d.fullName ?? '', hint: d.active === false ? 'Cuenta desactivada' : undefined, disabled: d.active === false }));
+---
+<AppShell title="Agenda" active="agenda" wide>
+  <PageHeader title="Agenda de flota" subtitle="Qué vehículo y qué conductor está ocupado cada día, y qué envíos aún no tienen conductor." />
+  {loadError && <Alert tone="error" title="No pudimos cargar la agenda" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {schedule && <FleetAgenda client:load initial={schedule} from={desde} days={days} unassigned={unassigned} driverOptions={driverOptions} />}
+</AppShell>

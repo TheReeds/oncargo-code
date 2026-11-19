@@ -55,9 +55,27 @@ public class IncidentEntity extends PanacheEntityBase {
     @Column(name = "shipment_outcome")
     public pe.logyx.incident.domain.model.IncidentShipmentOutcome shipmentOutcome;
 
+    // ----- V23 (roadmap 2.7)
+    @Enumerated(EnumType.STRING)
+    public pe.logyx.incident.domain.model.IncidentSeverity severity;
+    public boolean blocking;
+    @Column(name = "claimed_amount") public java.math.BigDecimal claimedAmount;
+    @Column(name = "assignee_profile_id") public UUID assigneeProfileId;
+    @Column(name = "due_at") public OffsetDateTime dueAt;
+    @Column(name = "withdrawn_at") public OffsetDateTime withdrawnAt;
+    @Column(name = "reopened_at") public OffsetDateTime reopenedAt;
+    @Column(name = "reopen_count") public int reopenCount;
+    public java.math.BigDecimal latitude;
+    public java.math.BigDecimal longitude;
+    @Column(name = "occurred_at") public OffsetDateTime occurredAt;
+    @Column(name = "adjustment_id") public UUID adjustmentId;
+
     Incident toDomain() {
         return new Incident(id, shipmentId, requesterOrgId, carrierOrgId, reportedByOrgId, reportedByProfileId,
-                category, description, status, resolutionNotes, createdAt, updatedAt, resolvedAt, shipmentOutcome);
+                category, description, status, resolutionNotes, createdAt, updatedAt, resolvedAt, shipmentOutcome)
+                .restoreV2(severity, blocking, claimedAmount, assigneeProfileId, dueAt, withdrawnAt, reopenedAt,
+                        reopenCount, latitude == null || longitude == null ? null
+                                : new Incident.Location(latitude, longitude), occurredAt, adjustmentId);
     }
 
     void apply(Incident i) {
@@ -75,5 +93,17 @@ public class IncidentEntity extends PanacheEntityBase {
         updatedAt = i.updatedAt();
         resolvedAt = i.resolvedAt();
         shipmentOutcome = i.shipmentOutcome();
+        severity = i.severity();
+        blocking = i.blocking();
+        claimedAmount = i.claimedAmount();
+        assigneeProfileId = i.assigneeProfileId();
+        dueAt = i.dueAt();
+        withdrawnAt = i.withdrawnAt();
+        reopenedAt = i.reopenedAt();
+        reopenCount = i.reopenCount();
+        latitude = i.location() == null ? null : i.location().latitude();
+        longitude = i.location() == null ? null : i.location().longitude();
+        occurredAt = i.occurredAt();
+        adjustmentId = i.adjustmentId();
     }
 }

@@ -16,6 +16,9 @@ import kotlinx.serialization.Serializable
 // Destinos secundarios
 @Serializable data class LoadDetail(val id: String)
 @Serializable data class RequestDetail(val id: String)
+/** Ola 2 (2.16): [from] = solicitud que se duplica (formulario precargado); nulo = formulario vacío. */
+@Serializable data class NewRequest(val from: String? = null)
+@Serializable data object Templates
 @Serializable data class ShipmentDetail(val id: String)
 @Serializable data class Chat(val requestId: String, val carrierOrgId: String, val title: String? = null)
 @Serializable data class Threads(val requestId: String)

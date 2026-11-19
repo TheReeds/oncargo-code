@@ -20,8 +20,18 @@ public interface IncidentRepository {
      * Visibles (RLS) filtradas; {@code partyOrgId} null = sin filtro de organización (operador). Más recientes primero.
      */
     Paged<Incident> search(UUID partyOrgId, Collection<IncidentStatus> statuses, PageRequest page);
+    /** RN11: envíos con una incidencia activa que congela (V23: las informativas no cuentan). */
     Set<UUID> shipmentsWithActive(Collection<UUID> shipmentIds);
+    /** RN11: el envío tiene una activa que congela. */
     boolean hasActive(UUID shipmentId);
+    boolean hasActiveOfCategory(UUID shipmentId, pe.logyx.incident.domain.model.IncidentCategory category);
+    /** Bandeja del operador (V23): filtros por estado, severidad, responsable, SLA vencido y organización. */
+    Paged<Incident> searchOperator(pe.logyx.incident.application.OperatorIncidentFilter filter, PageRequest page);
+    void insertAttachment(Incident incident, UUID documentId);
+    /** Documentos adjuntos en el alta, en orden de alta. */
+    List<UUID> attachments(UUID incidentId);
+    /** La persona es un usuario activo de una organización operadora (responsable de una incidencia). */
+    boolean isOperatorProfile(UUID profileId);
     long countByStatuses(Collection<IncidentStatus> statuses);
     /** Inserta o actualiza. */
     void save(Incident incident);

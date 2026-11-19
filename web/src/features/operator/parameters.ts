@@ -1,9 +1,11 @@
 import type { ParameterRow } from './server';
 
-/** Valor legible: la comisión como porcentaje ("8 %"), el resto en horas ("24 h"). */
+/** Valor legible: la comisión como porcentaje ("8 %"), un interruptor («Activado»), el resto en horas ("24 h"). */
 export function formatParam(kind: string | undefined, value: string | undefined): string {
   if (value == null) return '—';
+  if (kind === 'FLAG') return value === '1' ? 'Activado' : 'Desactivado';
   if (kind === 'RATE') return `${rateToPercent(value)} %`;
+  if (kind === 'AMOUNT') return `S/ ${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `${value} h`;
 }
 

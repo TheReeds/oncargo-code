@@ -99,4 +99,35 @@
     <string name="shipments_share_subject">Seguimiento de tu envío</string>
     <string name="shipments_share_text_code">Sigue tu envío %1$s (%2$s) en tiempo real con OnCargo: %3$s</string>
     <string name="shipments_share_text">Sigue tu envío (%1$s) en tiempo real con OnCargo: %2$s</string>
+    <string name="shipments_duplicate_action">Duplicar solicitud</string>
+    <!-- Ola 2 zona X: precio final y ajustes (2.6) -->
+    <string name="shipments_adjustments_title">Precio y ajustes</string>
+    <string name="shipments_adjustments_agreed">Precio acordado</string>
+    <string name="shipments_adjustments_accepted_total">Ajustes aceptados</string>
+    <string name="shipments_adjustments_final">Precio final</string>
+    <string name="shipments_adjustments_vat">Incluye IGV de %1$s</string>
+    <string name="shipments_adjustments_net">Cobras %1$s neto</string>
+    <plurals name="shipments_adjustments_pending">
+        <item quantity="one">%1$d ajuste por responder</item>
+        <item quantity="other">%1$d ajustes por responder</item>
+    </plurals>
+    <string name="shipments_adjustments_suggestions">Sugerencias</string>
+    <string name="shipments_adjustments_suggestions_hint">Calculadas con los tiempos y el peso del envío. No se cobran solas: propónlas a la empresa.</string>
+    <string name="shipments_adjustment_propose">Proponer %1$s</string>
+    <string name="shipments_adjustment_propose_title">¿Proponer %1$s por %2$s?</string>
+    <string name="shipments_adjustment_propose_message">La empresa tiene 48 h para aceptarlo o rechazarlo. Si no responde, lo decide OnCargo.</string>
+    <string name="shipments_adjustment_propose_confirm">Proponer ajuste</string>
+    <string name="shipments_adjustment_proposed">Ajuste propuesto</string>
+    <string name="shipments_adjustment_accept">Aceptar</string>
+    <string name="shipments_adjustment_accept_title">¿Aceptar el ajuste de %1$s?</string>
+    <string name="shipments_adjustment_accept_message">%1$s. El precio final pasará a %2$s.</string>
+    <string name="shipments_adjustment_accepted">Ajuste aceptado</string>
+    <string name="shipments_adjustment_reject">Rechazar</string>
+    <string name="shipments_adjustment_reject_title">¿Rechazar el ajuste de %1$s?</string>
+    <string name="shipments_adjustment_reject_message">El transportista verá tu motivo. Si no se ponen de acuerdo, pueden reportar una disputa de pago.</string>
+    <string name="shipments_adjustment_reason_required">Indica por qué rechazas el ajuste.</string>
+    <string name="shipments_adjustment_rejected">Ajuste rechazado</string>
+    <string name="shipments_adjustment_reject_reason">Motivo: %1$s</string>
+    <string name="shipments_adjustment_respond_by">Responde hasta el %1$s</string>
+    <string name="shipments_adjustment_escalated">Sin respuesta a tiempo: lo decide OnCargo.</string>
 </resources>

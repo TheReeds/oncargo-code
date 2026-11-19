@@ -170,6 +170,9 @@
     <string name="ds_standing_final_rank">Posición final: %1$d.º de %2$d</string>
     <string name="ds_standing_can_change">Puede cambiar mientras la subasta siga abierta.</string>
     <string name="ds_standing_description">Posición de tu oferta: %1$s</string>
+    <string name="ds_position_top_two">Entre las 2 más bajas</string>
+    <string name="ds_position_lower_half">Por debajo de la mediana</string>
+    <string name="ds_position_upper_half">Por encima de la mediana</string>
     <string name="ds_reason_counter">%1$d/%2$d caracteres</string>
     <string name="ds_reason_no_contact">No incluyas teléfonos, correos ni enlaces: coordina todo por el chat de OnCargo.</string>
     <string name="ds_reason_back">Volver</string>
@@ -201,4 +204,41 @@
     <string name="ds_contact_instructions">Indicaciones: %1$s</string>
     <string name="ds_contact_no_dialer">No encontramos una app de teléfono en este equipo. Marca el número a mano.</string>
     <string name="ds_contact_no_maps">No encontramos una app de mapas ni un navegador. Busca la dirección a mano.</string>
+    <!-- Ola 2, zona X (2.5–2.7) -->
+    <string name="ds_incidentcategory_pickup_no_show">El transportista no llegó al recojo</string>
+    <string name="ds_incidentcategory_shipper_no_show">No había carga en el recojo</string>
+    <string name="ds_incidentcategory_breakdown">Avería del vehículo</string>
+    <string name="ds_incidentcategory_accident">Accidente</string>
+    <string name="ds_incidentcategory_theft">Robo</string>
+    <string name="ds_incidentcategory_road_blocked">Vía bloqueada</string>
+    <string name="ds_incidentcategory_partial_delivery">Entrega parcial</string>
+    <string name="ds_incidentcategory_payment_dispute">Disputa de pago</string>
+    <string name="ds_incidentcategory_unknown">Incidencia</string>
+    <string name="ds_incidentseverity_low">Baja</string>
+    <string name="ds_incidentseverity_medium">Media</string>
+    <string name="ds_incidentseverity_high">Alta</string>
+    <string name="ds_incidentseverity_critical">Crítica</string>
+    <string name="ds_documenttype_pickup_photo">Foto de la carga</string>
+    <string name="ds_adjustmenttype_weight_diff">Diferencia de peso</string>
+    <string name="ds_adjustmenttype_detention">Estadía</string>
+    <string name="ds_adjustmenttype_toll">Peajes</string>
+    <string name="ds_adjustmenttype_handling">Maniobras</string>
+    <string name="ds_adjustmenttype_other">Otro ajuste</string>
+    <string name="ds_adjustmenttype_unknown">Ajuste</string>
+    <string name="ds_adjustmentstatus_pending">Por responder</string>
+    <string name="ds_adjustmentstatus_accepted">Aceptado</string>
+    <string name="ds_adjustmentstatus_rejected">Rechazado</string>
+    <string name="ds_adjustmentstatus_withdrawn">Retirado</string>
+    <string name="ds_stop_office">Registrado por la oficina: %1$s</string>
+    <string name="ds_stop_received_by">Recibió %1$s</string>
+    <string name="ds_stop_loaded_weight">Peso medido: %1$s</string>
+    <string name="ds_number_invalid">Ingresa un número válido.</string>
+    <plurals name="ds_sync_count">
+        <item quantity="one">%1$d acción por sincronizar</item>
+        <item quantity="other">%1$d acciones por sincronizar</item>
+    </plurals>
+    <string name="ds_sync_sending">Enviando…</string>
+    <string name="ds_sync_waiting_signal">Esperando señal</string>
+    <string name="ds_sync_failed">Revisa los pendientes</string>
+    <string name="ds_sync_a11y">%1$s. %2$s. Toca para ver el detalle.</string>
 </resources>

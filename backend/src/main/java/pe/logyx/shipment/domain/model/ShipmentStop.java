@@ -3,6 +3,7 @@ package pe.logyx.shipment.domain.model;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.shared.domain.BusinessException;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -30,6 +31,12 @@ public final class ShipmentStop {
     private OffsetDateTime arrivedRecordedAt;
     private OffsetDateTime completedRecordedAt;
     private final StopContact contact;
+    /** Roadmap 2.5 (V23): peso medido al recoger, quién recibió la entrega y si la oficina registró el paso. */
+    private BigDecimal loadedWeightKg;
+    private String receivedByName;
+    private String receivedByDoc;
+    private String arrivalOfficeReason;
+    private String completionOfficeReason;
 
     public ShipmentStop(UUID id, UUID shipmentId, UUID requesterOrgId, UUID carrierOrgId, int sequence, Type type,
                         City city, String address, Status status, OffsetDateTime arrivedAt,
@@ -102,6 +109,38 @@ public final class ShipmentStop {
         completedAt = occurredAt;
         completedRecordedAt = recordedAt;
     }
+
+    /**
+     * Datos del cierre (2.5): peso medido en el recojo y quién recibe en la entrega. Ya validados por
+     * {@code StopCompletionPolicy}; los nulos no pisan lo que hubiera.
+     */
+    public void recordCompletionData(BigDecimal loadedWeightKg, String receivedByName, String receivedByDoc) {
+        if (loadedWeightKg != null) this.loadedWeightKg = loadedWeightKg;
+        if (receivedByName != null) this.receivedByName = receivedByName;
+        if (receivedByDoc != null) this.receivedByDoc = receivedByDoc;
+    }
+
+    /** La oficina del transportista registró la llegada (o el cierre) con este motivo, no el conductor (2.5). */
+    public void markArrivalByOffice(String reason) { this.arrivalOfficeReason = reason; }
+
+    public void markCompletionByOffice(String reason) { this.completionOfficeReason = reason; }
+
+    /** Restaura lo guardado (persistencia). */
+    public ShipmentStop restoreExecution(BigDecimal loadedWeightKg, String receivedByName, String receivedByDoc,
+                                         String arrivalOfficeReason, String completionOfficeReason) {
+        this.loadedWeightKg = loadedWeightKg;
+        this.receivedByName = receivedByName;
+        this.receivedByDoc = receivedByDoc;
+        this.arrivalOfficeReason = arrivalOfficeReason;
+        this.completionOfficeReason = completionOfficeReason;
+        return this;
+    }
+
+    public BigDecimal loadedWeightKg() { return loadedWeightKg; }
+    public String receivedByName() { return receivedByName; }
+    public String receivedByDoc() { return receivedByDoc; }
+    public String arrivalOfficeReason() { return arrivalOfficeReason; }
+    public String completionOfficeReason() { return completionOfficeReason; }
 
     public boolean isCompleted() { return status == Status.COMPLETED; }
 

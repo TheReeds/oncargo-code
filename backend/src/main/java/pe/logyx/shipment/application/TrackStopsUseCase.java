@@ -16,6 +16,7 @@ import pe.logyx.shipment.application.port.out.IncidentHoldProvider;
 import pe.logyx.shipment.application.port.out.ShipmentRepository;
 import pe.logyx.shipment.application.port.out.ShipmentStopRepository;
 import pe.logyx.shipment.domain.DeliveryEvidencePolicy;
+import pe.logyx.shipment.domain.StopCompletionPolicy;
 import pe.logyx.shipment.domain.StopEventTimePolicy;
 import pe.logyx.shipment.domain.StopSequencePolicy;
 import pe.logyx.shipment.domain.model.Shipment;
@@ -52,7 +53,7 @@ public class TrackStopsUseCase {
 
     @Transactional
     public ShipmentSummary complete(UUID shipmentId, UUID stopId) {
-        return complete(shipmentId, stopId, null);
+        return complete(shipmentId, stopId, (OffsetDateTime) null);
     }
 
     /**
@@ -77,17 +78,77 @@ public class TrackStopsUseCase {
     /** «Carga recogida» / «Entregado». Idempotente como {@link #arrive}: repetirlo sobre una parada completada da 200. */
     @Transactional
     public ShipmentSummary complete(UUID shipmentId, UUID stopId, OffsetDateTime occurredAt) {
+        return complete(shipmentId, stopId, new StopCompletion(occurredAt, null, null, null));
+    }
+
+    /**
+     * Cierre con los datos de la parada (roadmap 2.5): peso medido en el recojo y quién recibe la entrega
+     * ({@link StopCompletionPolicy}). El recojo exige la foto de la carga y el peso si la PYME los pidió.
+     */
+    @Transactional
+    public ShipmentSummary complete(UUID shipmentId, UUID stopId, StopCompletion data) {
         Shipment s = lockedDriverShipment(shipmentId);
+        return doComplete(s, stopId, data, null);
+    }
+
+    // ----- Registro desde la oficina del transportista (roadmap 2.5): «celular sin batería»
+
+    /**
+     * El despachador (ADMIN u OPS del transportista) registra la llegada en nombre del conductor, con motivo
+     * obligatorio (LOGYX-SHP-006). Mismas reglas que la app (orden RN08, incidencia RN11, hora acotada) e idempotente;
+     * queda marcada en la parada y auditada ({@code STOP_REGISTERED_BY_OFFICE}).
+     */
+    @Transactional
+    public ShipmentSummary arriveByOffice(UUID shipmentId, UUID stopId, String reason, OffsetDateTime occurredAt) {
+        String why = requireReason(reason);
+        Shipment s = lockedCarrierShipment(shipmentId);
+        List<ShipmentStop> all = stops.listByShipment(s.id());
+        if (find(all, stopId).map(ShipmentStop::arrivalRecorded).orElse(false)) return queries.detail(s.id());
+        ensureCanAdvance(s);
+        ShipmentStop stop = StopSequencePolicy.requireNext(all, stopId);
+        OffsetDateTime now = OffsetDateTime.now();
+        stop.arrive(StopEventTimePolicy.resolve(occurredAt, now, previousStepAt(all, stop)), now);
+        stop.markArrivalByOffice(why);
+        stops.save(stop);
+        audit.record(tenant.profileId(), tenant.orgId(), "STOP_REGISTERED_BY_OFFICE", "shipment", s.id(),
+                detail("llegada", stop, why));
+        fireStopUpdated(s, stop);
+        return queries.detail(s.id());
+    }
+
+    /**
+     * Cierre de la parada desde la oficina, con motivo. RN06: la oficina <b>no</b> sube la foto de entrega ni la de la
+     * carga; si la parada la exige y el conductor no la subió, el cierre se rechaza igual (LOGYX-TRK-006 / TRK-009).
+     */
+    @Transactional
+    public ShipmentSummary completeByOffice(UUID shipmentId, UUID stopId, String reason, StopCompletion data) {
+        String why = requireReason(reason);
+        Shipment s = lockedCarrierShipment(shipmentId);
+        return doComplete(s, stopId, data, why);
+    }
+
+    private ShipmentSummary doComplete(Shipment s, UUID stopId, StopCompletion data, String officeReason) {
         List<ShipmentStop> all = stops.listByShipment(s.id());
         if (find(all, stopId).map(ShipmentStop::isCompleted).orElse(false)) return queries.detail(s.id());
         ensureCanAdvance(s);
         ShipmentStop stop = StopSequencePolicy.requireNext(all, stopId);
         stop.ensureArrived();                                                  // F49: TRK-003 antes que TRK-006
         DeliveryEvidencePolicy.ensureEvidence(stop.type(), evidence.hasDeliveryPhoto(s.id(), stop.id()));
+        StopCompletion d = data == null ? StopCompletion.NONE : data;
+        boolean pickupPhoto = stop.type() == ShipmentStop.Type.PICKUP && s.pickupRequirements().photo()
+                && evidence.hasPickupPhoto(s.id(), stop.id());
+        StopCompletionPolicy.Data clean = StopCompletionPolicy.validate(stop.type(), s.pickupRequirements(),
+                pickupPhoto, d.weightKg(), d.receivedByName(), d.receivedByDoc());
         OffsetDateTime now = OffsetDateTime.now();
-        OffsetDateTime at = StopEventTimePolicy.resolve(occurredAt, now, stop.arrivedAt());
+        OffsetDateTime at = StopEventTimePolicy.resolve(d.occurredAt(), now, stop.arrivedAt());
         stop.complete(at, now);
+        stop.recordCompletionData(clean.loadedWeightKg(), clean.receivedByName(), clean.receivedByDoc());
+        if (officeReason != null) stop.markCompletionByOffice(officeReason);
         stops.save(stop);
+        if (officeReason != null) {
+            audit.record(tenant.profileId(), tenant.orgId(), "STOP_REGISTERED_BY_OFFICE", "shipment", s.id(),
+                    detail("cierre", stop, officeReason));
+        }
 
         Shipment.Progress progress = s.onStopCompleted(stop.type(), StopSequencePolicy.allCompleted(all), at);
         shipments.save(s);
@@ -103,6 +164,29 @@ public class TrackStopsUseCase {
                     result.routeLabel()));
         }
         return result;
+    }
+
+    private static String requireReason(String reason) {
+        if (reason == null || reason.strip().length() < 3) {
+            throw BusinessException.badRequest("LOGYX-SHP-006",
+                    "Indica el motivo: por qué la oficina registra este paso en lugar del conductor", "reason");
+        }
+        String r = reason.strip();
+        return r.length() > 300 ? r.substring(0, 300) : r;
+    }
+
+    private static String detail(String what, ShipmentStop stop, String reason) {
+        String d = what + " " + stop.type() + " parada=" + stop.id() + " · motivo: " + reason;
+        return d.length() > 500 ? d.substring(0, 499) + "…" : d;
+    }
+
+    /** Envío del transportista actual (404 si no es suyo), con el mismo candado que la app del conductor. */
+    private Shipment lockedCarrierShipment(UUID id) {
+        if (tenant.orgType() != pe.logyx.shared.tenancy.OrgType.CARRIER || tenant.isDriver()) {
+            throw BusinessException.notFound("Envío");
+        }
+        shipments.lockResource("shipment-track:" + id);
+        return shipments.findForCarrier(id, tenant.orgId()).orElseThrow(() -> BusinessException.notFound("Envío"));
     }
 
     /**

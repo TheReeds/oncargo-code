@@ -41,6 +41,12 @@ public class ShipmentQueries {
     @Inject FleetService fleet;
     @Inject TenantContext tenant;
     @Inject IncidentHoldProvider holds;
+    @Inject pe.logyx.shipment.application.port.out.AdjustmentRepository adjustments;
+
+    /** Candado consultivo de la transacción sobre el envío (serializa escrituras concurrentes). */
+    public void lockShipment(UUID id, String prefix) {
+        shipments.lockResource(prefix + id);
+    }
 
     public List<ShipmentSummary> mine() {
         UUID org = tenant.orgId();
@@ -171,9 +177,13 @@ public class ShipmentQueries {
         Map<UUID, Organization> orgs = organizations.byIds(orgIds);
         Set<UUID> onHold = holds.withActiveIncident(list.stream().map(Shipment::id).toList());
         UUID driverId = tenant.isDriver() ? fleet.driverForProfile(tenant.profileId()).map(Driver::id).orElse(null) : null;
+        List<UUID> ids = list.stream().map(Shipment::id).toList();
+        Map<UUID, java.math.BigDecimal> accepted = adjustments.acceptedTotals(ids);
+        Map<UUID, Long> pending = adjustments.pendingCounts(ids);
         return list.stream().map(s -> new ShipmentSummary(s, byShipment.getOrDefault(s.id(), List.of()),
                 name(orgs.get(s.requesterOrgId())), name(orgs.get(s.carrierOrgId())), infos.get(s.requestId()),
-                onHold.contains(s.id()), contactsVisible(s, driverId)))
+                onHold.contains(s.id()), contactsVisible(s, driverId),
+                accepted.getOrDefault(s.id(), java.math.BigDecimal.ZERO), pending.getOrDefault(s.id(), 0L)))
                 .toList();
     }
 

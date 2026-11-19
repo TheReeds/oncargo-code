@@ -43,6 +43,16 @@ public class FleetResource {
         return ApiResponse.of(VehicleView.of(fleet.updateVehicle(id, req.toCommand())));
     }
 
+    @PUT
+    @Path("/vehicles/{id}/config")
+    @Operation(summary = "Equipamiento y tipos de carga aceptados por el vehículo (2.4)",
+            description = "Reemplaza ambas listas. acceptedCargoTypes restringe la matriz RN02 de ese vehículo, nunca la "
+                    + "amplía (400 LOGYX-FLT-009); vacío = todo lo que la matriz permite. Ofertar con un tipo no aceptado "
+                    + "da 400 LOGYX-CAP-003.")
+    public ApiResponse<VehicleView> configure(@PathParam("id") UUID id, @Valid VehicleConfig req) {
+        return ApiResponse.of(VehicleView.of(fleet.configureVehicle(id, req.equipment(), req.acceptedCargoTypes())));
+    }
+
     @POST
     @Path("/vehicles/{id}/archive")
     @Operation(summary = "Da de baja (archiva) un vehículo",
@@ -71,6 +81,15 @@ public class FleetResource {
     @Operation(summary = "Alta de conductor", description = "Solo ADMIN (403 LOGYX-AUTH-008).")
     public ApiResponse<DriverView> addDriver(@Valid DriverRequest req) {
         return ApiResponse.of(DriverView.of(fleet.addDriver(req.toCommand())));
+    }
+
+    @PATCH
+    @Path("/drivers/{id}")
+    @OrgAdminOnly
+    @Operation(summary = "Categoría de licencia y DNI del conductor (2.4)", description = "Solo ADMIN. El vencimiento de "
+            + "la licencia se registra al subir el documento DRIVER_LICENSE.")
+    public ApiResponse<DriverView> patchDriver(@PathParam("id") UUID id, @Valid DriverPatch req) {
+        return ApiResponse.of(DriverView.of(fleet.updateDriverCredentials(id, req.licenseCategory(), req.dni())));
     }
 
     @POST

@@ -30,6 +30,12 @@ public class PanacheOrganizationRepository implements OrganizationRepository {
     }
 
     @Override
+    public java.util.Optional<Organization> findByRuc(String ruc) {
+        return OrganizationEntity.<OrganizationEntity>find("ruc", ruc).firstResultOptional()
+                .map(OrganizationEntity::toDomain);
+    }
+
+    @Override
     public boolean existsByRuc(String ruc) {
         return OrganizationEntity.count("ruc", ruc) > 0;
     }

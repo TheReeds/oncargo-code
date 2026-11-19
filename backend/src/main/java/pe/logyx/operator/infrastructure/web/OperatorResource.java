@@ -272,4 +272,135 @@ public class OperatorResource {
     public ApiResponse<ManualAssignmentResult> assign(@PathParam("id") UUID requestId, @Valid ManualAssignment req) {
         return ApiResponse.of(ManualAssignmentResult.of(service.assign(requestId, req.toCommand())));
     }
+
+    // ----- Ola 2 zona X (2.6, 2.7, 2.15)
+    @jakarta.inject.Inject pe.logyx.operator.application.Organization360Service ops360;
+
+    @GET
+    @Path("/organizations/{id}/overview")
+    @Operation(summary = "Ficha 360 de una organización: usuarios, flota, envíos, incidencias, reputación, tasas, "
+            + "verificación, cambios legales, auditoría y señales (2.15)")
+    public ApiResponse<Operator360Dtos.Organization360View> overview(@PathParam("id") UUID id) {
+        var o = ops360.overview(id);
+        var ids = new java.util.HashSet<UUID>();
+        o.signals().forEach(sg -> ids.addAll(sg.organizationIds()));
+        return ApiResponse.of(Operator360Dtos.Organization360View.of(o, ops360.organizationsOf(ids)));
+    }
+
+    @GET
+    @Path("/signals")
+    @Operation(summary = "Señales de fraude: teléfono, placa, licencia o IP de registro repetidos entre organizaciones, "
+            + "tasas de retiro o cancelación altas y cuentas nuevas con muchas ofertas bajo el sugerido (2.15)")
+    public ApiResponse<List<Operator360Dtos.FraudSignalView>> signals() {
+        var list = ops360.signals();
+        var ids = new java.util.HashSet<UUID>();
+        list.forEach(sg -> ids.addAll(sg.organizationIds()));
+        var names = ops360.organizationsOf(ids);
+        return ApiResponse.of(list.stream().map(sg -> Operator360Dtos.FraudSignalView.of(sg, names)).toList());
+    }
+
+    @POST
+    @Path("/users/{id}/suspend")
+    @Operation(summary = "Suspende a una persona de una PYME o transportista con motivo: cierra sus sesiones y su ADMIN no "
+            + "la reactiva (LOGYX-USR-007). Las cuentas del operador no (LOGYX-USR-008)")
+    public ApiResponse<Operator360Dtos.OrgMemberView> suspendUser(@PathParam("id") UUID id,
+                                                                  @Valid @NotNull Operator360Dtos.AccountActionReason req) {
+        return ApiResponse.of(Operator360Dtos.OrgMemberView.of(ops360.suspendUser(id, req.reason())));
+    }
+
+    @POST
+    @Path("/users/{id}/reactivate")
+    @Operation(summary = "Levanta la suspensión del operador y reactiva a la persona")
+    public ApiResponse<Operator360Dtos.OrgMemberView> reactivateUser(@PathParam("id") UUID id,
+                                                                     @Valid Operator360Dtos.AccountReactivation req) {
+        return ApiResponse.of(Operator360Dtos.OrgMemberView.of(ops360.reactivateUser(id, req == null ? null : req.reason())));
+    }
+
+    @POST
+    @Path("/organizations/{id}/legal-change")
+    @jakarta.ws.rs.Consumes(jakarta.ws.rs.core.MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Cambio asistido de razón social o RUC con documento (PDF/JPG/PNG) y motivo (2.15)",
+            description = "Mismo RUC: corrige la razón social. RUC nuevo: crea una organización sucesora VERIFIED que hereda "
+                    + "la reputación, las personas y la flota; la anterior queda SUSPENDED (LOGYX-ORG-008 si tiene envíos, "
+                    + "solicitudes, ofertas o viajes vivos; LOGYX-ORG-002 RUC ya registrado; LOGYX-ORG-009 sin cambios).")
+    public ApiResponse<Operator360Dtos.LegalChangeResult> legalChange(
+            @PathParam("id") UUID id,
+            @org.jboss.resteasy.reactive.RestForm("legalName") String legalName,
+            @org.jboss.resteasy.reactive.RestForm("ruc") String ruc,
+            @org.jboss.resteasy.reactive.RestForm("reason") String reason,
+            @org.jboss.resteasy.reactive.RestForm("file") @Schema(type = SchemaType.STRING, format = "binary")
+            org.jboss.resteasy.reactive.multipart.FileUpload file) {
+        if (file == null || file.uploadedFile() == null) {
+            throw BusinessException.badRequest("LOGYX-VAL-001", "Adjunta el documento de sustento", "file");
+        }
+        var out = ops360.legalChange(id, legalName, ruc, reason, file.fileName(), file.size(),
+                () -> java.nio.file.Files.newInputStream(file.uploadedFile()));
+        return ApiResponse.of(new Operator360Dtos.LegalChangeResult(out.organization().id(), out.successorCreated(),
+                Operator360Dtos.LegalChangeView.of(out.change())));
+    }
+
+    @GET
+    @Path("/legal-changes/{id}/file")
+    @jakarta.ws.rs.Produces({"image/jpeg", "image/png", "application/pdf"})
+    @Operation(summary = "Descarga el documento de sustento de un cambio de razón social o RUC")
+    @org.eclipse.microprofile.openapi.annotations.responses.APIResponse(responseCode = "200",
+            description = "Contenido del archivo", content = @org.eclipse.microprofile.openapi.annotations.media.Content(
+            schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public jakarta.ws.rs.core.Response legalChangeFile(@PathParam("id") UUID id) {
+        var f = ops360.legalChangeFile(id);
+        return jakarta.ws.rs.core.Response.ok(f.content(), f.change().documentContentType())
+                .header("Content-Disposition", "inline; filename=\"" + f.change().documentName()
+                        .replaceAll("[^\\x20-\\x7E]", "").replace("\"", "") + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Cache-Control", "private, no-store").build();
+    }
+
+    @GET
+    @Path("/adjustments")
+    @Operation(summary = "Ajustes escalados: la PYME no respondió a tiempo y los decide el operador (2.6)")
+    public ApiResponse<List<Operator360Dtos.EscalatedAdjustmentRow>> escalatedAdjustments() {
+        return ApiResponse.of(ops360.escalatedAdjustments().stream().map(Operator360Dtos.EscalatedAdjustmentRow::of)
+                .toList());
+    }
+
+    @GET
+    @Path("/incidents")
+    @Operation(summary = "Bandeja de incidencias del operador con SLA por severidad (2.7)")
+    public ApiResponse<List<Operator360Dtos.OperatorIncidentRow>> incidents(
+            @Parameter(description = "Estados separados por coma; por omisión OPEN,IN_REVIEW.") @QueryParam("status") String status,
+            @Parameter(description = "Severidades separadas por coma (LOW, MEDIUM, HIGH, CRITICAL).")
+            @QueryParam("severity") String severity,
+            @Parameter(description = "me = mías; none = sin responsable.") @QueryParam("assignee") String assignee,
+            @Parameter(description = "true = solo con el SLA vencido.") @QueryParam("breached") Boolean breached,
+            @Parameter(description = "Organización (PYME o transportista) parte del envío.")
+            @QueryParam("organizationId") UUID organizationId,
+            @Parameter(description = "due = las que vencen antes primero (por omisión); recent = recientes primero.")
+            @QueryParam("order") String order,
+            @QueryParam("page") Integer page, @QueryParam("size") Integer size) {
+        var statuses = parseEnums(status, pe.logyx.incident.domain.model.IncidentStatus.class, "status");
+        if (statuses.isEmpty()) statuses = List.of(pe.logyx.incident.domain.model.IncidentStatus.OPEN,
+                pe.logyx.incident.domain.model.IncidentStatus.IN_REVIEW);
+        var severities = parseEnums(severity, pe.logyx.incident.domain.model.IncidentSeverity.class, "severity");
+        UUID mine = "me".equalsIgnoreCase(assignee) ? tenant.profileId() : null;
+        boolean none = "none".equalsIgnoreCase(assignee);
+        var filter = new pe.logyx.incident.application.OperatorIncidentFilter(statuses, severities, mine, none,
+                Boolean.TRUE.equals(breached) ? java.time.OffsetDateTime.now() : null, organizationId,
+                !"recent".equalsIgnoreCase(order));
+        return ApiResponse.of(ops360.incidentInbox(filter, pe.logyx.shared.domain.PageRequest.of(page, size))
+                .map(Operator360Dtos.OperatorIncidentRow::of));
+    }
+
+    @jakarta.inject.Inject pe.logyx.shared.tenancy.TenantContext tenant;
+
+    private static <E extends Enum<E>> List<E> parseEnums(String raw, Class<E> type, String field) {
+        if (raw == null || raw.isBlank()) return List.of();
+        List<E> out = new java.util.ArrayList<>();
+        for (String p : raw.split(",")) {
+            String v = p.trim();
+            if (v.isEmpty()) continue;
+            out.add(java.util.Arrays.stream(type.getEnumConstants()).filter(e -> e.name().equalsIgnoreCase(v)).findFirst()
+                    .orElseThrow(() -> BusinessException.badRequest("LOGYX-VAL-001", "Valor inválido: " + v, field)));
+        }
+        return out;
+    }
 }

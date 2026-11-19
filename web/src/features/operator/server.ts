@@ -90,3 +90,18 @@ export async function threadMessages(token: string, id: string, carrierOrgId: st
   const body = res.data as { data?: OperatorMessage[]; meta?: { nextCursor?: string } };
   return { items: body.data ?? [], nextCursor: body.meta?.nextCursor ?? null };
 }
+
+// ----- Ola 2 zona X: operador 360, señales, cuentas y ajustes escalados (2.15, 2.6)
+export type Organization360 = Schemas['Organization360View'];
+export type FraudSignal = Schemas['FraudSignalView'];
+export type OrgMember = Schemas['OrgMemberView'];
+export type EscalatedAdjustment = Schemas['EscalatedAdjustmentRow'];
+
+export const getOrganization360 = (token: string, id: string) =>
+  unwrap(apiFor(token).GET('/api/v1/operator/organizations/{id}/overview', { params: { path: { id } } }));
+export const getSignals = (token: string) => unwrap(apiFor(token).GET('/api/v1/operator/signals'));
+export const suspendUser = (token: string, id: string, reason: string) =>
+  unwrap(apiFor(token).POST('/api/v1/operator/users/{id}/suspend', { params: { path: { id } }, body: { reason } }));
+export const reactivateUser = (token: string, id: string, reason?: string) =>
+  unwrap(apiFor(token).POST('/api/v1/operator/users/{id}/reactivate', { params: { path: { id } }, body: reason ? { reason } : {} }));
+export const escalatedAdjustments = (token: string) => unwrap(apiFor(token).GET('/api/v1/operator/adjustments'));

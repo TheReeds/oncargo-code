@@ -66,12 +66,19 @@ public class ShipmentEntity extends PanacheEntityBase {
     @Column(name = "commission_rate")
     public BigDecimal commissionRate;
 
+    @Column(name = "pickup_photo_required")
+    public boolean pickupPhotoRequired;
+
+    @Column(name = "pickup_weight_required")
+    public boolean pickupWeightRequired;
+
     Shipment toDomain() {
         return new Shipment(id, requestId, bidId, requesterOrgId, carrierOrgId, vehicleId, driverId, agreedPrice,
                 vehiclePlate, driverName, status, createdAt, deliveredAt, loadGroupId,
                 cancelledAt == null && cancelReason == null ? null
                         : new Shipment.Cancellation(cancelledByOrgId, cancelReason, cancelledAt),
-                commissionRate);
+                commissionRate)
+                .restorePickupRequirements(new Shipment.PickupRequirements(pickupPhotoRequired, pickupWeightRequired));
     }
 
     void apply(Shipment s) {
@@ -90,6 +97,8 @@ public class ShipmentEntity extends PanacheEntityBase {
         deliveredAt = s.deliveredAt();
         loadGroupId = s.loadGroupId();
         commissionRate = s.commissionRate();
+        pickupPhotoRequired = s.pickupRequirements().photo();
+        pickupWeightRequired = s.pickupRequirements().weight();
         var c = s.cancellation();
         cancelReason = c == null ? null : c.reason();
         cancelledAt = c == null ? null : c.at();

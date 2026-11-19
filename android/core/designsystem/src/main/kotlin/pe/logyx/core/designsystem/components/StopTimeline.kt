@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apartment
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +72,20 @@ fun StopTimeline(stops: List<StopView>, modifier: Modifier = Modifier, large: Bo
                         style = MaterialTheme.typography.labelMedium,
                         color = if (done) LogyxTheme.colors.onMoneyContainer else if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     )
+                    // 2.5: peso medido en el recojo, quién recibió y si lo registró la oficina del transportista (con su motivo).
+                    stop.loadedWeightKg?.let {
+                        Text(stringResource(R.string.ds_stop_loaded_weight, Fmt.kg(it)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    stop.receivedByName?.takeIf { it.isNotBlank() }?.let { name ->
+                        val who = listOfNotNull(name, stop.receivedByDoc?.takeIf { it.isNotBlank() }).joinToString(" · ")
+                        Text(stringResource(R.string.ds_stop_received_by, who), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    (stop.completionOfficeReason?.takeIf { it.isNotBlank() } ?: stop.arrivalOfficeReason?.takeIf { it.isNotBlank() })?.let { reason ->
+                        LogyxBadge(
+                            stringResource(R.string.ds_stop_office, reason), Modifier.padding(top = 4.dp),
+                            tone = PillTone.Amber, icon = Icons.Rounded.Apartment,
+                        )
+                    }
                 }
             }
         }

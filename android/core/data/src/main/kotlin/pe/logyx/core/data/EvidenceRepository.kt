@@ -24,20 +24,28 @@ import java.util.UUID
  */
 enum class EvidenceState { QUEUED, UPLOADING, UPLOADED, FAILED, CLOSED }
 
-/** Códigos del backend (V13, F14/RN06) que cierran definitivamente la subida de una evidencia. */
+/** Códigos del backend (V13, F14/RN06; V23, 2.5) que cierran definitivamente la subida de una evidencia. */
 object EvidenceErrors {
     const val CLOSED = "LOGYX-DOC-008"
     const val NOT_ASSIGNED_DRIVER = "LOGYX-DOC-007"
-    const val CLOSED_MESSAGE = "La entrega ya se cerró: esta evidencia no se subió y se descartó."
+    /** La foto de la carga no indica la parada de recojo (no se arregla reintentando). */
+    const val BAD_STOP = "LOGYX-DOC-009"
+    /** Aún no se registró la llegada a la parada: la llegada está en la cola y sale antes; se reintenta. */
+    const val NOT_ARRIVED = "LOGYX-DOC-005"
+    const val CLOSED_MESSAGE = "La parada ya se cerró: esta evidencia no se subió y se descartó."
     const val NOT_ASSIGNED_MESSAGE = "Ya no eres el conductor asignado de este envío: esta evidencia no se subió y se descartó."
 
     /** Mensaje para el conductor si el error cierra la evidencia; null si es un fallo reintentable. */
-    fun closedMessage(code: String?): String? = when (code) {
+    fun closedMessage(code: String?, serverMessage: String? = null): String? = when (code) {
         CLOSED -> CLOSED_MESSAGE
         NOT_ASSIGNED_DRIVER -> NOT_ASSIGNED_MESSAGE
+        BAD_STOP -> serverMessage ?: "La foto no indica la parada correcta: no se subió y se descartó."
         else -> null
     }
 }
+
+/** Evidencia de una parada que sube el conductor desde la app (entrega: foto y firma; recojo: foto de la carga y guía). */
+val STOP_EVIDENCE_TYPES = setOf(DocumentType.DELIVERY_PHOTO, DocumentType.SIGNATURE, DocumentType.PICKUP_PHOTO, DocumentType.REMISSION_GUIDE)
 
 /**
  * Una evidencia (foto de entrega o firma). [id] es estable: el nombre de archivo de la cola o el id del documento del servidor.
@@ -84,6 +92,12 @@ interface EvidenceRepository {
 
     /** Descarta una evidencia que aún no se subió (o que el servidor cerró: DOC-007/008). */
     suspend fun discard(id: String)
+
+    /**
+     * Lee del disco la cola de TODOS los envíos sin consultar al servidor (la sincronización en segundo plano la usa tras
+     * un reinicio del proceso). Por omisión no hace nada.
+     */
+    suspend fun restoreQueued() {}
 }
 
 /** Compresión JPEG ≤ [maxBytes] y lado mayor ≤ [maxSide]. */
@@ -158,7 +172,7 @@ class DefaultEvidenceRepository(
                 local.firstOrNull { it.id == q.id } ?: q.takeIf { current.none { c -> c.id == q.id } }
             }
             val uploaded = remote.getOrNull().orEmpty()
-                .filter { it.type == DocumentType.DELIVERY_PHOTO || it.type == DocumentType.SIGNATURE }
+                .filter { it.type in STOP_EVIDENCE_TYPES }
                 .map { d ->
                     val prev = current.firstOrNull { it.documentId == d.id }
                     EvidenceItem(d.id, shipmentId, d.stopId, d.type, EvidenceState.UPLOADED, 1f, documentId = d.id, bytes = prev?.bytes)
@@ -168,6 +182,14 @@ class DefaultEvidenceRepository(
             current.filter { it.shipmentId != shipmentId } + merged + closed + uploaded + sessionUploaded
         }
         return remote.map { }
+    }
+
+    override suspend fun restoreQueued() {
+        val queued = withContext(Dispatchers.IO) {
+            dir.mkdirs()
+            dir.listFiles().orEmpty().mapNotNull { parse(it) }.map { it.copy(bytes = runCatching { File(dir, it.id).readBytes() }.getOrNull()) }
+        }
+        _items.update { current -> current + queued.filter { q -> current.none { it.id == q.id } } }
     }
 
     override suspend fun enqueue(shipmentId: String, stopId: String, type: DocumentType, source: ByteArray, mime: String): EvidenceItem {
@@ -197,7 +219,7 @@ class DefaultEvidenceRepository(
         val mime = if (id.endsWith(".png")) "image/png" else "image/jpeg"
         val result = apiCall {
             api.uploadDocument(
-                item.shipmentId, bytes, if (item.type == DocumentType.SIGNATURE) "firma.png" else "entrega-${id.takeLast(10)}",
+                item.shipmentId, bytes, fileNameFor(item.type, id),
                 mime, item.type, item.stopId,
             ) { sent, total -> if (total != null && total > 0) patch(id) { it.copy(progress = (sent.toFloat() / total).coerceIn(0f, 1f)) } }
         }
@@ -207,16 +229,25 @@ class DefaultEvidenceRepository(
                 patch(id) { it.copy(state = EvidenceState.UPLOADED, progress = 1f, documentId = doc.id, error = null) }
             },
             onFailure = { e ->
-                val closed = EvidenceErrors.closedMessage(e.apiCode)
+                val closed = EvidenceErrors.closedMessage(e.apiCode, (e as? ApiException)?.message)
                 if (closed != null) {
                     // La evidencia ya no se acepta: se borra de la cola para no reintentar nunca y se avisa al conductor.
                     withContext(Dispatchers.IO) { file.delete() }
                     patch(id) { it.copy(state = EvidenceState.CLOSED, progress = 0f, error = closed, bytes = null) }
                 } else {
-                    patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage(), offline = (e as? ApiException)?.isNetwork == true) }
+                    // DOC-005: la llegada todavía está en la cola; la foto sale después de ella (cuenta como pendiente de señal).
+                    val waiting = (e as? ApiException)?.isNetwork == true || e.apiCode == EvidenceErrors.NOT_ARRIVED || e.isRetryable
+                    patch(id) { it.copy(state = EvidenceState.FAILED, error = e.userMessage(), offline = waiting) }
                 }
             },
         )
+    }
+
+    private fun fileNameFor(type: DocumentType, id: String) = when (type) {
+        DocumentType.SIGNATURE -> "firma.png"
+        DocumentType.PICKUP_PHOTO -> "recojo-${id.takeLast(10)}"
+        DocumentType.REMISSION_GUIDE -> "guia-${id.takeLast(10)}"
+        else -> "entrega-${id.takeLast(10)}"
     }
 
     private fun patch(id: String, f: (EvidenceItem) -> EvidenceItem) = _items.update { list -> list.map { if (it.id == id) f(it) else it } }

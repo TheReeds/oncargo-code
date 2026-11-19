@@ -23,7 +23,8 @@ final class ShipmentCsv {
     static byte[] shipments(List<ShipmentSummary> rows, boolean asCarrier) {
         CsvWriter csv = new CsvWriter().header("Código", "Referencia", "Origen", "Destino", "Carga", "Peso (kg)",
                 "Fecha de recojo", "Creado el", "Estado", asCarrier ? "PYME" : "Transportista", "Placa", "Conductor",
-                "Precio acordado (S/)", "Recogido el", "Entregado el", "Motivo de cancelación");
+                "Precio acordado (S/)", "Recogido el", "Entregado el", "Motivo de cancelación", "Ajustes aceptados (S/)",
+                "Precio final (S/)");
         for (ShipmentSummary sum : rows) {
             Shipment s = sum.shipment();
             var r = sum.request();
@@ -35,7 +36,8 @@ final class ShipmentCsv {
                     dateTime(s.createdAt()), status(s.status()), asCarrier ? sum.requesterName() : sum.carrierName(),
                     s.vehiclePlate(), s.driverName(), CsvWriter.number(s.agreedPrice()),
                     pickup == null ? null : dateTime(pickup.completedAt()), dateTime(s.deliveredAt()),
-                    s.cancellation() == null ? null : s.cancellation().reason()));
+                    s.cancellation() == null ? null : s.cancellation().reason(),
+                    CsvWriter.number(sum.adjustmentsTotal()), CsvWriter.number(sum.finalPrice())));
         }
         return csv.bytes();
     }

@@ -1,6 +1,23 @@
 // Etiquetas en español de la auditoría. Lo que no esté aquí se muestra con su código (la lista de la API es la fuente de verdad).
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
   REGISTER: 'Registro de empresa',
+  // Ola 2 zona X (V23)
+  STOP_REGISTERED_BY_OFFICE: 'Parada registrada por la oficina',
+  PICKUP_REQUIREMENTS_CHANGED: 'Requisitos del recojo cambiados',
+  ADJUSTMENT_PROPOSED: 'Ajuste propuesto',
+  ADJUSTMENT_ACCEPTED: 'Ajuste aceptado',
+  ADJUSTMENT_REJECTED: 'Ajuste rechazado',
+  ADJUSTMENT_WITHDRAWN: 'Ajuste retirado',
+  ADJUSTMENT_ESCALATED: 'Ajuste escalado a OnCargo',
+  INCIDENT_WITHDRAWN: 'Incidencia retirada',
+  INCIDENT_REOPENED: 'Incidencia reabierta',
+  INCIDENT_ASSIGNED: 'Incidencia asignada',
+  INCIDENT_UNASSIGNED: 'Incidencia sin responsable',
+  USER_SUSPENDED_BY_OPERATOR: 'Usuario suspendido por OnCargo',
+  USER_REACTIVATED_BY_OPERATOR: 'Usuario reactivado por OnCargo',
+  ORGANIZATION_LEGAL_NAME_CHANGED: 'Razón social corregida por OnCargo',
+  ORGANIZATION_SUCCEEDED: 'Organización sucesora por cambio de RUC',
+  ORG_ACCESS_REQUESTED: 'Pedido de acceso desde el registro',
   USER_PROVISIONED: 'Usuario creado',
   USER_INVITED: 'Usuario invitado',
   USER_INVITATION_RESENT: 'Invitación reenviada',

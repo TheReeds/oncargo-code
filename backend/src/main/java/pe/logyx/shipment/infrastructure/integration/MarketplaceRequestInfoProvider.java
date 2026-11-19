@@ -27,7 +27,7 @@ public class MarketplaceRequestInfoProvider implements RequestInfoProvider {
                     return new RequestInfo(r.id(), r.cargo().originCity(), r.cargo().destinationCity(),
                             r.cargo().cargoDescription(), r.cargo().weightKg(), r.cargo().cargoType(),
                             r.cargo().volumeM3(), r.cargo().pickupDate(), r.pricing().distanceKm(), r.code(),
-                            d.customerReference(), contact(d.pickup()), contact(d.delivery()));
+                            d.customerReference(), contact(d.pickup()), contact(d.delivery()), d.declaredValue());
                 })
                 .collect(Collectors.toMap(RequestInfo::id, Function.identity()));
     }

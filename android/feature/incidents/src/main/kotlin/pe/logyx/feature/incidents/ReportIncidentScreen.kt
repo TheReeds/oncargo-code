@@ -52,6 +52,8 @@ import pe.logyx.core.designsystem.components.asString
 import pe.logyx.core.designsystem.components.rememberLogyxSnackbarState
 import pe.logyx.core.designsystem.label
 import pe.logyx.core.model.IncidentCategory
+import pe.logyx.core.model.informative
+import pe.logyx.core.model.reportableIncidentCategories
 import java.io.File
 
 /** Reportar una incidencia de un envío. [onReported] recibe el id de la incidencia creada. */
@@ -132,10 +134,11 @@ fun ReportIncidentScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(stringResource(R.string.incidents_report_intro), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            val labels = IncidentCategory.entries.associateWith { it.label }
+            // V23 (2.7): categorías nuevas; `UNKNOWN` (valor que el servidor agregue después) no se ofrece.
+            val labels = reportableIncidentCategories.associateWith { it.label }
             LogyxDropdown(
                 label = stringResource(R.string.incidents_category_label),
-                options = IncidentCategory.entries.toList(),
+                options = reportableIncidentCategories,
                 selected = state.category,
                 onSelected = onCategory,
                 optionLabel = { labels.getValue(it) },
@@ -164,7 +167,8 @@ fun ReportIncidentScreen(
     if (state.confirming) {
         LogyxConfirmDialog(
             title = stringResource(R.string.incidents_confirm_title),
-            message = stringResource(R.string.incidents_confirm_message),
+            // Informativas (DELAY, ROAD_BLOCKED, PAYMENT_DISPUTE): no congelan el viaje (RN11).
+            message = stringResource(if (state.category?.informative == true) R.string.incidents_confirm_message_informative else R.string.incidents_confirm_message),
             confirmLabel = stringResource(R.string.incidents_confirm_action),
             onConfirm = onConfirm, onDismiss = onDismissConfirm, destructive = true,
         )

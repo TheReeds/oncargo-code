@@ -8,6 +8,8 @@ import { DescriptionList } from '@/components/ui/description-list';
 import { buttonVariants } from '@/components/ui/button';
 import { listShipments } from '@/features/shipments/server';
 import BidComparison from '@/features/requests/components/BidComparison';
+import { BackupBidsPanel, RequestDemandActions } from '@/features/requests/components/DemandPanels';
+import { backupOptions, listPreferences } from '@/features/preferences/server';
 import { AuctionCard, RequestHeaderActions, RequestHeaderMeta, RequestLiveSync } from '@/features/requests/components/RequestLive';
 import NegotiationPanel from '@/features/negotiation/components/NegotiationPanel';
 import { listThreads } from '@/features/negotiation/server';
@@ -36,6 +38,9 @@ const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError
 const threads = await listThreads(token, id!).catch(() => []);
 const activity = await getActivity(token, 'REQUEST', id!).catch(() => null);
 const hilo = Astro.url.searchParams.get('hilo');
+// Marcas de la PYME (preferidos/bloqueados) y, en una solicitud cancelada, las ofertas de respaldo (roadmap 2.9).
+const marks = Object.fromEntries((await listPreferences(token).catch(() => [])).map((p) => [p.carrierOrgId!, p.kind!])) as Record<string, 'PREFERRED' | 'BLOCKED'>;
+const backups = r.status === 'CANCELLED' ? await backupOptions(token, id!).catch(() => null) : null;
 const a = r.auction;
 const created = Astro.url.searchParams.has('creada');
 const shipment = r.status === 'MATCHED' ? (await listShipments(token).catch(() => [])).find((x) => x.requestId === r.id) : undefined;
@@ -71,6 +76,7 @@ const hasContacts = [...pickupRows, ...deliveryRows].some((x) => x.value);
     </Fragment>
     <div slot="actions" class="flex flex-wrap items-center gap-3">
       <RequestHeaderActions client:load requestId={r.id!} status={r.status!} verified={r.requesterRucVerified} auction={a ?? null} pickupDate={r.pickupDate} />
+      <RequestDemandActions client:load requestId={r.id!} status={r.status!} name={route} />
       {canOperate && <a href={`/pyme/solicitudes/nueva?from=${r.id}`} class={buttonVariants({ variant: 'outline' })}><Copy size={16} /> Duplicar</a>}
       {shipment && <a href={`/pyme/envios?id=${shipment.id}`} class={buttonVariants({ variant: 'outline' })}>Ver envío y documentos</a>}
     </div>
@@ -117,7 +123,8 @@ const hasContacts = [...pickupRows, ...deliveryRows].some((x) => x.value);
         </Card>
       )}
 
-      <div class="max-lg:order-1"><BidComparison client:load bids={bids} suggested={r.suggestedPrice} requestId={r.id!} requestStatus={r.status!} floor={r.priceFloor} /></div>
+      {backups && <div class="max-lg:order-1"><BackupBidsPanel client:load requestId={r.id!} initial={backups} /></div>}
+      <div class="max-lg:order-1"><BidComparison client:load bids={bids} suggested={r.suggestedPrice} requestId={r.id!} requestStatus={r.status!} floor={r.priceFloor} marks={marks} /></div>
       <div class="max-lg:order-3"><NegotiationPanel client:load requestId={r.id!} requestStatus={r.status!} initialThreads={threads} initialCarrierOrgId={hilo && threads.some((t) => t.carrierOrgId === hilo) ? hilo : null} /></div>
     </div>
 

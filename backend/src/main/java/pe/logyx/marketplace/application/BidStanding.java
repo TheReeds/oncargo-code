@@ -1,5 +1,6 @@
 package pe.logyx.marketplace.application;
 
+import pe.logyx.marketplace.domain.BidPosition;
 import pe.logyx.marketplace.domain.BidStandingBand;
 
 /**
@@ -9,6 +10,8 @@ import pe.logyx.marketplace.domain.BidStandingBand;
  * @param bidCount      ofertas no retiradas de la subasta (incluye la propia).
  * @param best          {@code rank == 1}.
  * @param vsBest        banda frente a la mejor; {@code null} cuando la solicitud ya se adjudicó o canceló.
+ * @param position      posición aproximada («entre las 2 más bajas», «por encima de la mediana»), sin montos.
  * @param finalStanding {@code true} si la subasta ya cerró o la solicitud dejó de estar publicada: es la posición final.
  */
-public record BidStanding(int rank, int bidCount, boolean best, BidStandingBand vsBest, boolean finalStanding) {}
+public record BidStanding(int rank, int bidCount, boolean best, BidStandingBand vsBest, boolean finalStanding,
+                          BidPosition position) {}

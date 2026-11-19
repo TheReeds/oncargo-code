@@ -30,7 +30,7 @@ export function cargoPhrase(cargoType: string): string {
  * RN02 por fecha de recojo: «en ruta» NO bloquea (depende de la agenda: `GET /shipment-requests/{id}/vehicle-eligibility`);
  * solo el mantenimiento bloquea.
  */
-export function vehicleFit(v: Pick<VehicleView, 'status' | 'type' | 'maxWeightKg' | 'maxVolumeM3'>, need: CargoNeed): Compat {
+export function vehicleFit(v: Pick<VehicleView, 'status' | 'type' | 'maxWeightKg' | 'maxVolumeM3'> & { acceptedCargoTypes?: readonly string[] | null }, need: CargoNeed): Compat {
   if (v.status === 'MAINTENANCE') {
     return { ok: false, code: 'CAP-002', short: 'En mantenimiento', reason: 'Está en mantenimiento: márcalo disponible para ofertar.' };
   }
@@ -41,6 +41,12 @@ export function vehicleFit(v: Pick<VehicleView, 'status' | 'type' | 'maxWeightKg
   if (types && types.length > 0 && v.type && !types.includes(v.type)) {
     const cargo = need.cargoType ? cargoPhrase(need.cargoType) : 'esta carga';
     return { ok: false, code: 'CAP-003', short: `${VEHICLE_LABELS[v.type] ?? v.type} no lleva ${cargo}`, reason: `Un vehículo ${(VEHICLE_LABELS[v.type] ?? v.type).toLowerCase()} no puede llevar ${need.cargoType ? cargo : 'este tipo de carga'}.` };
+  }
+  // 2.4: la persona puede restringir los tipos de carga de un vehículo («Tipos de carga que aceptas»); vacío = sin restricción.
+  const accepted = v.acceptedCargoTypes;
+  if (accepted && accepted.length > 0 && need.cargoType && !accepted.includes(need.cargoType)) {
+    const cargo = cargoPhrase(need.cargoType);
+    return { ok: false, code: 'CAP-003', short: `Configurado sin ${cargo}`, reason: `Está configurado para no llevar ${cargo}: cámbialo en Flota > Configurar.` };
   }
   if (need.volumeM3 != null && v.maxVolumeM3 != null && v.maxVolumeM3 < need.volumeM3) {
     return { ok: false, code: 'CAP-004', short: `Volumen ${v.maxVolumeM3} m³`, reason: `La carga ocupa ${need.volumeM3} m³ y su volumen máximo es ${v.maxVolumeM3} m³.` };
@@ -84,3 +90,18 @@ export function fleetBlocker(vehicles: readonly VehicleView[], r: Parameters<typ
   if (top === 'CAP-004') return 'Excede el volumen de tu flota';
   return 'Excede tu flota';
 }
+
+/**
+ * Matriz RN02 tipo de carga → tipos de vehículo (espejo de `VehicleCargoCompatibility` del backend; la API sigue mandando:
+ * `LOGYX-FLT-009` si se intenta ampliar). Se usa solo para saber qué tipos de carga puede aceptar un vehículo al configurarlo.
+ */
+const CARGO_ALLOWED: Record<string, readonly string[]> = {
+  GENERAL: ['VAN', 'TRUCK_SMALL', 'TRUCK_MEDIUM', 'TRUCK_LARGE', 'PLATFORM'],
+  FRAGILE: ['VAN', 'TRUCK_SMALL', 'TRUCK_MEDIUM', 'TRUCK_LARGE'],
+  PERISHABLE: ['REFRIGERATED'],
+  HAZARDOUS: ['TRUCK_MEDIUM', 'TRUCK_LARGE', 'TANKER'],
+  BULK: ['TRUCK_SMALL', 'TRUCK_MEDIUM', 'TRUCK_LARGE', 'PLATFORM', 'TANKER'],
+  OVERSIZED: ['PLATFORM'],
+};
+/** Tipos de carga que la matriz RN02 permite para un tipo de vehículo (los únicos que se pueden aceptar). */
+export const cargoTypesFor = (vehicleType: string | undefined): string[] => Object.keys(CARGO_ALLOWED).filter((c) => !!vehicleType && CARGO_ALLOWED[c].includes(vehicleType));

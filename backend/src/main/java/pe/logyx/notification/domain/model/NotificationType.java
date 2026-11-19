@@ -10,5 +10,14 @@ public enum NotificationType {
      *  decisión del operador sobre la verificación de la organización (RN01). */
     AUCTION_CLOSED, REQUEST_CANCELLED, SHIPMENT_CANCELLED, BID_WITHDRAWN, ORGANIZATION_VERIFICATION,
     /** V16: un Lector pidió acceso; le llega a cada ADMIN de su organización. */
-    ACCESS_REQUESTED
+    ACCESS_REQUESTED,
+    /** V22 (Ola 2, zona T): carga nueva que coincide con una búsqueda guardada (2.3); documento de flota por vencer o
+     *  vencido (2.4); el transportista mejoró su oferta (2.8, a la PYME). */
+    NEW_LOAD_MATCH, FLEET_DOCUMENT_EXPIRING, BID_IMPROVED,
+    /** V21 (Ola 2, zona P): una plantilla programada publicó, dejó un borrador o falló (2.1); una PYME invita a ofertar a un
+     *  preferido (2.9); segunda oferta: la PYME pide confirmar (al transportista) y él responde (a la PYME) (2.9). */
+    TEMPLATE_RUN, REQUEST_INVITATION, BACKUP_REQUESTED, BACKUP_RESPONDED,
+    /** V23 (Ola 2, zona X): ajuste del envío propuesto (a la PYME), decidido o retirado (a la contraparte) y escalado al
+     *  operador por falta de respuesta (2.6); incidencia asignada a una persona del operador (2.7). */
+    ADJUSTMENT_PROPOSED, ADJUSTMENT_DECIDED, ADJUSTMENT_ESCALATED, INCIDENT_ASSIGNED
 }

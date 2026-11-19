@@ -5,6 +5,126 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-19 — Ola 2, zona P: plantillas y cargas recurrentes, preferidos y bloqueados, segunda oferta, bandeja y acciones masivas (V21)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.1, 2.9, 2.10 (lado PYME) y 2.16. `scripts/check-contract.sh`: **compatible** (todo aditivo).
+Migración `V21__templates_preferences_backup_offers.sql`: `request_templates`, `request_schedules` y `request_schedule_runs` (RLS por organización),
+`carrier_preferences` (RLS de la PYME; la función `app_is_blocked_by()` es `SECURITY DEFINER` y solo responde al par «PYME, mi organización»),
+`bid_backups` (RLS por parte; el transportista solo ve su fila cuando se le pide confirmar y solo puede responder), `requests_marketplace`
+excluye a los bloqueados y `bids_not_blocked` (restrictiva) les impide ofertar. `shipments.request_id` deja de ser `UNIQUE` y pasa a ser único
+**entre los envíos no cancelados** (una solicitud puede tener un envío cancelado y otro nuevo). Decisión de arquitectura: ADR-0013 (tenant sintético).
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET/POST /request-templates`, `GET/PUT /request-templates/{id}`, `POST /request-templates/{id}/archive\|restore` | PYME (VIEWER solo lee) | `TemplateView` (los campos de `CreateRequest` sin la fecha, `invitePreferred`, `archived`, `lastPublishedAt`, `schedule: TemplateScheduleView?`, `recentRuns`). `LOGYX-TPL-001` nombre repetido entre las activas (`name`), `TPL-002` archivada, RN07 en `NEG-001` con su `field` |
+| `POST /request-templates/from-request/{requestId}` | PYME | `TemplateView` desde una solicitud propia (`{name, invitePreferred?}`) |
+| `POST /request-templates/{id}/publish` | PYME | `PublishedFromTemplate{requestId,code,status,pickupDate,replayed}`. `{pickupDate}` no pasada. Cabecera `Idempotency-Key` (24 h): un reintento devuelve la creada con `Idempotent-Replayed: true` |
+| `PUT /request-templates/{id}/schedule`, `POST …/schedule/pause\|resume`, `DELETE …/schedule` | PYME | `TemplateView`. `TemplateScheduleRequest{frequency WEEKLY\|BIWEEKLY, pickupWeekday 1–7, leadDays 0–14, endsOn?, skipHolidays, mode PUBLISH\|DRAFT}`; `TPL-003` fecha de fin pasada, `TPL-005` sin programación |
+| `GET /request-templates/drafts`, `POST /request-templates/runs/{runId}/publish\|discard` | PYME | `TemplateDraftView`; publicar usa la fecha del borrador (`REQ-003` si ya pasó); `TPL-004` ya resuelto |
+| `GET /carrier-preferences?kind=`, `PUT/DELETE /carrier-preferences/{carrierOrgId}` | PYME | `CarrierPreferenceView{carrierOrgId,carrierName,carrierTrustScore,kind PREFERRED\|BLOCKED}`. `PRF-002` no es transportista. Idempotentes. El transportista **no** lee las marcas (403) ni se entera |
+| `POST /shipment-requests/{id}/invite-preferred` | PYME | `{invited}`; avisa a los preferidos (`REQUEST_INVITATION`). `REQ-008` si la solicitud no está publicada. `CreateRequest.invitePreferred` hace lo mismo al publicar |
+| `GET /offers/inbox` | PYME | `OffersInboxView{requests,bids,rows[]}`: por solicitud publicada con ofertas pendientes, `best` (menor monto), `bestTrust`, `closesAt`, `bids[]` y `preferred`; no incluye ofertas de bloqueados |
+| `POST /shipment-requests/batch/cancel\|reschedule\|duplicate` | PYME | `BatchResultView{total,succeeded,failed,items[{requestId,ok,code,message,field,resultId,resultCode}]}`. **No es atómico**: cada ítem va en su transacción y las reglas (RN01–RN04, RN07) se evalúan por ítem. Máx. 50 (`LOGYX-BAT-001`); `reschedule` solo sin ofertas pendientes (`REQ-009`); `duplicate` publica el mismo día de la semana siguiente y acepta `Idempotency-Key` (≤ 43 caracteres: cada copia deriva la suya) |
+| `GET /shipment-requests/{id}/backup-bids` | PYME dueña | `BackupOptionsView{eligible,blockerCode,blockerMessage,deadline,items[{bid,rank,state}]}`. `BCK-001` no corresponde, `BCK-002` pasaron las 24 h, `BCK-003` el recojo ya pasó |
+| `POST /bids/{id}/backup/request` · `/backup/award` | PYME dueña | `BackupItemView` · `AcceptResult` (nuevo envío con la comisión vigente). `BCK-004` el transportista aún no confirmó, `BCK-005` estado no válido |
+| `GET /bids/backup-requests`, `POST /bids/{id}/backup/confirm\|decline` | transportista | `BackupRequestView{bidId,requestCode,route,pickupDate,requesterName,amount,vehiclePlate,state}` (solo su oferta y los pedidos que le hicieron: RN04 intacta) |
+
+### Cambios de comportamiento y valores nuevos
+- **RN05 — oferta de respaldo:** al adjudicar, cada oferta que se rechaza queda en `bid_backups` con su posición; la oferta sigue `REJECTED` para el transportista
+  (no se agregó un estado `BACKUP` a `BidStatus`: los clientes no cambian). Si el envío adjudicado se cancela dentro de las 24 h siguientes a su creación, la PYME
+  puede pedir confirmación a la siguiente oferta y, si el transportista confirma, adjudicarle (la solicitud vuelve de `CANCELLED` a `MATCHED` y se crea un envío nuevo).
+- `POST /bids/{id}/accept` ahora responde `409 LOGYX-BID-006` si la PYME bloqueó a ese transportista.
+- Un transportista bloqueado recibe `404` en las solicitudes publicadas de esa PYME y no puede ofertar (RLS); sus ofertas anteriores y envíos siguen visibles.
+- `CreateRequest.invitePreferred` (opcional).
+- Avisos (`NotificationType`): `TEMPLATE_RUN` (publicó, dejó borrador o falló; `relatedType` `REQUEST` o `TEMPLATE`), `REQUEST_INVITATION`, `BACKUP_REQUESTED`, `BACKUP_RESPONDED`; `relatedType`: `TEMPLATE`. **Los clientes deben tolerar valores desconocidos.**
+- Auditoría: `REQUEST_PUBLISHED_BY_TEMPLATE` (`automatica=si|no`), `TEMPLATE_*`, `CARRIER_BLOCKED|PREFERRED|UNMARKED`, `CARRIERS_INVITED`, `BACKUP_BID_*`, `REQUEST_RESCHEDULED`.
+- Códigos nuevos: `TPL-001…005`, `PRF-001/002`, `BCK-001…005`, `BAT-001`, `BID-006`, `REQ-008/009`.
+- Job `logyx.templates.every` (10 min; `%test` apagado): publica en nombre de la organización con el tenant sintético (ADR-0013).
+
+## 2026-11-19 — Ola 2, zona X: evidencia del recojo, ajustes del envío, incidencias v2 y operador 360 (V23)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.5, 2.6, 2.7 y 2.15. `scripts/check-contract.sh`: **compatible** (todo aditivo).
+Migración `V23__execution_adjustments_incidents_operator360.sql`. ADR nuevo: `docs/adr/0012-ajustes-del-envio-y-precio-final.md`.
+
+### ⚠️ Cambios de comportamiento
+1. **RN11: las incidencias `DELAY`, `ROAD_BLOCKED` y `PAYMENT_DISPUTE` ya no congelan el envío** (`IncidentView.blocking = false`; las
+   `DELAY` existentes se migraron a informativas). `hasActiveIncident` solo cuenta las que congelan. Se puede reportar otra mientras haya una
+   activa, salvo otra que congele (o una de la misma categoría): `LOGYX-INC-001`.
+2. Resolver o cerrar una **informativa** no exige `shipmentOutcome` (si se manda, debe corresponder).
+3. El CSV de envíos suma al final las columnas «Ajustes aceptados (S/)» y «Precio final (S/)».
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta / errores |
+|---|---|---|
+| `PUT /shipments/{id}/pickup-requirements` | PYME dueña (ADMIN/OPS) | `{photoRequired, weightRequired}` → `ShipmentView`. Solo con el envío PENDING: `409 LOGYX-SHP-008` |
+| `POST /shipments/{id}/stops/{stopId}/office-arrive` · `/office-complete` | transportista (ADMIN/OPS; el conductor no) | `OfficeStopEvent{reason (obligatorio, 3–300), occurredAt?, weightKg?, receivedByName?, receivedByDoc?}` → `ShipmentView`. Mismas reglas que la app; `LOGYX-SHP-006` sin motivo; la entrega sin foto sigue en `TRK-006` |
+| `GET /shipments/{id}/adjustments` | partes, conductor asignado, operador | `ShipmentAdjustmentsView{agreedPrice, acceptedTotal, finalPrice, finalPriceBreakdown, adjustments[AdjustmentView], suggestions[AdjustmentSuggestionView{type, stopId, amount, detail}]}` (sugerencias solo para el transportista) |
+| `POST /shipments/{id}/adjustments` (201) | transportista o su conductor; cabecera `Idempotency-Key` opcional | `ProposeAdjustment{type: WEIGHT_DIFF\|DETENTION\|TOLL\|HANDLING\|OTHER, amount, note?, stopId?, evidenceDocumentId?}` → `AdjustmentView`. `LOGYX-ADJ-001..005, 008`, `LOGYX-NEG-001` en `note` |
+| `POST /adjustments/{id}/accept` · `/reject` | PYME dueña antes del escalado; operador después (`LOGYX-ADJ-006`) | `DecideAdjustment{note}` (obligatoria al rechazar: `ADJ-004`) → `AdjustmentView`; `ADJ-007` ya resuelto |
+| `POST /adjustments/{id}/withdraw` | transportista o su conductor | `AdjustmentView` (`ADJ-007`) |
+| `POST /incidents/{id}/withdraw` | quien la reportó (informativa activa) | `IncidentView`; `LOGYX-INC-007` |
+| `POST /incidents/{id}/reopen` | operador | `ReopenIncident{reason}` → `IncidentView` (IN_REVIEW, SLA nuevo); `LOGYX-INC-008`, `INC-001` |
+| `PUT /incidents/{id}/assignee` | operador | `AssignIncident{assigneeProfileId?, unassign?}` (vacío = me la asigno) → `IncidentView`; `LOGYX-INC-012` |
+| `GET /operator/incidents` | operador | `OperatorIncidentRow[]` paginado; filtros `status` (por omisión activas), `severity`, `assignee=me\|none`, `breached`, `organizationId`, `order=due\|recent` |
+| `GET /operator/adjustments` | operador | `EscalatedAdjustmentRow[]` (pendientes escalados) |
+| `GET /operator/organizations/{id}/overview` | operador | `Organization360View` (usuarios, flota, envíos, incidencias, reputación, tasas, verificación, cambios legales, auditoría, señales) |
+| `GET /operator/signals` | operador | `FraudSignalView[]{kind: FraudSignalKind, severity: FraudSignalSeverity, value, rate, sample, organizations[]}` (la IP nunca se muestra) |
+| `POST /operator/users/{id}/suspend` · `/reactivate` | operador | `AccountActionReason{reason}` / `AccountReactivation{reason?}` → `OrgMemberView`; `LOGYX-USR-008` (cuenta del operador) |
+| `POST /operator/organizations/{id}/legal-change` | operador | multipart `legalName?, ruc?, reason, file` → `LegalChangeResult{organizationId, successorCreated, change}`; `ORG-001/002/008/009`, `DOC-001..003` |
+| `GET /operator/legal-changes/{id}/file` | operador | archivo (`Accept: */*`) |
+| `POST /public/organization-access-requests` (202) | sin sesión | `{ruc, fullName, email}` → `{accepted: true}` siempre; límite por IP `429 LOGYX-AUTH-429` |
+
+### Campos y valores nuevos
+- `StopEvent` (`arrive`/`complete`): `weightKg`, `receivedByName`, `receivedByDoc` (todos opcionales). Errores `LOGYX-TRK-009` (falta la foto
+  de la carga que pidió la PYME), `TRK-010` (peso, `weightKg`), `TRK-011` (receptor, `receivedByName`/`receivedByDoc`).
+- `StopView`: `loadedWeightKg`, `receivedByName`, `receivedByDoc` (solo quien ve los contactos), `arrivalOfficeReason`, `completionOfficeReason`.
+- `ShipmentView`: `pickupPhotoRequired`, `pickupWeightRequired`, `adjustmentsTotal`, `pendingAdjustments`, `finalPrice`, `finalPriceBreakdown`.
+- `DocumentType.PICKUP_PHOTO` (foto de la carga en la parada de recojo; `LOGYX-DOC-009` si `stopId` no es el recojo).
+- `IncidentCategory`: `PICKUP_NO_SHOW`, `SHIPPER_NO_SHOW`, `BREAKDOWN`, `ACCIDENT`, `THEFT`, `ROAD_BLOCKED`, `PARTIAL_DELIVERY`, `PAYMENT_DISPUTE`.
+  **Los clientes deben tolerar valores desconocidos.** `ReportIncident`: `severity`, `claimedAmount`, `attachmentIds`, `latitude`, `longitude`,
+  `occurredAt`, `adjustmentId`; cabecera `Idempotency-Key`. `IncidentView`: `severity` (`IncidentSeverity`), `blocking`, `holdsShipment`,
+  `claimedAmount`, `declaredValue`, `dueAt`, `slaBreached`, `assigneeProfileId`, `assigneeName` (solo el operador), `withdrawnAt`, `reopenedAt`,
+  `reopenCount`, `latitude`, `longitude`, `occurredAt`, `adjustmentId`, `attachments[]`, `canWithdraw`. `AddIncidentComment.internal` y
+  `IncidentCommentView.internal` (las partes nunca reciben las internas). Errores `INC-007..012`.
+- Avisos (`NotificationType`): `ADJUSTMENT_PROPOSED`, `ADJUSTMENT_DECIDED`, `ADJUSTMENT_ESCALATED` (categoría `SHIPMENTS`, ahora también
+  para el operador) e `INCIDENT_ASSIGNED` (`INCIDENTS`, personal).
+- Tiempo real: `shipment.adjustment_updated` `{shipmentId, adjustmentId, status, escalated?}` a las partes y al conductor (escalado: también
+  a los operadores).
+- Parámetros del operador: `adjustment_response_hours` (48), `detention_free_hours` (3), `detention_hourly_rate` (`kind = AMOUNT`, S/ 40),
+  `incident_sla_critical_hours` (4), `incident_sla_high_hours` (12), `incident_sla_medium_hours` (24), `incident_sla_low_hours` (72).
+- Errores nuevos: `LOGYX-ADJ-001..008`, `LOGYX-SHP-008`, `LOGYX-TRK-009..011`, `LOGYX-DOC-009`, `LOGYX-INC-007..012`, `LOGYX-USR-007/008`,
+  `LOGYX-ORG-008/009`.
+
+## 2026-11-19 — Ola 2, zona T: alertas de carga, documentos de flota, mejorar oferta y agenda de flota (V22)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 2.3, 2.4, 2.8 y 2.13. `scripts/check-contract.sh`: **compatible** (todo aditivo).
+Migración `V22__carrier_alerts_fleet_docs_bid_improvement.sql`: `saved_searches` (RLS por persona) y `saved_search_alerts` (solo sistema),
+`fleet_documents` (RLS por organización, inmutables salvo `superseded_at`) y `fleet_document_notices`, columnas de configuración en
+`vehicles`/`drivers`, sellos y mejoras en `bids`, `bid_revisions` y la vista `lane_price_stats` (solo agregados, k ≥ 5 y ≥ 3 transportistas).
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET/POST /saved-searches`, `PUT/DELETE /saved-searches/{id}` | transportista (cada persona ve solo las suyas) | `SavedSearchView{id,name,originCity,destinationCity,cargoType,pickupFrom,pickupTo,maxWeightKg,vehicleId,active}`. Códigos `LOGYX-ALT-001` (nombre o ningún filtro), `ALT-002` (tope por persona, 20), `ALT-003` (filtros incoherentes) |
+| `POST /bids/{id}/improve` | transportista dueño | `BidView`. Solo baja el monto y/o cambia el vehículo; `LOGYX-BID-006` (sube), `BID-007` (no cambia nada), `BID-005` (subasta cerrada); con otro vehículo aplican `CAP-001..007` y `FLT-007/008` |
+| `POST /bids/batch` | transportista (ADMIN/OPS) | 2.10.3: ofertar a hasta 20 cargas de una vez; `[BatchBidResult{requestId,ok,bidId,warnings,code,message,field}]` por ítem, no atómico (cada oferta con todas las reglas de ofertar) |
+| `GET /bids/{id}/revisions` | transportista dueño | `[{at,previousAmount,newAmount,previousPlate,newPlate}]` |
+| `GET /shipment-requests/{id}/lane-stats` | transportista | `LaneStatsView{samples,windowDays,median,low,high}` o `data: null` si no hay k ≥ 5 (90 días, redondeado a S/ 5) |
+| `PUT /vehicles/{id}/config` | transportista (ADMIN/OPS) | `VehicleView` con `equipment` y `acceptedCargoTypes` (restringe RN02, nunca amplía: `LOGYX-FLT-009`) |
+| `PATCH /drivers/{id}` | ADMIN del transportista | `DriverView` (categoría de licencia, DNI) |
+| `GET/POST /vehicles/{id}/documents`, `GET/POST /drivers/{id}/documents`, `GET /fleet/documents`, `GET /fleet/documents/{id}/file` | transportista | `FleetDocumentView{type,typeLabel,expiresAt,status,daysLeft,current,…}`; subida multipart `file,type,number,expiresAt` (`LOGYX-FLT-010` sin vencimiento) |
+| `GET /fleet/schedule?from&to` | transportista | `ScheduleView` por vehículo y conductor (envíos, ofertas pendientes, viajes, vencimientos); rango máx. 14 días (`LOGYX-FLT-011`) |
+| `GET /fleet/assignment-suggestions?shipmentId` | transportista | `SuggestionsView`: conductores libres ordenados por cercanía y carga, vehículos con su elegibilidad |
+| `PUT /shipments/{id}/assignment` | transportista (ADMIN/OPS) | `ShipmentView`; asigna conductor y vehículo en un solo paso, atómico |
+
+### Campos y valores nuevos
+- `BidView`: `improvedCount`, `improvedAt` (2.8), `soatValidUntil`, `inspectionValidUntil` (sellos de 2.4, la PYME los ve). `MyBidStanding.position`: `TOP_TWO | LOWER_HALF | UPPER_HALF`.
+- `VehicleView`: `equipment`, `acceptedCargoTypes`. `DriverView`: `licenseCategory`, `licenseExpiresAt`, `dni`.
+- Avisos (`NotificationType`): `NEW_LOAD_MATCH`, `FLEET_DOCUMENT_EXPIRING`, `BID_IMPROVED`; `relatedType`: `VEHICLE`, `DRIVER`; categorías de preferencias: `ALERTS`, `FLEET`. **Los clientes deben tolerar valores desconocidos.**
+- Parámetro del operador `fleet_docs_block` (`kind = FLAG`, `0|1`): con 1, un documento de flota vencido bloquea la oferta (`LOGYX-FLT-007`, 409); con 0 solo advierte.
+- Avisos al ofertar (`BidView.warnings`, `VehicleEligibilityView.warnings`): `LOGYX-FLT-007` (documento vencido) y `LOGYX-FLT-008` (vence antes del recojo).
+
 ## 2026-11-18 — Ola 1, zona B: contactos de parada, seguimiento público, conductor con mala señal y CSV de envíos (V19)
 
 Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.3 (paradas), 1.5 (envíos), 1.6 y 1.11, y la decisión del dueño sobre RN07

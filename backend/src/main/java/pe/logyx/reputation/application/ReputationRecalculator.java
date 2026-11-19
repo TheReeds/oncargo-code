@@ -35,7 +35,7 @@ public class ReputationRecalculator {
     public void recalculate(UUID orgId) {
         system.run(() -> {
             scores.lockOrCreate(orgId);
-            scores.save(TrustScoreCalculator.score(orgId, reviews.listReceived(orgId), settings.priorMean(),
+            scores.save(TrustScoreCalculator.score(orgId, reviews.listReceivedWithPredecessors(orgId), settings.priorMean(),
                     settings.priorWeight(), OffsetDateTime.now()));
         });
     }

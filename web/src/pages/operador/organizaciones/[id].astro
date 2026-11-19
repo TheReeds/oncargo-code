@@ -1,0 +1,21 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Organization360 from '@/features/operator/components/Organization360';
+import { getOrganization360 } from '@/features/operator/server';
+import { ApiError } from '@/lib/api/client';
+
+const s = Astro.locals.session!;
+const id = Astro.params.id ?? '';
+let org;
+try {
+  org = await getOrganization360(s.token, id);
+} catch (e) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return Astro.rewrite('/404');
+  throw e;
+}
+---
+<AppShell title={org.legalName ?? 'Organización'} active="operador-organizaciones" wide>
+  <PageHeader title={org.legalName ?? 'Organización'} subtitle="Ficha completa: usuarios, flota, envíos, incidencias, verificación y señales." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Verificación', href: '/operador/organizaciones' }, { label: org.legalName ?? 'Organización' }]} />
+  <Organization360 client:load initial={org} />
+</AppShell>

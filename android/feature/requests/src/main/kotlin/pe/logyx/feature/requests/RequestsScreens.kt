@@ -107,14 +107,25 @@ private fun StatusFilter.text() = stringResource(
 )
 
 @Composable
-fun RequestsRoute(onOpenRequest: (String) -> Unit, viewModel: RequestsViewModel = koinViewModel()) {
+fun RequestsRoute(
+    onOpenRequest: (String) -> Unit,
+    onNewRequest: () -> Unit = {},
+    onOpenTemplates: () -> Unit = {},
+    viewModel: RequestsViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LiveEffect(viewModel) { viewModel.liveLoop() }
-    RequestsScreen(state, viewModel::refresh, onOpenRequest)
+    RequestsScreen(state, viewModel::refresh, onOpenRequest, onNewRequest, onOpenTemplates)
 }
 
 @Composable
-fun RequestsScreen(state: RequestsUiState, onRefresh: () -> Unit, onOpen: (String) -> Unit) {
+fun RequestsScreen(
+    state: RequestsUiState,
+    onRefresh: () -> Unit,
+    onOpen: (String) -> Unit,
+    onNewRequest: () -> Unit = {},
+    onOpenTemplates: () -> Unit = {},
+) {
     var filterName by rememberSaveable { mutableStateOf(StatusFilter.All.name) }
     val filter = StatusFilter.valueOf(filterName)
     LogyxScreen(stringResource(R.string.requests_title)) { padding ->
@@ -135,6 +146,18 @@ fun RequestsScreen(state: RequestsUiState, onRefresh: () -> Unit, onOpen: (Strin
                                     KpiTile(
                                         "$n", stringResource(R.string.requests_kpi_trip_bookings), Modifier.fillMaxWidth(),
                                         stringResource(R.string.requests_kpi_trip_bookings_context),
+                                    )
+                                }
+                            }
+                            item {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    LogyxButton(
+                                        stringResource(R.string.requests_new_action), onNewRequest, Modifier.weight(1f),
+                                        variant = ButtonVariant.Money, size = ButtonSize.Medium, requiresOperate = true,
+                                    )
+                                    LogyxButton(
+                                        stringResource(R.string.requests_templates_action), onOpenTemplates, Modifier.weight(1f),
+                                        variant = ButtonVariant.Secondary, size = ButtonSize.Medium,
                                     )
                                 }
                             }
@@ -245,6 +268,7 @@ fun RequestDetailRoute(
     onOpenThreads: () -> Unit = {},
     onOpenOrganization: (String) -> Unit = {},
     onOpenRequest: (String) -> Unit = {},
+    onDuplicate: (String) -> Unit = {},
     viewModel: RequestDetailViewModel = koinViewModel { parametersOf(requestId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -264,7 +288,7 @@ fun RequestDetailRoute(
             viewModel::askReopen, viewModel::askRepublish, viewModel::onRescheduleDate, viewModel::confirmReschedule, viewModel::closeReschedule,
         ),
         onOpenChat = onOpenChat, onOpenThreads = onOpenThreads, onOpenOrganization = onOpenOrganization,
-        onOpenOriginal = onOpenRequest,
+        onOpenOriginal = onOpenRequest, onDuplicate = onDuplicate,
         counter = CounterActions(
             viewModel::openCounter, viewModel::onCounterAmount, viewModel::onCounterMessage,
             viewModel::askConfirmCounter, viewModel::confirmCounter, viewModel::cancelCounterConfirm, viewModel::closeCounter,
@@ -282,6 +306,7 @@ fun RequestDetailScreen(
     onOpenOrganization: (String) -> Unit = {},
     onOpenOriginal: (String) -> Unit = {},
     counter: CounterActions = CounterActions(),
+    onDuplicate: (String) -> Unit = {},
 ) {
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, actions.onMessageShown)
@@ -299,6 +324,10 @@ fun RequestDetailScreen(
                         val mapDescription = stringResource(R.string.requests_map_description)
                         RouteMap(state.origin, state.destination, path = state.route?.points, contentDescription = mapDescription, height = 180.dp)
                         RequestSummaryCard(r, onOpenOriginal)
+                        LogyxButton(
+                            stringResource(R.string.requests_duplicate), { onDuplicate(r.id) },
+                            variant = ButtonVariant.Secondary, size = ButtonSize.Medium, requiresOperate = true,
+                        )
                         RecoveryBanners(r, state.busy, actions)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(

@@ -7,4 +7,5 @@ import org.koin.dsl.module
 val shipmentsModule = module {
     viewModelOf(::ShipmentsViewModel)
     viewModel { (shipmentId: String) -> ShipmentDetailViewModel(shipmentId, get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { (shipmentId: String) -> ShipmentAdjustmentsViewModel(shipmentId, get(), get(), get()) }
 }

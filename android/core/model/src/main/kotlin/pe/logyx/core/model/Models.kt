@@ -120,7 +120,16 @@ data class MyBidStanding(
     val vsBest: BidStandingBand? = null,
     /** La subasta ya cerró: es la posición final. */
     val finalStanding: Boolean = false,
+    /** Posición aproximada (V22, 2.8); opcional. Un valor desconocido cae en `UNKNOWN` o `null`. */
+    val position: BidPosition? = null,
 )
+
+/**
+ * La posición aproximada que se muestra: nula si la API no la manda, es desconocida o ya eres la mejor
+ * (la banda «Tu oferta es la mejor» lo dice; no se repite). Nunca trae montos ajenos (RN04).
+ */
+val MyBidStanding.visiblePosition: BidPosition?
+    get() = position?.takeIf { it != BidPosition.UNKNOWN && !isBest }
 
 @Serializable
 data class BidView(
@@ -139,8 +148,14 @@ data class BidView(
     /** Trust Score 0-100 del transportista (RN09; 75 sin calificaciones). */
     val carrierTrustScore: Double? = null,
     val assignedByOperator: Boolean = false,
-    /** Solo al ofertar (POST): avisos de agenda del vehículo, p. ej. `LOGYX-CAP-006`. */
+    /** Solo al ofertar (POST): avisos de agenda del vehículo (`LOGYX-CAP-006`) y de documentos de flota (`FLT-007/008`). */
     val warnings: List<BidWarning> = emptyList(),
+    /** V22 (2.8): veces que mejoré la oferta y cuándo fue la última; la PYME los ve. */
+    val improvedCount: Int = 0,
+    val improvedAt: String? = null,
+    /** V22 (2.4): sellos de vigencia del SOAT y la inspección técnica del vehículo al ofertar (`yyyy-MM-dd`). */
+    val soatValidUntil: String? = null,
+    val inspectionValidUntil: String? = null,
 )
 
 @Serializable
@@ -184,6 +199,18 @@ data class RequestView(
     val code: String? = null,
     /** Valor declarado de la carga en soles, opcional (V17). */
     val declaredValue: Double? = null,
+    /** Privados (V17): solo la PYME dueña, el operador y el transportista adjudicado; nulos si no se ven. Sirven para duplicar. */
+    val customerReference: String? = null,
+    val pickupContactName: String? = null,
+    val pickupContactPhone: String? = null,
+    val pickupWindowFrom: String? = null,
+    val pickupWindowTo: String? = null,
+    val pickupInstructions: String? = null,
+    val deliveryContactName: String? = null,
+    val deliveryContactPhone: String? = null,
+    val deliveryWindowFrom: String? = null,
+    val deliveryWindowTo: String? = null,
+    val deliveryInstructions: String? = null,
 )
 
 @Serializable
@@ -220,6 +247,15 @@ data class StopView(
     val windowFrom: String? = null,
     val windowTo: String? = null,
     val instructions: String? = null,
+    // V23 (Ola 2, roadmap 2.5)
+    /** Recojo: peso medido al recoger (kg). */
+    val loadedWeightKg: Double? = null,
+    /** Entrega: quién recibió (solo las partes, el conductor asignado y el operador). */
+    val receivedByName: String? = null,
+    val receivedByDoc: String? = null,
+    /** No nulo = la oficina del transportista registró la llegada (o el cierre) en lugar del conductor, con este motivo. */
+    val arrivalOfficeReason: String? = null,
+    val completionOfficeReason: String? = null,
 )
 
 @Serializable
@@ -257,6 +293,19 @@ data class ShipmentView(
     val customerReference: String? = null,
     val requesterOrgId: String? = null,
     val carrierOrgId: String? = null,
+    // V23 (Ola 2, roadmap 2.5 y 2.6)
+    /** Precio adjudicado con IGV desglosado (ADR-0010); la comisión solo para el transportista. */
+    val priceBreakdown: PriceBreakdownView? = null,
+    /** Lo que la PYME pide en el recojo: foto de la carga (`TRK-009`) y peso medido (`TRK-010`). */
+    val pickupPhotoRequired: Boolean = false,
+    val pickupWeightRequired: Boolean = false,
+    /** Suma de los ajustes aceptados (0 si no hay) y cuántos esperan respuesta de la PYME. */
+    val adjustmentsTotal: Double? = null,
+    val pendingAdjustments: Int = 0,
+    /** Precio final = acordado + ajustes aceptados. */
+    val finalPrice: Double? = null,
+    /** Desglose del precio final (null si no hay ajustes aceptados). */
+    val finalPriceBreakdown: PriceBreakdownView? = null,
 )
 
 /** `reason` (V13, F06): opcional; obligatorio al reasignar el conductor con el envío en ruta (`LOGYX-SHP-006`). */
@@ -358,6 +407,8 @@ data class IncidentCommentView(
     val authorName: String? = null,
     val body: String,
     val createdAt: String? = null,
+    /** V23: nota interna del operador (las partes no la reciben). */
+    val internal: Boolean = false,
 )
 
 @Serializable
@@ -369,7 +420,8 @@ data class IncidentView(
     val carrierOrgId: String? = null,
     val carrierName: String? = null,
     val reportedByOrgId: String? = null,
-    val category: IncidentCategory = IncidentCategory.OTHER,
+    /** Una categoría que este cliente no conoce cae en `UNKNOWN` (`coerceInputValues`). */
+    val category: IncidentCategory = IncidentCategory.UNKNOWN,
     val description: String,
     val status: IncidentStatus,
     val active: Boolean = false,
@@ -380,10 +432,48 @@ data class IncidentView(
     val comments: List<IncidentCommentView> = emptyList(),
     /** Estado final del envío decidido al resolver o cerrar (V13, RF55). */
     val shipmentOutcome: IncidentShipmentOutcome? = null,
+    // V23 (Ola 2, roadmap 2.7)
+    val severity: IncidentSeverity? = null,
+    /** true = congela el envío mientras está activa (RN11); false = informativa (el viaje sigue). */
+    val blocking: Boolean = true,
+    /** El envío está detenido por esta incidencia (activa y [blocking]). */
+    val holdsShipment: Boolean = false,
+    val claimedAmount: Double? = null,
+    /** Valor declarado de la carga en la solicitud (solo en el detalle). */
+    val declaredValue: Double? = null,
+    val dueAt: String? = null,
+    val slaBreached: Boolean = false,
+    val assigneeProfileId: String? = null,
+    val assigneeName: String? = null,
+    val withdrawnAt: String? = null,
+    val reopenedAt: String? = null,
+    val reopenCount: Int = 0,
+    /** Ubicación y hora del dispositivo del reporte (botón «Emergencia»). */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val occurredAt: String? = null,
+    val adjustmentId: String? = null,
+    val attachments: List<IncidentAttachmentView> = emptyList(),
+    /** Quien la reportó puede retirarla ahora (informativa, activa, de su organización). */
+    val canWithdraw: Boolean = false,
 )
 
+/**
+ * `POST /shipments/{id}/incidents`. V23 (2.7): todo opcional salvo categoría y descripción; `severity` por omisión la de
+ * la categoría; ubicación y hora del dispositivo para el botón «Emergencia». Los null no se envían (`explicitNulls = false`).
+ */
 @Serializable
-data class ReportIncidentRequest(val category: IncidentCategory, val description: String)
+data class ReportIncidentRequest(
+    val category: IncidentCategory,
+    val description: String,
+    val severity: IncidentSeverity? = null,
+    val claimedAmount: Double? = null,
+    val attachmentIds: List<String>? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val occurredAt: String? = null,
+    val adjustmentId: String? = null,
+)
 
 @Serializable
 data class AddCommentRequest(val body: String)

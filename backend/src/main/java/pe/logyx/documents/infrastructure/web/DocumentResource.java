@@ -47,12 +47,14 @@ public class DocumentResource {
     @Operation(summary = "Sube un documento o evidencia de entrega (multipart: file, type, stopId)",
             description = "JPG, PNG o PDF (por firma binaria), máx. logyx.documents.max-size-bytes (10 MB). "
                     + "DELIVERY_PHOTO/SIGNATURE: solo imágenes, solo transportista/conductor, stopId de la parada de "
-                    + "entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO.")
+                    + "entrega ya con llegada registrada. Completar la entrega exige al menos una DELIVERY_PHOTO. "
+                    + "PICKUP_PHOTO (V23): foto de la carga, mismas reglas en la parada de recojo (LOGYX-DOC-009 si "
+                    + "stopId no es el recojo); el recojo la exige si la PYME lo pidió (pickupPhotoRequired).")
     public ApiResponse<DocumentView> upload(
             @PathParam("id") UUID shipmentId,
             @RestForm("file") @Schema(type = SchemaType.STRING, format = "binary") FileUpload file,
             @RestForm("type") @Schema(enumeration = {"SERVICE_ORDER", "REMISSION_GUIDE", "RECEIPT", "DELIVERY_PHOTO",
-                    "SIGNATURE", "OTHER"}) String type,
+                    "SIGNATURE", "OTHER", "PICKUP_PHOTO"}) String type,
             @RestForm("stopId") @Schema(format = "uuid") String stopId) {
         if (file == null || file.uploadedFile() == null) {
             throw BusinessException.badRequest("LOGYX-VAL-001", "Adjunta un archivo", "file");

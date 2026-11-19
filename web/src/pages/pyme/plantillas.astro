@@ -1,0 +1,22 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import TemplatesManager from '@/features/templates/components/TemplatesManager';
+import { listDrafts, listTemplates } from '@/features/templates/server';
+const token = Astro.locals.session!.token;
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+let templates: Awaited<ReturnType<typeof listTemplates>> = [];
+let drafts: Awaited<ReturnType<typeof listDrafts>> = [];
+let loadError: string | null = null;
+try {
+  [templates, drafts] = await Promise.all([listTemplates(token, true), listDrafts(token)]);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus plantillas.';
+}
+---
+<AppShell title="Plantillas" active="plantillas">
+  <PageHeader title="Plantillas" subtitle="Cargas que repites: publícalas en un clic o prográmalas" />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus plantillas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <TemplatesManager client:load initial={templates} drafts={drafts} today={today} />
+</AppShell>

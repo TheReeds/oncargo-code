@@ -20,6 +20,8 @@ import pe.logyx.shipment.infrastructure.web.ShipmentDtos.ChangeVehicle;
 import pe.logyx.shipment.infrastructure.web.ShipmentDtos.AssignDriver;
 import pe.logyx.shipment.infrastructure.web.ShipmentDtos.ShipmentView;
 import pe.logyx.shipment.infrastructure.web.ShipmentDtos.StopEvent;
+import pe.logyx.shipment.infrastructure.web.ShipmentDtos.OfficeStopEvent;
+import pe.logyx.shipment.infrastructure.web.ShipmentDtos.PickupRequirementsRequest;
 import pe.logyx.shipment.infrastructure.web.ShareLinkDtos.CreateShareLink;
 import pe.logyx.shipment.infrastructure.web.ShareLinkDtos.ShareLinkCreated;
 import pe.logyx.shipment.infrastructure.web.ShareLinkDtos.ShareLinkView;
@@ -47,6 +49,8 @@ public class ShipmentResource {
     @Inject TrackStopsUseCase tracking;
     @Inject ShipmentLifecycleUseCase lifecycle;
     @Inject ShareLinkService shareLinks;
+    @Inject pe.logyx.shipment.application.AdjustmentService adjustmentService;
+    @Inject pe.logyx.shipment.application.PickupRequirementsService pickupRequirements;
     @Inject TenantContext tenant;
     @ConfigProperty(name = "logyx.web.url") String webUrl;
 
@@ -165,7 +169,101 @@ public class ShipmentResource {
                     + "Cuerpo opcional {occurredAt} con las mismas reglas que arrive (LOGYX-TRK-008).")
     public ApiResponse<ShipmentView> complete(@PathParam("id") UUID id, @PathParam("stopId") UUID stopId,
                                               StopEvent body) {
-        return ApiResponse.of(ShipmentView.of(tracking.complete(id, stopId, body == null ? null : body.occurredAt())));
+        return ApiResponse.of(ShipmentView.of(tracking.complete(id, stopId,
+                body == null ? pe.logyx.shipment.application.StopCompletion.NONE : body.completion())));
+    }
+
+    // ----- Registro desde la oficina del transportista (roadmap 2.5)
+    @POST
+    @Path("/shipments/{id}/stops/{stopId}/office-arrive")
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "La oficina del transportista registra «Llegué» por el conductor, con motivo (2.5)",
+            description = "ADMIN u OPS del transportista. Motivo obligatorio (LOGYX-SHP-006). Mismas reglas que la app "
+                    + "(RN08, RN11, occurredAt) e idempotente. La parada queda marcada (arrivalOfficeReason) y auditada "
+                    + "(STOP_REGISTERED_BY_OFFICE).")
+    public ApiResponse<ShipmentView> officeArrive(@PathParam("id") UUID id, @PathParam("stopId") UUID stopId,
+                                                  @Valid @NotNull OfficeStopEvent body) {
+        return ApiResponse.of(ShipmentView.of(tracking.arriveByOffice(id, stopId, body.reason(), body.occurredAt())));
+    }
+
+    @POST
+    @Path("/shipments/{id}/stops/{stopId}/office-complete")
+    @RolesAllowed(Roles.CARRIER)
+    @Operation(summary = "La oficina del transportista cierra la parada por el conductor, con motivo (2.5)",
+            description = "RN06: la oficina no sube la foto de entrega ni la de la carga. Si la parada la exige y el "
+                    + "conductor no la subió, responde LOGYX-TRK-006 / LOGYX-TRK-009 igual que la app.")
+    public ApiResponse<ShipmentView> officeComplete(@PathParam("id") UUID id, @PathParam("stopId") UUID stopId,
+                                                    @Valid @NotNull OfficeStopEvent body) {
+        return ApiResponse.of(ShipmentView.of(tracking.completeByOffice(id, stopId, body.reason(), body.completion())));
+    }
+
+    @PUT
+    @Path("/shipments/{id}/pickup-requirements")
+    @RolesAllowed(Roles.PYME)
+    @Operation(summary = "La PYME fija qué pide el recojo: foto de la carga y peso medido (2.5)",
+            description = "Solo mientras el envío espera el recojo (LOGYX-SHP-008). Por omisión no pide nada.")
+    public ApiResponse<ShipmentView> pickupRequirements(@PathParam("id") UUID id,
+                                                        @Valid @NotNull PickupRequirementsRequest body) {
+        return ApiResponse.of(ShipmentView.of(pickupRequirements.change(id, body.photoRequired(), body.weightRequired())));
+    }
+
+    // ----- Ajustes del envío (roadmap 2.6, ADR-0012)
+    @GET
+    @Path("/shipments/{id}/adjustments")
+    @RolesAllowed({Roles.PYME, Roles.CARRIER, Roles.DRIVER, Roles.OPERATOR})
+    @Operation(summary = "Ajustes del envío con el precio final (acordado + aceptados) y sugerencias (2.6)",
+            description = "Solo las partes, el conductor asignado y el operador. suggestions (estadía por parada y "
+                    + "diferencia de peso) solo para el transportista.")
+    public ApiResponse<AdjustmentDtos.ShipmentAdjustmentsView> adjustments(@PathParam("id") UUID id) {
+        return ApiResponse.of(AdjustmentDtos.ShipmentAdjustmentsView.of(adjustmentService.overview(id)));
+    }
+
+    @POST
+    @Path("/shipments/{id}/adjustments")
+    @RolesAllowed({Roles.CARRIER, Roles.DRIVER})
+    @ResponseStatus(201)
+    @Operation(summary = "El transportista (o su conductor) propone un ajuste: peso real, estadía, peaje, maniobras (2.6)",
+            description = "Monto con IGV ≠ 0 y |monto| ≤ precio acordado; descuento solo en WEIGHT_DIFF/OTHER "
+                    + "(LOGYX-ADJ-003). Nota obligatoria en OTHER (LOGYX-ADJ-004), sin datos de contacto (RN07). Hasta 10 "
+                    + "por envío (LOGYX-ADJ-005). Envío cancelado LOGYX-ADJ-001; entregado hace más de 7 días LOGYX-ADJ-002. "
+                    + "evidenceDocumentId: documento del mismo envío (LOGYX-ADJ-008). La PYME responde dentro de "
+                    + "adjustment_response_hours; luego decide el operador.")
+    public ApiResponse<AdjustmentDtos.AdjustmentView> propose(@PathParam("id") UUID id,
+                                                              @Parameter(description = "Clave de idempotencia, 24 h.")
+                                                              @HeaderParam("Idempotency-Key") String idempotencyKey,
+                                                              @Valid @NotNull AdjustmentDtos.ProposeAdjustment body) {
+        var a = adjustmentService.propose(id, new pe.logyx.shipment.application.ProposeAdjustmentCommand(body.type(),
+                body.amount(), body.note(), body.stopId(), body.evidenceDocumentId(),
+                pe.logyx.shared.idempotency.IdempotencyKeys.validate(idempotencyKey)));
+        return ApiResponse.of(AdjustmentDtos.AdjustmentView.of(a));
+    }
+
+    @POST
+    @Path("/adjustments/{id}/accept")
+    @RolesAllowed({Roles.PYME, Roles.OPERATOR})
+    @Operation(summary = "Acepta un ajuste: la PYME del envío o, si ya se escaló, el operador (LOGYX-ADJ-006)")
+    public ApiResponse<AdjustmentDtos.AdjustmentView> accept(@PathParam("id") UUID id,
+                                                             @Valid AdjustmentDtos.DecideAdjustment body) {
+        return ApiResponse.of(AdjustmentDtos.AdjustmentView.of(
+                adjustmentService.decide(id, true, body == null ? null : body.note())));
+    }
+
+    @POST
+    @Path("/adjustments/{id}/reject")
+    @RolesAllowed({Roles.PYME, Roles.OPERATOR})
+    @Operation(summary = "Rechaza un ajuste con motivo (LOGYX-ADJ-004): la PYME o, si ya se escaló, el operador")
+    public ApiResponse<AdjustmentDtos.AdjustmentView> reject(@PathParam("id") UUID id,
+                                                             @Valid AdjustmentDtos.DecideAdjustment body) {
+        return ApiResponse.of(AdjustmentDtos.AdjustmentView.of(
+                adjustmentService.decide(id, false, body == null ? null : body.note())));
+    }
+
+    @POST
+    @Path("/adjustments/{id}/withdraw")
+    @RolesAllowed({Roles.CARRIER, Roles.DRIVER})
+    @Operation(summary = "El transportista retira un ajuste pendiente (LOGYX-ADJ-007 si ya se resolvió)")
+    public ApiResponse<AdjustmentDtos.AdjustmentView> withdraw(@PathParam("id") UUID id) {
+        return ApiResponse.of(AdjustmentDtos.AdjustmentView.of(adjustmentService.withdraw(id)));
     }
 
     // ----- Enlaces públicos de seguimiento (roadmap 1.6, ADR-0011)

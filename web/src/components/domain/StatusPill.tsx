@@ -44,10 +44,14 @@ const SMART: Record<string, [string, Tone]> = { PENDING: ['Pendiente', 'amber'],
 const VERIFICATION: Record<string, [string, Tone]> = { PENDING: ['En revisión', 'amber'], VERIFIED: ['Verificada', 'emerald'], REJECTED: ['Rechazada', 'red'], SUSPENDED: ['Suspendida', 'red'] };
 /** Estado de una cuenta de usuario o conductor (V14): activa, invitación pendiente o desactivada. */
 const ACCOUNT: Record<string, [string, Tone]> = { ACTIVE: ['Activo', 'emerald'], INVITED: ['Invitación pendiente', 'amber'], INACTIVE: ['Desactivado', 'neutral'] };
-const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART, verification: VERIFICATION, account: ACCOUNT };
+/** Ajuste del precio de un envío (2.6). `ESCALATED` = la PYME no respondió a tiempo y decide OnCargo. */
+const ADJUSTMENT: Record<string, [string, Tone]> = { PENDING: ['Por responder', 'amber'], ACCEPTED: ['Aceptado', 'emerald'], REJECTED: ['Rechazado', 'red'], WITHDRAWN: ['Retirado', 'neutral'], ESCALATED: ['Lo decide OnCargo', 'petrol'] };
+/** Severidad de una incidencia (2.7). */
+const SEVERITY: Record<string, [string, Tone]> = { LOW: ['Baja', 'neutral'], MEDIUM: ['Media', 'petrol'], HIGH: ['Alta', 'amber'], CRITICAL: ['Crítica', 'red'] };
+const BY_KIND = { trip: TRIP, booking: BOOKING, smart: SMART, verification: VERIFICATION, account: ACCOUNT, adjustment: ADJUSTMENT, severity: SEVERITY };
 
-export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' | 'verification' | 'account' }) {
-  if (kind === 'trip' || kind === 'booking' || kind === 'smart' || kind === 'verification' || kind === 'account') {
+export function StatusPill({ status, kind }: { status: string; kind?: 'bid' | 'counter' | 'trip' | 'booking' | 'smart' | 'verification' | 'account' | 'adjustment' | 'severity' }) {
+  if (kind === 'trip' || kind === 'booking' || kind === 'smart' || kind === 'verification' || kind === 'account' || kind === 'adjustment' || kind === 'severity') {
     const [label, tone] = BY_KIND[kind][status] ?? [status, 'neutral' as Tone];
     return <Badge tone={tone}>{label}</Badge>;
   }

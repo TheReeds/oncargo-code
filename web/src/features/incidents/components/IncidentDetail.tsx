@@ -18,8 +18,13 @@ import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { RN07_FIELD_MESSAGE, isContactFailure, splitActionError } from '@/lib/action-error';
 import { INCIDENT_CATEGORY_LABELS, formatDateTime } from '@/lib/format';
-import { OUTCOME_BY_SHIPMENT, OUTCOME_LABEL, ageTone, formatOpenTime, hoursOpen } from '../lib';
+import { CANNED_REPLIES, OUTCOME_BY_SHIPMENT, OUTCOME_LABEL, ageTone, formatOpenTime, hoursOpen } from '../lib';
 import { Select } from '@/components/ui/select';
+import { Checkbox, InlineLabel } from '@/components/ui/form-controls';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
+import { Badge } from '@/components/ui/badge';
+import { formatMoney } from '@/lib/format';
+import { LIMITS } from '@/lib/limits';
 import type { IncidentView } from '../server';
 
 const MAX = 2000;
@@ -37,6 +42,9 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
   const [changing, setChanging] = useState<string | null>(null);
   const [outcome, setOutcome] = useState('');
   const [outcomeError, setOutcomeError] = useState<string | null>(null);
+  const [internal, setInternal] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [acting, setActing] = useState<string | null>(null);
   const outcomes = (shipmentStatus && OUTCOME_BY_SHIPMENT[shipmentStatus]) || ['RESUME', 'DELIVERED', 'CANCELLED'];
   const savedOutcome = (inc as { shipmentOutcome?: string }).shipmentOutcome;
   // Estado y comentarios en vivo (incident.updated de esta incidencia).
@@ -49,11 +57,13 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
   const closed = inc.status === 'CLOSED';
   const shipmentHref = orgType === 'PYME' ? `/pyme/envios?id=${inc.shipmentId}` : orgType === 'CARRIER' ? `/transportista/envios?id=${inc.shipmentId}` : `/operador/envios/${inc.shipmentId}`;
   const h = hoursOpen(inc);
+  const informative = inc.blocking === false;
+  const breached = !!inc.slaBreached;
 
   const items: TimelineItem[] = useMemo(() => {
     const out: TimelineItem[] = [{ id: 'created', title: 'Incidencia reportada', detail: null, meta: formatDateTime(inc.createdAt), status: 'done', icon: <TriangleAlert className="size-3" aria-hidden="true" /> }];
     for (const c of [...(inc.comments ?? [])].sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))) {
-      out.push({ id: c.id!, title: c.authorName ?? 'Comentario', detail: c.body, meta: formatDateTime(c.createdAt), status: 'pending', icon: <MessageSquare className="size-3" aria-hidden="true" /> });
+      out.push({ id: c.id!, title: c.internal ? `${c.authorName ?? 'OnCargo'} · nota interna` : c.authorName ?? 'Comentario', detail: c.body, meta: formatDateTime(c.createdAt), status: c.internal ? 'current' : 'pending', icon: c.internal ? <Lock className="size-3" aria-hidden="true" /> : <MessageSquare className="size-3" aria-hidden="true" /> });
     }
     if (inc.resolvedAt) out.push({ id: 'resolved', title: closed ? 'Incidencia cerrada' : 'Incidencia resuelta', detail: inc.resolutionNotes, meta: formatDateTime(inc.resolvedAt), status: 'done', icon: <CircleCheck className="size-3" aria-hidden="true" /> });
     return out;
@@ -64,29 +74,51 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
     if (!comment.trim()) { setCommentError('Escribe un comentario antes de enviarlo.'); return; }
     setCommentError(null);
     setPosting(true);
-    const { data, error } = await actions.incidents.comment({ id: inc.id!, body: comment });
+    const { data, error } = await actions.incidents.comment({ id: inc.id!, body: comment, internal: operator && internal });
     setPosting(false);
     if (error) { const f = splitActionError(error); setCommentError(isContactFailure(f) ? RN07_FIELD_MESSAGE : f.message); return; }
     setInc(data);
     setComment('');
-    toast.success('Comentario enviado');
+    toast.success(operator && internal ? 'Nota interna guardada' : 'Comentario enviado');
+    setInternal(false);
+  }
+
+  async function withdraw() {
+    if (!(await confirm({ title: '¿Retirar esta incidencia?', description: 'Se cerrará y OnCargo dejará de revisarla. No se puede deshacer.', confirmLabel: 'Retirar incidencia', tone: 'destructive' }))) return;
+    setActing('withdraw');
+    const { data, error } = await actions.incidents.withdraw({ id: inc.id! });
+    setActing(null);
+    if (error) { toast.error(splitActionError(error).message); return; }
+    setInc(data);
+    toast.success('Incidencia retirada');
+  }
+
+  async function assign(unassign: boolean) {
+    setActing(unassign ? 'unassign' : 'assign');
+    const { data, error } = await actions.incidents.assign({ id: inc.id!, unassign });
+    setActing(null);
+    if (error) { toast.error(splitActionError(error).message); return; }
+    setInc(data);
+    toast.success(unassign ? 'Incidencia sin responsable' : 'Incidencia asignada a ti');
   }
 
   async function change(status: 'IN_REVIEW' | 'RESOLVED' | 'CLOSED') {
     setNotesError(null);
     setOutcomeError(null);
     // RF55: resolver, o cerrar sin haber resuelto, exige notas y el estado final del envío.
-    const needsOutcome = status === 'RESOLVED' || (status === 'CLOSED' && inc.status !== 'RESOLVED');
-    if (needsOutcome) {
+    const deactivates = status === 'RESOLVED' || (status === 'CLOSED' && inc.status !== 'RESOLVED');
+    // Una informativa no detuvo el viaje: el estado final del envío es opcional (V23).
+    const needsOutcome = deactivates && (!informative || !!outcome);
+    if (deactivates) {
       let bad = false;
       if (!notes.trim()) { setNotesError(status === 'RESOLVED' ? 'Escribe las notas de resolución para resolver la incidencia.' : 'Escribe las notas de resolución para cerrar la incidencia.'); bad = true; }
-      if (!outcome) { setOutcomeError('Elige qué pasa con el envío.'); bad = true; }
+      if (!informative && !outcome) { setOutcomeError('Elige qué pasa con el envío.'); bad = true; }
       if (bad) return;
     }
     const effect = needsOutcome ? ({ RESUME: ' El envío continuará su ruta.', DELIVERED: ' El envío se dará por entregado y se cerrarán sus paradas.', CANCELLED: ' Se cancelarán el envío y la solicitud, y se liberará la flota. No se puede deshacer.' } as Record<string, string>)[outcome] : '';
     const cancelling = needsOutcome && outcome === 'CANCELLED';
     const texts = {
-      IN_REVIEW: { title: '¿Pasar la incidencia a revisión?', description: 'Las partes verán que LOGYX ya la está atendiendo. El envío sigue detenido.', confirmLabel: 'Pasar a revisión', tone: undefined },
+      IN_REVIEW: { title: '¿Pasar la incidencia a revisión?', description: inc.blocking ? 'Las partes verán que OnCargo ya la está atendiendo. El envío sigue detenido.' : 'Las partes verán que OnCargo ya la está atendiendo.', confirmLabel: 'Pasar a revisión', tone: undefined },
       RESOLVED: { title: '¿Resolver la incidencia?', description: `Se avisará a ambas partes con tus notas de resolución.${effect}`, confirmLabel: 'Resolver incidencia', tone: cancelling ? ('destructive' as const) : undefined },
       CLOSED: { title: '¿Cerrar la incidencia?', description: `Ya no se podrá comentar. No se puede deshacer.${effect}`, confirmLabel: 'Cerrar incidencia', tone: 'destructive' as const },
     }[status];
@@ -106,15 +138,29 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="space-y-6">
-        {inc.active && (
+        {inc.holdsShipment && (
           <Alert tone="error" title="El envío está detenido" action={<Button size="sm" variant="outline" asChild><a href={shipmentHref}>Ver envío</a></Button>}>
-            Mientras esta incidencia siga activa, el conductor no puede avanzar las paradas (RN11). Se libera cuando el operador la resuelve o la cierra.
+            Mientras esta incidencia siga activa, el conductor no puede avanzar las paradas. Se libera cuando OnCargo la resuelve o la cierra.
           </Alert>
         )}
+        {inc.active && informative && <Alert tone="info" title="Incidencia informativa">El viaje sigue mientras OnCargo la revisa.</Alert>}
+        {inc.canWithdraw && canOperate && (
+          <div className="flex flex-wrap items-center gap-3 rounded-card border border-steel-200 bg-surface px-4 py-3 text-sm">
+            <span className="text-ink-700">¿Ya no hace falta? Puedes retirarla.</span>
+            <Button size="sm" variant="outline" className="ml-auto" loading={acting === 'withdraw'} onClick={withdraw}>Retirar incidencia</Button>
+          </div>
+        )}
         <Card>
-          <CardHeader><div><CardTitle>Descripción</CardTitle><CardDescription>Reportada {formatDateTime(inc.createdAt)}</CardDescription></div><StatusPill status={inc.status!} /></CardHeader>
+          <CardHeader><div><CardTitle>Descripción</CardTitle><CardDescription>Reportada {formatDateTime(inc.createdAt)}{inc.occurredAt ? ` · ocurrió ${formatDateTime(inc.occurredAt)}` : ''}</CardDescription></div><div className="flex flex-wrap gap-1.5">{inc.severity && <StatusPill status={inc.severity} kind="severity" />}<StatusPill status={inc.status!} /></div></CardHeader>
           <CardBody className="space-y-4">
             <p className="whitespace-pre-wrap text-sm text-ink-900">{inc.description}</p>
+            {!!inc.attachments?.length && (
+              <ul className="flex flex-wrap gap-2" aria-label="Adjuntos">
+                {inc.attachments.map((a) => (
+                  <li key={a.documentId}><a className="inline-flex items-center gap-1.5 rounded-input border border-steel-200 px-3 py-1.5 text-sm text-petrol-700 hover:bg-petrol-50" href={`/documentos/${a.documentId}`} target="_blank" rel="noopener">{a.fileName}</a></li>
+                ))}
+              </ul>
+            )}
             {inc.resolutionNotes && (
               <div className="rounded-input border border-emerald-500/40 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
                 <p className="font-semibold">Notas de resolución</p>
@@ -126,7 +172,7 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
         </Card>
 
         <Card>
-          <CardHeader><div><CardTitle>Historial y comentarios</CardTitle><CardDescription>{operator ? 'Lo que escribas lo verán la PYME y el transportista.' : 'Lo que escribas lo verán la otra parte y el operador de LOGYX.'}</CardDescription></div></CardHeader>
+          <CardHeader><div><CardTitle>Historial y comentarios</CardTitle><CardDescription>{operator ? 'Los comentarios los ven la PYME y el transportista; las notas internas, solo OnCargo.' : 'Lo que escribas lo verán la otra parte y OnCargo.'}</CardDescription></div></CardHeader>
           <CardBody className="space-y-6">
             <Timeline items={items} orientation="vertical" label="Historial de la incidencia" />
             {closed ? (
@@ -135,10 +181,23 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
               <ReadOnlyNotice>No puedes comentar incidencias.</ReadOnlyNotice>
             ) : (
               <form onSubmit={send} method="post" noValidate className="space-y-3 border-t border-steel-200 pt-5">
-                <Field label="Agregar comentario" htmlFor="inc-comment" error={commentError} hint={`${comment.length}/${MAX} caracteres${operator ? '' : '. Sin teléfonos ni correos.'}`}>
+                {operator && (
+                  <Field label="Respuesta frecuente" htmlFor="inc-canned" hint="Inserta el texto; puedes editarlo antes de enviar.">
+                    <Select id="inc-canned" value="" onValueChange={(v) => { const r = CANNED_REPLIES.find((x) => x.value === v); if (r) setComment(r.text); }} options={CANNED_REPLIES.map((r) => ({ value: r.value, label: r.label }))} placeholder="Elige una respuesta" />
+                  </Field>
+                )}
+                <Field label={operator && internal ? 'Nota interna' : 'Agregar comentario'} htmlFor="inc-comment" error={commentError} hint={`${comment.length}/${MAX} caracteres${operator ? '' : '. Sin teléfonos ni correos.'}`}>
                   <Textarea id="inc-comment" value={comment} maxLength={MAX} rows={3} onChange={(e) => setComment(e.target.value)} aria-invalid={!!commentError} placeholder={operator ? 'Escribe una actualización para las partes.' : 'Agrega información o responde al operador.'} />
                 </Field>
-                <div className="flex justify-end"><Button type="submit" loading={posting}>{posting ? 'Enviando…' : 'Enviar comentario'}</Button></div>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  {operator && (
+                    <span className="mr-auto flex items-center gap-2">
+                      <Checkbox id="inc-internal" checked={internal} onCheckedChange={(c) => setInternal(c === true)} />
+                      <InlineLabel htmlFor="inc-internal">Nota interna (solo OnCargo)</InlineLabel>
+                    </span>
+                  )}
+                  <Button type="submit" loading={posting}>{posting ? 'Enviando…' : operator && internal ? 'Guardar nota interna' : 'Enviar comentario'}</Button>
+                </div>
               </form>
             )}
           </CardBody>
@@ -152,7 +211,13 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
           <CardBody className="space-y-4 text-sm">
             {route && <RouteLine size="sm" origin={route.origin} destination={route.destination} />}
             <DescriptionList cols={1} items={[
-              { label: 'Categoría', value: INCIDENT_CATEGORY_LABELS[inc.category!] },
+              { label: 'Categoría', value: <>{INCIDENT_CATEGORY_LABELS[inc.category!] ?? inc.category}{informative && <Badge tone="neutral" className="ml-2">Informativa</Badge>}</> },
+              ...(inc.dueAt && inc.active ? [{ label: 'Plazo de OnCargo', value: <span className={breached ? 'font-semibold text-red-600' : 'text-ink-900'}>{breached ? 'Vencido' : 'Vence'} {formatDateTime(inc.dueAt)}</span> }] : []),
+              ...(inc.claimedAmount != null ? [{ label: 'Monto reclamado', value: formatMoney(inc.claimedAmount), mono: true }] : []),
+              ...(inc.declaredValue != null ? [{ label: 'Valor declarado', value: formatMoney(inc.declaredValue), mono: true }] : []),
+              ...(inc.latitude != null && inc.longitude != null ? [{ label: 'Ubicación', value: <a className="text-petrol-700 hover:underline" href={`https://www.openstreetmap.org/?mlat=${inc.latitude}&mlon=${inc.longitude}#map=14/${inc.latitude}/${inc.longitude}`} target="_blank" rel="noopener">{Number(inc.latitude).toFixed(4)}, {Number(inc.longitude).toFixed(4)}</a>, mono: true }] : []),
+              ...(operator ? [{ label: 'Responsable', value: inc.assigneeName ?? 'Sin responsable' }] : []),
+              ...(inc.reopenCount ? [{ label: 'Reaperturas', value: String(inc.reopenCount), mono: true }] : []),
               { label: 'PYME', value: inc.requesterName },
               { label: 'Transportista', value: inc.carrierName },
               { label: 'Reportada', value: formatDateTime(inc.createdAt) },
@@ -166,15 +231,27 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
           <Card>
             <CardHeader><div><CardTitle>Gestionar incidencia</CardTitle><CardDescription>Solo el operador cambia el estado.</CardDescription></div><StatusPill status={inc.status!} /></CardHeader>
             <CardBody className="space-y-4">
+              {!closed && (
+                <div className="flex flex-wrap gap-2">
+                  {inc.assigneeProfileId ? (
+                    <Button size="sm" variant="ghost" loading={acting === 'unassign'} disabled={!!acting} onClick={() => assign(true)}>Dejar sin responsable</Button>
+                  ) : (
+                    <Button size="sm" variant="outline" loading={acting === 'assign'} disabled={!!acting} onClick={() => assign(false)}>Tomar incidencia</Button>
+                  )}
+                </div>
+              )}
+              {(inc.status === 'RESOLVED' || inc.status === 'CLOSED') && !inc.withdrawnAt && (
+                <Button variant="outline" onClick={() => setReopening(true)}>Reabrir incidencia</Button>
+              )}
               {closed ? (
-                <p className="text-sm text-ink-500">La incidencia está cerrada. No hay más acciones disponibles.</p>
+                <p className="text-sm text-ink-500">La incidencia está cerrada.{inc.withdrawnAt ? ' La retiró quien la reportó.' : ' Puedes reabrirla si hay novedades.'}</p>
               ) : (
                 <>
                   <Field label="Notas de resolución" htmlFor="inc-notes" error={notesError} required={inc.status !== 'RESOLVED'} hint={`Obligatorias para resolver o cerrar. Las verán ambas partes. ${notes.length}/${MAX}`}>
                     <Textarea id="inc-notes" value={notes} maxLength={MAX} rows={4} onChange={(e) => setNotes(e.target.value)} aria-invalid={!!notesError} placeholder="Qué se hizo para resolver el problema." disabled={inc.status === 'RESOLVED'} />
                   </Field>
                   {inc.status !== 'RESOLVED' && (
-                    <Field label="Qué pasa con el envío" htmlFor="inc-outcome" error={outcomeError} required hint={outcome ? OUTCOME_LABEL[outcome].hint : 'Obligatorio al resolver o cerrar la incidencia.'}>
+                    <Field label="Qué pasa con el envío" htmlFor="inc-outcome" error={outcomeError} required={!informative} hint={outcome ? OUTCOME_LABEL[outcome].hint : informative ? 'Opcional: es informativa y no detuvo el viaje.' : 'Obligatorio al resolver o cerrar la incidencia.'}>
                       <Select id="inc-outcome" value={outcome} onValueChange={(v) => { setOutcome(v); setOutcomeError(null); }} options={outcomes.map((o) => ({ value: o, label: OUTCOME_LABEL[o].label }))} placeholder="Elige el estado final" invalid={!!outcomeError} />
                     </Field>
                   )}
@@ -190,6 +267,18 @@ export default function IncidentDetail({ initial, orgType, route, shipmentStatus
           </Card>
         )}
       </div>
+      <ReasonDialog
+        open={reopening} onOpenChange={setReopening} title="Reabrir incidencia" required maxLength={LIMITS.incidentText}
+        description={inc.blocking ? 'Vuelve a revisión con un plazo nuevo. Si el envío sigue en curso, el conductor no podrá avanzar.' : 'Vuelve a revisión con un plazo nuevo.'}
+        confirmLabel="Reabrir incidencia"
+        onSubmit={async (reason) => {
+          const { data, error } = await actions.incidents.reopen({ id: inc.id!, reason });
+          if (error) return splitActionError(error);
+          setInc(data);
+          toast.success('Incidencia reabierta');
+          return null;
+        }}
+      />
     </div>
   );
 }

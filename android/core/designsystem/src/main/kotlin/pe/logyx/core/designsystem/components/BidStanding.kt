@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.dp
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.R
 import pe.logyx.core.designsystem.label
+import pe.logyx.core.model.BidPosition
 import pe.logyx.core.model.BidStandingBand
 import pe.logyx.core.model.MyBidStanding
+import pe.logyx.core.model.visiblePosition
 
 /**
  * Mi posición en la subasta (V15, F15/F51): "Tu oferta es la mejor", "A menos de 5 % de la mejor", "A menos de 15 % de la mejor"
@@ -53,7 +55,9 @@ fun BidStandingRow(standing: MyBidStanding, modifier: Modifier = Modifier) {
     }
     val rankText = if (standing.finalStanding) stringResource(R.string.ds_standing_final_rank, standing.rank, standing.bidCount)
     else stringResource(R.string.ds_standing_rank, standing.rank, standing.bidCount)
-    val describe = stringResource(R.string.ds_standing_description, listOfNotNull(headline, rankText).joinToString(". "))
+    // Posición aproximada (V22, 2.8): no se repite cuando ya eres la mejor (la banda lo dice).
+    val positionText = standing.visiblePosition?.label
+    val describe = stringResource(R.string.ds_standing_description, listOfNotNull(headline, rankText, positionText).joinToString(". "))
     Row(
         modifier.fillMaxWidth().background(tone.first, RoundedCornerShape(12.dp)).padding(12.dp).semantics(mergeDescendants = true) { contentDescription = describe },
         verticalAlignment = Alignment.CenterVertically,
@@ -63,6 +67,7 @@ fun BidStandingRow(standing: MyBidStanding, modifier: Modifier = Modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (headline != null) Text(headline, style = MaterialTheme.typography.titleSmall, color = tone.second)
             Text(rankText, style = MaterialTheme.typography.bodyMedium, color = tone.second)
+            if (positionText != null) Text(positionText, style = MaterialTheme.typography.bodyMedium, color = tone.second)
             if (!standing.finalStanding) {
                 Text(stringResource(R.string.ds_standing_can_change), style = MaterialTheme.typography.labelMedium, color = tone.second)
             }
@@ -80,6 +85,7 @@ private fun BidStandingPreview() {
             BidStandingRow(MyBidStanding(3, 4, false, BidStandingBand.WITHIN_15_PCT))
             BidStandingRow(MyBidStanding(4, 4, false, BidStandingBand.ABOVE_15_PCT, finalStanding = true))
             BidStandingRow(MyBidStanding(2, 3, false, null, finalStanding = true))
+            BidStandingRow(MyBidStanding(3, 5, false, BidStandingBand.WITHIN_15_PCT, position = BidPosition.UPPER_HALF))
         }
     }
 }

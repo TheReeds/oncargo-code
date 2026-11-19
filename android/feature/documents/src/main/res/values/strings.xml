@@ -11,4 +11,15 @@
     <string name="docs_pdf_no_viewer">No tienes una app para abrir PDF. Instala un lector de PDF e inténtalo de nuevo.</string>
     <string name="docs_pdf_error">No pudimos abrir el documento. Inténtalo de nuevo.</string>
     <string name="docs_file_fallback">Documento</string>
+    <string name="docs_upload_action">Subir documento</string>
+    <string name="docs_upload_title">Subir documento</string>
+    <string name="docs_upload_type">Tipo de documento</string>
+    <string name="docs_upload_hint">Foto (JPG, PNG) o PDF de hasta 10 MB.</string>
+    <string name="docs_upload_camera">Tomar foto</string>
+    <string name="docs_upload_file">Elegir archivo</string>
+    <string name="docs_upload_done">Documento subido</string>
+    <string name="docs_upload_unreadable">No pudimos leer el archivo. Elige otro e inténtalo de nuevo.</string>
+    <string name="docs_upload_format">Solo se aceptan fotos JPG o PNG y archivos PDF.</string>
+    <string name="docs_upload_too_big">El archivo supera los 10 MB. Elige uno más liviano.</string>
+    <string name="docs_upload_camera_error">No pudimos abrir la cámara. Elige un archivo de tu galería.</string>
 </resources>

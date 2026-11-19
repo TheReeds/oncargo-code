@@ -6,6 +6,7 @@ import pe.logyx.core.designsystem.components.PillTone
 import pe.logyx.core.model.AuctionStatus
 import pe.logyx.core.model.AuctionView
 import pe.logyx.core.model.BidOutcome
+import pe.logyx.core.model.BidPosition
 import pe.logyx.core.model.BidStandingBand
 import pe.logyx.core.model.CloseReason
 import pe.logyx.core.model.BookingStatus
@@ -105,8 +106,50 @@ val IncidentCategory.label: String
             IncidentCategory.WRONG_DELIVERY -> R.string.ds_incidentcategory_wrong_delivery
             IncidentCategory.DRIVER_CONDUCT -> R.string.ds_incidentcategory_driver_conduct
             IncidentCategory.OTHER -> R.string.ds_incidentcategory_other
+            IncidentCategory.PICKUP_NO_SHOW -> R.string.ds_incidentcategory_pickup_no_show
+            IncidentCategory.SHIPPER_NO_SHOW -> R.string.ds_incidentcategory_shipper_no_show
+            IncidentCategory.BREAKDOWN -> R.string.ds_incidentcategory_breakdown
+            IncidentCategory.ACCIDENT -> R.string.ds_incidentcategory_accident
+            IncidentCategory.THEFT -> R.string.ds_incidentcategory_theft
+            IncidentCategory.ROAD_BLOCKED -> R.string.ds_incidentcategory_road_blocked
+            IncidentCategory.PARTIAL_DELIVERY -> R.string.ds_incidentcategory_partial_delivery
+            IncidentCategory.PAYMENT_DISPUTE -> R.string.ds_incidentcategory_payment_dispute
+            IncidentCategory.UNKNOWN -> R.string.ds_incidentcategory_unknown
         },
     )
+
+/** Severidad de una incidencia (V23): Baja, Media, Alta, Crítica. */
+@Composable
+fun pe.logyx.core.model.IncidentSeverity.pill() = when (this) {
+    pe.logyx.core.model.IncidentSeverity.LOW -> stringResource(R.string.ds_incidentseverity_low) to PillTone.Neutral
+    pe.logyx.core.model.IncidentSeverity.MEDIUM -> stringResource(R.string.ds_incidentseverity_medium) to PillTone.Amber
+    pe.logyx.core.model.IncidentSeverity.HIGH -> stringResource(R.string.ds_incidentseverity_high) to PillTone.Red
+    pe.logyx.core.model.IncidentSeverity.CRITICAL -> stringResource(R.string.ds_incidentseverity_critical) to PillTone.Red
+    pe.logyx.core.model.IncidentSeverity.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
+}
+
+/** Tipo de ajuste del envío (2.6). */
+val pe.logyx.core.model.AdjustmentType.label: String
+    @Composable get() = stringResource(
+        when (this) {
+            pe.logyx.core.model.AdjustmentType.WEIGHT_DIFF -> R.string.ds_adjustmenttype_weight_diff
+            pe.logyx.core.model.AdjustmentType.DETENTION -> R.string.ds_adjustmenttype_detention
+            pe.logyx.core.model.AdjustmentType.TOLL -> R.string.ds_adjustmenttype_toll
+            pe.logyx.core.model.AdjustmentType.HANDLING -> R.string.ds_adjustmenttype_handling
+            pe.logyx.core.model.AdjustmentType.OTHER -> R.string.ds_adjustmenttype_other
+            pe.logyx.core.model.AdjustmentType.UNKNOWN -> R.string.ds_adjustmenttype_unknown
+        },
+    )
+
+/** Estado de un ajuste: Por responder (ámbar), Aceptado, Rechazado, Retirado. */
+@Composable
+fun pe.logyx.core.model.AdjustmentStatus.pill() = when (this) {
+    pe.logyx.core.model.AdjustmentStatus.PENDING -> stringResource(R.string.ds_adjustmentstatus_pending) to PillTone.Amber
+    pe.logyx.core.model.AdjustmentStatus.ACCEPTED -> stringResource(R.string.ds_adjustmentstatus_accepted) to PillTone.Emerald
+    pe.logyx.core.model.AdjustmentStatus.REJECTED -> stringResource(R.string.ds_adjustmentstatus_rejected) to PillTone.Red
+    pe.logyx.core.model.AdjustmentStatus.WITHDRAWN -> stringResource(R.string.ds_adjustmentstatus_withdrawn) to PillTone.Neutral
+    pe.logyx.core.model.AdjustmentStatus.UNKNOWN -> stringResource(R.string.ds_status_unknown) to PillTone.Neutral
+}
 
 @Composable
 fun IncidentStatus.pill() = when (this) {
@@ -125,6 +168,7 @@ val DocumentType.label: String
             DocumentType.DELIVERY_PHOTO -> R.string.ds_documenttype_delivery_photo
             DocumentType.SIGNATURE -> R.string.ds_documenttype_signature
             DocumentType.OTHER -> R.string.ds_documenttype_other
+            DocumentType.PICKUP_PHOTO -> R.string.ds_documenttype_pickup_photo
         },
     )
 
@@ -208,6 +252,17 @@ fun auctionClosureText(auction: AuctionView?): String? {
         else -> null
     }
 }
+
+/** Posición aproximada de mi oferta (V22, 2.8): solo una banda, nunca montos ajenos (RN04). */
+val BidPosition.label: String
+    @Composable get() = stringResource(
+        when (this) {
+            BidPosition.TOP_TWO -> R.string.ds_position_top_two
+            BidPosition.LOWER_HALF -> R.string.ds_position_lower_half
+            BidPosition.UPPER_HALF -> R.string.ds_position_upper_half
+            BidPosition.UNKNOWN -> R.string.ds_status_unknown
+        },
+    )
 
 /** Texto cualitativo de mi posición frente a la mejor oferta; nunca revela montos ajenos (RN04). */
 val BidStandingBand.label: String

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Gavel, History, SearchX, Truck } from 'lucide-react';
+import { Gavel, History, SearchX, TrendingDown, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QuickFilters } from '@/components/ui/quick-filters';
@@ -15,7 +15,9 @@ import { formatRate, priceBreakdown } from '@/lib/pricing';
 import { loadCommissionRate } from '../commission';
 import NegotiateCell from '@/features/negotiation/components/NegotiateCell';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatMoney, formatTons, VEHICLE_LABELS } from '@/lib/format';
-import type { RequestView } from '@/lib/api/server';
+import type { BidView, RequestView } from '@/lib/api/server';
+import { Can } from '@/lib/permissions/react';
+import ImproveBidDialog from './ImproveBidDialog';
 import { cn } from '@/lib/utils';
 import { BID_STATE_LABEL, CLOSE_REASON_LABEL, bidState, standingText, type BidState } from '../bid-state';
 
@@ -31,7 +33,11 @@ function diffPct(amount: number, suggested?: number | null) {
  * Mis ofertas (transportista): filtros rápidos por estado, tabla que pasa a tarjetas en móvil y acceso a la negociación.
  * `rows` son solicitudes con `myBid` (de `GET /shipment-requests/my-bids`).
  */
-export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView[]; openRequestId?: string | null }) {
+export default function MyBidsTable({ rows: serverRows, openRequestId }: { rows: RequestView[]; openRequestId?: string | null }) {
+  // 2.8: tras mejorar una oferta se actualiza la fila en sitio (sin recargar la página).
+  const [improved, setImproved] = useState<Record<string, BidView>>({});
+  const [improving, setImproving] = useState<RequestView | null>(null);
+  const rows = useMemo(() => serverRows.map((r) => (improved[r.id!] ? { ...r, myBid: { ...r.myBid, ...improved[r.id!] } } : r)), [serverRows, improved]);
   const [filter, setFilter] = useState<Filter>('');
   const [page, setPage] = useState(() => {
     const i = openRequestId ? rows.findIndex((r) => r.id === openRequestId) : -1;
@@ -91,12 +97,14 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
                     <Td label="Mi oferta" className="whitespace-nowrap text-right">
                       <div className="@max-[720px]:text-right">
                         <div className="money text-base">{formatMoney(b.amount)}</div>
+                        {(b.improvedCount ?? 0) > 0 && <div className="inline-flex items-center gap-1 text-xs font-medium text-amber-700" data-testid="bid-improved"><TrendingDown className="size-3" aria-hidden="true" />Mejorada{b.improvedCount! > 1 ? ` · ${b.improvedCount} veces` : ''}</div>}
                         {pending && rate != null && b.amount ? <div className="text-xs text-ink-500" data-testid="bid-net">Cobrarías <span className="font-mono tabular-nums text-ink-700">{formatMoney(priceBreakdown(b.amount, rate).carrierNet)}</span> neto <span className="sr-only">(después de la comisión del {formatRate(rate)} y su IGV)</span></div> : null}
                         {d != null && <div className={cn('font-mono text-xs tabular-nums', d <= 0 ? 'text-emerald-700' : 'text-amber-700')}>{`${d > 0 ? '+' : ''}${d.toFixed(1)}%`}<span className="font-sans text-ink-500"> vs. sugerido {formatMoney(r.suggestedPrice)}</span></div>}
                         {standing && (
                           <div className="mt-1 max-w-52 whitespace-normal text-xs" data-testid="bid-standing">
                             <span className={cn('font-semibold', standing.tone === 'good' ? 'text-emerald-700' : standing.tone === 'warn' ? 'text-amber-700' : 'text-ink-900')}>{standing.headline}</span>
                             {standing.band && <span className="block text-ink-700">{standing.band}</span>}
+                            {standing.position && <span className="block text-ink-700" data-testid="bid-position">{standing.position}</span>}
                           </div>
                         )}
                       </div>
@@ -116,6 +124,7 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
                     <Td actions className="whitespace-nowrap text-right">
                       <div className="flex flex-col items-end gap-1 @max-[720px]:w-full @max-[720px]:items-stretch @max-[720px]:[&>div]:items-stretch">
                         <NegotiateCell requestId={r.id!} route={`${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`} bid={{ id: b.id!, amount: b.amount, status: b.status }} closed={r.status === 'CANCELLED' || (r.status === 'MATCHED' && b.status !== 'ACCEPTED')} floor={r.priceFloor} canWithdraw={open && r.status === 'PUBLISHED'} autoOpen={openRequestId === r.id} />
+                        {pending && open && r.status === 'PUBLISHED' && <Can><Button size="sm" variant="outline" onClick={() => setImproving(r)}><TrendingDown />Mejorar oferta<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button></Can>}
                         <Button size="sm" variant="ghost" onClick={() => setTrail({ bidId: b.id!, route: `${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}` })}><History />Historial<span className="sr-only"> de la oferta de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></Button>
                         {b.status === 'ACCEPTED' && <Button asChild size="sm" variant="ghost"><a href="/transportista/envios"><Truck />Ver envío<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></a></Button>}
                       </div>
@@ -128,6 +137,7 @@ export default function MyBidsTable({ rows, openRequestId }: { rows: RequestView
           {shown.length > PAGE_SIZE && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={PAGE_SIZE} total={shown.length} onPageChange={setPage} /></div>}
         </>
       )}
+      {improving && <ImproveBidDialog key={improving.id} request={improving} open onOpenChange={(o) => !o && setImproving(null)} onImproved={(bid) => setImproved((m) => ({ ...m, [improving.id!]: bid }))} />}
       <Sheet open={!!trail} onOpenChange={(o) => !o && setTrail(null)} title="Historial de la oferta" description={trail?.route}>
         {trail && <div className="p-5"><ActivityTrail key={trail.bidId} subject="BID" id={trail.bidId} title="Actividad de la oferta" liveTypes={['bid.accepted', 'bid.rejected', 'bid.placed', 'counter_offer.updated']} /></div>}
       </Sheet>

@@ -31,6 +31,7 @@ public class AuthResource {
     @Inject AuthRateLimits limits;
     @Inject TenantContext tenant;
     @Inject HttpServerRequest http;
+    @Inject pe.logyx.identity.application.SignupFingerprints signupFingerprints;
 
     /** IP del cliente: la de la conexión o, detrás de un proxy confiable, la de X-Forwarded-For (quarkus.http.proxy). */
     private String clientIp() {
@@ -47,7 +48,9 @@ public class AuthResource {
     @ResponseStatus(201)
     public ApiResponse<AuthResponse> register(@Valid RegisterRequest req) {
         limits.beforeRegister(clientIp());
-        return ApiResponse.of(AuthResponse.of(auth.register(req.toCommand())));
+        var result = auth.register(req.toCommand());
+        signupFingerprints.record(result.user().organization().id(), clientIp());   // 2.15: señales de fraude
+        return ApiResponse.of(AuthResponse.of(result));
     }
 
     @POST

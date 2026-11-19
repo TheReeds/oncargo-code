@@ -30,3 +30,19 @@ export const placeBid = (token: string, id: string, body: Schemas['PlaceBid']) =
   unwrap(apiFor(token).POST('/api/v1/shipment-requests/{id}/bids', { params: { path: { id } }, body }));
 export const withdrawBid = (token: string, id: string) =>
   unwrap(apiFor(token).POST('/api/v1/bids/{id}/withdraw', { params: { path: { id } } }));
+
+// ── Búsquedas guardadas y alertas de carga (2.3) ─────────────────────
+export type SavedSearch = Schemas['SavedSearchView'];
+export const listSavedSearches = (token: string) => unwrap(apiFor(token).GET('/api/v1/saved-searches'));
+export const createSavedSearch = (token: string, body: Schemas['SavedSearchRequest']) => unwrap(apiFor(token).POST('/api/v1/saved-searches', { body }));
+export const updateSavedSearch = (token: string, id: string, body: Schemas['SavedSearchRequest']) =>
+  unwrap(apiFor(token).PUT('/api/v1/saved-searches/{id}', { params: { path: { id } }, body }));
+export const deleteSavedSearch = (token: string, id: string) => unwrap(apiFor(token).DELETE('/api/v1/saved-searches/{id}', { params: { path: { id } } }));
+
+// ── Mejorar oferta, historial y precio de la ruta (2.8) ──────────────
+export const improveBid = (token: string, id: string, body: Schemas['ImproveBid']) =>
+  unwrap(apiFor(token).POST('/api/v1/bids/{id}/improve', { params: { path: { id } }, body }));
+export const bidRevisions = (token: string, id: string) => unwrap(apiFor(token).GET('/api/v1/bids/{id}/revisions', { params: { path: { id } } }));
+/** `null` cuando no hay k ≥ 5 envíos en la ruta (la API responde `data: null`). */
+export const laneStats = async (token: string, id: string) =>
+  (await unwrap(apiFor(token).GET('/api/v1/shipment-requests/{id}/lane-stats', { params: { path: { id } } }))) ?? null;
