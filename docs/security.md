@@ -73,6 +73,11 @@ Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del
   `oncargo.demoPassword` en `~/.gradle/gradle.properties` (sin ella, sin chips). **Residual**: el APK de `/app/` es público y la
   contraseña va dentro (chips): quien lo descargue y lo descompile la obtiene; son datos demo, se rota con el mismo procedimiento.
   La web solo muestra los botones de cuentas demo con `import.meta.env.DEV` (nunca en la imagen de producción).
+- **IP real del cliente en la web (H-10, 2026-11-19)**: `security.allowedDomains` en `web/astro.config.mjs` (`oncargo.tech`
+  y `www`, solo `https`). Astro solo cree `X-Forwarded-For` si el `Host` está validado; antes `ctx.clientAddress` era la IP
+  del contenedor `caddy` y los límites por IP del login, registro, olvidé, cotizador y seguimiento público se compartían entre
+  todos los usuarios de la web. Caddy no tiene `trusted_proxies`, así que **reemplaza** el `X-Forwarded-For` del cliente: el
+  primer valor es la IP real y no se puede falsificar. Con Cloudflare delante habrá que fijar `trusted_proxies` en Caddy.
 - **Pendiente del dueño** (cuentas o paneles suyos; guía en `infra/vps/README.md` § Pendiente del dueño): copia de respaldos
   fuera del VPS (R2), registro CAA, UptimeRobot, Cloudflare (proxy naranja, WAF gestionado, regla de rate limit en
   `/api/v1/auth/*`; **sin Bot Fight Mode**, que desafía a clientes no navegador y rompería la app Android; con proxy hay que
