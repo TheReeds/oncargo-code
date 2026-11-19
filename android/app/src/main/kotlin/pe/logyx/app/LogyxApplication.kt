@@ -23,8 +23,11 @@ class AppConfig(
     val webBaseUrl: String,
     val versionName: String,
     val debug: Boolean,
-    /** Chips de cuentas demo en el login (debug y el APK de pruebas `staging`). */
-    val demoAccounts: Boolean = debug,
+    /**
+     * Contraseña de los chips de cuentas demo en el login; vacía = sin chips. Debug: la de dev; staging: la del VPS de
+     * pruebas (propiedad de Gradle `oncargo.demoPassword`, fuera del repo); release: vacía.
+     */
+    val demoPassword: String = "",
 )
 
 class LogyxApplication : Application() {
@@ -33,7 +36,7 @@ class LogyxApplication : Application() {
         startKoin {
             androidContext(this@LogyxApplication)
             modules(
-                module { single { AppConfig(BuildConfig.API_BASE_URL, BuildConfig.WEB_BASE_URL, BuildConfig.VERSION_NAME, BuildConfig.DEBUG, BuildConfig.DEMO_ACCOUNTS) } },
+                module { single { AppConfig(BuildConfig.API_BASE_URL, BuildConfig.WEB_BASE_URL, BuildConfig.VERSION_NAME, BuildConfig.DEBUG, BuildConfig.DEMO_PASSWORD) } },
                 dataModule(BuildConfig.API_BASE_URL),
                 authModule, loadsModule, requestsModule, shipmentsModule, driverModule,
                 negotiationModule, incidentsModule, notificationsModule, reputationModule, documentsModule, tripsModule,

@@ -101,6 +101,9 @@ services:
       PASSWORD_RESET_URL: ${PASSWORD_RESET_URL:-https://oncargo.tech/restablecer}
       # Clave HMAC del enlace de baja (V24): la generan bootstrap.sh / deploy.sh en state/.env.
       LOGYX_UNSUBSCRIBE_SECRET: ${LOGYX_UNSUBSCRIBE_SECRET:?falta LOGYX_UNSUBSCRIBE_SECRET en .env}
+      # Contraseña de las cuentas demo del entorno de pruebas (DEMO_DATA=true). La del repo (Logyx2026!) es pública:
+      # deploy.sh genera una aleatoria en state/.env. Solo la usa el seeder al crear cuentas que falten.
+      LOGYX_DEMO_PASSWORD: ${LOGYX_DEMO_PASSWORD:-}
       # Solo Caddy (red edge de Docker) puede fijar X-Forwarded-For.
       TRUSTED_PROXIES: 172.16.0.0/12
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError -Djava.util.logging.manager=org.jboss.logmanager.LogManager"

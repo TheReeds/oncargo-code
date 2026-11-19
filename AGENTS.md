@@ -71,7 +71,9 @@ Todo JWT lleva además `sv` (versión de sesión): si no coincide con la BD → 
 `UserInfo.permissions` (`READ`, `OPERATE`, `MANAGE_USERS`, `MANAGE_ORGANIZATION`, `MANAGE_DRIVERS`) sirve para mostrar u ocultar acciones.
 
 ## Cuentas demo (perfil dev del backend)
-`pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe`, `operator@logyx.pe` — contraseña `Logyx2026!` (ver `backend/AGENTS.md`).
+`pyme@logyx.pe`, `carrier@logyx.pe`, `carrier2@logyx.pe`, `driver@logyx.pe`, `operator@logyx.pe` — contraseña `Logyx2026!` en dev (ver `backend/AGENTS.md`).
+**En el VPS de pruebas (`oncargo.tech`) la contraseña es otra** y vive solo en `/opt/oncargo/state/.env` (`LOGYX_DEMO_PASSWORD`) y en
+`~/.gradle/gradle.properties` (`oncargo.demoPassword`, chips del APK staging). El repo es público: **nunca la escribas en él**.
 Misma PYME con otros roles: `pyme.ops@logyx.pe` (OPS) y `pyme.viewer@logyx.pe` (VIEWER). Correos en dev (restablecer,
 invitaciones): `GET http://localhost:8080/api/v1/dev/mailbox?to=<email>`.
 

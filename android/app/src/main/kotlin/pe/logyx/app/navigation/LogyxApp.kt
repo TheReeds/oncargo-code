@@ -127,7 +127,7 @@ fun LogyxApp(auth: AuthRepository = koinInject(), config: AppConfig = koinInject
             } else {
                 LoginRoute(
                     onOpenRegister = { context.startActivity(Intent(Intent.ACTION_VIEW, "${config.webBaseUrl}/registro".toUri())) },
-                    demoAccounts = if (config.demoAccounts) DEMO_ACCOUNTS else emptyList(),
+                    demoAccounts = demoAccounts(config.demoPassword),
                     onOpenCatalog = if (config.debug) ({ showCatalog = true }) else null,
                 )
             }
@@ -137,10 +137,11 @@ fun LogyxApp(auth: AuthRepository = koinInject(), config: AppConfig = koinInject
     }
 }
 
-private val DEMO_ACCOUNTS = listOf(
-    DemoAccount("PYME", "pyme@logyx.pe", "Logyx2026!"),
-    DemoAccount("Transportista", "carrier@logyx.pe", "Logyx2026!"),
-    DemoAccount("Conductor", "driver@logyx.pe", "Logyx2026!"),
+/** Chips de cuentas demo: solo si el build trae su contraseña (`AppConfig.demoPassword`). */
+private fun demoAccounts(password: String) = if (password.isEmpty()) emptyList() else listOf(
+    DemoAccount("PYME", "pyme@logyx.pe", password),
+    DemoAccount("Transportista", "carrier@logyx.pe", password),
+    DemoAccount("Conductor", "driver@logyx.pe", password),
 )
 
 private enum class AppRole { Carrier, Pyme, Driver, Unsupported }

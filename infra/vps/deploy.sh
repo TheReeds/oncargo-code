@@ -26,6 +26,13 @@ fi
 # Secretos agregados después del primer despliegue (V24: clave del enlace de baja). Se generan una vez y se conservan.
 grep -q '^LOGYX_UNSUBSCRIBE_SECRET=' state/.env || echo "LOGYX_UNSUBSCRIBE_SECRET=$(openssl rand -base64 48 | tr -d '/+=' | cut -c1-48)" >> state/.env
 grep -q '^LOGYX_PAYOUT_KEY=' state/.env || echo "LOGYX_PAYOUT_KEY=$(openssl rand -base64 32)" >> state/.env
+# Contraseña de las cuentas demo (la del repo es pública). Legible, 16 caracteres: 4 bloques de 4 (mayúsculas,
+# minúsculas, un dígito y un símbolo; cumple la política de 8–72). Las cuentas ya creadas conservan la suya.
+grep -q '^LOGYX_DEMO_PASSWORD=' state/.env || echo "LOGYX_DEMO_PASSWORD=$(python3 -c '
+import secrets as s
+U, L = "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz"
+b = lambda: s.choice(U) + "".join(s.choice(L) for _ in range(3))
+print(b() + s.choice("23456789") + s.choice(L) + s.choice(L) + s.choice("!*-.") + b() + b())')" >> state/.env
 ln -sfn /opt/oncargo/state/.env src.new/infra/vps/.env
 rm -rf src.new/infra/secrets && ln -sfn /opt/oncargo/state/secrets src.new/infra/secrets
 rm -rf src.old && { [[ -d src ]] && mv src src.old || true; } && mv src.new src

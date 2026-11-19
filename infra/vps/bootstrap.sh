@@ -18,7 +18,7 @@ MINIO_ROOT_PASSWORD=$(rnd)
 LOGYX_UNSUBSCRIBE_SECRET=$(rnd)$(rnd)
 # Clave AES-256 de los datos de cobro del transportista (V24, ADR-0014). Respáldala: sin ella no se leen.
 LOGYX_PAYOUT_KEY=$(openssl rand -base64 32)
-# Entorno de pruebas: cuentas demo (*@logyx.pe, Logyx2026!). En producción real: false.
+# Entorno de pruebas: cuentas demo (*@logyx.pe; contraseña LOGYX_DEMO_PASSWORD, la agrega deploy.sh). En producción real: false.
 DEMO_DATA=true
 # Cookie de sesión solo por HTTPS (el acceso por IP redirige al dominio).
 COOKIE_SECURE=true

@@ -424,9 +424,12 @@ Rutas: todos los recursos usan la raíz `@Path("/api/v1")` (o la misma raíz exa
 Los códigos son contrato: no reutilices ni cambies uno existente; agrega el siguiente número.
 
 ## Cuentas demo (solo perfil dev)
-`pe.logyx.devdata.DemoDataSeeder` (`@IfBuildProfile("dev")`, en `StartupEvent`) crea, si no existe `pyme@logyx.pe`,
+`pe.logyx.devdata.DemoDataSeeder` (`@IfBuildProperty logyx.demo-data=true`: dev y la imagen del VPS de pruebas; en `StartupEvent`) crea, si no existe `pyme@logyx.pe`,
 todo mediante los casos de uso reales autenticado como cada usuario (JWT → `CurrentIdentityAssociation`, con RLS).
-Contraseña de todas: `Logyx2026!`.
+Contraseña de todas: `Logyx2026!` en dev y tests (valor por omisión de `logyx.demo.password`). **El VPS de pruebas usa otra**,
+aleatoria, en `/opt/oncargo/state/.env` (`LOGYX_DEMO_PASSWORD`, la genera `infra/vps/deploy.sh`): el repo es público.
+Nunca la escribas en el repo. El seeder solo la usa al crear cuentas que falten (y no la escribe en el log salvo la de dev);
+para cambiarla en cuentas ya creadas: `POST /api/v1/auth/change-password` con cada una (cierra sus sesiones, `sv`).
 
 | Email | Rol | Organización |
 |---|---|---|

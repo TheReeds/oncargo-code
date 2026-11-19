@@ -13,6 +13,7 @@ import io.smallrye.jwt.auth.principal.JWTParser;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import jakarta.persistence.EntityManager;
 import pe.logyx.catalog.domain.CargoType;
@@ -77,7 +78,8 @@ import java.util.function.Supplier;
 @ApplicationScoped
 public class DemoDataSeeder {
 
-    public static final String PASSWORD = "Logyx2026!";
+    /** Contraseña demo de dev y tests. El VPS de pruebas usa otra ({@code LOGYX_DEMO_PASSWORD} en state/.env). */
+    public static final String DEFAULT_PASSWORD = "Logyx2026!";
     public static final String PYME_EMAIL = "pyme@logyx.pe";
     public static final String CARRIER_EMAIL = "carrier@logyx.pe";
     public static final String CARRIER2_EMAIL = "carrier2@logyx.pe";
@@ -86,6 +88,10 @@ public class DemoDataSeeder {
     /** V14 (F03): usuarios OPS y VIEWER de la PYME demo. */
     public static final String PYME_OPS_EMAIL = "pyme.ops@logyx.pe";
     public static final String PYME_VIEWER_EMAIL = "pyme.viewer@logyx.pe";
+
+    /** Contraseña de todas las cuentas demo. El repo es público: fuera de dev se fija por entorno (ver backend/AGENTS.md). */
+    @ConfigProperty(name = "logyx.demo.password", defaultValue = DEFAULT_PASSWORD)
+    String password;
 
     @Inject AuthService auth;
     @Inject pe.logyx.identity.application.OrganizationVerificationService verification;
@@ -123,8 +129,10 @@ public class DemoDataSeeder {
         seed();
         ensureDemoTeam();
         acceptDemoTerms();
+        // La contraseña solo se escribe en el log si es la de dev (la del VPS no debe quedar en los registros).
         Log.infof("Datos demo creados: %s, %s, %s, %s, %s (contraseña %s)",
-                PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL, PASSWORD);
+                PYME_EMAIL, CARRIER_EMAIL, CARRIER2_EMAIL, DRIVER_EMAIL, OPERATOR_EMAIL,
+                DEFAULT_PASSWORD.equals(password) ? password : "la de logyx.demo.password");
     }
 
     /**
@@ -166,9 +174,9 @@ public class DemoDataSeeder {
         // SystemTx: arranque sin usuario; busca la organización de la PYME demo.
         UUID pymeOrg = systemTx.call(() -> accounts.byEmail(PYME_EMAIL).map(p -> p.organizationId()).orElse(null));
         if (pymeOrg == null) return;
-        auth.provisionUser(pymeOrg, PYME_OPS_EMAIL, PASSWORD, "Rosa Quispe (Operaciones)",
+        auth.provisionUser(pymeOrg, PYME_OPS_EMAIL, password, "Rosa Quispe (Operaciones)",
                 pe.logyx.identity.domain.model.Profile.Role.OPS);
-        auth.provisionUser(pymeOrg, PYME_VIEWER_EMAIL, PASSWORD, "Luis Mamani (Lector)",
+        auth.provisionUser(pymeOrg, PYME_VIEWER_EMAIL, password, "Luis Mamani (Lector)",
                 pe.logyx.identity.domain.model.Profile.Role.VIEWER);
     }
 
@@ -193,15 +201,15 @@ public class DemoDataSeeder {
     private void seed() {
         // ---------- Organizaciones (RUCs válidos por módulo 11)
         AuthResult pyme = auth.register(new RegisterCommand(OrgType.PYME, "Comercial Altiplano SAC", "20601234565",
-                "Juliaca", "951234567", "María Mamani Quispe", PYME_EMAIL, PASSWORD));
+                "Juliaca", "951234567", "María Mamani Quispe", PYME_EMAIL, password));
         AuthResult carrier = auth.register(new RegisterCommand(OrgType.CARRIER, "Transportes Sur Andino SRL",
-                "20602345671", "Arequipa", "959876543", "Carlos Huamán Ccori", CARRIER_EMAIL, PASSWORD));
+                "20602345671", "Arequipa", "959876543", "Carlos Huamán Ccori", CARRIER_EMAIL, password));
         AuthResult carrier2 = auth.register(new RegisterCommand(OrgType.CARRIER, "Logística Titicaca EIRL",
-                "20603456786", "Puno", "951112233", "Rosa Condori Apaza", CARRIER2_EMAIL, PASSWORD));
+                "20603456786", "Puno", "951112233", "Rosa Condori Apaza", CARRIER2_EMAIL, password));
 
         // Operador LOGYX: no hay registro público, lo crea la plataforma
         AuthResult operator = auth.provisionOperator("LOGYX Operaciones SAC", "20604567891", "Lucía Ramos Torres",
-                OPERATOR_EMAIL, PASSWORD);
+                OPERATOR_EMAIL, password);
 
         // RN01: el operador verifica las tres organizaciones demo (sello "Verificado"); las que se registren después
         // quedan PENDING hasta que el operador las revise en su bandeja.
@@ -218,7 +226,7 @@ public class DemoDataSeeder {
                 vehicle("ASA-101", Vehicle.Type.TRUCK_MEDIUM, 8000, 40),
                 vehicle("ASA-202", Vehicle.Type.TRUCK_LARGE, 20000, 80),
                 vehicle("ASA-303", Vehicle.Type.REFRIGERATED, 6000, 30),
-                fleet.addDriver(new AddDriverCommand("Juan Pari Mamani", DRIVER_EMAIL, PASSWORD, "Q45678912"))
+                fleet.addDriver(new AddDriverCommand("Juan Pari Mamani", DRIVER_EMAIL, password, "Q45678912"))
                         .driver().id()));
         record Fleet2(UUID small, UUID platform) {}
         Fleet2 titicaca = as(carrier2, () -> new Fleet2(
@@ -430,7 +438,7 @@ public class DemoDataSeeder {
     }
 
     private AuthResult lookup(String email) {
-        return auth.login(email, PASSWORD);
+        return auth.login(email, password);
     }
 
     /** Ejecuta {@code work} autenticado como el usuario del token, con RLS activo. */

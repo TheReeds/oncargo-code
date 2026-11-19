@@ -27,6 +27,10 @@ val keystoreProps = Properties().apply {
 }
 fun signingProp(name: String): String? = keystoreProps.getProperty(name) ?: (project.findProperty(name) as String?)
 val testStoreFile = signingProp("oncargoTestStoreFile")?.let { file(it) }?.takeIf { it.exists() }
+// Contraseña de los chips «Cuentas de prueba» del APK staging: la del VPS de pruebas, que NO es la del repo (público).
+// Va en ~/.gradle/gradle.properties (oncargo.demoPassword=…) o con -Poncargo.demoPassword=…; sin ella, no hay chips.
+val stagingDemoPassword: String = (project.findProperty("oncargo.demoPassword") as String?)?.trim().orEmpty()
+fun buildConfigString(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 // ABIs del APK de pruebas: los celulares reales son ARM. Para el emulador x86_64: -PstagingAbis=x86_64
 val stagingAbis = ((project.findProperty("stagingAbis") as String?) ?: "arm64-v8a,armeabi-v7a")
     .split(",").map { it.trim() }.filter { it.isNotEmpty() }
@@ -59,7 +63,8 @@ android {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
             buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
-            buildConfigField("boolean", "DEMO_ACCOUNTS", "true")
+            // Debug apunta al backend local (perfil dev): contraseña demo de dev.
+            buildConfigField("String", "DEMO_PASSWORD", "\"Logyx2026!\"")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
@@ -69,7 +74,7 @@ android {
             val prodWeb = (project.findProperty("webBaseUrl") as String?) ?: "https://oncargo.tech"
             buildConfigField("String", "API_BASE_URL", "\"$prodApi\"")
             buildConfigField("String", "WEB_BASE_URL", "\"$prodWeb\"")
-            buildConfigField("boolean", "DEMO_ACCOUNTS", "false")
+            buildConfigField("String", "DEMO_PASSWORD", "\"\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -83,8 +88,8 @@ android {
             versionNameSuffix = "-$gitShortSha"
             buildConfigField("String", "API_BASE_URL", "\"https://api.oncargo.tech\"")
             buildConfigField("String", "WEB_BASE_URL", "\"https://oncargo.tech\"")
-            // La API de pruebas tiene las cuentas demo: chips de acceso rápido en el login.
-            buildConfigField("boolean", "DEMO_ACCOUNTS", "true")
+            // La API de pruebas tiene las cuentas demo: chips de acceso rápido en el login, solo si hay contraseña.
+            buildConfigField("String", "DEMO_PASSWORD", buildConfigString(stagingDemoPassword))
             ndk { abiFilters += stagingAbis }
             signingConfig = signingConfigs.findByName("oncargoTest")
         }

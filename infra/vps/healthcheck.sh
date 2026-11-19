@@ -10,9 +10,18 @@
 #   ALERT_WEBHOOK_URL=https://ntfy.sh/<tema-aleatorio>   POST de texto plano (ntfy, Discord/Slack vía puente…)
 #   HEARTBEAT_URL=https://hc-ping.com/<uuid>             latido en cada chequeo correcto (healthchecks.io):
 #                                                        avisa también si el VPS entero se cae (sin latido)
-# Uso manual: sudo oncargo-health [-v]
+# El mensaje lleva solo el estado, la hora y qué falló (servicio/URL pública, código HTTP, porcentaje): nunca
+# contenido de .env, tokens ni respuestas de la API. Un tema de ntfy.sh lo lee cualquiera que conozca su nombre.
+# Uso manual: sudo oncargo-health [-v]   ·   sudo oncargo-health --test-alert (manda una alerta de prueba y sale)
 set -uo pipefail
 [[ -f /etc/oncargo/alert.env ]] && . /etc/oncargo/alert.env
+if [[ "${1:-}" == "--test-alert" ]]; then
+  [[ -n "${ALERT_WEBHOOK_URL:-}" ]] || { echo "Falta ALERT_WEBHOOK_URL en /etc/oncargo/alert.env" >&2; exit 1; }
+  curl -fsS -m 10 -H "Title: OnCargo VPS: PRUEBA" -H "Tags: test_tube" \
+    --data-raw "Alerta de prueba de oncargo-health ($(date -Is)). No hay nada caído." "$ALERT_WEBHOOK_URL" > /dev/null \
+    && echo "Alerta de prueba enviada" || { echo "No se pudo enviar la alerta" >&2; exit 1; }
+  exit 0
+fi
 DOMAIN="${DOMAIN:-oncargo.tech}"
 STATUS_DIR=/var/lib/oncargo
 DISK_MAX_PCT="${DISK_MAX_PCT:-85}"
@@ -96,7 +105,8 @@ fi
 # Alerta solo si cambió el estado o el detalle de las fallas.
 if [[ "$state" != "${prev:-OK}" || ( $state == FALLA && "$body" != "$prev_body" ) ]]; then
   if [[ -n "${ALERT_WEBHOOK_URL:-}" ]]; then
-    curl -fsS -m 10 -H "Title: OnCargo VPS: $state" --data-raw "$(cat "$STATUS_DIR/health.txt")" "$ALERT_WEBHOOK_URL" > /dev/null \
+    prio=default; [[ $state == FALLA ]] && prio=high
+    curl -fsS -m 10 -H "Title: OnCargo VPS: $state" -H "Priority: $prio" --data-raw "$(cat "$STATUS_DIR/health.txt")" "$ALERT_WEBHOOK_URL" > /dev/null \
       || logger -t oncargo-health -p user.warning "no se pudo enviar la alerta"
   fi
 fi

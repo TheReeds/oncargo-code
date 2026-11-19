@@ -50,8 +50,8 @@ Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del
 - **Red**: UFW (22, 80, 443 tcp/udp) + `DOCKER-USER` como lista blanca (solo 80/443 hacia contenedores, por puerto original);
   `db` y `minio` en una red `internal: true` (sin salida a Internet); `http://<IP>` redirige al dominio (ya no hay login en claro);
   `/q/*` de Quarkus cerrado en el proxy salvo `/q/health*`.
-- **SSH**: solo clave, `AllowUsers deploy root`, sin reenvío X11/agente/túneles, KEX/cifrados/MAC modernos; puerto 22 (cambiarlo
-  requiere aprobación). fail2ban: `sshd`, `recidive` (solo reincidentes de sshd), y sobre el log de Caddy `oncargo-caddy-probe`
+- **SSH**: solo clave, `AllowUsers deploy root`, sin reenvío X11/agente/túneles, KEX/cifrados/MAC modernos; puerto 22 (ver
+  «Descartado por ahora»). fail2ban: `sshd`, `recidive` (solo reincidentes de sshd), y sobre el log de Caddy `oncargo-caddy-probe`
   y `oncargo-caddy-auth`, que bloquean **solo 80/443** (nunca dejan al administrador sin SSH). Umbrales altos por el CGNAT móvil.
 - **Contenedores**: `no-new-privileges`, `cap_drop: ALL` (+ mínimas en db/caddy), `pids_limit`, `read_only` en caddy, web y
   backend; AppArmor `docker-default`; MinIO sin consola y bucket privado.
@@ -62,14 +62,26 @@ Detalle, reversión y estado por control: `infra/vps/README.md` § Seguridad del
   `oncargo-backup verify` con conteos; incluyen `state/.env` (todas las claves: JWT, `LOGYX_UNSUBSCRIBE_SECRET`,
   `LOGYX_PAYOUT_KEY`). **Residual**: la copia está en el mismo disco hasta configurar el destino externo (R2).
 - **Monitoreo**: `oncargo-health` cada 5 min (web, API, APK, contenedores, disco, memoria, certificado, antigüedad del respaldo);
-  **residual**: sin canal de alerta ni latido externo configurados (necesitan una cuenta del usuario: ntfy/healthchecks.io/UptimeRobot).
-- **Pendiente con decisión del usuario**: Cloudflare (proxy naranja, WAF gestionado, regla de rate limit en `/api/v1/auth/*`;
-  **sin Bot Fight Mode**, que desafía a clientes no navegador y rompería la app Android; con proxy hay que restaurar la IP real
-  con `trusted_proxies` de Caddy para los rangos de Cloudflare y limitar 80/443 a esos rangos en `DOCKER-USER`), HSTS `preload`,
-  registro CAA `0 issue "letsencrypt.org"`, reinicio por parches de kernel, destino externo de respaldos y proveedor SMTP.
-- **Contraseña demo pública**: `Logyx2026!` está en el repo público y abre las cuentas `*@logyx.pe` del VPS (datos demo, pero
-  con acceso de operador). Propuesta: el seeder lee `DEMO_PASSWORD` (por omisión `Logyx2026!` en dev) y el VPS la define en
-  `state/.env` con un valor propio que se comparte solo con los evaluadores; cambia `backend/` (DemoDataSeeder), pendiente.
+  alerta por **ntfy.sh** (tema aleatorio de 128 bits en `/etc/oncargo/alert.env`, fuera del repo) solo en cambios de estado. El
+  mensaje lleva el estado, la hora y qué falló (URL pública, código, servicio): sin secretos, porque un tema de ntfy lo lee quien
+  conozca su nombre. **Residual**: sin monitor externo (si el VPS entero cae, nadie avisa) hasta UptimeRobot o healthchecks.io.
+- **Parches de kernel**: `unattended-upgrades` instala; el reinicio se hace a mano en una ventana (2026-11-19: 6.8.0-147 → 149).
+  Tras reiniciar vuelven solos los contenedores (`restart: unless-stopped`), UFW, `DOCKER-USER`, fail2ban y los timers.
+- **Contraseña demo**: `Logyx2026!` (repo público) queda solo para dev y tests. En el VPS las cuentas `*@logyx.pe` usan otra,
+  aleatoria (`LOGYX_DEMO_PASSWORD` en `state/.env`, que `deploy.sh` genera si falta; el seeder la lee de `logyx.demo.password`
+  y no la escribe en el log); se cambió por la API (`/auth/change-password`, cierra las sesiones). El APK staging la toma de
+  `oncargo.demoPassword` en `~/.gradle/gradle.properties` (sin ella, sin chips). **Residual**: el APK de `/app/` es público y la
+  contraseña va dentro (chips): quien lo descargue y lo descompile la obtiene; son datos demo, se rota con el mismo procedimiento.
+  La web solo muestra los botones de cuentas demo con `import.meta.env.DEV` (nunca en la imagen de producción).
+- **Pendiente del dueño** (cuentas o paneles suyos; guía en `infra/vps/README.md` § Pendiente del dueño): copia de respaldos
+  fuera del VPS (R2), registro CAA, UptimeRobot, Cloudflare (proxy naranja, WAF gestionado, regla de rate limit en
+  `/api/v1/auth/*`; **sin Bot Fight Mode**, que desafía a clientes no navegador y rompería la app Android; con proxy hay que
+  restaurar la IP real con `trusted_proxies` de Caddy y limitar 80/443 a los rangos de Cloudflare en `DOCKER-USER`) y proveedor SMTP.
+- **Descartado por ahora**:
+  - *Cambiar el puerto SSH 22*: solo reduce ruido de bots; la protección real ya está (clave obligatoria, `AllowUsers`,
+    fail2ban `sshd` + `recidive`) y la consola web de Hostinger sirve de respaldo. Cambiarlo suma riesgo de quedarse fuera.
+  - *HSTS `preload`*: entrar en la lista de los navegadores es prácticamente irreversible (salir tarda meses) y obliga a HTTPS en
+    todo subdominio futuro; no conviene mientras el dominio está en fase de pruebas. Se mantiene HSTS de 1 año sin `preload`.
 
 ### Ola 2 · zona T (V22)
 - **Documentos de flota** (`fleet_documents`: SOAT, revisión técnica, licencia, DNI…): privados del transportista por RLS (`fleet_documents_owner`; el operador solo lee). Inmutables: el único `UPDATE` permitido es `superseded_at`. La PYME **no** los lee: solo recibe los sellos derivados (`bids.soat_valid_until`/`inspection_valid_until`). Descarga solo por `GET /fleet/documents/{id}/file` (propietario; `nosniff`, `no-store`). Formato por firma binaria y tamaño como la evidencia (ADR-0005).
