@@ -2,6 +2,7 @@ package pe.logyx.core.designsystem
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -178,7 +179,10 @@ fun LogyxTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable 
             colorScheme = if (darkTheme) DarkScheme else LightScheme,
             typography = LogyxTypography,
             shapes = LogyxShapes,
-            content = content,
-        )
+        ) {
+            // Texto fuera de un Surface/Scaffold (p. ej. el login) hereda el color de fondo correcto; sin esto
+            // queda negro sobre el fondo oscuro.
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground, content = content)
+        }
     }
 }

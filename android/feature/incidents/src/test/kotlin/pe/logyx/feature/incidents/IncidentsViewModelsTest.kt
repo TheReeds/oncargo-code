@@ -35,6 +35,11 @@ private class FakeIncidents(
     var commentResult: ((String) -> Result<IncidentView>)? = null,
 ) : IncidentsRepository {
     var reported: Triple<String, IncidentCategory, String>? = null
+    val requests = mutableListOf<Pair<ReportIncidentRequest, String?>>()
+    override suspend fun report(shipmentId: String, request: ReportIncidentRequest, idempotencyKey: String?): Result<IncidentView> {
+        requests += request to idempotencyKey
+        return report(shipmentId, request.category, request.description)
+    }
     override suspend fun report(shipmentId: String, category: IncidentCategory, description: String): Result<IncidentView> {
         reported = Triple(shipmentId, category, description); return reportResult
     }
@@ -44,13 +49,17 @@ private class FakeIncidents(
     override suspend fun mine(active: Boolean?, page: Int) = Result.failure<Page<IncidentView>>(IllegalStateException())
 }
 
-private class FakeDocs(var fail: Boolean = false) : DocumentsRepository {
+private class FakeDocs(var fail: Boolean = false, val failNames: Set<String> = emptySet()) : DocumentsRepository {
     var uploads = 0
+    val names = mutableListOf<String>()
+    val types = mutableListOf<DocumentType>()
     override suspend fun list(shipmentId: String) = Result.success(emptyList<DocumentView>())
     override suspend fun file(documentId: String) = Result.success(ByteArray(0))
     override suspend fun upload(shipmentId: String, bytes: ByteArray, fileName: String, mime: String, type: DocumentType, stopId: String?): Result<DocumentView> {
         uploads++
-        return if (fail) Result.failure(ApiException(500, null, "x")) else Result.success(DocumentView("d1", shipmentId, type = type))
+        names += fileName
+        types += type
+        return if (fail || fileName in failNames) Result.failure(ApiException(500, null, "x")) else Result.success(DocumentView("doc-$uploads", shipmentId, type = type))
     }
 }
 
@@ -87,16 +96,8 @@ class IncidentsViewModelsTest {
         val vm = ReportIncidentViewModel("s1", inc, docs)
         vm.onCategory(IncidentCategory.LOST_CARGO); vm.onDescription("Falta un bulto")
         vm.askSubmit(); vm.confirmSubmit()
-        assertEquals("i1", vm.state.value.reportedId); assertFalse(vm.state.value.photoFailed); assertEquals(0, docs.uploads)
+        assertEquals("i1", vm.state.value.reportedId); assertEquals(0, vm.state.value.attachFailed); assertEquals(0, docs.uploads)
         assertEquals(Triple("s1", IncidentCategory.LOST_CARGO, "Falta un bulto"), inc.reported)
-    }
-
-    @Test fun `si la foto falla la incidencia ya existe y se marca photoFailed`() {
-        val docs = FakeDocs(fail = true)
-        val vm = ReportIncidentViewModel("s1", FakeIncidents(), docs)
-        vm.onCategory(IncidentCategory.CARGO_DAMAGE); vm.onDescription("Caja rota"); vm.onPhoto(byteArrayOf(1, 2))
-        vm.askSubmit(); vm.confirmSubmit()
-        assertEquals(1, docs.uploads); assertEquals("i1", vm.state.value.reportedId); assertTrue(vm.state.value.photoFailed)
     }
 
     @Test fun `409 de incidencia activa muestra el mensaje de la API y no navega`() {

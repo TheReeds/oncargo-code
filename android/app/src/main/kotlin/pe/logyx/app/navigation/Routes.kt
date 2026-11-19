@@ -28,6 +28,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class IncidentsList(val shipmentId: String)
 @Serializable data class ReportIncident(val shipmentId: String)
 @Serializable data class IncidentDetail(val incidentId: String)
+@Serializable data object NotificationPreferences
 
 // Fase 4: viajes publicados, retornos y Smart Load
 @Serializable data object CarrierTrips

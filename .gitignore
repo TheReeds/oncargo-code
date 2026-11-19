@@ -27,3 +27,8 @@ __pycache__/
 # Videos fuente (la web usa las versiones optimizadas en web/public/media)
 media/*.mp4
 infra/vps/.env
+
+# Firma del APK de pruebas (nunca al repo; ver android/AGENTS.md › «APK de pruebas»)
+android/keystore.properties
+*.jks
+*.keystore

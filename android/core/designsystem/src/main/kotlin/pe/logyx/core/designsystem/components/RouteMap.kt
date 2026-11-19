@@ -102,7 +102,7 @@ fun RouteMap(
         AndroidView(
             modifier = Modifier.matchParentSize().semantics { this.contentDescription = contentDescription },
             factory = {
-                mapView.getMapAsync { map -> map.setStyle(Style.Builder().fromUri(styleUrl)) { style -> drawRoute(map, style, origin, destination, road, lineColor) } }
+                mapView.getMapAsync { map -> map.setStyle(Style.Builder().fromUri(styleUrl)) { style -> localizeLabels(style); drawRoute(map, style, origin, destination, road, lineColor) } }
                 mapView
             },
             update = {
@@ -128,6 +128,17 @@ private const val ROUTE_DARK = "#38A3C9"
 
 private const val SOURCE_ID = "logyx-route"
 private const val POINTS_ID = "logyx-route-points"
+
+/**
+ * Etiquetas del mapa en español: los estilos de OpenFreeMap muestran `name:latin`/`name_en` («Department of Puno»).
+ * Se reemplaza el texto de cada capa de símbolos por `name:es` → `name` (nombre local, ya en español en el Perú).
+ */
+private fun localizeLabels(style: Style) {
+    val spanish = Expression.coalesce(Expression.get("name:es"), Expression.get("name"))
+    style.layers.filterIsInstance<org.maplibre.android.style.layers.SymbolLayer>().forEach { layer ->
+        if (!layer.textField.isNull) layer.setProperties(PropertyFactory.textField(spanish))
+    }
+}
 
 private fun drawRoute(map: MapLibreMap, style: Style, origin: GeoPoint?, destination: GeoPoint?, road: List<GeoPoint>?, color: String) {
     if (origin == null || destination == null) return

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="notifications_title">Notificaciones</string>
+    <string name="notifications_title">Avisos</string>
     <string name="notifications_filter_all">Todas</string>
     <string name="notifications_filter_unread">Sin leer</string>
     <string name="notifications_filter_mine">Solo míos</string>
@@ -12,4 +12,11 @@
     <string name="notifications_empty_message">No tienes notificaciones por ahora. Te avisaremos cuando haya novedades.</string>
     <string name="notifications_empty_unread_message">No tienes notificaciones sin leer.</string>
     <string name="notifications_unread_state">Sin leer</string>
+    <string name="notifications_open_prefs">Preferencias de aviso</string>
+    <string name="notifications_prefs_title">Preferencias de aviso</string>
+    <string name="notifications_prefs_intro">Elige qué avisos recibes en la app y por correo.</string>
+    <string name="notifications_prefs_in_app">En la app</string>
+    <string name="notifications_prefs_email">Por correo</string>
+    <string name="notifications_prefs_locked">Siempre activo: son avisos de tu cuenta.</string>
+    <string name="notifications_prefs_saved">Preferencia guardada</string>
 </resources>

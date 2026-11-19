@@ -23,40 +23,66 @@ import pe.logyx.core.model.DocumentType
 import pe.logyx.core.model.IncidentCategory
 import pe.logyx.core.model.IncidentView
 import pe.logyx.core.model.RealtimeEvent
+import pe.logyx.core.model.ReportIncidentRequest
 import pe.logyx.core.model.RealtimeTypes
 import pe.logyx.core.network.ApiException
+import java.util.UUID
 
 const val MAX_DESCRIPTION = 2000
 
 /** `@Size(max = 2000)` del comentario de incidencia (`body`; RN07 aplica a las partes). */
 const val MAX_INCIDENT_COMMENT = 2000
 
-/** Foto tomada (bytes JPEG). Clase propia para tener igualdad por identidad en el estado. */
-class IncidentPhoto(val bytes: ByteArray)
+/** Máximo de adjuntos por incidencia (`attachmentIds`, contrato V23). */
+const val MAX_ATTACHMENTS = 5
+
+/** Tamaño máximo de un adjunto (como los documentos del envío). */
+const val MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+
+/** Formatos que acepta el servidor para los documentos del envío. */
+val ATTACHMENT_MIME_TYPES = arrayOf("image/jpeg", "image/png", "application/pdf")
+
+/** Archivo elegido para adjuntar (foto de la cámara o JPG/PNG/PDF). Clase propia: igualdad por identidad en el estado. */
+class IncidentAttachment(val id: Int, val bytes: ByteArray, val fileName: String, val mime: String) {
+    val isImage: Boolean get() = mime.startsWith("image/")
+    val isPdf: Boolean get() = mime == "application/pdf"
+}
 
 // ───────────────────────── Reportar ─────────────────────────
 
 data class ReportUiState(
     val category: IncidentCategory? = null,
     val description: String = "",
-    val photo: IncidentPhoto? = null,
+    val attachments: List<IncidentAttachment> = emptyList(),
     val categoryError: UiText? = null,
     val descriptionError: UiText? = null,
     val confirming: Boolean = false,
     val submitting: Boolean = false,
     val message: UiMessage? = null,
-    /** Id de la incidencia creada; la UI navega (tras avisar si [photoFailed]). */
+    /** Id de la incidencia creada; la UI navega (tras avisar si [attachFailed] > 0). */
     val reportedId: String? = null,
-    val photoFailed: Boolean = false,
-)
+    /** Cuántos adjuntos no se pudieron subir: la incidencia se reportó sin ellos. */
+    val attachFailed: Int = 0,
+) {
+    val canAttachMore: Boolean get() = attachments.size < MAX_ATTACHMENTS
+}
 
 class ReportIncidentViewModel(
     private val shipmentId: String,
     private val incidents: IncidentsRepository,
     private val documents: DocumentsRepository,
+    private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val _state = MutableStateFlow(ReportUiState())
     val state: StateFlow<ReportUiState> = _state.asStateFlow()
+
+    private var nextAttachmentId = 0
+
+    /** Adjuntos ya subidos como documento del envío (por id de adjunto): un reintento del reporte no los sube otra vez. */
+    private val uploaded = mutableMapOf<Int, String>()
+
+    /** Cuerpo y clave del último reporte enviado: si falló (red) y se reintenta igual, sale con la misma `Idempotency-Key`. */
+    private var lastReport: Pair<ReportIncidentRequest, String>? = null
 
     fun onCategory(c: IncidentCategory) = _state.update { it.copy(category = c, categoryError = null) }
 
@@ -65,9 +91,36 @@ class ReportIncidentViewModel(
         _state.update { it.copy(description = text, descriptionError = null) }
     }
 
-    fun onPhoto(bytes: ByteArray?) = _state.update { it.copy(photo = bytes?.let(::IncidentPhoto)) }
+    /**
+     * Agrega un adjunto (foto de la cámara o archivo elegido): valida cantidad (5), formato (JPG, PNG o PDF) y tamaño (10 MB).
+     * Devuelve si quedó agregado; si no, deja el aviso.
+     */
+    fun addAttachment(bytes: ByteArray?, fileName: String, mime: String?): Boolean {
+        val error = when {
+            _state.value.submitting -> return false
+            !_state.value.canAttachMore -> R.string.incidents_attach_limit
+            bytes == null || bytes.isEmpty() -> R.string.incidents_attach_unreadable
+            mime == null || mime !in ATTACHMENT_MIME_TYPES -> R.string.incidents_attach_format
+            bytes.size > MAX_ATTACHMENT_BYTES -> R.string.incidents_attach_too_big
+            else -> null
+        }
+        if (error != null) {
+            _state.update { it.copy(message = UiMessage.error(error)) }
+            return false
+        }
+        val item = IncidentAttachment(nextAttachmentId++, bytes!!, fileName, mime!!)
+        _state.update { it.copy(attachments = it.attachments + item) }
+        return true
+    }
 
-    fun onPhotoError() = _state.update { it.copy(message = UiMessage.error(R.string.incidents_photo_error)) }
+    fun removeAttachment(id: Int) {
+        if (_state.value.submitting) return
+        uploaded.remove(id)
+        _state.update { s -> s.copy(attachments = s.attachments.filterNot { it.id == id }) }
+    }
+
+    /** No se pudo abrir la cámara o el selector. */
+    fun onAttachError() = _state.update { it.copy(message = UiMessage.error(R.string.incidents_photo_error)) }
 
     /** Valida y abre el diálogo de confirmación (congela el envío, RN11). */
     fun askSubmit() {
@@ -87,20 +140,33 @@ class ReportIncidentViewModel(
 
     fun dismissConfirm() = _state.update { it.copy(confirming = false) }
 
+    /**
+     * Sube cada adjunto como documento del envío (`OTHER`), junta los ids y reporta con `attachmentIds`. Un adjunto que no
+     * sube no bloquea el reporte: se reporta sin él y se avisa ([ReportUiState.attachFailed]).
+     */
     fun confirmSubmit() {
         val s = _state.value
         val category = s.category ?: return
         if (s.submitting) return
         _state.update { it.copy(confirming = false, submitting = true) }
         viewModelScope.launch {
-            incidents.report(shipmentId, category, s.description).fold(
-                onSuccess = { created ->
-                    var photoFailed = false
-                    s.photo?.let { p ->
-                        photoFailed = documents.upload(shipmentId, p.bytes, "incidencia.jpg", "image/jpeg", DocumentType.OTHER).isFailure
-                    }
-                    _state.update { it.copy(submitting = false, reportedId = created.id, photoFailed = photoFailed) }
-                },
+            var failed = 0
+            val ids = mutableListOf<String>()
+            s.attachments.forEach { a ->
+                val known = uploaded[a.id]
+                if (known != null) { ids += known; return@forEach }
+                documents.upload(shipmentId, a.bytes, a.fileName, a.mime, DocumentType.OTHER).fold(
+                    onSuccess = { doc -> uploaded[a.id] = doc.id; ids += doc.id },
+                    onFailure = { failed++ },
+                )
+            }
+            val request = ReportIncidentRequest(
+                category = category, description = s.description, attachmentIds = ids.takeIf { it.isNotEmpty() },
+            )
+            val key = lastReport?.takeIf { it.first == request }?.second ?: newKey()
+            lastReport = request to key
+            incidents.report(shipmentId, request, key).fold(
+                onSuccess = { created -> _state.update { it.copy(submitting = false, reportedId = created.id, attachFailed = failed) } },
                 onFailure = { e -> _state.update { it.copy(submitting = false).withError(e) } },
             )
         }

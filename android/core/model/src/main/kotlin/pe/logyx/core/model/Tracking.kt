@@ -101,3 +101,18 @@ object TrackingErrors {
 val StopView.hasContactInfo: Boolean
     get() = !contactName.isNullOrBlank() || !contactPhone.isNullOrBlank() || !windowFrom.isNullOrBlank() ||
         !windowTo.isNullOrBlank() || !instructions.isNullOrBlank()
+
+/** Minutos entre que ocurrió un hito (hora del conductor) y que llegó al servidor para marcarlo «registrado con retraso». */
+const val LATE_SYNC_MINUTES = 10L
+
+/** El hito llegó al servidor más de [LATE_SYNC_MINUTES] después de ocurrir (se marcó sin señal; roadmap 1.11, igual que la web). */
+fun lateSync(occurredAt: String?, recordedAt: String?): Boolean {
+    if (occurredAt == null || recordedAt == null) return false
+    val occurred = runCatching { java.time.OffsetDateTime.parse(occurredAt).toInstant() }.getOrNull() ?: return false
+    val recorded = runCatching { java.time.OffsetDateTime.parse(recordedAt).toInstant() }.getOrNull() ?: return false
+    return java.time.Duration.between(occurred, recorded).seconds > LATE_SYNC_MINUTES * 60
+}
+
+/** La parada se registró con retraso: el cierre si está completada; si no, la llegada. */
+val StopView.registeredLate: Boolean
+    get() = if (status == StopStatus.COMPLETED) lateSync(completedAt, completedRecordedAt) else lateSync(arrivedAt, arrivedRecordedAt)

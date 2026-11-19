@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apartment
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CloudOff
+import pe.logyx.core.model.registeredLate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -79,6 +81,13 @@ fun StopTimeline(stops: List<StopView>, modifier: Modifier = Modifier, large: Bo
                     stop.receivedByName?.takeIf { it.isNotBlank() }?.let { name ->
                         val who = listOfNotNull(name, stop.receivedByDoc?.takeIf { it.isNotBlank() }).joinToString(" · ")
                         Text(stringResource(R.string.ds_stop_received_by, who), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // 1.11: el conductor lo marcó sin señal y llegó al servidor más de 10 min después.
+                    if (stop.registeredLate) {
+                        LogyxBadge(
+                            stringResource(R.string.ds_stop_late), Modifier.padding(top = 4.dp),
+                            tone = PillTone.Neutral, icon = Icons.Rounded.CloudOff,
+                        )
                     }
                     (stop.completionOfficeReason?.takeIf { it.isNotBlank() } ?: stop.arrivalOfficeReason?.takeIf { it.isNotBlank() })?.let { reason ->
                         LogyxBadge(

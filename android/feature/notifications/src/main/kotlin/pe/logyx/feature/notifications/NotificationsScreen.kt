@@ -30,6 +30,12 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.TrendingDown
+import androidx.compose.material.icons.rounded.DoneAll
+import androidx.compose.material.icons.rounded.Tune
+import pe.logyx.core.designsystem.components.LogyxTopBarAction
+import androidx.compose.material.icons.rounded.EventRepeat
+import androidx.compose.material.icons.rounded.MarkEmailUnread
+import androidx.compose.material.icons.rounded.RequestQuote
 import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -82,6 +88,7 @@ import pe.logyx.core.model.NotificationView
 @Composable
 fun NotificationsRoute(
     onOpen: (NotificationView) -> Unit,
+    onOpenPreferences: (() -> Unit)? = null,
     vm: NotificationsViewModel = koinViewModel(),
     realtime: RealtimeRepository = koinInject(),
 ) {
@@ -102,6 +109,7 @@ fun NotificationsRoute(
         onMarkAll = vm::markAllRead,
         onClick = { n -> vm.markRead(n); onOpen(n) },
         onMessageShown = vm::onMessageShown,
+        onOpenPreferences = onOpenPreferences,
     )
 }
 
@@ -114,6 +122,7 @@ fun NotificationsScreen(
     onMarkAll: () -> Unit,
     onClick: (NotificationView) -> Unit,
     onMessageShown: () -> Unit,
+    onOpenPreferences: (() -> Unit)? = null,
 ) {
     val labelAll = stringResource(R.string.notifications_filter_all)
     val labelUnread = stringResource(R.string.notifications_filter_unread)
@@ -124,12 +133,12 @@ fun NotificationsScreen(
         title = stringResource(R.string.notifications_title),
         snackbar = snackbar,
         actions = {
+            // Íconos (48 dp) en vez de un botón de texto: el título no se corta en pantallas angostas.
             if (state.hasUnread) {
-                LogyxButton(
-                    stringResource(R.string.notifications_mark_all), onMarkAll,
-                    variant = ButtonVariant.Ghost, size = ButtonSize.Medium, fullWidth = false,
-                    enabled = !state.markingAll,
-                )
+                LogyxTopBarAction(Icons.Rounded.DoneAll, stringResource(R.string.notifications_mark_all), onMarkAll, enabled = !state.markingAll)
+            }
+            if (onOpenPreferences != null) {
+                LogyxTopBarAction(Icons.Rounded.Tune, stringResource(R.string.notifications_open_prefs), onOpenPreferences)
             }
         },
     ) { padding ->
@@ -140,7 +149,7 @@ fun NotificationsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             when {
-                state.loading -> SkeletonList(Modifier.padding(16.dp))
+                state.loading -> SkeletonList()
                 state.error != null -> ErrorState(state.error, onRefresh)
                 else -> Refreshable(state.refreshing, onRefresh, Modifier.weight(1f)) {
                     if (state.items.isEmpty()) {
@@ -205,6 +214,11 @@ internal fun NotificationType.icon() = when (this) {
     NotificationType.NEW_LOAD_MATCH -> Icons.Rounded.Search
     NotificationType.FLEET_DOCUMENT_EXPIRING -> Icons.Rounded.Description
     NotificationType.BID_IMPROVED -> Icons.Rounded.TrendingDown
+    NotificationType.TEMPLATE_RUN -> Icons.Rounded.EventRepeat
+    NotificationType.REQUEST_INVITATION -> Icons.Rounded.MarkEmailUnread
+    NotificationType.BACKUP_REQUESTED, NotificationType.BACKUP_RESPONDED -> Icons.Rounded.SwapHoriz
+    NotificationType.ADJUSTMENT_PROPOSED, NotificationType.ADJUSTMENT_DECIDED, NotificationType.ADJUSTMENT_ESCALATED -> Icons.Rounded.RequestQuote
+    NotificationType.INCIDENT_ASSIGNED -> Icons.Rounded.ReportProblem
     NotificationType.UNKNOWN -> Icons.Rounded.Notifications
 }
 

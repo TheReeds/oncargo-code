@@ -5,4 +5,11 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!-- Splash (core-splashscreen, también en Android 10–11): símbolo del ícono sobre el azul de marca. -->
+    <style name="Theme.Logyx.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Logyx</item>
+    </style>
 </resources>

@@ -24,23 +24,25 @@ val GeistMono = variableFamily(R.font.geist_mono_variable)
 private fun base() = Typography()
 
 val LogyxTypography: Typography = base().let { t ->
-    fun TextStyle.sans() = copy(fontFamily = GeistSans)
+    // El tracking de M3 (0.15–0.5 sp) está pensado para Roboto; con Geist se ve espaciado. Como en la web
+    // (titulares con tracking negativo), títulos levemente apretados y cuerpo/etiquetas sin tracking extra.
+    fun TextStyle.sans(tracking: Double = 0.0) = copy(fontFamily = GeistSans, letterSpacing = tracking.sp)
     Typography(
-        displayLarge = t.displayLarge.sans(),
-        displayMedium = t.displayMedium.sans(),
-        displaySmall = t.displaySmall.sans(),
-        headlineLarge = t.headlineLarge.sans().copy(fontWeight = FontWeight.SemiBold),
-        headlineMedium = t.headlineMedium.sans().copy(fontWeight = FontWeight.SemiBold),
-        headlineSmall = t.headlineSmall.sans().copy(fontWeight = FontWeight.SemiBold),
-        titleLarge = t.titleLarge.sans().copy(fontWeight = FontWeight.SemiBold),
+        displayLarge = t.displayLarge.sans(-0.5),
+        displayMedium = t.displayMedium.sans(-0.4),
+        displaySmall = t.displaySmall.sans(-0.3),
+        headlineLarge = t.headlineLarge.sans(-0.4).copy(fontWeight = FontWeight.SemiBold),
+        headlineMedium = t.headlineMedium.sans(-0.3).copy(fontWeight = FontWeight.SemiBold),
+        headlineSmall = t.headlineSmall.sans(-0.3).copy(fontWeight = FontWeight.SemiBold),
+        titleLarge = t.titleLarge.sans(-0.2).copy(fontWeight = FontWeight.SemiBold),
         titleMedium = t.titleMedium.sans().copy(fontWeight = FontWeight.SemiBold),
         titleSmall = t.titleSmall.sans().copy(fontWeight = FontWeight.SemiBold),
         bodyLarge = t.bodyLarge.sans(),
         bodyMedium = t.bodyMedium.sans(),
-        bodySmall = t.bodySmall.sans(),
+        bodySmall = t.bodySmall.sans(0.1),
         labelLarge = t.labelLarge.sans().copy(fontWeight = FontWeight.SemiBold),
-        labelMedium = t.labelMedium.sans().copy(fontWeight = FontWeight.Medium),
-        labelSmall = t.labelSmall.sans().copy(fontWeight = FontWeight.Medium),
+        labelMedium = t.labelMedium.sans(0.1).copy(fontWeight = FontWeight.Medium),
+        labelSmall = t.labelSmall.sans(0.2).copy(fontWeight = FontWeight.Medium),
     )
 }
 

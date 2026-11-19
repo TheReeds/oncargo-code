@@ -72,12 +72,16 @@ enum class NotificationType {
     ACCESS_REQUESTED,
     // V22 (Ola 2, zona T): alerta de carga que calza con una búsqueda guardada, documento de flota por vencer, oferta mejorada
     NEW_LOAD_MATCH, FLEET_DOCUMENT_EXPIRING, BID_IMPROVED,
+    // V21 (Ola 2, zona P): plantilla publicada o fallida, invitación a ofertar, segunda oferta pedida/respondida
+    TEMPLATE_RUN, REQUEST_INVITATION, BACKUP_REQUESTED, BACKUP_RESPONDED,
+    // V23 (Ola 2, zona X): ajustes del precio del envío e incidencia asignada (esta última solo al operador)
+    ADJUSTMENT_PROPOSED, ADJUSTMENT_DECIDED, ADJUSTMENT_ESCALATED, INCIDENT_ASSIGNED,
     /** Valor que este cliente no conoce (se mapea con `coerceInputValues`). */
     UNKNOWN,
 }
 
 /** V16: `USER` = una persona de tu organización (quien pidió acceso). */
-@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION, USER, VEHICLE, DRIVER }
+@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION, USER, VEHICLE, DRIVER, TEMPLATE }
 
 @Serializable enum class ReviewDirection { PYME_TO_CARRIER, CARRIER_TO_PYME }
 

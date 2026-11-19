@@ -65,6 +65,21 @@ Leyenda: ✅ hecho · 🔄 en progreso · ⬜ pendiente. Actualiza la fila al te
 
 Notas de contrato (web): adoptado el contrato aditivo 2026-11-10 (vehículo en ofertas, RUC verificado, vehículo mínimo, `field` en errores, filtros y paginación). Observación: el mensaje de login incorrecto de la API es "Credenciales inválidas" (CONTENT.md propone "Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.").
 
+## Android — APK de pruebas por QR y pendientes de las olas 1–2 (2026-11-19, agente Android QR)
+| Ítem | Estado | Notas |
+|---|---|---|
+| Variante `staging` (APK del QR) | ✅ | R8 + recorte de recursos (`app/proguard-rules.pro`), API `https://api.oncargo.tech`, `pe.logyx.app.staging`, firmada con el keystore de pruebas (`~/.android/oncargo-test.jks`, fuera del repo), solo ARM, libs nativas comprimidas. Debug ~129 MB → staging ~15 MB (29 MB antes de comprimir las libs nativas). `versionName` `0.2.0-<sha>`, `versionCode` = commits. Probada en emulador (build x86_64): login de los 3 roles contra producción, mapa, «En vivo», preferencias (GET/PUT). Detalle en `android/AGENTS.md` › «APK de pruebas» |
+| Publicación | ✅ | `infra/vps/publish-apk.sh` (APK de `staging`, `version.json` con versión, tamaño, SHA-256, fecha y notas de `infra/vps/app-release-notes.txt`; rechaza firmas de debug) y página `infra/vps/downloads/index.html` (versión, tamaño, fecha, SHA-256 con «Copiar», novedades, Android 10+, 4 pasos) |
+| Splash e ícono | ✅ | `core-splashscreen` 1.2.0 con el símbolo sobre `#081F46`; se mantiene mientras se lee la sesión. Ícono adaptativo y monocromático ya existían |
+| Conductor: proponer ajuste (2.6) | ✅ | Tarjeta «¿Cobro extra en este viaje?» → hoja (tipo, monto ≤ precio acordado, parada, nota) → confirmación → cola offline. `DriverAdjustmentViewModelTest` |
+| Incidencias con adjuntos | ✅ | Hasta 5 fotos/archivos (JPG/PNG/PDF ≤ 10 MB) como `attachmentIds`; fallo parcial no bloquea. `IncidentAttachmentsTest` |
+| Avisos nuevos | ✅ | `TEMPLATE_RUN`, `REQUEST_INVITATION`, `BACKUP_*`, `ADJUSTMENT_*`, `INCIDENT_ASSIGNED` con ícono y destino (segunda oferta → web `/transportista/confirmaciones`). `Wave2MobileTest` |
+| «Registrado con retraso» | ✅ | Insignia en `StopTimeline` (> 10 min entre hora del conductor y del servidor, como la web) |
+| Preferencias de aviso | ✅ | Notificaciones › ícono «Preferencias de aviso» (PYME y transportista). `NotificationPreferencesViewModelTest` |
+| Pulido de UI | ✅ | Texto fuera de `Scaffold` con el color del tema (el título del login salía negro en oscuro), tracking de Geist sin el espaciado de Roboto, texto oscuro sobre rellenos claros en modo oscuro (botón «Emergencia»), etiquetas del mapa en español, acción de ajuste fuera del panel fijo del conductor, acciones con ícono de 48 dp en la barra (`LogyxTopBarAction`), título «Avisos» igual a la pestaña, «Cuentas de prueba» |
+| Tests | ✅ | `testDebugUnitTest`, `:core:model:test`, `:core:network:test` en verde |
+| Pendiente | ⬜ | Retirar un ajuste y foto de respaldo del ajuste en el móvil; confirmar la segunda oferta dentro de la app (hoy abre la web); ABI splits si se publica en Play (hoy un APK ARM universal); probar en un celular real de gama baja (armeabi-v7a) |
+
 ## Android — Ola 2 zona P: publicar, duplicar, plantillas y subir documentos (2026-11-19, agente P; roadmap 2.16 y 2.1)
 | Ítem | Estado | Notas |
 |---|---|---|

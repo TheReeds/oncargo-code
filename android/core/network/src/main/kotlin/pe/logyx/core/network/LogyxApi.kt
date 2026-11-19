@@ -458,6 +458,10 @@ class LogyxApi(
     suspend fun unreadCount(): UnreadCount = get("api/v1/notifications/unread-count")
     suspend fun markNotificationRead(id: String): NotificationView = post("api/v1/notifications/$id/read")
     suspend fun markAllNotificationsRead(): MarkedRead = post("api/v1/notifications/read-all")
+    /** V16: preferencias de aviso (PYME, transportista y operador; el conductor no tiene). */
+    suspend fun notificationPreferences(): List<pe.logyx.core.model.NotificationPreferenceView> = get("api/v1/notifications/preferences")
+    suspend fun updateNotificationPreferences(changes: List<pe.logyx.core.model.NotificationPreferenceChange>): List<pe.logyx.core.model.NotificationPreferenceView> =
+        put("api/v1/notifications/preferences", pe.logyx.core.model.UpdateNotificationPreferences(changes))
 
     // --- Pedir acceso (V16, roadmap v2 1.7/1.15): cualquier rol, también Lector ---
     suspend fun requestAccess(body: pe.logyx.core.model.CreateAccessRequest): pe.logyx.core.model.AccessRequestView =

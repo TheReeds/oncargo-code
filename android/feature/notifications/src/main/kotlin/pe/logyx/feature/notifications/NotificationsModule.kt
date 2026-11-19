@@ -6,4 +6,5 @@ import org.koin.dsl.module
 val notificationsModule = module {
     single { UnreadCounter(get()) }
     viewModel { NotificationsViewModel(get(), get()) }
+    viewModel { NotificationPreferencesViewModel(get()) }
 }

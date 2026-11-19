@@ -15,7 +15,7 @@
     <string name="auth_login_action">Iniciar sesión</string>
     <string name="auth_register_action">Crear cuenta en la web</string>
     <string name="auth_no_account">¿Aún no tienes cuenta?</string>
-    <string name="auth_demo_title">Cuentas demo (solo desarrollo)</string>
+    <string name="auth_demo_title">Cuentas de prueba</string>
     <string name="auth_open_catalog">Catálogo UI</string>
 
     <string name="auth_account_title">Cuenta</string>

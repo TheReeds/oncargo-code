@@ -7,47 +7,73 @@
   <meta name="description" content="Descarga la versión de prueba de la app OnCargo para Android.">
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#081f46">
   <link rel="icon" href="/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
+    /* Tokens de docs/design/DESIGN.md (claro y oscuro). */
     :root {
-      --bg: #f4f6f9; --surface: #fff; --ink: #0e1726; --ink-2: #334155; --muted: #5b6b7f;
-      --line: #dbe2ea; --brand: #0b4f6c; --brand-ink: #fff; --ok: #047857; --chrome: #081f46;
+      color-scheme: light dark;
+      --bg: #eef2f6; --surface: #fff; --ink: #0e1726; --ink-2: #334155; --muted: #5b6b7f;
+      --line: #e2e8f0; --brand: #0b4f6c; --brand-ink: #fff; --ok: #047857; --ok-bg: #ecfdf5;
+      --warn: #92400e; --warn-bg: #fffbeb; --chrome: #081f46; --tint: #e6f1f5;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #0b1220; --surface: #111a2b; --ink: #e6edf5; --ink-2: #c3cfdc; --muted: #93a3b8;
-              --line: #23314a; --brand: #38bdf8; --brand-ink: #07121c; --ok: #34d399; }
+      :root { --bg: #0b1220; --surface: #111a2b; --ink: #e8eef6; --ink-2: #c0cbd9; --muted: #94a3b8;
+              --line: #25324a; --brand: #38a3c9; --brand-ink: #07121c; --ok: #34d399; --ok-bg: #0f2a26;
+              --warn: #fbbf24; --warn-bg: #2a2210; --tint: #12303f; }
     }
     * { box-sizing: border-box; }
     body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
            background: var(--bg); color: var(--ink); }
-    header { background: var(--chrome); padding: 18px 16px; }
+    a { color: var(--brand); }
+    header { background: var(--chrome); padding: 16px; }
     header .wrap { display: flex; align-items: center; gap: 12px; }
-    header img { height: 32px; width: auto; }
+    header img { height: 32px; width: auto; display: block; }
     .tag { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-           color: #fde68a; border: 1px solid #fde68a66; border-radius: 999px; padding: 2px 10px; }
-    .wrap { max-width: 880px; margin: 0 auto; }
-    main { padding: 32px 16px 48px; }
-    h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.15; margin: 0 0 8px; text-wrap: balance; }
-    .lead { color: var(--ink-2); margin: 0 0 28px; text-wrap: pretty; max-width: 60ch; }
-    .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
-    @media (min-width: 720px) { .grid { grid-template-columns: 300px 1fr; } }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
-    .qr { display: grid; justify-items: center; gap: 12px; text-align: center; }
-    .qr-box { background: #fff; padding: 14px; border-radius: 12px; width: 232px; aspect-ratio: 1; }
-    .qr-box svg { width: 100%; height: 100%; display: block; }
-    .qr small { color: var(--muted); }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
-           padding: 0 20px; border-radius: 10px; font-weight: 600; text-decoration: none;
-           background: var(--brand); color: var(--brand-ink); width: 100%; }
-    .btn[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
-    .status { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
-    .status.ok { color: var(--ok); }
+           color: #fde68a; border: 1px solid #fde68a66; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    main { padding: 28px 16px 48px; }
+    h1 { font-size: clamp(1.6rem, 5vw, 2.2rem); line-height: 1.15; margin: 0 0 8px; text-wrap: balance; letter-spacing: -.02em; }
+    .lead { color: var(--ink-2); margin: 0 0 24px; text-wrap: pretty; max-width: 60ch; }
+    .grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 760px) { .grid { grid-template-columns: 320px minmax(0, 1fr); align-items: start; } .side { display: grid; gap: 16px; } }
+    .side { display: grid; gap: 16px; min-width: 0; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0; }
     h2 { font-size: 1.05rem; margin: 0 0 12px; }
-    ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 10px; color: var(--ink-2); }
+    .dl { display: grid; gap: 12px; text-align: center; justify-items: center; }
+    .qr-box { background: #fff; padding: 12px; border-radius: 10px; width: 200px; aspect-ratio: 1; border: 1px solid var(--line); }
+    .qr-box svg { width: 100%; height: 100%; display: block; }
+    .url { font-size: 14px; color: var(--muted); font-family: ui-monospace, "Geist Mono", monospace; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px;
+           padding: 0 20px; border-radius: 10px; font-weight: 600; font-size: 1.05rem; text-decoration: none;
+           background: var(--brand); color: var(--brand-ink); width: 100%; }
+    .btn:focus-visible, .copy-btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .btn[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
+    .status { font-size: 14px; color: var(--muted); margin: 0; }
+    .status.ok { color: var(--ok); }
+    .req { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--warn); background: var(--warn-bg);
+           border-radius: 8px; padding: 8px 12px; width: 100%; justify-content: center; }
+    dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 14px; text-align: left; width: 100%; }
+    dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; }
+    .mono { font-family: ui-monospace, "Geist Mono", monospace; font-size: 13px; }
+    .hash { display: flex; gap: 6px; align-items: start; }
+    .hash code { overflow-wrap: anywhere; flex: 1; min-width: 0; }
+    .copy { position: relative; flex: none; }
+    .copy-btn { min-inline-size: 44px; min-block-size: 32px; border: 1px solid var(--line); background: var(--surface);
+                color: var(--ink-2); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; padding: 2px 10px; }
+    .copy-btn[data-copied] { color: var(--ok); border-color: var(--ok); }
+    .tip { position: absolute; inset-block-end: calc(100% + 4px); inset-inline-end: 0; font-size: 12px; white-space: nowrap;
+           background: var(--ink); color: var(--surface); border-radius: 6px; padding: 2px 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+    .tip:not(:empty) { opacity: 1; }
+    ol { margin: 0; padding-left: 1.3rem; display: grid; gap: 10px; color: var(--ink-2); }
     ol b { color: var(--ink); }
-    .note { margin-top: 20px; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
-    dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 14px 0 0; font-size: 14px; }
-    dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+    ul.notes { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; color: var(--ink-2); }
+    .muted { color: var(--muted); font-size: 14px; margin: 0; }
+    .note { margin-top: 16px; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+    .desktop { display: none; font-size: 14px; color: var(--ink-2); background: var(--tint); border-radius: 8px; padding: 8px 12px; margin: 0; }
+    .desktop.show { display: block; }
+    @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
   </style>
 </head>
 <body>
@@ -59,15 +85,15 @@
   </header>
 
   <main class="wrap">
-    <h1>Instala la app OnCargo en tu Android</h1>
-    <p class="lead">Escanea el código con la cámara del celular o descarga el instalador directamente.
-      Es una versión de prueba para conductores y equipos de transportistas y PYMEs.</p>
+    <h1>Instala OnCargo en tu Android</h1>
+    <p class="lead">Versión de prueba para el equipo: conductores, transportistas y PYMEs.
+      Usa la misma cuenta que en la web.</p>
 
     <div class="grid">
-      <section class="card qr" aria-labelledby="qr-title">
-        <h2 id="qr-title">Escanea para descargar</h2>
+      <section class="card dl" aria-labelledby="dl-title">
+        <h2 id="dl-title">Descarga</h2>
         <div class="qr-box" role="img" aria-label="Código QR que abre https://oncargo.tech/app/">
-          <svg viewBox="0 0 29 29" shape-rendering="crispEdges" version="1.1" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 29 29" shape-rendering="crispEdges" version="1.1" xmlns="http://www.w3.org/2000/svg">
 	<g id="QRcode">
 		<rect x="0" y="0" width="29" height="29" fill="#ffffff"/>
 		<g id="Pattern" transform="translate(2,2)">
@@ -395,56 +421,109 @@
 	</g>
 </svg>
         </div>
-        <small>oncargo.tech/app</small>
+        <span class="url">oncargo.tech/app</span>
+        <p id="desktop" class="desktop">Escanea el código con la cámara de tu celular.</p>
         <a id="download" class="btn" href="oncargo.apk" download aria-disabled="true">Descargar APK</a>
         <p id="status" class="status" role="status">Buscando la versión disponible…</p>
+        <p class="req">Requiere Android 10 o superior</p>
         <dl id="meta" hidden>
-          <dt>Versión</dt><dd id="v-name">—</dd>
+          <dt>Versión</dt><dd id="v-name" class="mono">—</dd>
           <dt>Publicada</dt><dd id="v-date">—</dd>
           <dt>Tamaño</dt><dd id="v-size">—</dd>
+          <dt>SHA-256</dt>
+          <dd class="hash">
+            <code id="v-sha" class="mono">—</code>
+            <span class="copy">
+              <button type="button" class="copy-btn" id="copy-sha" command="--copy" commandfor="v-sha" aria-label="Copiar el SHA-256">Copiar</button>
+              <span class="tip" role="status"></span>
+            </span>
+          </dd>
         </dl>
       </section>
 
-      <section class="card" aria-labelledby="steps-title">
-        <h2 id="steps-title">Cómo instalarla</h2>
-        <ol>
-          <li><b>Descarga el archivo</b> <code>oncargo.apk</code> desde este celular (Android 10 o superior).</li>
-          <li><b>Ábrelo</b> desde las notificaciones o la carpeta Descargas.</li>
-          <li>Si Android lo pide, <b>permite instalar apps de esta fuente</b> (Chrome o Archivos) y vuelve atrás.</li>
-          <li><b>Toca Instalar.</b> Si Play Protect avisa que la app es desconocida, elige «Instalar de todas formas»:
-            es normal en versiones de prueba que no están en Google Play.</li>
-          <li>Abre OnCargo e <b>inicia sesión</b> con la cuenta que te dio el equipo.</li>
-        </ol>
-        <p class="note">Para actualizar, descarga la nueva versión desde esta misma página e instálala encima:
-          tus datos se conservan. ¿Problemas? Escríbenos a <a href="mailto:soporte@oncargo.tech">soporte@oncargo.tech</a>.</p>
-      </section>
+      <div class="side">
+        <section class="card" aria-labelledby="steps-title">
+          <h2 id="steps-title">Cómo instalarla</h2>
+          <ol>
+            <li><b>Toca «Descargar APK»</b> en el celular.</li>
+            <li><b>Abre el archivo</b> desde la notificación o desde Descargas.</li>
+            <li>Si Android lo pide, <b>permite instalar apps</b> desde Chrome o Archivos y vuelve.</li>
+            <li><b>Toca Instalar.</b> Si Play Protect avisa, elige «Instalar de todas formas»: la app aún no está en Google Play.</li>
+          </ol>
+          <p class="note">Para actualizar, descarga la nueva versión aquí e instálala encima: tu sesión y tus datos se conservan.
+            ¿Problemas? Escribe a <a href="mailto:soporte@oncargo.tech">soporte@oncargo.tech</a>.</p>
+        </section>
+
+        <section class="card" aria-labelledby="notes-title" id="notes-card" hidden>
+          <h2 id="notes-title">Novedades de esta versión</h2>
+          <ul class="notes" id="notes"></ul>
+        </section>
+      </div>
     </div>
   </main>
 
   <script>
-    // El APK se publica en /opt/oncargo/downloads (oncargo.apk + version.json opcional).
+    // El APK y version.json los publica infra/vps/publish-apk.sh en /opt/oncargo/downloads.
+    const $ = (id) => document.getElementById(id);
+    if (!/Android/i.test(navigator.userAgent)) $('desktop').classList.add('show');
+
+    const fmtSize = (bytes) => (bytes / 1048576).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + ' MB';
+    const fmtDate = (d) => d.toLocaleString('es-PE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' });
+
     (async () => {
-      const btn = document.getElementById('download');
-      const status = document.getElementById('status');
+      const btn = $('download');
+      const status = $('status');
       try {
         const res = await fetch('oncargo.apk', { method: 'HEAD', cache: 'no-store' });
         if (!res.ok) throw new Error(String(res.status));
         btn.removeAttribute('aria-disabled');
         status.textContent = 'Lista para descargar.';
         status.classList.add('ok');
-        const size = Number(res.headers.get('content-length'));
-        const meta = document.getElementById('meta');
-        if (size) { document.getElementById('v-size').textContent = (size / 1048576).toFixed(1) + ' MB'; meta.hidden = false; }
-        const lm = res.headers.get('last-modified');
-        if (lm) { document.getElementById('v-date').textContent = new Date(lm).toLocaleDateString('es-PE', { dateStyle: 'long' }); meta.hidden = false; }
-        try {
-          const v = await (await fetch('version.json', { cache: 'no-store' })).json();
-          if (v.versionName) document.getElementById('v-name').textContent = v.versionName;
-        } catch {}
+        let v = {};
+        try { v = await (await fetch('version.json', { cache: 'no-store' })).json(); } catch {}
+        const size = Number(v.sizeBytes) || Number(res.headers.get('content-length'));
+        const date = v.publishedAt ? new Date(v.publishedAt) : (res.headers.get('last-modified') ? new Date(res.headers.get('last-modified')) : null);
+        if (v.versionName) $('v-name').textContent = v.versionName + (v.versionCode ? ` (${v.versionCode})` : '');
+        if (date && !isNaN(date)) $('v-date').textContent = fmtDate(date);
+        if (size) { $('v-size').textContent = fmtSize(size); btn.textContent = `Descargar APK · ${fmtSize(size)}`; }
+        if (v.sha256) $('v-sha').textContent = v.sha256; else $('copy-sha').hidden = true;
+        $('meta').hidden = false;
+        const notes = Array.isArray(v.changelog) ? v.changelog.filter((n) => typeof n === 'string' && n.trim()) : [];
+        if (notes.length) {
+          const ul = $('notes');
+          for (const n of notes) { const li = document.createElement('li'); li.textContent = n; ul.append(li); }
+          $('notes-card').hidden = false;
+        }
       } catch {
         status.textContent = 'Todavía no hay una versión publicada. Vuelve pronto.';
       }
     })();
+
+    // Copiar el SHA-256 (Invoker Commands; con respaldo por clic donde no existen).
+    const timers = new WeakMap();
+    function report(button, ok) {
+      const tip = button.nextElementSibling;
+      clearTimeout(timers.get(button));
+      button.removeAttribute('data-copied');
+      tip.textContent = '';
+      if (ok) button.setAttribute('data-copied', '');
+      requestAnimationFrame(() => (tip.textContent = ok ? 'Copiado' : 'No se pudo copiar'));
+      timers.set(button, setTimeout(() => { button.removeAttribute('data-copied'); tip.textContent = ''; }, 2000));
+    }
+    async function copy(button, target) {
+      const text = target.innerText.trim();
+      if (!text || text === '—') return;
+      try { await navigator.clipboard.writeText(text); report(button, true); } catch { report(button, false); }
+    }
+    if ('CommandEvent' in window) {
+      document.addEventListener('command', (e) => { if (e.command === '--copy') copy(e.source, e.target); }, true);
+    } else {
+      document.addEventListener('click', (e) => {
+        const b = e.target.closest('button[command="--copy"]');
+        const t = b && document.getElementById(b.getAttribute('commandfor'));
+        if (t) copy(b, t);
+      });
+    }
   </script>
 </body>
 </html>

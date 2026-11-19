@@ -67,6 +67,11 @@ interface NotificationsRepository {
     suspend fun unreadCount(): Result<Int>
     suspend fun markRead(id: String): Result<NotificationView>
     suspend fun markAllRead(): Result<Int>
+    /** Preferencias de aviso (V16). Default para no romper fakes viejos. */
+    suspend fun preferences(): Result<List<pe.logyx.core.model.NotificationPreferenceView>> =
+        Result.failure(UnsupportedOperationException())
+    suspend fun updatePreferences(changes: List<pe.logyx.core.model.NotificationPreferenceChange>): Result<List<pe.logyx.core.model.NotificationPreferenceView>> =
+        Result.failure(UnsupportedOperationException())
 }
 
 class DefaultDocumentsRepository(private val api: LogyxApi) : DocumentsRepository {
@@ -116,6 +121,9 @@ class DefaultNotificationsRepository(private val api: LogyxApi) : NotificationsR
     override suspend fun unreadCount() = apiCall { api.unreadCount().unread }
     override suspend fun markRead(id: String) = apiCall { api.markNotificationRead(id) }
     override suspend fun markAllRead() = apiCall { api.markAllNotificationsRead().updated }
+    override suspend fun preferences() = apiCall { api.notificationPreferences() }
+    override suspend fun updatePreferences(changes: List<pe.logyx.core.model.NotificationPreferenceChange>) =
+        apiCall { api.updateNotificationPreferences(changes) }
 }
 
 /** «Pedir acceso» a los ADMIN de la organización (V16, roadmap v2 1.7/1.15). Cualquier rol, también Lector. */

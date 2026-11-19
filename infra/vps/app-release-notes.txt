@@ -1,0 +1,9 @@
+# Notas de la versión que muestra https://oncargo.tech/app/ (una línea por punto, máx. 8, frases cortas).
+# Las lee infra/vps/publish-apk.sh y las guarda en version.json (changelog).
+Conectada al entorno de pruebas (api.oncargo.tech) con las cuentas demo a un toque en el inicio de sesión.
+Conductor: proponer un ajuste de precio (estadía, peajes, maniobras), también sin señal.
+Incidencias: adjunta hasta 5 fotos o archivos al reportarlas.
+Paradas marcadas «Registrado con retraso» cuando se registraron sin señal.
+Avisos nuevos de ajustes, segunda oferta, invitaciones y plantillas, con su pantalla.
+Preferencias de aviso: elige qué recibes en la app y por correo.
+Pantalla de inicio con el logo de OnCargo y una app más liviana (15 MB en vez de 130 MB).

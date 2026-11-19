@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -110,18 +111,18 @@ fun LogyxButton(
         ButtonVariant.Money -> Button(
             onClick, all, isEnabled, shape = shape, contentPadding = padding,
             colors = ButtonDefaults.buttonColors(
-                containerColor = extra.moneyStrong, contentColor = Color.White,
+                containerColor = extra.moneyStrong, contentColor = onSolid(extra.moneyStrong),
                 disabledContainerColor = if (loading) extra.moneyStrong.copy(alpha = 0.7f) else scheme.onSurface.copy(alpha = 0.12f),
-                disabledContentColor = if (loading) Color.White else scheme.onSurface.copy(alpha = 0.5f),
+                disabledContentColor = if (loading) onSolid(extra.moneyStrong) else scheme.onSurface.copy(alpha = 0.5f),
             ),
         ) { content() }
 
         ButtonVariant.Destructive -> Button(
             onClick, all, isEnabled, shape = shape, contentPadding = padding,
             colors = ButtonDefaults.buttonColors(
-                containerColor = extra.dangerText, contentColor = Color.White,
+                containerColor = extra.dangerText, contentColor = onSolid(extra.dangerText),
                 disabledContainerColor = if (loading) extra.dangerText.copy(alpha = 0.7f) else scheme.onSurface.copy(alpha = 0.12f),
-                disabledContentColor = if (loading) Color.White else scheme.onSurface.copy(alpha = 0.5f),
+                disabledContentColor = if (loading) onSolid(extra.dangerText) else scheme.onSurface.copy(alpha = 0.5f),
             ),
         ) { content() }
 
@@ -174,3 +175,9 @@ private fun ButtonsPreview() {
     }
 }
 
+/**
+ * Texto sobre un relleno sólido: blanco sobre los tonos oscuros del tema claro y `on-solid` (#07121C) sobre los
+ * tonos aclarados del tema oscuro (DESIGN.md: «los rellenos sólidos pasan a colores claros con texto oscuro»).
+ * Evita texto blanco sobre rojo/esmeralda claros (contraste < 3:1).
+ */
+internal fun onSolid(fill: Color): Color = if (fill.luminance() > 0.4f) Color(0xFF07121C) else Color.White

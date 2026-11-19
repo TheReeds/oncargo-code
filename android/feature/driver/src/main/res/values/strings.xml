@@ -154,4 +154,31 @@
     <string name="driver_emergency_word_accident">un accidente</string>
     <string name="driver_emergency_word_theft">un robo</string>
     <string name="driver_emergency_word_breakdown">una avería</string>
+
+    <!-- Proponer ajuste (2.6) -->
+    <string name="driver_adjustment_open">Proponer ajuste</string>
+    <string name="driver_adjustment_title">Proponer ajuste</string>
+    <string name="driver_adjustment_intro">Pide un cobro extra por algo que pasó en el viaje. La empresa lo acepta o lo rechaza.</string>
+    <string name="driver_adjustment_type">Tipo de ajuste</string>
+    <string name="driver_adjustment_type_required">Elige el tipo de ajuste.</string>
+    <string name="driver_adjustment_amount">Monto (con IGV)</string>
+    <string name="driver_adjustment_amount_hint">Es lo que se suma al precio acordado.</string>
+    <string name="driver_adjustment_amount_required">Ingresa un monto mayor a S/ 0.</string>
+    <string name="driver_adjustment_amount_too_high">El ajuste no puede pasar del precio acordado (%1$s).</string>
+    <string name="driver_adjustment_note">Nota</string>
+    <string name="driver_adjustment_note_placeholder">Qué pasó y por qué corresponde</string>
+    <string name="driver_adjustment_note_required">Cuéntanos qué pasó para el ajuste «Otro».</string>
+    <string name="driver_adjustment_stop">Parada</string>
+    <string name="driver_adjustment_stop_none">Sin parada</string>
+    <string name="driver_adjustment_stop_option">%1$d. %2$s · %3$s</string>
+    <string name="driver_adjustment_submit">Enviar ajuste</string>
+    <string name="driver_adjustment_confirm_title">¿Proponer un ajuste de %1$s?</string>
+    <string name="driver_adjustment_confirm_message">La empresa lo acepta o lo rechaza. Si no responde a tiempo, decide el operador.</string>
+    <string name="driver_adjustment_confirm_button">Proponer ajuste</string>
+    <string name="driver_adjustment_back">Volver</string>
+    <string name="driver_adjustment_sent">Ajuste enviado</string>
+    <string name="driver_adjustment_queued">Se enviará al recuperar señal</string>
+    <string name="driver_adjustment_error_title">No se envió el ajuste</string>
+    <string name="driver_adjustment_prompt_title">¿Cobro extra en este viaje?</string>
+    <string name="driver_adjustment_prompt_body">Estadía, peajes, maniobras o peso distinto: propón un ajuste y la empresa lo revisa.</string>
 </resources>

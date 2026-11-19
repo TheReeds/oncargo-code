@@ -36,11 +36,13 @@ import pe.logyx.core.data.userMessage
 import pe.logyx.core.data.waitsForEvidence
 import pe.logyx.core.data.withPending
 import pe.logyx.core.designsystem.components.UiText
+import pe.logyx.core.model.AdjustmentType
 import pe.logyx.core.model.DocumentType
 import pe.logyx.core.model.GeoPoint
 import pe.logyx.core.model.IncidentCategory
 import pe.logyx.core.model.IncidentSeverity
 import pe.logyx.core.model.RealtimeTypes
+import pe.logyx.core.model.ProposeAdjustmentRequest
 import pe.logyx.core.model.ReceiverDoc
 import pe.logyx.core.model.ReportIncidentRequest
 import pe.logyx.core.model.RouteGeometry
@@ -74,7 +76,7 @@ enum class EvidencePhase { NONE, NOT_YET, OPEN, CLOSED }
  * Resultado de una acción; la pantalla lo traduce a un mensaje. `QUEUED` = guardado en el teléfono, sale al recuperar señal.
  * `EMERGENCY_SENT`/`EMERGENCY_QUEUED`: el reporte de emergencia llegó o quedó en la cola.
  */
-enum class DriverNotice { STOP_UPDATED, DELIVERED, QUEUED, EMERGENCY_SENT, EMERGENCY_QUEUED, SYNCED }
+enum class DriverNotice { STOP_UPDATED, DELIVERED, QUEUED, EMERGENCY_SENT, EMERGENCY_QUEUED, ADJUSTMENT_SENT, ADJUSTMENT_QUEUED, SYNCED }
 
 /** Botón «Emergencia»: categoría de la incidencia y severidad (accidente y robo, `CRITICAL`; avería, la de la categoría). */
 enum class EmergencyKind(val category: IncidentCategory, val severity: IncidentSeverity?, val defaultDescription: String) {
@@ -156,6 +158,14 @@ data class DriverUiState(
     val form: StopForm = StopForm(),
     /** Enviando (o guardando) el reporte de emergencia. */
     val emergencySending: Boolean = false,
+    /** Formulario «Proponer ajuste»; null = la hoja está cerrada. */
+    val adjustment: AdjustmentForm? = null,
+    /** El conductor tocó «Enviar ajuste» con datos válidos: se muestra la confirmación con el monto. */
+    val adjustmentConfirming: Boolean = false,
+    /** Guardando o enviando la propuesta de ajuste. */
+    val adjustmentSending: Boolean = false,
+    /** El servidor rechazó definitivamente la propuesta (`ADJ-*`): se explica hasta que la cierre. */
+    val adjustmentError: String? = null,
 ) {
     val action: DriverAction? get() = trip?.driverAction()
     val delivered: Boolean get() = trip?.status == ShipmentStatus.DELIVERED
@@ -470,6 +480,10 @@ class DriverTripViewModel(
         r.rejections.forEach { rejection ->
             val e = rejection.error
             val field = (e as? ApiException)?.field
+            if (rejection.action.op == OperationKind.ADJUSTMENT) {
+                _state.update { it.copy(adjustmentError = e.userMessage()) }
+                return@forEach
+            }
             when (e.apiCode) {
                 TrackingErrors.MISSING_PHOTO, TrackingErrors.MISSING_PICKUP_PHOTO -> _state.update { it.copy(photoMissingRejected = true) }
                 TrackingErrors.ACTIVE_INCIDENT -> _state.update { it.copy(incidentRejected = true) }
@@ -599,6 +613,80 @@ class DriverTripViewModel(
             if (!rejected && !stillQueued && r != null) fetch(initial = false, silent = true) // el viaje queda detenido (RN11)
         }
     }
+
+    // ── Proponer ajuste (2.6) ──
+
+    /** Abre la hoja «Proponer ajuste» (solo con un viaje en curso). */
+    fun openAdjustment() {
+        val s = _state.value
+        if (s.action == null || s.adjustmentSending) return
+        _state.update { it.copy(adjustment = AdjustmentForm(), adjustmentConfirming = false, adjustmentError = null) }
+    }
+
+    fun closeAdjustment() = _state.update { it.copy(adjustment = null, adjustmentConfirming = false) }
+
+    fun onAdjustmentType(type: AdjustmentType) = editAdjustment {
+        // Estadía y diferencia de peso hablan de una parada: se propone la actual (se puede cambiar o quitar).
+        val stop = if (type.defaultsToCurrentStop && it.stopId == null) _state.value.action?.stop?.id else it.stopId
+        it.copy(type = type, stopId = stop, typeError = null, noteError = null)
+    }
+
+    fun onAdjustmentAmount(text: String) = editAdjustment { it.copy(amount = text.take(10), amountError = null) }
+
+    fun onAdjustmentNote(text: String) = editAdjustment { it.copy(note = text.take(MAX_ADJUSTMENT_NOTE), noteError = null) }
+
+    fun onAdjustmentStop(stopId: String?) = editAdjustment { it.copy(stopId = stopId) }
+
+    private fun editAdjustment(change: (AdjustmentForm) -> AdjustmentForm) =
+        _state.update { s -> s.adjustment?.let { s.copy(adjustment = change(it)) } ?: s }
+
+    /** «Enviar ajuste»: valida (monto > 0 y no mayor al precio acordado, nota en «Otro») y pide confirmar. */
+    fun requestAdjustment() {
+        val s = _state.value
+        val form = s.adjustment ?: return
+        val checked = form.validated(s.trip?.adjustmentCap)
+        _state.update { it.copy(adjustment = checked, adjustmentConfirming = !checked.hasErrors) }
+    }
+
+    fun cancelAdjustmentConfirm() = _state.update { it.copy(adjustmentConfirming = false) }
+
+    /**
+     * Confirmado: se guarda en la cola con su `Idempotency-Key` y la hora del dispositivo y se envía; sin señal queda pendiente
+     * («Se enviará al recuperar señal»). Un rechazo definitivo (`ADJ-*`) queda en [DriverUiState.adjustmentError].
+     */
+    fun confirmAdjustment() {
+        val s = _state.value
+        val trip = s.trip ?: return
+        val form = s.adjustment ?: return
+        if (s.adjustmentSending) return
+        val checked = form.validated(trip.adjustmentCap)
+        val type = checked.type
+        val amount = checked.amountValue
+        if (checked.hasErrors || type == null || amount == null) {
+            _state.update { it.copy(adjustment = checked, adjustmentConfirming = false) }
+            return
+        }
+        _state.update { it.copy(adjustment = null, adjustmentConfirming = false, adjustmentSending = true, adjustmentError = null) }
+        viewModelScope.launch {
+            val request = ProposeAdjustmentRequest(
+                type = type, amount = amount, note = checked.note.trim().ifBlank { null }, stopId = checked.stopId,
+            )
+            val queued = queue.enqueueAdjustment(trip.id, request)
+            recompute()
+            val sending = async { flushQueue() }
+            val r = withTimeoutOrNull(ACTING_MAX_MS) { sending.await() }
+            val rejected = r?.rejections?.any { it.action.id == queued.id } == true
+            val stillQueued = queue.pending.value.any { it.id == queued.id }
+            val notice = when {
+                rejected -> null // el motivo ya está en adjustmentError
+                r == null || stillQueued -> DriverNotice.ADJUSTMENT_QUEUED
+                else -> DriverNotice.ADJUSTMENT_SENT
+            }
+            _state.update { it.copy(adjustmentSending = false, notice = notice) }
+        }
+    }
+
+    fun dismissAdjustmentError() = _state.update { it.copy(adjustmentError = null) }
 
     fun onNoticeShown() = _state.update { it.copy(notice = null) }
 

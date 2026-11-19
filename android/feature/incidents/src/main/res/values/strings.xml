@@ -11,20 +11,28 @@
     <string name="incidents_description_counter">%1$d / %2$d</string>
     <string name="incidents_description_required">Describe qué pasó para que podamos ayudarte.</string>
     <string name="incidents_description_too_long">La descripción es muy larga. Resúmela en %1$d caracteres o menos.</string>
-    <string name="incidents_photo_label">Foto (opcional)</string>
-    <string name="incidents_photo_hint">Una foto ayuda a resolver más rápido.</string>
-    <string name="incidents_photo_take">Tomar foto</string>
-    <string name="incidents_photo_retake">Tomar otra foto</string>
-    <string name="incidents_photo_remove">Quitar foto</string>
-    <string name="incidents_photo_caption">Foto de la incidencia</string>
-    <string name="incidents_photo_error">No pudimos abrir la cámara. Inténtalo de nuevo.</string>
+    <string name="incidents_attach_label">Adjuntos (opcional)</string>
+    <string name="incidents_attach_hint">Hasta %1$d fotos o archivos JPG, PNG o PDF de 10 MB como máximo.</string>
+    <string name="incidents_attach_count">%1$d de %2$d</string>
+    <string name="incidents_attach_photo">Tomar foto</string>
+    <string name="incidents_attach_file">Elegir archivo</string>
+    <string name="incidents_attach_remove">Quitar</string>
+    <string name="incidents_attach_remove_a11y">Quitar %1$s</string>
+    <string name="incidents_attach_limit">Ya agregaste el máximo de archivos. Quita uno para agregar otro.</string>
+    <string name="incidents_attach_unreadable">No pudimos leer el archivo. Inténtalo de nuevo.</string>
+    <string name="incidents_attach_format">Solo se aceptan archivos JPG, PNG o PDF.</string>
+    <string name="incidents_attach_too_big">El archivo pesa más de 10 MB. Elige uno más liviano.</string>
+    <string name="incidents_photo_error">No pudimos abrir la cámara o el selector de archivos. Inténtalo de nuevo.</string>
     <string name="incidents_submit">Reportar incidencia</string>
     <string name="incidents_confirm_title">¿Reportar esta incidencia?</string>
     <string name="incidents_confirm_message">El envío quedará detenido hasta que OnCargo resuelva la incidencia. Solo puede haber una incidencia activa por envío.</string>
     <string name="incidents_confirm_action">Reportar incidencia</string>
-    <string name="incidents_photo_failed_title">Incidencia reportada</string>
-    <string name="incidents_photo_failed_message">Tu incidencia ya fue registrada, pero no pudimos subir la foto. Puedes contarlo en un comentario del detalle de la incidencia.</string>
-    <string name="incidents_photo_failed_action">Ver incidencia</string>
+    <string name="incidents_attach_failed_title">Incidencia reportada</string>
+    <plurals name="incidents_attach_failed_message">
+        <item quantity="one">No se pudo adjuntar %1$d archivo. Puedes subirlo desde Documentos.</item>
+        <item quantity="other">No se pudieron adjuntar %1$d archivos. Puedes subirlos desde Documentos.</item>
+    </plurals>
+    <string name="incidents_attach_failed_action">Ver incidencia</string>
 
     <!-- Lista -->
     <string name="incidents_list_title">Incidencias</string>

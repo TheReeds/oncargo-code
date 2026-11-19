@@ -65,6 +65,8 @@ import pe.logyx.core.designsystem.components.ErrorState
 import pe.logyx.core.designsystem.components.InfoChip
 import pe.logyx.core.designsystem.components.KpiTile
 import pe.logyx.core.designsystem.components.LiveIndicator
+import androidx.compose.material.icons.rounded.DoneAll
+import androidx.compose.material.icons.rounded.Tune
 import pe.logyx.core.model.RealtimeStatus
 import pe.logyx.core.designsystem.components.LogyxBadge
 import pe.logyx.core.designsystem.components.LogyxBottomBar
@@ -142,6 +144,12 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 // Con el rol Lector el botón de escritura no se muestra (roadmap v2 1.7); `Can { }` hace lo mismo con bloques.
                 ProvideReadOnly(true) { LogyxButton("Enviar oferta (oculto para el Lector)", {}, variant = ButtonVariant.Money, requiresOperate = true) }
                 LogyxButton("Enviar oferta (requiere operar)", {}, variant = ButtonVariant.Money, requiresOperate = true)
+            }
+            Section("Acciones de la barra superior") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pe.logyx.core.designsystem.components.LogyxTopBarAction(androidx.compose.material.icons.Icons.Rounded.DoneAll, "Marcar todas como leídas", {})
+                    pe.logyx.core.designsystem.components.LogyxTopBarAction(androidx.compose.material.icons.Icons.Rounded.Tune, "Preferencias de aviso", {})
+                }
             }
             Section("Indicador en vivo") {
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {

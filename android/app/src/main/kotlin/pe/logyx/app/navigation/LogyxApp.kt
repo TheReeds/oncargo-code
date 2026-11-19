@@ -79,6 +79,7 @@ import pe.logyx.feature.incidents.ReportIncidentRoute
 import pe.logyx.feature.negotiation.ChatRoute
 import pe.logyx.feature.negotiation.ThreadsRoute
 import pe.logyx.feature.notifications.NotificationsRoute
+import pe.logyx.feature.notifications.NotificationPreferencesRoute
 import pe.logyx.feature.notifications.rememberUnreadCount
 import pe.logyx.feature.reputation.OrganizationProfileRoute
 import pe.logyx.feature.trips.CarrierTripDetailRoute
@@ -126,7 +127,7 @@ fun LogyxApp(auth: AuthRepository = koinInject(), config: AppConfig = koinInject
             } else {
                 LoginRoute(
                     onOpenRegister = { context.startActivity(Intent(Intent.ACTION_VIEW, "${config.webBaseUrl}/registro".toUri())) },
-                    demoAccounts = if (config.debug) DEMO_ACCOUNTS else emptyList(),
+                    demoAccounts = if (config.demoAccounts) DEMO_ACCOUNTS else emptyList(),
                     onOpenCatalog = if (config.debug) ({ showCatalog = true }) else null,
                 )
             }
@@ -349,7 +350,18 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
                 )
             }
 
-            composable<NotificationsTab> { NotificationsRoute(onOpen = { n -> nav.openNotification(n, role, user.organizationId) }) }
+            composable<NotificationsTab> {
+                val context = LocalContext.current
+                NotificationsRoute(
+                    onOpen = { n ->
+                        nav.openNotification(n, role, user.organizationId) { path ->
+                            context.startActivity(Intent(Intent.ACTION_VIEW, "${config.webBaseUrl}$path".toUri()))
+                        }
+                    },
+                    onOpenPreferences = { nav.navigate(NotificationPreferences) },
+                )
+            }
+            composable<NotificationPreferences> { NotificationPreferencesRoute(onBack = { nav.popBackStack() }) }
             composable<Chat> { e ->
                 val c = e.toRoute<Chat>()
                 ChatRoute(c.requestId, c.carrierOrgId, c.title, onBack = { nav.popBackStack() })
@@ -412,7 +424,7 @@ private fun Modifier.consumeInsets(padding: androidx.compose.foundation.layout.P
     this.then(Modifier.consumeWindowInsets(padding))
 
 /** Navega al recurso de una notificación (`relatedType`/`relatedId`, resuelto en `core:model`) según el rol. */
-private fun NavHostController.openNotification(n: NotificationView, role: AppRole, orgId: String) {
+private fun NavHostController.openNotification(n: NotificationView, role: AppRole, orgId: String, openWeb: (String) -> Unit) {
     val pyme = role == AppRole.Pyme
     when (val d = n.destination()) {
         null -> Unit
@@ -425,6 +437,9 @@ private fun NavHostController.openNotification(n: NotificationView, role: AppRol
         NotificationDestination.BidsOrRequests -> navigateTab(if (pyme) RequestsTab else CarrierBids)
         NotificationDestination.OwnProfile -> navigate(OrgProfile(orgId))
         NotificationDestination.Account -> navigateTab(Account)
+        NotificationDestination.Templates -> if (pyme) navigate(Templates)
+        // La segunda oferta se confirma en la web (el móvil no tiene esa pantalla todavía).
+        NotificationDestination.BackupConfirmations -> if (pyme) navigateTab(RequestsTab) else openWeb("/transportista/confirmaciones")
     }
 }
 

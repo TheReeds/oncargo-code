@@ -230,6 +230,7 @@
     <string name="ds_adjustmentstatus_rejected">Rechazado</string>
     <string name="ds_adjustmentstatus_withdrawn">Retirado</string>
     <string name="ds_stop_office">Registrado por la oficina: %1$s</string>
+    <string name="ds_stop_late">Registrado con retraso (sin señal)</string>
     <string name="ds_stop_received_by">Recibió %1$s</string>
     <string name="ds_stop_loaded_weight">Peso medido: %1$s</string>
     <string name="ds_number_invalid">Ingresa un número válido.</string>

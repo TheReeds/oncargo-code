@@ -182,6 +182,11 @@ fun DriverTripRoute(
         onOpenIncidents = { shipmentId?.let(onOpenIncidents) },
         form = DriverFormActions(viewModel::onWeight, viewModel::onReceiverName, viewModel::onReceiverDoc),
         onRetrySync = viewModel::retrySyncNow,
+        adjustment = AdjustmentActions(
+            viewModel::openAdjustment, viewModel::closeAdjustment, viewModel::onAdjustmentType, viewModel::onAdjustmentAmount,
+            viewModel::onAdjustmentNote, viewModel::onAdjustmentStop, viewModel::requestAdjustment, viewModel::confirmAdjustment,
+            viewModel::cancelAdjustmentConfirm, viewModel::dismissAdjustmentError,
+        ),
         onEmergency = { kind, text ->
             if (context.hasLocationPermission()) viewModel.reportEmergency(kind, text, locate)
             else {
@@ -227,6 +232,7 @@ fun DriverTripScreen(
     form: DriverFormActions = DriverFormActions(),
     onRetrySync: () -> Unit = {},
     onEmergency: (EmergencyKind, String) -> Unit = { _, _ -> },
+    adjustment: AdjustmentActions = AdjustmentActions(),
 ) {
     val trip = state.trip
     val snackbar = rememberLogyxSnackbarState()
@@ -236,6 +242,8 @@ fun DriverTripScreen(
         DriverNotice.QUEUED -> UiMessage.info(stringResource(R.string.driver_notice_queued))
         DriverNotice.EMERGENCY_SENT -> UiMessage.success(stringResource(R.string.driver_emergency_sent))
         DriverNotice.EMERGENCY_QUEUED -> UiMessage.info(stringResource(R.string.driver_emergency_queued))
+        DriverNotice.ADJUSTMENT_SENT -> UiMessage.success(stringResource(R.string.driver_adjustment_sent))
+        DriverNotice.ADJUSTMENT_QUEUED -> UiMessage.info(stringResource(R.string.driver_adjustment_queued))
         DriverNotice.SYNCED -> UiMessage.success(stringResource(R.string.driver_notice_synced))
         null -> null
     }
@@ -268,7 +276,7 @@ fun DriverTripScreen(
                 else -> TripContent(
                     state, trip, onRefresh, onDismissError, onConfirm = { confirming = true },
                     onTakePhoto, onSignature, onRetryEvidence, onDiscardEvidence, onDismissClosedEvidence, onReportIncident, onOpenIncidents,
-                    form = form, onOpenSync = { showSync = true }, onEmergency = { showEmergency = true },
+                    form = form, onOpenSync = { showSync = true }, onEmergency = { showEmergency = true }, adjustment = adjustment,
                 )
             }
         }
@@ -283,6 +291,10 @@ fun DriverTripScreen(
             onDismiss = { showEmergency = false },
             onSubmit = { kind, text -> showEmergency = false; onEmergency(kind, text) },
         )
+    }
+
+    state.adjustment?.let { form ->
+        AdjustmentSheet(form, trip?.stops.orEmpty(), state.adjustmentConfirming, adjustment)
     }
 
     val action = state.action
@@ -346,6 +358,7 @@ private fun TripContent(
     form: DriverFormActions,
     onOpenSync: () -> Unit,
     onEmergency: () -> Unit,
+    adjustment: AdjustmentActions,
 ) {
     val total = trip.stops.size
     val done = trip.stops.count { it.status == StopStatus.COMPLETED }
@@ -396,6 +409,9 @@ private fun TripContent(
                     EvidencePhase.CLOSED -> EvidenceHint(if (state.pendingSync) R.string.driver_evidence_pending else R.string.driver_evidence_closed)
                     EvidencePhase.NONE -> Unit
                 }
+                // Roadmap 2.6: cobro extra (estadía, peajes, maniobras…). Va en el contenido y no en el panel fijo:
+                // el panel queda solo para el botón XL y las acciones urgentes, y el mapa conserva su espacio.
+                if (state.action != null) AdjustmentPrompt(adjustment.onOpen, state.adjustmentSending)
                 Text(
                     "${Fmt.tons(trip.weightKg)} · ${trip.vehiclePlate ?: "—"} · ${trip.cargoDescription ?: stringResource(R.string.driver_cargo_default)}",
                     style = LogyxText.mono, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -405,7 +421,7 @@ private fun TripContent(
             }
         }
         val action = state.action
-        if (action != null || state.actionError != null) {
+        if (action != null || state.actionError != null || state.adjustmentError != null) {
             Column(
                 Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -417,6 +433,13 @@ private fun TripContent(
                         actionLabel = if (action != null) stringResource(R.string.driver_action_error_retry) else null,
                         onAction = if (action != null) onConfirm else null,
                         onDismiss = onDismissError,
+                    )
+                }
+                state.adjustmentError?.let {
+                    AlertBanner(
+                        it, kind = MessageKind.Error,
+                        title = stringResource(R.string.driver_adjustment_error_title),
+                        onDismiss = adjustment.onDismissError,
                     )
                 }
                 if (action != null) {
@@ -443,6 +466,23 @@ private fun TripContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AdjustmentPrompt(onOpen: () -> Unit, sending: Boolean) {
+    LogyxCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.driver_adjustment_prompt_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.driver_adjustment_prompt_body),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LogyxButton(
+                stringResource(R.string.driver_adjustment_open), onOpen,
+                variant = ButtonVariant.Secondary, size = ButtonSize.Medium, loading = sending,
+            )
         }
     }
 }

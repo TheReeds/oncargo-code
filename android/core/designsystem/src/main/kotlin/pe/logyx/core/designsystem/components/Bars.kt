@@ -93,6 +93,17 @@ fun LogyxTopBar(
     }
 }
 
+/**
+ * Acción con ícono para [LogyxTopBar] (`actions = { LogyxTopBarAction(...) }`): 48 dp de área táctil, ícono de 24 dp en
+ * `onSurfaceVariant` y [contentDescription] obligatorio (TalkBack). Úsala en vez de botones de texto largos en la barra.
+ */
+@Composable
+fun LogyxTopBarAction(icon: ImageVector, contentDescription: String, onClick: () -> Unit, enabled: Boolean = true) {
+    IconButton(onClick = onClick, Modifier.size(48.dp), enabled = enabled) {
+        Icon(icon, contentDescription, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 data class LogyxNavItem(
     val label: String,
     val icon: ImageVector,
