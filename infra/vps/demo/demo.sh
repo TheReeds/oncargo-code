@@ -23,7 +23,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 SSH=(ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 "$VPS")
 COMPOSE_DIR=/opt/oncargo/src/infra/vps
 
-if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+if [[ ( -t 1 || -n "${FORCE_COLOR:-}" ) && -z "${NO_COLOR:-}" ]]; then
   B=$'\e[1m'; D=$'\e[2m'; G=$'\e[32m'; R=$'\e[31m'; Y=$'\e[33m'; C=$'\e[36m'; M=$'\e[35m'; N=$'\e[0m'
 else B=; D=; G=; R=; Y=; C=; M=; N=; fi
 
@@ -66,7 +66,7 @@ EOF
   remote <<EOF
 cd $COMPOSE_DIR
 echo; echo "\$ docker compose ps"
-docker compose ps --format 'table {{.Service}}\t{{.Status}}\t{{.Networks}}'
+{ printf 'SERVICIO\tESTADO\tREDES\n'; docker compose ps --format '{{.Service}}\t{{.Status}}\t{{.Networks}}'; } | column -t -s \$'\t'
 echo; echo "\$ docker stats --no-stream"
 docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.PIDs}}'
 echo; echo "commit desplegado: \$(cat /opt/oncargo/state/DEPLOYED)"

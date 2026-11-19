@@ -12,7 +12,7 @@ SSH4=(ssh -4 -i "$KEY" -o BatchMode=yes -o ConnectTimeout=8 "$VPS")
 SSH6=(ssh -6 -i "$KEY" -o BatchMode=yes -o ConnectTimeout=8 "${VPS%@*}@${VPS_V6:-$DOMAIN}")
 ATTACKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REG_DIR="${OC_REGISTRO:-$HOME/oncargo-pruebas}/$(date +%F)"
-if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then B=$'\e[1m'; G=$'\e[32m'; R=$'\e[31m'; Y=$'\e[33m'; C=$'\e[36m'; N=$'\e[0m'
+if [[ ( -t 1 || -n "${FORCE_COLOR:-}" ) && -z "${NO_COLOR:-}" ]]; then B=$'\e[1m'; G=$'\e[32m'; R=$'\e[31m'; Y=$'\e[33m'; C=$'\e[36m'; N=$'\e[0m'
 else B=; G=; R=; Y=; C=; N=; fi
 
 mask() {
