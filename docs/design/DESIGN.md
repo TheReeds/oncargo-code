@@ -80,6 +80,8 @@ Objetivo: densidad y ritmo, sin huecos ni secciones planas. Detalle de component
 - **Prueba de producto:** subasta en vivo (20 min o 5 ofertas, piso 75 %), mapa con rutas reales de `routes.json` y cotizador con las reglas del `TariffCalculator`; todo lo que es de muestra va rotulado «ilustrativo».
 - **Login y registro:** pantalla partida; panel de marca a sangre con vídeo, beneficios por rol, cifras reales, testimonio ilustrativo y sellos de confianza; en < lg, banda de marca con póster y formulario que la solapa. Registro con indicador de avance (3 pasos derivados de la validez de los campos) sin ocultar campos.
 - **Movimiento:** entrada por scroll con `animation-timeline: view()`, contadores y hover de tarjetas; todo bajo `prefers-reduced-motion: no-preference`.
+- **Páginas legales y comerciales (ola 1, nov 2026):** `/terminos`, `/precios` y `/contacto` siguen el molde de `/privacidad` (cabecera `.mk-dark`, tarjetas de resumen que la solapan, índice lateral con anclas, ancho de lectura 68 ch). `/terminos` es un **borrador** y se rotula siempre «Borrador — pendiente de revisión legal» (insignia ámbar en la cabecera + `Alert` warning sobre el texto) con la versión vigente en monoespaciada. `/precios` explica quién paga (PYME sin costo, comisión al transportista, IGV incluido) y muestra un ejemplo con cifras reales de la API (dinero en `.money`). El pie completo enlaza Términos, Privacidad, Precios y Contacto; el pie compacto (login/registro) enlaza Términos y Privacidad. El registro suma una segunda casilla («Acepto los términos y condiciones…») junto a la de privacidad, ambas obligatorias.
+- **Cotizador de la landing:** estimación inmediata + confirmación de la API; etiqueta «Estimación» (ámbar) → «Cotización de referencia» (verde); línea «Incluye IGV (18 %)»; CTA «Publicar esta carga» que conserva ruta, peso y tipo.
 
 ## Patrones (componentes con nombre — úsalos igual en web y móvil)
 - **RouteLine** — `Lima ──── 1,010 km ────▶ Juliaca` con fechas debajo de cada ciudad.
@@ -117,6 +119,11 @@ Objetivo: densidad y ritmo, sin huecos ni secciones planas. Detalle de component
 1. **Marketplace**: tabla densa (LoadRow) con filtros (origen, destino, fecha, peso máx = mi vehículo) +
    vista tarjetas; panel lateral para ofertar (elige vehículo compatible, monto ≥ piso).
 2. **Mis ofertas**, 3. **Flota** (vehículos + conductores), 4. **Envíos** (asignar conductor).
+### Web — Operador (parámetros, búsqueda y conversaciones)
+- **Parámetros del sistema** (`/operador/parametros`): una tarjeta por parámetro (comisión en %, SLA de asignación, umbrales de incidencias) con el valor grande en monoespaciada, insignia «Versión n» o «Valor por omisión», el motivo del último cambio y «Cambiar» (diálogo con el campo de valor y el motivo obligatorio). Debajo, historial de solo lectura (parámetro, antes → después, motivo, quién y cuándo).
+- **Búsqueda** (`SearchInput` dentro de `FilterBar`): «Buscar» ocupa dos columnas de la barra de filtros de solicitudes, envíos y verificación; Enter o la lupa aplican, la X limpia; el texto vive en la URL (`q`).
+- **Conversaciones** (`OperatorChat`, detalle de solicitud y de envío): tarjeta de solo consulta que no carga nada hasta «Ver conversaciones»; pide un motivo opcional y avisa que queda auditado. Cada hilo abre un `Sheet` con burbujas y sin cuadro de escritura.
+
 ### Móvil — Transportista
 Home "Tu actividad" (cargas sugeridas · ofertas enviadas · viaje activo) → LoadCard feed con filtros rápidos
 (Cerca de mí, Mi vehículo, Mejor pago) → detalle con mapa + ofertar (bottom sheet) → mis ofertas → envíos.

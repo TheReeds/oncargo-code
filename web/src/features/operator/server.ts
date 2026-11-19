@@ -1,5 +1,5 @@
 import { apiFor } from '@/lib/api/server';
-import { unwrap } from '@/lib/api/client';
+import { ApiError, unwrap } from '@/lib/api/client';
 import type { Schemas } from '@/lib/api/server';
 import { unwrapPage } from '@/lib/api/page';
 
@@ -30,7 +30,7 @@ export async function getOverview(token: string) {
 }
 
 /** Filtros de los listados globales; `page` base 0 (ver `lib/api/page.ts`). */
-export type OperatorListQuery = { status?: string; originCity?: string; destinationCity?: string; fromDate?: string; toDate?: string; page?: number; size?: number };
+export type OperatorListQuery = { status?: string; originCity?: string; destinationCity?: string; fromDate?: string; toDate?: string; q?: string; page?: number; size?: number };
 export const listRequests = (token: string, query: OperatorListQuery = {}) =>
   unwrapPage<OperatorRequestRow>(apiFor(token).GET('/api/v1/operator/requests', { params: { query } }) as never);
 export const listShipments = (token: string, query: OperatorListQuery = {}) =>
@@ -38,7 +38,7 @@ export const listShipments = (token: string, query: OperatorListQuery = {}) =>
 
 // ── Verificación de organizaciones (RN01, F05) ───────────────────────
 export type OrganizationReviewRow = Schemas['OrganizationReviewRow'];
-export type OrgReviewQuery = { status?: string; type?: string; page?: number; size?: number };
+export type OrgReviewQuery = { status?: string; type?: string; q?: string; page?: number; size?: number };
 export const listOrganizations = (token: string, query: OrgReviewQuery = {}) =>
   unwrapPage<OrganizationReviewRow>(apiFor(token).GET('/api/v1/operator/organizations', { params: { query } }) as never);
 export const verifyOrganization = (token: string, id: string, note?: string) =>
@@ -54,3 +54,39 @@ export type AuditQuery = { actorId?: string; organizationId?: string; action?: s
 export const listAudit = (token: string, query: AuditQuery = {}) =>
   unwrapPage<AuditRow>(apiFor(token).GET('/api/v1/operator/audit', { params: { query } }) as never);
 export const auditActions = (token: string) => unwrap(apiFor(token).GET('/api/v1/operator/audit/actions'));
+
+// ── Parámetros de sistema (V18) ──────────────────────────────────────
+export type ParameterRow = Schemas['ParameterRow'];
+export type ParameterChangeRow = Schemas['ParameterChangeRow'];
+export const listParameters = (token: string) => unwrap(apiFor(token).GET('/api/v1/operator/parameters'));
+export const updateParameter = (token: string, key: string, body: Schemas['UpdateParameter']) =>
+  unwrap(apiFor(token).PUT('/api/v1/operator/parameters/{key}', { params: { path: { key } }, body }));
+export const parameterHistory = (token: string, query: { key?: string; page?: number; size?: number } = {}) =>
+  unwrapPage<ParameterChangeRow>(apiFor(token).GET('/api/v1/operator/parameters/history', { params: { query } }) as never);
+
+// ── Ofertas y chat de una solicitud, solo lectura (ítem 1.13; el chat queda auditado) ──
+export type OperatorBid = Schemas['OperatorBidRow'];
+export type OperatorThread = Schemas['OperatorThreadRow'];
+export type OperatorMessage = Schemas['OperatorMessageRow'];
+export const requestBids = (token: string, id: string) =>
+  unwrap(apiFor(token).GET('/api/v1/operator/requests/{id}/bids', { params: { path: { id } } }));
+export const requestThreads = (token: string, id: string, reason?: string) =>
+  unwrap(apiFor(token).GET('/api/v1/operator/requests/{id}/threads', { params: { path: { id }, query: { reason } } }));
+
+/** Mensajes en orden cronológico; `before` = `nextCursor` de la página anterior (esa petición no se vuelve a auditar). */
+export async function threadMessages(token: string, id: string, carrierOrgId: string, opts: { before?: string; reason?: string; size?: number } = {}): Promise<{ items: OperatorMessage[]; nextCursor: string | null }> {
+  let res;
+  try {
+    res = await apiFor(token).GET('/api/v1/operator/requests/{id}/threads/{carrierOrgId}/messages', {
+      params: { path: { id, carrierOrgId }, query: { before: opts.before, reason: opts.reason, size: opts.size ?? 30 } },
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'No pudimos conectar con el servidor. Intenta nuevamente en unos segundos.');
+  }
+  if (res.error !== undefined || !res.response.ok) {
+    const e = (res.error ?? {}) as { error?: { code?: string; message?: string; field?: string | null } };
+    throw new ApiError(res.response.status, e.error?.code ?? `HTTP-${res.response.status}`, e.error?.message ?? 'Ocurrió un error inesperado. Intenta nuevamente.', e.error?.field);
+  }
+  const body = res.data as { data?: OperatorMessage[]; meta?: { nextCursor?: string } };
+  return { items: body.data ?? [], nextCursor: body.meta?.nextCursor ?? null };
+}

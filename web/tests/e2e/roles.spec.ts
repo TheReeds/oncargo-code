@@ -141,8 +141,10 @@ test.describe('Usuarios y roles', () => {
     await expect(page.getByRole('button', { name: 'Aceptar oferta' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Contraofertar/ })).toHaveCount(0);
 
+    // V16 (roadmap 1.7): /nueva redirige al listado con el aviso (y «Pedir acceso»)
     await goto(page, '/pyme/solicitudes/nueva');
-    await expect(page.getByTestId('read-only-notice')).toContainText('No puedes publicar solicitudes');
+    await expect(page).toHaveURL(/\/pyme\/solicitudes\?sinPermiso=nueva-solicitud/);
+    await expect(page.getByTestId('read-only-notice').filter({ hasText: 'No puedes publicar solicitudes' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publicar solicitud' })).toHaveCount(0);
 
     // Forzar una action de escritura: el backend rechaza con AUTH-007 y el mensaje lo dice

@@ -9,6 +9,7 @@ test.describe('Registro', () => {
     await expect(page.getByText('Ingresa la razón social de tu empresa.')).toBeVisible();
     await expect(page.getByText('Ingresa un RUC de 11 dígitos.')).toBeVisible();
     await expect(page.getByText('Acepta la política de privacidad para continuar.')).toBeVisible();
+    await expect(page.getByText('Acepta los términos y condiciones para continuar.')).toBeVisible();
 
     // RUC con 11 dígitos pero dígito verificador incorrecto -> error de la API, inline bajo el campo RUC
     const id = uid();
@@ -18,6 +19,7 @@ test.describe('Registro', () => {
     await page.getByLabel('Correo electrónico').fill(`e2e-${id}@prueba.pe`);
     await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
     await page.getByLabel(/Acepto la/).click();
+    await page.getByLabel(/Acepto los términos/).click();
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
     const rucField = page.locator('#ruc');
     await expect(rucField).toHaveAttribute('aria-invalid', 'true');
@@ -37,6 +39,25 @@ test.describe('Registro', () => {
     await expect(page).toHaveURL(/\/registro/);
   });
 
+  test('sin aceptar los términos y condiciones no se crea la cuenta; el enlace abre el borrador', async ({ page, context }) => {
+    await goto(page, '/registro');
+    await page.getByLabel('Razón social').fill('Sin Términos SAC');
+    await page.getByLabel('RUC').fill(validRuc());
+    await page.getByLabel('Tu nombre completo').fill('María Quispe');
+    await page.getByLabel('Correo electrónico').fill(`e2e-${uid()}@prueba.pe`);
+    await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
+    await page.getByLabel(/Acepto la/).click();
+    await page.getByRole('button', { name: 'Crear cuenta' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Acepta los términos y condiciones' })).toBeVisible();
+    await expect(page.locator('#acceptTerms')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page).toHaveURL(/\/registro/);
+    // El enlace de los términos abre la página (borrador, con su versión)
+    const [terms] = await Promise.all([context.waitForEvent('page'), page.getByRole('main').getByRole('link', { name: 'términos y condiciones' }).click()]);
+    await terms.waitForLoadState();
+    await expect(terms.getByRole('heading', { level: 1, name: 'Términos y condiciones' })).toBeVisible();
+    await expect(terms.getByText('Borrador — pendiente de revisión legal').first()).toBeVisible();
+  });
+
   test('PYME se registra y llega a su panel; correo repetido se marca en el campo', async ({ page, context }) => {
     const id = uid();
     const email = `e2e-${id}@prueba.pe`;
@@ -48,6 +69,7 @@ test.describe('Registro', () => {
     await page.getByLabel('Correo electrónico').fill(email);
     await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
     await page.getByLabel(/Acepto la/).click();
+    await page.getByLabel(/Acepto los términos/).click();
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
     await expect(page).toHaveURL(/\/pyme$/);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -61,6 +83,7 @@ test.describe('Registro', () => {
     await page.getByLabel('Correo electrónico').fill(email);
     await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
     await page.getByLabel(/Acepto la/).click();
+    await page.getByLabel(/Acepto los términos/).click();
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
     await expect(page.locator('#email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#ruc')).not.toHaveAttribute('aria-invalid', 'true');
@@ -76,6 +99,7 @@ test.describe('Registro', () => {
     await page.getByLabel('Correo electrónico').fill(`e2e-${id}@prueba.pe`);
     await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
     await page.getByLabel(/Acepto la/).click();
+    await page.getByLabel(/Acepto los términos/).click();
     await page.getByRole('button', { name: 'Crear cuenta' }).click();
     await expect(page).toHaveURL(/\/transportista\/marketplace$/);
   });

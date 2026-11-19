@@ -1,4 +1,4 @@
-import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake, ShieldCheck, Undo2, Ban, Hourglass } from 'lucide-react';
+import { Bell, Route, Sparkles, Gavel, MessageSquare, Truck, TriangleAlert, CircleCheck, CircleX, Star, Handshake, ShieldCheck, Undo2, Ban, Hourglass, KeyRound } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export type NotifOrg = 'PYME' | 'CARRIER' | 'OPERATOR' | null | undefined;
@@ -28,6 +28,9 @@ export function notificationHref(n: NotifLike, orgType: NotifOrg): string {
       return id ? `/incidencias/${id}` : orgType === 'OPERATOR' ? '/operador/incidencias' : '/incidencias';
     case 'ORGANIZATION':
       return id ? `/organizaciones/${id}` : '/notificaciones';
+    case 'USER':
+      // V16: pedido de acceso; el ADMIN cambia el rol en Usuarios y roles.
+      return id ? `/organizacion/usuarios?usuario=${id}` : '/organizacion/usuarios';
     case 'BID':
     case 'COUNTER_OFFER':
       return carrier ? '/transportista/ofertas' : '/pyme/solicitudes';
@@ -58,5 +61,6 @@ export const NOTIFICATION_META: Record<string, { label: string; icon: ComponentT
   BID_WITHDRAWN: { label: 'Oferta retirada', icon: Undo2, tone: 'bg-steel-100 text-ink-700' },
   ORGANIZATION_VERIFICATION: { label: 'Verificación de empresa', icon: ShieldCheck, tone: 'bg-petrol-50 text-petrol-700' },
   NEW_REVIEW: { label: 'Nueva calificación', icon: Star, tone: 'bg-amber-50 text-amber-700' },
+  ACCESS_REQUESTED: { label: 'Pedido de acceso', icon: KeyRound, tone: 'bg-amber-50 text-amber-700' },
 };
 export const notificationMeta = (type?: string) => NOTIFICATION_META[type ?? ''] ?? { label: 'Aviso', icon: Bell, tone: 'bg-steel-100 text-ink-700' };

@@ -13,8 +13,11 @@ export function formatOpenTime(hours: number) {
   return h ? `${d} d ${h} h` : `${d} d`;
 }
 
-/** Ámbar > 12 h, rojo > 24 h (solo activas). */
-export const ageTone = (hours: number, active?: boolean) => (!active ? 'text-ink-700' : hours > 24 ? 'font-semibold text-red-600' : hours > 12 ? 'font-semibold text-amber-700' : 'text-ink-700');
+/** Umbrales por omisión de color de una incidencia activa (RN11). El operador los cambia en /operador/parametros y llegan en `/operator/metrics`. */
+export const DEFAULT_AGE_THRESHOLDS = { warn: 12, breach: 24 } as const;
+/** Ámbar pasado `warn` horas, rojo pasado `breach` (solo activas). */
+export const ageTone = (hours: number, active?: boolean, t: { warn: number; breach: number } = DEFAULT_AGE_THRESHOLDS) =>
+  (!active ? 'text-ink-700' : hours > t.breach ? 'font-semibold text-red-600' : hours > t.warn ? 'font-semibold text-amber-700' : 'text-ink-700');
 
 export const CATEGORY_OPTIONS = [
   ['CARGO_DAMAGE', 'Daño en la carga'], ['DELAY', 'Retraso'], ['LOST_CARGO', 'Carga perdida'], ['WRONG_DELIVERY', 'Entrega equivocada'], ['DRIVER_CONDUCT', 'Conducta del conductor'], ['OTHER', 'Otro'],

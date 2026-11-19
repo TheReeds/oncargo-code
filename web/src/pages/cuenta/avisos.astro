@@ -1,0 +1,15 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import NotificationPreferences from '@/features/notifications/components/NotificationPreferences';
+import { Alert } from '@/components/ui/alert';
+import { getPreferences } from '@/features/notifications/server';
+const session = Astro.locals.session!;
+let prefs: Awaited<ReturnType<typeof getPreferences>> | null = null;
+try { prefs = await getPreferences(session.token); } catch { prefs = null; }
+---
+<AppShell title="Mis avisos" active="cuenta">
+  <PageHeader title="Mis avisos" subtitle="Elige qué avisos recibes y por dónde. Es solo para ti: tus compañeros tienen sus propias preferencias."
+    breadcrumbs={[{ label: 'Mi cuenta', href: '/cuenta' }, { label: 'Mis avisos' }]} />
+  {prefs ? <NotificationPreferences client:load initial={prefs as never} /> : <Alert tone="error" title="No pudimos cargar tus avisos">Recarga la página en unos segundos.</Alert>}
+</AppShell>

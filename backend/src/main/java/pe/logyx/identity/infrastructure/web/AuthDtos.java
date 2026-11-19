@@ -29,10 +29,15 @@ public final class AuthDtos {
             @NotBlank(message = "El nombre es obligatorio") @Size(max = 150) String fullName,
             @NotBlank @Email(message = "Email inválido") String email,
             @NotBlank @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres") String password,
-            @AssertTrue(message = "Debe aceptar la política de privacidad (Ley N° 29733)") boolean acceptPrivacyPolicy) {
+            @AssertTrue(message = "Debe aceptar la política de privacidad (Ley N° 29733)") boolean acceptPrivacyPolicy,
+            @AssertTrue(message = "Debe aceptar los Términos y condiciones") boolean acceptTerms,
+            @Schema(description = "Versión de los Términos y condiciones que el usuario leyó (la de GET /public/legal). "
+                    + "Si se omite se asume la vigente; si no es la vigente, 409 LOGYX-AUTH-012")
+            @Size(max = 40) String termsVersion) {
 
         RegisterCommand toCommand() {
-            return new RegisterCommand(organizationType, legalName, ruc, city, phone, fullName, email, password);
+            return new RegisterCommand(organizationType, legalName, ruc, city, phone, fullName, email, password,
+                    termsVersion == null || termsVersion.isBlank() ? "" : termsVersion.trim());
         }
     }
 

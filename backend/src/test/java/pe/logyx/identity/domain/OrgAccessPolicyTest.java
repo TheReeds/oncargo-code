@@ -19,6 +19,10 @@ class OrgAccessPolicyTest {
         assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/notifications/" + UUID.randomUUID() + "/read"));
         assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/notifications/read-all/"));
         assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "api/v1/pricing/calculate"));
+        // V16: sus preferencias de aviso y «Pedir acceso»
+        assertTrue(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/notifications/preferences"));
+        assertTrue(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/organizations/me/access-requests"));
+        assertFalse(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/organizations/me/users"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("POST", "/api/v1/shipment-requests"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("PUT", "/api/v1/shipments/x/driver"));
         assertFalse(OrgAccessPolicy.viewerMayWrite("DELETE", "/api/v1/notifications/x"));

@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { actions } from 'astro:actions';
 import { ArrowLeftRight, ArrowRight, MapPin, Route as RouteIcon } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { Field } from '@/components/ui/field';
 import { NumberInput } from '@/components/ui/number-input';
 import { formatMoney, formatNumber, CARGO_LABELS } from '@/lib/format';
 import { BASE_EDGES, CITIES, MAP_SIZE, ROUTE_PATHS, type CityCode } from '../corridor-data';
-import { CARGO_MULT, driveMinutes, formatDrive, km as kmBetween, quote, routeKey, type CargoKey } from '../pricing';
+import { splitActionError } from '@/lib/action-error';
+import { CARGO_MULT, driveMinutes, formatDrive, km as kmBetween, quote, r2, routeKey, type CargoKey } from '../pricing';
 
 /** Posición de la etiqueta de cada ciudad respecto del punto. */
 const LABEL: Record<CityCode, { dx: number; dy: number; anchor: 'start' | 'end' | 'middle' }> = {
@@ -18,6 +20,10 @@ const cityOptions = CITIES.map((c) => ({ value: c.code, label: c.label }));
 const cargoOptions = (Object.keys(CARGO_MULT) as CargoKey[]).map((k) => ({ value: k, label: CARGO_LABELS[k] ?? k }));
 const PRESETS: [CityCode, CityCode][] = [['LIMA', 'AREQUIPA'], ['LIMA', 'CUSCO'], ['LIMA', 'JULIACA'], ['AREQUIPA', 'TACNA']];
 const byCode = Object.fromEntries(CITIES.map((c) => [c.code, c])) as Record<CityCode, (typeof CITIES)[number]>;
+const VAT = 0.18;
+
+/** Cotización de la API pública (`POST /public/pricing/quote`): mismos números que al publicar. */
+type Remote = { fuel: number; transport: number; tolls: number; handling: number; suggested: number; floor: number; vat: number; net: number };
 
 /** Mapa del corredor (rutas reales de routes.json) + cotizador de ejemplo que usa las reglas de tarifa de la plataforma. Solo cliente. */
 export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; aside?: ReactNode }) {
@@ -26,6 +32,9 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
   const [kg, setKg] = useState('3200');
   const [cargo, setCargo] = useState<CargoKey>('GENERAL');
   const [motion, setMotion] = useState(false);
+  const [remote, setRemote] = useState<{ key: string; q: Remote } | null>(null);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+  const seq = useRef(0);
 
   useEffect(() => {
     const m = matchMedia('(prefers-reduced-motion: no-preference)');
@@ -40,7 +49,31 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
   const distance = kmBetween(origin, dest);
   const tons = Math.max(0, Number(kg) || 0) / 1000;
   const q = useMemo(() => quote(distance, tons, cargo), [distance, tons, cargo]);
-  const rows: [string, number][] = [['Combustible', q.fuel], ['Transporte', q.transport], ['Peajes', q.tolls], ['Manipuleo', q.handling]];
+  // La estimación local responde al instante; la API pública (con los km por carretera y las tarifas vigentes) la confirma.
+  const reqKey = `${origin}|${dest}|${kg}|${cargo}`;
+  const live = remote && remote.key === reqKey ? remote.q : null;
+  const shown = live ?? { ...q, vat: r2(q.suggested - q.suggested / (1 + VAT)), net: r2(q.suggested / (1 + VAT)) };
+  const rows: [string, number][] = [['Combustible', shown.fuel], ['Transporte', shown.transport], ['Peajes', shown.tolls], ['Manipuleo', shown.handling]];
+
+  useEffect(() => {
+    const weight = Number(kg);
+    if (!(weight >= 1 && weight <= 60000)) return;
+    const mine = ++seq.current;
+    const t = setTimeout(async () => {
+      try {
+        const { data, error } = await actions.landing.quote({ originCity: origin, destinationCity: dest, weightKg: weight, cargoType: cargo });
+        if (mine !== seq.current) return;
+        if (error || !data) { setRemote(null); setRemoteError(error ? splitActionError(error).message : null); return; }
+        setRemoteError(null);
+        setRemote({ key: reqKey, q: { fuel: data.fuelCost!, transport: data.transportCost!, tolls: data.tollCost!, handling: data.handlingFee!, suggested: data.suggestedPrice!, floor: data.priceFloor!, vat: data.suggestedVat!, net: data.suggestedNetOfVat! } });
+      } catch {
+        if (mine === seq.current) setRemote(null);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [origin, dest, kg, cargo, reqKey]);
+
+  const publishHref = `/registro?next=${encodeURIComponent(`/pyme/solicitudes/nueva?origen=${origin}&destino=${dest}&peso=${Math.round(Number(kg) || 0)}&tipo=${cargo}`)}`;
 
   const pickDest = (c: CityCode) => {
     if (c === dest) return;
@@ -114,7 +147,7 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
             <h3 className="text-lg font-semibold tracking-tight">Cotizador del corredor</h3>
             <p className="mt-0.5 text-xs text-ink-500">Cuánto sale mover tu carga, antes de crear tu cuenta.</p>
           </div>
-          <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">Estimación ilustrativa</span>
+          <span className={'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ' + (live ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{live ? 'Cotización de referencia' : 'Estimación'}</span>
         </div>
 
         <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
@@ -129,13 +162,15 @@ export default function CorridorExplorer({ intro, aside }: { intro?: ReactNode; 
 
         <dl className="mt-4 divide-y divide-steel-200 rounded-input border border-steel-200 px-3.5 text-sm">
           {rows.map(([k, v]) => <div key={k} className="flex items-center justify-between py-1.5"><dt className="text-ink-700">{k}</dt><dd className="mk-num text-ink-900">{formatMoney(v)}</dd></div>)}
-          <div className="flex items-center justify-between py-2.5"><dt className="font-semibold">Precio sugerido</dt><dd className="money text-xl" aria-live="polite">{formatMoney(q.suggested)}</dd></div>
-          <div className="flex items-center justify-between py-1.5"><dt className="text-ink-700">Piso de la subasta <span className="text-ink-500">(75 %)</span></dt><dd className="mk-num text-ink-900">{formatMoney(q.floor)}</dd></div>
+          <div className="flex items-center justify-between py-2.5"><dt className="font-semibold">Precio sugerido</dt><dd className="money text-xl" aria-live="polite">{formatMoney(shown.suggested)}</dd></div>
+          <div className="flex items-center justify-between py-1.5"><dt className="text-ink-700">Incluye IGV <span className="text-ink-500">(18 %)</span></dt><dd className="mk-num text-ink-900">{formatMoney(shown.vat)}</dd></div>
+          <div className="flex items-center justify-between py-1.5"><dt className="text-ink-700">Piso de la subasta <span className="text-ink-500">(75 %)</span></dt><dd className="mk-num text-ink-900">{formatMoney(shown.floor)}</dd></div>
         </dl>
-        <p className="sr-only" role="status">{`${byCode[origin].label} a ${byCode[dest].label}: ${formatNumber(distance, 1)} kilómetros, precio sugerido ${formatMoney(q.suggested)}.`}</p>
+        {remoteError && <p className="mt-2 text-xs text-amber-700" role="status">{remoteError} Mostramos una estimación con las tarifas del corredor.</p>}
+        <p className="sr-only" role="status">{`${byCode[origin].label} a ${byCode[dest].label}: ${formatNumber(distance, 1)} kilómetros, precio sugerido ${formatMoney(shown.suggested)}, IGV incluido.`}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-[30ch] text-xs text-ink-500"><MapPin className="mr-1 inline size-3 -translate-y-px" aria-hidden="true" />Reglas de la plataforma y km por carretera. La cotización real se calcula al publicar.</p>
-          <a href="/registro" className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-input bg-petrol-700 px-5 text-sm font-semibold text-on-solid transition-colors hover:bg-petrol-800">Publicar esta solicitud <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></a>
+          <p className="max-w-[30ch] text-xs text-ink-500"><MapPin className="mr-1 inline size-3 -translate-y-px" aria-hidden="true" />Precio con IGV y km por carretera. Publicar y comparar ofertas no tiene costo para tu empresa. <a href="/precios" className="font-medium text-petrol-700 underline underline-offset-2">Ver precios</a></p>
+          <a href={publishHref} className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-input bg-petrol-700 px-5 text-sm font-semibold text-on-solid transition-colors hover:bg-petrol-800">Publicar esta carga <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></a>
         </div>
       </div>
       </div>

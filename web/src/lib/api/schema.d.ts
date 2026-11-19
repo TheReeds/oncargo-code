@@ -4,6 +4,64 @@
  */
 
 export interface paths {
+    "/api/v1/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quién creó un recurso y quién hizo cada acción
+         * @description Lectura de created_by y de la auditoría bajo RLS: cada organización ve sus propias acciones y a sus personas; el operador ve todo. Hasta 100 acciones, recientes primero. 404 si no ves el recurso.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Id del recurso. */
+                    id: components["schemas"]["UUID"];
+                    /** @description REQUEST, BID, SHIPMENT, TRIP o INCIDENT. */
+                    subject: components["schemas"]["ActivitySubject"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseActivityView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -1741,10 +1799,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Notificaciones de mi organización, recientes primero (siempre paginado) */
+        /**
+         * Mis avisos, recientes primero (siempre paginado)
+         * @description V16: avisos por persona; marcar uno como leído no cambia el de tus compañeros.
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description true = solo los de algo que tú creaste («Tuyo»). */
+                    mine?: boolean;
                     /** @description Página 0-based (por omisión 0). */
                     page?: number;
                     /** @description Tamaño de página (1-100, por omisión 20). */
@@ -1784,6 +1847,107 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mis preferencias de aviso
+         * @description Categorías que aplican a tu tipo de cuenta, con los canales in-app y correo (valores por defecto si nunca las cambiaste).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListNotificationPreferenceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Cambiar mis preferencias de aviso
+         * @description Cualquier rol (también Lector). Solo cambian las categorías enviadas. 400 LOGYX-NTF-001 si se apaga el in-app de «Cuenta y accesos»; 400 LOGYX-NTF-002 si la categoría no aplica a tu tipo de cuenta.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateNotificationPreferences"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListNotificationPreferenceView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -1848,7 +2012,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Unread Count */
+        /** Cuántos avisos tengo sin leer (solo los míos) */
         get: {
             parameters: {
                 query?: never;
@@ -2125,6 +2289,8 @@ export interface paths {
                 query?: {
                     /** @description Página 0-based (por omisión 0). */
                     page?: number;
+                    /** @description Búsqueda por texto (2-60 caracteres): razón social, RUC, ciudad, correo de un usuario, placa de un vehículo o id. */
+                    q?: string;
                     /** @description Tamaño de página (1-100, por omisión 20). */
                     size?: number;
                     /** @description Estado de verificación (PENDING, VERIFIED, REJECTED, SUSPENDED); ALL = todos. Por omisión PENDING. */
@@ -2360,6 +2526,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Parámetros de sistema vigentes (comisión, SLA de asignación, umbrales de incidencias)
+         * @description version 0 = rige el valor por omisión de la configuración; cada cambio sube la versión.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListParameterRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/parameters/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historial de cambios de parámetros, el más reciente primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Clave del parámetro (commission_rate, assignment_sla_hours, incident_warn_hours, incident_breach_hours). Sin ella, todos. */
+                    key?: string;
+                    /** @description Página 0-based (por omisión 0). */
+                    page?: number;
+                    /** @description Tamaño de página (1-100, por omisión 20). */
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListParameterChangeRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/parameters/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambia un parámetro de sistema con motivo (queda en el historial y en la auditoría)
+         * @description LOGYX-PAR-001 valor inválido o fuera de rango (value), LOGYX-PAR-002 falta el motivo, LOGYX-PAR-003 aviso ≥ incumplimiento, LOGYX-PAR-004 otro operador lo cambió (expectedVersion). 404 si la clave no existe.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateParameter"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseParameterRow"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests": {
         parameters: {
             query?: never;
@@ -2379,6 +2721,8 @@ export interface paths {
                     originCity?: string;
                     /** @description Página 0-based (por omisión 0). */
                     page?: number;
+                    /** @description Búsqueda por texto (2-60 caracteres): código OC-…, referencia de la PYME, razón social o RUC del solicitante o del transportista adjudicado, placa, descripción de la carga o id. */
+                    q?: string;
                     /** @description Tamaño de página (1-100, por omisión 20). */
                     size?: number;
                     /** @description Estado (PUBLISHED, MATCHED, CANCELLED). */
@@ -2488,6 +2832,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests/{id}/bids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ofertas de una solicitud, de menor a mayor monto (solo lectura, para mediar una disputa) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorBidRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests/{id}/candidates": {
         parameters: {
             query?: never;
@@ -2540,6 +2936,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests/{id}/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hilos de chat de una solicitud (solo lectura). Queda auditado: OPERATOR_VIEWED_CHAT
+         * @description El equipo de OnCargo puede revisar conversaciones para resolver disputas (política de privacidad). Cada consulta se registra en la auditoría con el motivo, si se indica.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría. */
+                    reason?: string;
+                };
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorThreadRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/threads/{carrierOrgId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mensajes de un hilo por cursor, en orden cronológico (solo lectura). Auditado al abrir el hilo
+         * @description meta.nextCursor = valor para 'before'. Solo la primera página (sin 'before') se registra en la auditoría como OPERATOR_VIEWED_CHAT.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Id de mensaje: devuelve los anteriores a él (omitir = los más recientes). */
+                    before?: components["schemas"]["UUID"];
+                    /** @description Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría. */
+                    reason?: string;
+                    /** @description Máximo de mensajes (1-100, por omisión 30). */
+                    size?: number;
+                };
+                header?: never;
+                path: {
+                    carrierOrgId: components["schemas"]["UUID"];
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListOperatorMessageRow"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/shipments": {
         parameters: {
             query?: never;
@@ -2559,6 +3076,8 @@ export interface paths {
                     originCity?: string;
                     /** @description Página 0-based (por omisión 0). */
                     page?: number;
+                    /** @description Búsqueda por texto (2-60 caracteres): código y referencia de la solicitud, razón social o RUC de la PYME o del transportista, placa, conductor o id del envío. */
+                    q?: string;
                     /** @description Tamaño de página (1-100, por omisión 20). */
                     size?: number;
                     /** @description Estado (PENDING, IN_TRANSIT, DELIVERED, CANCELLED). */
@@ -2747,6 +3266,70 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/organizations/me/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pedir un permiso a los administradores de mi organización
+         * @description Cualquier rol, también Lector. Avisa (in-app y, según sus preferencias, por correo) a cada ADMIN activo para que cambie tu rol; queda en la auditoría. 409 LOGYX-ACC-001 si tu rol ya tiene el permiso; 429 LOGYX-ACC-002 si ya lo pediste en los últimos 10 minutos; 409 LOGYX-ACC-003 si no hay otro ADMIN activo.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateAccessRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAccessRequestView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/me/users": {
@@ -3232,6 +3815,306 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Direcciones guardadas de la organización: la usada más recientemente primero */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Código de ciudad (p. ej. LIMA). */
+                    city?: string;
+                    /** @description Incluye las archivadas (por omisión no). */
+                    includeArchived?: boolean;
+                    /** @description PICKUP, DELIVERY o BOTH: PICKUP/DELIVERY incluyen las que sirven para ambos. */
+                    kind?: string;
+                    /** @description Texto en el nombre, la dirección o el contacto. */
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListPlaceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PlaceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePlaceView"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/places/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePlaceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edita una dirección activa (reemplaza los campos editables); archivada: LOGYX-PLC-002 */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PlaceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePlaceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/places/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archiva la dirección (no se borra; deja de ofrecerse al publicar) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePlaceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/places/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restaura una dirección archivada */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["schemas"]["UUID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePlaceView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/calculate": {
         parameters: {
             query?: never;
@@ -3280,6 +4163,190 @@ export interface paths {
                 };
                 /** @description Not Allowed */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/commission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comisión vigente de OnCargo (porcentaje que retiene al transportista) y desglose de un monto
+         * @description El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre ese total y el transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. Cualquier rol autenticado (también VIEWER: es lectura).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Monto en soles a desglosar (opcional, > 0). */
+                    amount?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseCommissionInfo"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/legal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Versión vigente de los Términos y condiciones y su estado
+         * @description Sin JWT. El registro (POST /auth/register) exige acceptTerms=true y acepta termsVersion; si no es la vigente responde 409 LOGYX-AUTH-012.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseLegalInfo"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/pricing/commission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cuánto cobra OnCargo: la comisión vigente (la paga el transportista) y el IGV
+         * @description Sin JWT. Para la página de precios.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePublicCommission"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/pricing/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cotización pública de un flete (sin cuenta): precio de referencia, piso y desglose de IGV
+         * @description Sin JWT. Límite por IP (429 LOGYX-AUTH-429 con Retry-After). No persiste nada. Mismo cálculo que POST /pricing/calculate: ciudades del corredor (LOGYX-PRC-001), origen distinto del destino (LOGYX-PRC-002).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PublicQuoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePublicQuote"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3396,6 +4463,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Busca solicitudes, envíos y contrapartes por código (OC-7K2QX), referencia propia, ruta, placa o (operador) RUC o razón social. Solo devuelve lo que el usuario ya puede ver (RLS); hasta 8 por tipo */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Texto, de 2 a 80 caracteres. */
+                    q?: string;
+                    /** @description Tipos separados por coma: REQUEST, SHIPMENT, COUNTERPART (por omisión todos). */
+                    types?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListSearchResultView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shipment-requests": {
         parameters: {
             query?: never;
@@ -3458,11 +4580,14 @@ export interface paths {
             };
         };
         put?: never;
-        /** Publish */
+        /** Publica una solicitud. Con la cabecera Idempotency-Key (8-80 caracteres) un reintento o doble clic devuelve la solicitud ya creada (cabecera Idempotent-Replayed: true) en vez de crear otra */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Clave de idempotencia (UUID recomendado), válida 24 h por organización. */
+                    "Idempotency-Key"?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3472,8 +4597,8 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description OK */
-                200: {
+                /** @description Solicitud creada (o la ya creada con esa Idempotency-Key) */
+                201: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3517,14 +4642,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mine */
+        /** Mis solicitudes con filtros, orden y paginación en el servidor (meta.total). Sin page ni size devuelve todas las que cumplen el filtro */
         get: {
             parameters: {
                 query?: {
+                    /** @description Código de ciudad de destino. */
+                    destinationCity?: string;
+                    /** @description Fecha de recojo desde, ISO (yyyy-MM-dd), inclusive. */
+                    fromDate?: string;
+                    /** @description Código de ciudad de origen (p. ej. LIMA). */
+                    originCity?: string;
                     /** @description Página 0-based. Si se omite page y size, se devuelven todas. */
                     page?: number;
+                    /** @description Texto: código (OC-7K2QX, con o sin guion), referencia propia, ciudad o descripción. */
+                    q?: string;
                     /** @description Tamaño de página (1-100, por omisión 20 cuando se pagina). */
                     size?: number;
+                    /** @description Orden: recent (por omisión), pickup, bids, price_desc o price_asc. */
+                    sort?: string;
+                    /** @description PUBLISHED, MATCHED o CANCELLED. */
+                    status?: string;
+                    /** @description Fecha de recojo hasta, ISO (yyyy-MM-dd), inclusive. */
+                    toDate?: string;
+                    /** @description true: solo publicadas con ofertas por revisar. */
+                    withBids?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -3539,6 +4680,171 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApiResponseListRequestView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/mine/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Totales de mis solicitudes por estado, sin filtros (pestañas de filtro rápido) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseRequestCountsView"];
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/mine/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) las solicitudes que cumplen los mismos filtros que /mine. Máximo 10 000 filas: si hay más, LOGYX-EXP-001 */
+        get: {
+            parameters: {
+                query?: {
+                    destinationCity?: string;
+                    fromDate?: string;
+                    originCity?: string;
+                    q?: string;
+                    sort?: string;
+                    status?: string;
+                    toDate?: string;
+                    withBids?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv;charset=UTF-8": unknown;
+                    };
+                };
+                /** @description Not Authorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Allowed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipment-requests/mine/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Posibles duplicados: solicitudes publicadas en las últimas 24 h con la misma ruta, tipo de carga, peso y fecha de recojo (máximo 3) */
+        get: {
+            parameters: {
+                query?: {
+                    cargoType?: components["schemas"]["CargoType"];
+                    destinationCity?: string;
+                    originCity?: string;
+                    pickupDate?: string;
+                    weightKg?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListSimilarRequest"];
                     };
                 };
                 /** @description Not Authorized */
@@ -5839,11 +7145,43 @@ export interface components {
             items?: components["schemas"]["SmartLoadItemAmount"][];
             notes?: string;
         };
+        AccessRequestView: {
+            permission?: components["schemas"]["OrgPermission"];
+            /** Format: int32 */
+            notifiedAdmins?: number;
+        };
+        ActivityEntryView: {
+            at?: components["schemas"]["OffsetDateTime"];
+            action?: string;
+            entity?: string;
+            entityId?: components["schemas"]["UUID"];
+            actor?: components["schemas"]["ActivityPerson"];
+            organizationName?: string;
+            own?: boolean;
+        };
+        ActivityPerson: {
+            name?: string;
+            role?: string;
+        };
+        /** @enum {string} */
+        ActivitySubject: "REQUEST" | "BID" | "SHIPMENT" | "TRIP" | "INCIDENT";
+        ActivityView: {
+            createdBy?: components["schemas"]["ActivityPerson"];
+            entries?: components["schemas"]["ActivityEntryView"][];
+        };
         AddIncidentComment: {
             body: string;
         };
         ApiResponseAcceptResult: {
             data?: components["schemas"]["AcceptResult"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseAccessRequestView: {
+            data?: components["schemas"]["AccessRequestView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseActivityView: {
+            data?: components["schemas"]["ActivityView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseAuthMessage: {
@@ -5856,6 +7194,10 @@ export interface components {
         };
         ApiResponseBidView: {
             data?: components["schemas"]["BidView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseCommissionInfo: {
+            data?: components["schemas"]["CommissionInfo"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseCounterOfferView: {
@@ -5876,6 +7218,10 @@ export interface components {
         };
         ApiResponseIncidentView: {
             data?: components["schemas"]["IncidentView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseLegalInfo: {
+            data?: components["schemas"]["LegalInfo"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListAssignmentCandidateView: {
@@ -5922,8 +7268,20 @@ export interface components {
             data?: components["schemas"]["MessageView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListNotificationPreferenceView: {
+            data?: components["schemas"]["NotificationPreferenceView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListNotificationView: {
             data?: components["schemas"]["NotificationView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListOperatorBidRow: {
+            data?: components["schemas"]["OperatorBidRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListOperatorMessageRow: {
+            data?: components["schemas"]["OperatorMessageRow"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListOperatorRequestRow: {
@@ -5934,12 +7292,28 @@ export interface components {
             data?: components["schemas"]["OperatorShipmentRow"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListOperatorThreadRow: {
+            data?: components["schemas"]["OperatorThreadRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListOrganizationReviewRow: {
             data?: components["schemas"]["OrganizationReviewRow"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListOrganizationUser: {
             data?: components["schemas"]["OrganizationUser"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListParameterChangeRow: {
+            data?: components["schemas"]["ParameterChangeRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListParameterRow: {
+            data?: components["schemas"]["ParameterRow"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListPlaceView: {
+            data?: components["schemas"]["PlaceView"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListRequestView: {
@@ -5954,8 +7328,16 @@ export interface components {
             data?: components["schemas"]["ReviewView"][];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseListSearchResultView: {
+            data?: components["schemas"]["SearchResultView"][];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponseListShipmentView: {
             data?: components["schemas"]["ShipmentView"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseListSimilarRequest: {
+            data?: components["schemas"]["SimilarRequest"][];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseListSmartLoadView: {
@@ -6014,12 +7396,28 @@ export interface components {
             data?: components["schemas"]["OrganizationUser"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponseParameterRow: {
+            data?: components["schemas"]["ParameterRow"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponsePasswordTokenInfo: {
             data?: components["schemas"]["PasswordTokenInfo"];
             meta?: components["schemas"]["Meta"];
         };
+        ApiResponsePlaceView: {
+            data?: components["schemas"]["PlaceView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponsePublicCommission: {
+            data?: components["schemas"]["PublicCommission"];
+            meta?: components["schemas"]["Meta"];
+        };
         ApiResponsePublicOrganization: {
             data?: components["schemas"]["PublicOrganization"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponsePublicQuote: {
+            data?: components["schemas"]["PublicQuote"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseQuote: {
@@ -6028,6 +7426,10 @@ export interface components {
         };
         ApiResponseReputationView: {
             data?: components["schemas"]["ReputationView"];
+            meta?: components["schemas"]["Meta"];
+        };
+        ApiResponseRequestCountsView: {
+            data?: components["schemas"]["RequestCountsView"];
             meta?: components["schemas"]["Meta"];
         };
         ApiResponseRequestView: {
@@ -6146,6 +7548,13 @@ export interface components {
         };
         /** @enum {string} */
         BookingStatus: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+        Breakdown: {
+            amount?: number;
+            netOfVat?: number;
+            vat?: number;
+            commission?: number;
+            carrierNet?: number;
+        };
         CancelRequestBody: {
             reason?: string;
         };
@@ -6201,6 +7610,11 @@ export interface components {
         };
         /** @enum {string} */
         CloseReason: "TIMEOUT" | "MAX_BIDS" | "ACCEPTED" | "CANCELLED";
+        CommissionInfo: {
+            commissionRate?: number;
+            vatRate?: number;
+            breakdown?: components["schemas"]["Breakdown"];
+        };
         /** @enum {string} */
         CounterOfferStatus: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
         CounterOfferView: {
@@ -6217,6 +7631,10 @@ export interface components {
             respondedAt?: components["schemas"]["OffsetDateTime"];
             proposedByCarrier?: boolean;
         };
+        CreateAccessRequest: {
+            permission: components["schemas"]["OrgPermission"];
+            reason?: string;
+        };
         CreateRequest: {
             originCity: string;
             originAddress: string;
@@ -6227,6 +7645,20 @@ export interface components {
             weightKg: number;
             volumeM3?: number;
             pickupDate: components["schemas"]["LocalDate"];
+            customerReference?: string;
+            declaredValue?: number;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            pickupWindowFrom?: string;
+            pickupWindowTo?: string;
+            pickupInstructions?: string;
+            deliveryContactName?: string;
+            deliveryContactPhone?: string;
+            deliveryWindowFrom?: string;
+            deliveryWindowTo?: string;
+            deliveryInstructions?: string;
+            originPlaceId?: components["schemas"]["UUID"];
+            destinationPlaceId?: components["schemas"]["UUID"];
         };
         CreateTripBookingRequest: {
             weightKg: number;
@@ -6364,6 +7796,10 @@ export interface components {
             /** @description ADMIN, OPS o VIEWER (DRIVER no: los conductores se crean en la flota) */
             role: components["schemas"]["Role"];
         };
+        LegalInfo: {
+            termsVersion?: string;
+            termsStatus?: string;
+        };
         /**
          * Format: date
          * @example 2022-03-10
@@ -6432,9 +7868,24 @@ export interface components {
             finalStanding?: boolean;
         };
         /** @enum {string} */
-        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION";
+        NotificationCategory: "BIDS" | "AWARDS" | "REQUESTS" | "NEGOTIATION" | "SHIPMENTS" | "INCIDENTS" | "REVIEWS" | "TRIPS" | "SMART_LOAD" | "ACCOUNT";
+        NotificationPreferenceChange: {
+            category: components["schemas"]["NotificationCategory"];
+            inApp: boolean;
+            email: boolean;
+        };
+        NotificationPreferenceView: {
+            category?: components["schemas"]["NotificationCategory"];
+            label?: string;
+            description?: string;
+            inApp?: boolean;
+            email?: boolean;
+            inAppLocked?: boolean;
+        };
         /** @enum {string} */
-        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED" | "AUCTION_CLOSED" | "REQUEST_CANCELLED" | "SHIPMENT_CANCELLED" | "BID_WITHDRAWN" | "ORGANIZATION_VERIFICATION";
+        NotificationTarget: "REQUEST" | "BID" | "COUNTER_OFFER" | "SHIPMENT" | "INCIDENT" | "REVIEW" | "TRIP" | "SMART_LOAD" | "ORGANIZATION" | "USER";
+        /** @enum {string} */
+        NotificationType: "NEW_BID" | "BID_ACCEPTED" | "BID_REJECTED" | "COUNTER_OFFER" | "NEW_MESSAGE" | "SHIPMENT_STATUS_CHANGE" | "INCIDENT_REPORTED" | "INCIDENT_RESOLVED" | "NEW_REVIEW" | "TRIP_BOOKING_REQUESTED" | "TRIP_BOOKING_CONFIRMED" | "TRIP_BOOKING_REJECTED" | "TRIP_BOOKING_CANCELLED" | "TRIP_CANCELLED" | "SMART_LOAD_SUGGESTED" | "SMART_LOAD_ACCEPTED" | "AUCTION_CLOSED" | "REQUEST_CANCELLED" | "SHIPMENT_CANCELLED" | "BID_WITHDRAWN" | "ORGANIZATION_VERIFICATION" | "ACCESS_REQUESTED";
         NotificationView: {
             id?: components["schemas"]["UUID"];
             type?: components["schemas"]["NotificationType"];
@@ -6445,6 +7896,7 @@ export interface components {
             read?: boolean;
             readAt?: components["schemas"]["OffsetDateTime"];
             createdAt?: components["schemas"]["OffsetDateTime"];
+            mine?: boolean;
         };
         /**
          * Format: date-time
@@ -6459,6 +7911,30 @@ export interface components {
             requestsWithoutBids?: components["schemas"]["SlaRequestView"][];
             expiringAuctions?: components["schemas"]["SlaRequestView"][];
             shipmentsWithIncidents?: components["schemas"]["IncidentAlertView"][];
+        };
+        OperatorBidRow: {
+            id?: components["schemas"]["UUID"];
+            requestId?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            carrierRucVerified?: boolean;
+            carrierTrustScore?: number;
+            amount?: number;
+            notes?: string;
+            status?: components["schemas"]["Status3"];
+            vehicleType?: components["schemas"]["Type"];
+            vehiclePlate?: string;
+            assignedByOperator?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
+        OperatorMessageRow: {
+            id?: components["schemas"]["UUID"];
+            senderOrgId?: components["schemas"]["UUID"];
+            senderName?: string;
+            body?: string;
+            proposedPrice?: number;
+            system?: boolean;
+            createdAt?: components["schemas"]["OffsetDateTime"];
         };
         OperatorMetricsView: {
             /** Format: int64 */
@@ -6483,6 +7959,13 @@ export interface components {
             carriers?: number;
             gmv?: number;
             gmvDelivered?: number;
+            /** Format: int64 */
+            assignmentSlaHours?: number;
+            /** Format: int64 */
+            incidentWarnHours?: number;
+            /** Format: int64 */
+            incidentBreachHours?: number;
+            commissionRate?: number;
         };
         OperatorRequestRow: {
             id?: components["schemas"]["UUID"];
@@ -6519,6 +8002,18 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
             deliveredAt?: components["schemas"]["OffsetDateTime"];
             hasActiveIncident?: boolean;
+        };
+        OperatorThreadRow: {
+            requestId?: components["schemas"]["UUID"];
+            carrierOrgId?: components["schemas"]["UUID"];
+            carrierName?: string;
+            bidId?: components["schemas"]["UUID"];
+            bidAmount?: number;
+            bidStatus?: components["schemas"]["Status3"];
+            /** Format: int64 */
+            messageCount?: number;
+            lastMessage?: string;
+            lastMessageAt?: components["schemas"]["OffsetDateTime"];
         };
         /** @enum {string} */
         OrgPermission: "READ" | "OPERATE" | "MANAGE_USERS" | "MANAGE_ORGANIZATION" | "MANAGE_DRIVERS";
@@ -6566,6 +8061,37 @@ export interface components {
             createdAt?: components["schemas"]["OffsetDateTime"];
             lastLoginAt?: components["schemas"]["OffsetDateTime"];
         };
+        ParameterChangeRow: {
+            /** Format: int64 */
+            id?: number;
+            key?: string;
+            label?: string;
+            /** Format: int32 */
+            version?: number;
+            previousValue?: string;
+            newValue?: string;
+            reason?: string;
+            changedBy?: components["schemas"]["UUID"];
+            changedByName?: string;
+            changedByEmail?: string;
+            changedAt?: components["schemas"]["OffsetDateTime"];
+        };
+        ParameterRow: {
+            key?: string;
+            label?: string;
+            description?: string;
+            kind?: string;
+            value?: string;
+            defaultValue?: string;
+            min?: string;
+            max?: string;
+            /** Format: int32 */
+            version?: number;
+            overridden?: boolean;
+            reason?: string;
+            updatedBy?: components["schemas"]["UUID"];
+            updatedAt?: components["schemas"]["OffsetDateTime"];
+        };
         PasswordTokenInfo: {
             purpose?: components["schemas"]["PasswordTokenPurpose"];
             expiresAt?: components["schemas"]["OffsetDateTime"];
@@ -6582,12 +8108,47 @@ export interface components {
             amount: number;
             notes?: string;
         };
+        /** @enum {string} */
+        PlaceKind: "PICKUP" | "DELIVERY" | "BOTH";
+        PlaceRequest: {
+            label: string;
+            city: string;
+            address: string;
+            contactName?: string;
+            contactPhone?: string;
+            openingHours?: string;
+            windowFrom?: string;
+            windowTo?: string;
+            instructions?: string;
+            kind?: components["schemas"]["PlaceKind"];
+        };
+        PlaceView: {
+            id?: components["schemas"]["UUID"];
+            label?: string;
+            city?: components["schemas"]["City"];
+            address?: string;
+            contactName?: string;
+            contactPhone?: string;
+            openingHours?: string;
+            windowFrom?: string;
+            windowTo?: string;
+            instructions?: string;
+            kind?: components["schemas"]["PlaceKind"];
+            archived?: boolean;
+            lastUsedAt?: components["schemas"]["OffsetDateTime"];
+            createdAt?: components["schemas"]["OffsetDateTime"];
+        };
         PostMessage: {
             body: string;
         };
         ProposeCounterOffer: {
             amount: number;
             message?: string;
+        };
+        PublicCommission: {
+            commissionRate?: number;
+            vatRate?: number;
+            paidBy?: string;
         };
         PublicOrganization: {
             id?: components["schemas"]["UUID"];
@@ -6598,6 +8159,25 @@ export interface components {
             city?: string;
             rucValid?: boolean;
             verificationStatus?: components["schemas"]["VerificationStatus"];
+        };
+        PublicQuote: {
+            distanceKm?: number;
+            fuelCost?: number;
+            transportCost?: number;
+            tollCost?: number;
+            handlingFee?: number;
+            suggestedPrice?: number;
+            priceFloor?: number;
+            vatRate?: number;
+            suggestedNetOfVat?: number;
+            suggestedVat?: number;
+            commissionRate?: number;
+        };
+        PublicQuoteRequest: {
+            originCity: string;
+            destinationCity: string;
+            weightKg: number;
+            cargoType: components["schemas"]["CargoType"];
         };
         Quote: {
             distanceKm?: number;
@@ -6643,6 +8223,9 @@ export interface components {
             email: string;
             password: string;
             acceptPrivacyPolicy?: boolean;
+            acceptTerms?: boolean;
+            /** @description Versión de los Términos y condiciones que el usuario leyó (la de GET /public/legal). Si se omite se asume la vigente; si no es la vigente, 409 LOGYX-AUTH-012 */
+            termsVersion?: string;
         };
         RejectTripBookingRequest: {
             reason?: string;
@@ -6668,6 +8251,18 @@ export interface components {
             /** Format: int32 */
             priorWeight?: number;
             recentReviews?: components["schemas"]["ReviewView"][];
+        };
+        RequestCountsView: {
+            /** Format: int64 */
+            all?: number;
+            /** Format: int64 */
+            published?: number;
+            /** Format: int64 */
+            matched?: number;
+            /** Format: int64 */
+            cancelled?: number;
+            /** Format: int64 */
+            withBids?: number;
         };
         RequestView: {
             id?: components["schemas"]["UUID"];
@@ -6699,6 +8294,19 @@ export interface components {
             bestBidCarrierName?: string;
             bestBidCarrierTrustScore?: number;
             myBidStanding?: components["schemas"]["MyBidStanding"];
+            code?: string;
+            declaredValue?: number;
+            customerReference?: string;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            pickupWindowFrom?: string;
+            pickupWindowTo?: string;
+            pickupInstructions?: string;
+            deliveryContactName?: string;
+            deliveryContactPhone?: string;
+            deliveryWindowFrom?: string;
+            deliveryWindowTo?: string;
+            deliveryInstructions?: string;
         };
         RescheduleRequest: {
             pickupDate?: components["schemas"]["LocalDate"];
@@ -6786,6 +8394,16 @@ export interface components {
             polylinePrecision?: number;
             attribution?: string;
         };
+        /** @enum {string} */
+        SearchHitType: "REQUEST" | "SHIPMENT" | "COUNTERPART";
+        SearchResultView: {
+            type?: components["schemas"]["SearchHitType"];
+            id?: components["schemas"]["UUID"];
+            code?: string;
+            title?: string;
+            subtitle?: string;
+            href?: string;
+        };
         ShipmentReviewsView: {
             canReview?: boolean;
             blockedCode?: string;
@@ -6816,6 +8434,11 @@ export interface components {
             cancellationReason?: string;
             cancelledAt?: components["schemas"]["OffsetDateTime"];
             cancelledByOrgId?: components["schemas"]["UUID"];
+        };
+        SimilarRequest: {
+            id?: components["schemas"]["UUID"];
+            code?: string;
+            createdAt?: components["schemas"]["OffsetDateTime"];
         };
         SlaRequestView: {
             id?: components["schemas"]["UUID"];
@@ -6981,6 +8604,9 @@ export interface components {
             /** Format: int64 */
             unread?: number;
         };
+        UpdateNotificationPreferences: {
+            preferences: components["schemas"]["NotificationPreferenceChange"][];
+        };
         UpdateOrganizationRequest: {
             /** @description Solo si la verificación está PENDING o REJECTED (si no, 409 LOGYX-ORG-007) */
             legalName?: string;
@@ -6989,6 +8615,12 @@ export interface components {
             city?: string;
             phone?: string;
             address?: string;
+        };
+        UpdateParameter: {
+            value: string;
+            reason: string;
+            /** Format: int32 */
+            expectedVersion?: number;
         };
         UserInfo: {
             id?: components["schemas"]["UUID"];

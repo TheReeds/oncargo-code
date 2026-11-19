@@ -93,9 +93,33 @@ La API usa JWT RSA sin estado (ADR-0001) y RLS por organización con dos usuario
   Como el trigger de V13 solo deja al operador o a la plataforma tocar las columnas de verificación, la edición corre en
   `SystemTx` (solo sobre la organización del JWT, después de comprobar que el usuario es su ADMIN).
 
+### 8. La interfaz respeta el rol, «Pedir acceso» y avisos por persona (V16, roadmap v2 1.7/1.8, 2026-11-17)
+- **Ocultar, no deshabilitar.** Sin el permiso, los clientes **ocultan** las acciones de escritura (botones, formularios,
+  menús) y muestran el aviso de solo lectura con «Pedir acceso»; la información nunca se oculta. Fuente única:
+  web `lib/permissions` (`can()` en `.astro`/servidor; `<Can>`, `useCan`, `useRole` en `lib/permissions/react.tsx`) y Android
+  `LocalPermissions` + `Can { }` / `rememberCan()` (`:core:designsystem`, provisto por `:app`); `LogyxButton(requiresOperate = true)`
+  ya no se pinta para el Lector. `middleware.ts` (`WRITE_ROUTES`) devuelve al listado a quien abre una página que solo sirve
+  para escribir (`/pyme/solicitudes/nueva`, `/transportista/viajes/nuevo`) con `?sinPermiso=<clave>`. El backend sigue
+  siendo quien manda (`AUTH-007/008`); un toast de `AUTH-007` ofrece «Pedir acceso».
+- **«Pedir acceso»** (`POST /organizations/me/access-requests`, permitido al VIEWER en `OrgAccessPolicy.viewerMayWrite`): sin
+  tabla; queda en la auditoría (`ACCESS_REQUESTED`) y cada ADMIN activo recibe un aviso **personal** para cambiar el rol.
+  Un pedido cada 10 min por persona (`LOGYX-ACC-002`).
+- **Avisos por persona.** `app_profile()` (V16) = `app.profile_id`, que `TenantSessionBinder` fija junto a la organización.
+  `notifications` tiene una fila por persona (`profile_id`, RLS `org_id = app_org() AND profile_id = app_profile()`, y
+  `logyx_app` solo puede actualizar `read_at`). El destinatario de un aviso es una persona o «toda la organización»; este se
+  expande al publicarse (`NotificationPublisher`, dentro del despacho del outbox) en una copia por persona activa, según
+  sus **preferencias** (`notification_preferences`, RLS por persona; in-app y correo por categoría; «Cuenta y accesos»
+  siempre in-app). El correo sale tras el commit (mejor esfuerzo). `notification.created` va a la persona
+  (`Recipient.user`) con su contador. Se eligió expandir al escribir (y no una tabla de leídos por persona) porque las
+  preferencias deciden por persona si el aviso existe, el contador es un `count` simple por índice y la RLS queda trivial;
+  el costo es N filas por aviso (organizaciones pequeñas) y que una persona invitada después no ve avisos anteriores.
+- **Autoría**: `bids.created_by` (DEFAULT `app_profile()`, sin tocar casos de uso) y `GET /activity` (módulo `activity`):
+  lectura bajo RLS de `created_by` y `audit_log`; cada organización ve sus acciones y a sus personas, el operador todo.
+
 ## Consecuencias
 - Una consulta liviana por usuario cada 30 s (no por petición). Revocación inmediata en una instancia, ≤ 30 s con varias.
 - Los clientes deben tratar `LOGYX-AUTH-401` en cualquier endpoint como sesión cerrada (ya lo hacen) y `LOGYX-AUTH-009`
   en `/auth/refresh` como "volver a iniciar sesión".
 - Pendientes: MFA, CAPTCHA en "olvidé mi contraseña", rate limit compartido entre réplicas, avisar por correo al cambiar
-  la contraseña, foto/logo de la organización.
+  la contraseña, foto/logo de la organización. De V16: baja de correos sin login (token), resumen diario y horario de
+  silencio (roadmap 2.2), Lector con alcance (ocultar precios o chats, P-37).

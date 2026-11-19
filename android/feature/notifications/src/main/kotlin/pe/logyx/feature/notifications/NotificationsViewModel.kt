@@ -12,7 +12,8 @@ import pe.logyx.core.data.userMessage
 import pe.logyx.core.designsystem.components.UiMessage
 import pe.logyx.core.model.NotificationView
 
-enum class NotificationFilter { ALL, UNREAD }
+/** V16: `MINE` = solo los avisos de algo que creé («Tuyo»). */
+enum class NotificationFilter { ALL, UNREAD, MINE }
 
 data class NotificationsUiState(
     val filter: NotificationFilter = NotificationFilter.ALL,
@@ -62,7 +63,7 @@ class NotificationsViewModel(
             _state.update { it.copy(loading = it.items.isEmpty(), refreshing = it.items.isNotEmpty(), loadingMore = false, error = null) }
         }
         viewModelScope.launch {
-            repo.list(unreadOnly = s.filter == NotificationFilter.UNREAD, page = 0).fold(
+            repo.list(unreadOnly = s.filter == NotificationFilter.UNREAD, page = 0, mineOnly = s.filter == NotificationFilter.MINE).fold(
                 onSuccess = { p ->
                     if (version != loadVersion) return@fold
                     _state.update { cur ->
@@ -99,7 +100,7 @@ class NotificationsViewModel(
         val version = loadVersion
         _state.update { it.copy(loadingMore = true) }
         viewModelScope.launch {
-            repo.list(unreadOnly = s.filter == NotificationFilter.UNREAD, page = s.page + 1).fold(
+            repo.list(unreadOnly = s.filter == NotificationFilter.UNREAD, page = s.page + 1, mineOnly = s.filter == NotificationFilter.MINE).fold(
                 onSuccess = { p ->
                     if (version != loadVersion) return@fold
                     _state.update {

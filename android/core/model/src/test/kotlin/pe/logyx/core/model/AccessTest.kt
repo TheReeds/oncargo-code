@@ -26,6 +26,15 @@ class AccessTest {
         assertTrue(user(Role.VIEWER).isReadOnly)
     }
 
+    @Test fun `permissionsOf da los permisos efectivos (LocalPermissions de la UI)`() {
+        assertEquals(setOf(OrgPermission.READ), permissionsOf(user(Role.VIEWER, OrgType.PYME)))
+        assertEquals(setOf(OrgPermission.READ, OrgPermission.OPERATE), permissionsOf(user(Role.OPS)))
+        assertEquals(OrgPermission.entries.toSet(), permissionsOf(user(Role.ADMIN)))
+        assertFalse(OrgPermission.MANAGE_DRIVERS in permissionsOf(user(Role.ADMIN, OrgType.PYME)))
+        // Lo que manda el servidor gana sobre la tabla local
+        assertEquals(setOf(OrgPermission.READ), permissionsOf(user(Role.ADMIN, permissions = listOf(OrgPermission.READ))))
+    }
+
     @Test fun `el conductor no es lector aunque solo tenga READ`() {
         val d = user(Role.DRIVER, permissions = listOf(OrgPermission.READ))
         assertFalse(d.canOperate)

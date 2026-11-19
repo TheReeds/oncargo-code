@@ -8,8 +8,10 @@ import CommandMenu from '@/components/layout/CommandMenu';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 import VerificationBanner from '@/components/domain/VerificationBanner';
 import { me } from '@/features/auth/server';
-import { can } from '@/lib/permissions';
-import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText } from '@lucide/astro';
+import { can, deniedRouteNotice, roleLabel as personRoleLabel } from '@/lib/permissions';
+import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import RequestAccessHost from '@/features/access/components/RequestAccessDialog';
+import { LayoutDashboard, FileText, CirclePlus, Truck, Store, Gavel, Warehouse, Menu, ShieldCheck, X, TriangleAlert, Radar, Route, CalendarClock, Undo2, Sparkles, Search, BookmarkCheck, Building2, Building, Users, ScrollText, SlidersHorizontal, MapPinned } from '@lucide/astro';
 
 interface Props { title: string; active: string; wide?: boolean }
 const { title, active, wide = false } = Astro.props;
@@ -26,6 +28,7 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
       { id: 'nueva', href: '/pyme/solicitudes/nueva', label: 'Nueva solicitud', icon: CirclePlus, needs: 'OPERATE' },
       { id: 'viajes', href: '/pyme/viajes', label: 'Buscar viajes', icon: Search },
       { id: 'reservas', href: '/pyme/reservas', label: 'Mis reservas', icon: BookmarkCheck },
+      { id: 'direcciones', href: '/pyme/direcciones', label: 'Mis direcciones', icon: MapPinned },
     ] },
     { label: 'Seguimiento', items: [
       { id: 'envios', href: '/pyme/envios', label: 'Envíos', icon: Truck },
@@ -59,6 +62,7 @@ const NAV: Record<'PYME' | 'CARRIER' | 'OPERATOR', NavGroup[]> = {
     ] },
     { label: 'Control', items: [
       { id: 'operador-auditoria', href: '/operador/auditoria', label: 'Auditoría', icon: ScrollText },
+      { id: 'operador-parametros', href: '/operador/parametros', label: 'Parámetros', icon: SlidersHorizontal },
     ] },
   ],
 };
@@ -71,7 +75,13 @@ const baseGroups = NAV[(session.orgType as 'PYME' | 'CARRIER' | 'OPERATOR') ?? '
 const withOrg = session.orgType === 'PYME' || session.orgType === 'CARRIER' ? [...baseGroups, orgGroup] : baseGroups;
 const groups = withOrg.map((g) => ({ ...g, items: g.items.filter((it) => !it.needs || can(session, it.needs)) }));
 const commandItems = groups.flatMap((g) => g.items.map((it) => ({ label: it.label, href: it.href, group: g.label ?? 'Principal' })));
-const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador LOGYX' : 'Transportista';
+const orgLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType === 'OPERATOR' ? 'Operador OnCargo' : 'Transportista';
+// Rol de la persona (roadmap v2 1.7): «Administrador», «Operaciones» o «Lector», visible en el topbar y en el menú.
+const personRole = personRoleLabel(session.role ?? 'ADMIN');
+// Vuelta de una página de escritura sin permiso (`middleware.ts`, `WRITE_ROUTES`): aviso con «Pedir acceso».
+const denied = deniedRouteNotice(Astro.url.searchParams.get('sinPermiso'));
+// «Pedir acceso» global (toasts de AUTH-007, menú): solo quien no es ADMIN.
+const mayRequestAccess = session.role !== 'ADMIN' && session.role !== null;
 ---
 <Base title={title}>
   <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-input focus:bg-surface focus:text-ink-900 focus:px-3 focus:py-2">Saltar al contenido</a>
@@ -102,7 +112,7 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
       <div class="space-y-3 border-t border-white/10 p-4 text-xs text-white/60">
         <div class="sm:hidden"><ThemeToggle client:load className="w-full justify-between" /></div>
         <div class="flex items-center justify-between">
-          <span class="font-medium text-white/80">{roleLabel}</span>
+          <span class="font-medium text-white/80" data-testid="sidebar-role">{orgLabel} · {personRole}</span>
           <a href="/privacidad" class="rounded hover:text-white">Privacidad</a>
         </div>
       </div>
@@ -120,14 +130,18 @@ const roleLabel = session.orgType === 'PYME' ? 'Cuenta PYME' : session.orgType =
         <LiveIndicator client:load />
         <ThemeToggle client:load className="hidden sm:inline-flex" />
         <NotificationBell client:load />
-        <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={roleLabel} roleName={session.role ?? undefined} verified={!!user?.rucVerified && session.orgType !== 'OPERATOR'} />
+        <UserMenu client:load name={user?.fullName ?? session.email} email={session.email} role={personRole} org={orgLabel} roleName={session.role ?? undefined} verified={!!user?.rucVerified && session.orgType !== 'OPERATOR'} />
       </header>
       <main id="contenido" class:list={['mx-auto w-full flex-1 px-4 py-6 lg:px-8', wide ? 'max-w-[1600px]' : 'max-w-7xl']}>
         {(session.orgType === 'PYME' || session.orgType === 'CARRIER') && user?.verificationStatus && user.verificationStatus !== 'VERIFIED' && (
           <VerificationBanner client:load status={user.verificationStatus} note={user.verificationNote ?? null} orgType={session.orgType} />
         )}
+        {denied && !can(session, denied.needs) && (
+          <ReadOnlyNotice client:load className="mb-4" permission={denied.needs}>{denied.notice}</ReadOnlyNotice>
+        )}
         <slot />
       </main>
+      {mayRequestAccess && <RequestAccessHost client:idle />}
     </div>
   </div>
   <style is:global>

@@ -3,6 +3,9 @@
     <string name="notifications_title">Notificaciones</string>
     <string name="notifications_filter_all">Todas</string>
     <string name="notifications_filter_unread">Sin leer</string>
+    <string name="notifications_filter_mine">Solo míos</string>
+    <string name="notifications_mine_badge">Tuyo</string>
+    <string name="notifications_empty_mine_message">Aquí verás los avisos de las solicitudes y ofertas que tú creaste.</string>
     <string name="notifications_mark_all">Marcar todas como leídas</string>
     <string name="notifications_all_read_done">Listo, marcaste todo como leído</string>
     <string name="notifications_empty_title">Estás al día</string>

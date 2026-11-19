@@ -3,6 +3,8 @@ import { Toaster as Sonner, toast as sonner } from 'sonner';
 import { AlertCircle, CheckCircle2, Info, Loader2, TriangleAlert } from 'lucide-react';
 import { ConfirmHost } from './confirm-dialog';
 import { useResolvedTheme } from '@/lib/theme';
+import { splitActionError } from '@/lib/action-error';
+import { openRequestAccess } from '@/lib/permissions';
 
 const FLASH_KEY = 'logyx:flash';
 
@@ -13,7 +15,12 @@ const FLASH_KEY = 'logyx:flash';
  */
 export const toast = {
   success: (message: string, description?: string) => sonner.success(message, { description }),
-  error: (message: string, description?: string) => sonner.error(message, { description, duration: 7000 }),
+  // Un 403 de rol Lector (`LOGYX-AUTH-007`, el código viaja invisible en el mensaje de la action) ofrece «Pedir acceso».
+  error: (message: string, description?: string) => {
+    const f = splitActionError({ message });
+    const action = f.code === 'LOGYX-AUTH-007' ? { label: 'Pedir acceso', onClick: () => openRequestAccess('OPERATE') } : undefined;
+    return sonner.error(f.message, { description, duration: action ? 10000 : 7000, action });
+  },
   info: (message: string, description?: string) => sonner.info(message, { description }),
   warning: (message: string, description?: string) => sonner.warning(message, { description }),
   promise: sonner.promise,

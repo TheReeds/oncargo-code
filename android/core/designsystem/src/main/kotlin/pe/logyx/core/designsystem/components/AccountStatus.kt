@@ -1,5 +1,6 @@
 package pe.logyx.core.designsystem.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -12,14 +13,48 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import pe.logyx.core.designsystem.LogyxTheme
 import pe.logyx.core.designsystem.R
+import pe.logyx.core.model.OrgPermission
 import pe.logyx.core.model.VerificationStatus
 
 /**
  * Rol Lector (V14, B2): solo consulta. `:app` lo provee desde `UserInfo.isReadOnly`. Con `true`, los botones marcados con
- * `LogyxButton(requiresOperate = true)` se deshabilitan y [LogyxScreen] muestra el aviso "Modo lectura". El backend es
- * quien manda (403 `LOGYX-AUTH-007`); esto solo evita que el usuario toque algo que va a fallar.
+ * `LogyxButton(requiresOperate = true)` **no se muestran** (roadmap v2 1.7: ocultar, no deshabilitar) y [LogyxScreen]
+ * muestra el aviso "Modo lectura" con «Pedir acceso». El backend es quien manda (403 `LOGYX-AUTH-007`).
  */
 val LocalReadOnly = staticCompositionLocalOf { false }
+
+/**
+ * Permisos efectivos del usuario (roadmap v2 1.7): `:app` los provee desde `UserInfo` (`permissionsOf(user)`). Fuente
+ * única para mostrar u ocultar acciones con [Can] / [rememberCan]. Por omisión todos (previews, tests sin proveedor).
+ */
+val LocalPermissions = staticCompositionLocalOf<Set<OrgPermission>> { OrgPermission.entries.toSet() }
+
+/**
+ * «Pedir acceso» (roadmap v2 1.7/1.15): `:app` provee la acción que avisa a los ADMIN (`POST /organizations/me/access-requests`).
+ * null = sin botón (previews, conductor).
+ */
+val LocalRequestAccess = staticCompositionLocalOf<((OrgPermission) -> Unit)?> { null }
+
+/** true si el usuario tiene [permission] (por omisión `OPERATE`). */
+@Composable
+fun rememberCan(permission: OrgPermission = OrgPermission.OPERATE): Boolean = permission in LocalPermissions.current
+
+/**
+ * Patrón único para acciones de escritura en Android (espejo de `<Can>` de la web): muestra [content] solo si el usuario
+ * tiene [permission]; si no, [fallback] (por omisión nada). La información nunca se oculta, solo las acciones.
+ * ```kotlin
+ * Can { LogyxFab(...) }                                   // FAB de ofertar, oculto al Lector
+ * Can(OrgPermission.MANAGE_USERS, fallback = { ReadOnlyNotice() }) { ... }
+ * ```
+ */
+@Composable
+fun Can(
+    permission: OrgPermission = OrgPermission.OPERATE,
+    fallback: @Composable () -> Unit = {},
+    content: @Composable () -> Unit,
+) {
+    if (rememberCan(permission)) content() else fallback()
+}
 
 /**
  * Aviso que [LogyxScreen] pinta justo bajo la barra superior (p. ej. la verificación pendiente en el inicio).
@@ -49,10 +84,19 @@ fun VerificationBanner(status: VerificationStatus?, note: String?, modifier: Mod
 val VerificationStatus?.needsAttention: Boolean
     get() = this == VerificationStatus.PENDING || this == VerificationStatus.REJECTED || this == VerificationStatus.SUSPENDED
 
-/** Franja de "Modo lectura" para el rol Lector. */
+/** Franja de "Modo lectura" para el rol Lector, con «Pedir acceso» si `:app` provee [LocalRequestAccess]. */
 @Composable
-fun ReadOnlyNotice(modifier: Modifier = Modifier) {
-    AlertBanner(stringResource(R.string.ds_read_only_notice), modifier, kind = MessageKind.Info)
+fun ReadOnlyNotice(modifier: Modifier = Modifier, permission: OrgPermission = OrgPermission.OPERATE) {
+    val request = LocalRequestAccess.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        AlertBanner(stringResource(R.string.ds_read_only_notice), kind = MessageKind.Info)
+        if (request != null) {
+            LogyxButton(
+                stringResource(R.string.ds_request_access), { request(permission) },
+                variant = ButtonVariant.Ghost, size = ButtonSize.Medium, fullWidth = false,
+            )
+        }
+    }
 }
 
 /** Provee [LocalReadOnly] (para pruebas y previews). */

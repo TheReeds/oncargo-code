@@ -183,6 +183,10 @@ private fun RequestCard(r: RequestView, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.height(16.dp))
+        r.code?.let {
+            Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+        }
         RouteLine(
             cityLabel(r.originCity), cityLabel(r.destinationCity),
             distance = r.distanceKm?.let { Fmt.km(it) },
@@ -463,6 +467,10 @@ private fun RequestSummaryCard(r: RequestView, onOpenOriginal: (String) -> Unit 
             )
         }
         Spacer(Modifier.height(16.dp))
+        r.code?.let {
+            Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+        }
         RouteLine(
             cityLabel(r.originCity), cityLabel(r.destinationCity),
             distance = r.distanceKm?.let { Fmt.km(it) }, originSub = r.originAddress, destinationSub = r.destinationAddress,

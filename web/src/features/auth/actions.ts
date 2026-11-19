@@ -31,6 +31,9 @@ export const auth = {
       email: z.email('Ingresa un correo válido'),
       password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
       acceptPrivacyPolicy: z.literal(true, { error: 'Debes aceptar la política de privacidad' }),
+      acceptTerms: z.literal(true, { error: 'Debes aceptar los términos y condiciones' }),
+      /** Versión de los términos que el usuario vio (`GET /public/legal`); si ya cambió, la API responde 409 AUTH-012. */
+      termsVersion: z.string().max(40).optional(),
     }),
     handler: async (input, ctx) => {
       const r = await run(() => register(input, clientIpOf(ctx)));

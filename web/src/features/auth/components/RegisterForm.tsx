@@ -17,7 +17,7 @@ type OrgType = 'PYME' | 'CARRIER';
 /** Campos del formulario que la API puede señalar en `error.field`. */
 const FIELDS = ['legalName', 'ruc', 'city', 'phone', 'fullName', 'email', 'password'];
 /** Orden visual: sirve para llevar el foco al primer campo con error. */
-const ORDER = ['legalName', 'ruc', 'fullName', 'email', 'password', 'acceptPrivacyPolicy'];
+const ORDER = ['legalName', 'ruc', 'fullName', 'email', 'password', 'acceptPrivacyPolicy', 'acceptTerms'];
 
 const TYPES: { v: OrgType; title: string; desc: string; perk: string; next: string; Icon: typeof Building2 }[] = [
   { v: 'PYME', title: 'Soy una empresa', desc: 'Necesito enviar carga', perk: 'Publica tu carga y compara ofertas.', next: 'Al terminar podrás publicar tu primera solicitud y recibir ofertas.', Icon: Building2 },
@@ -90,12 +90,19 @@ function Progress({ done, fraction }: { done: [boolean, boolean, boolean]; fract
   );
 }
 
-export default function RegisterForm({ cities, initialType }: { cities: City[]; initialType?: OrgType }) {
+export default function RegisterForm({ cities, initialType, termsVersion, termsDraft, next }: {
+  cities: City[]; initialType?: OrgType;
+  /** Versión de los términos que se muestran (se envía al registrar; si ya cambió, la API lo avisa). */
+  termsVersion?: string; termsDraft?: boolean;
+  /** Ruta interna a la que ir tras registrarse (solo PYME), p. ej. la nueva solicitud con la cotización. */
+  next?: string;
+}) {
   const [type, setType] = useState<OrgType>(initialType ?? 'PYME');
   const [city, setCity] = useState('');
   const [ruc, setRuc] = useState('');
   const [password, setPassword] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   // Valores de los campos no controlados, solo para calcular el avance (los inputs siguen sin `value`).
   const [vals, setVals] = useState({ legalName: '', fullName: '', email: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -110,8 +117,8 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
   const nameOk = vals.fullName.trim().length > 0;
   const emailOk = EMAIL_RE.test(vals.email.trim());
   const passOk = password.length >= 8;
-  const stepDone: [boolean, boolean, boolean] = [true, legalOk && rucOk, nameOk && emailOk && passOk && accepted];
-  const fraction = [true, legalOk, rucOk, nameOk, emailOk, passOk, accepted].filter(Boolean).length / 7;
+  const stepDone: [boolean, boolean, boolean] = [true, legalOk && rucOk, nameOk && emailOk && passOk && accepted && acceptedTerms];
+  const fraction = [true, legalOk, rucOk, nameOk, emailOk, passOk, accepted, acceptedTerms].filter(Boolean).length / 8;
   const onFormInput = (e: React.FormEvent<HTMLFormElement>) => {
     const t = e.target as HTMLInputElement;
     if (t.name === 'legalName' || t.name === 'fullName' || t.name === 'email') setVals((p) => ({ ...p, [t.name]: t.value }));
@@ -145,6 +152,7 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
     const rm = RULES.ruc(ruc); if (rm) local.ruc = rm;
     const pm = RULES.password(String(f.get('password') ?? '')); if (pm) local.password = pm;
     if (!accepted) local.acceptPrivacyPolicy = 'Acepta la política de privacidad para continuar.';
+    if (!acceptedTerms) local.acceptTerms = 'Acepta los términos y condiciones para continuar.';
     setErrors(local);
     if (Object.keys(local).length) { focusFirst(local); return; }
 
@@ -161,6 +169,8 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
         email: g('email'),
         password: String(f.get('password') ?? ''),
         acceptPrivacyPolicy: true,
+        acceptTerms: true,
+        termsVersion,
       });
     } catch {
       setFormError('No pudimos crear la cuenta. Revisa tu conexión e inténtalo de nuevo.');
@@ -172,6 +182,11 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
       // `field` viene de la API (ruc, email…): el error va bajo el campo; si no hay campo, banner sobre el botón.
       const { message: raw, field, code } = splitActionError(error);
       const message = code === 'LOGYX-NEG-001' ? 'La razón social no puede incluir teléfonos, correos ni enlaces. Escribe solo el nombre legal de tu empresa.' : raw;
+      if (field === 'termsVersion') {
+        setFormError(message);   // los términos cambiaron mientras llenabas el formulario: recarga y vuelve a aceptarlos
+        setBusy(false);
+        return;
+      }
       if (field && FIELDS.includes(field)) {
         setErrors({ [field]: message });
         requestAnimationFrame(() => document.getElementById(field)?.focus());
@@ -181,7 +196,7 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
       setBusy(false);
       return;
     }
-    window.location.href = data.home;
+    window.location.href = type === 'PYME' && next ? next : data.home;
   }
 
   return (
@@ -288,6 +303,13 @@ export default function RegisterForm({ cities, initialType }: { cities: City[]; 
               </label>
             </div>
             {errors.acceptPrivacyPolicy && <p id="privacy-err" role="alert" className="mt-2 pl-7 text-xs text-red-600">{errors.acceptPrivacyPolicy}</p>}
+            <div className="mt-2.5 flex items-start gap-2.5">
+              <Checkbox id="acceptTerms" checked={acceptedTerms} onCheckedChange={(c) => { setAcceptedTerms(c === true); if (c === true) setErr('acceptTerms', ''); }} aria-invalid={!!errors.acceptTerms} aria-describedby={errors.acceptTerms ? 'terms-err' : undefined} className="mt-0.5" />
+              <label htmlFor="acceptTerms" className="cursor-pointer text-[13px] leading-snug text-ink-700">
+                Acepto los <a href="/terminos" target="_blank" rel="noopener" className="font-medium text-petrol-700 underline underline-offset-2">términos y condiciones</a>{termsDraft ? ' (borrador pendiente de revisión legal)' : ''}, incluida la responsabilidad por la carga.
+              </label>
+            </div>
+            {errors.acceptTerms && <p id="terms-err" role="alert" className="mt-2 pl-7 text-xs text-red-600">{errors.acceptTerms}</p>}
           </div>
         </section>
 

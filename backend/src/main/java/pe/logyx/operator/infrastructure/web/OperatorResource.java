@@ -15,6 +15,8 @@ import pe.logyx.operator.application.AuditFilter;
 import pe.logyx.operator.application.OperatorService;
 import pe.logyx.operator.infrastructure.web.OperatorDtos.*;
 import pe.logyx.shared.api.ApiResponse;
+import pe.logyx.shared.config.domain.ParameterKey;
+import pe.logyx.shared.domain.Slice;
 import pe.logyx.shared.tenancy.Roles;
 import jakarta.validation.constraints.NotNull;
 import pe.logyx.identity.domain.model.Organization;
@@ -59,12 +61,15 @@ public class OperatorResource {
             @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
             @Parameter(description = "Creada hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
             @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+            @Parameter(description = "Búsqueda por texto (2-60 caracteres): código OC-…, referencia de la PYME, razón "
+                    + "social o RUC del solicitante o del transportista adjudicado, placa, descripción de la carga o id.")
+            @QueryParam("q") String q,
             @Parameter(description = "Página 0-based (por omisión 0).")
             @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20).")
             @QueryParam("size") Integer size) {
         var filter = OperatorRequestFilter.of(status, originCity, destinationCity, fromDate, toDate);
-        return ApiResponse.of(service.requests(filter, PageRequest.of(page, size)).map(OperatorRequestRow::of));
+        return ApiResponse.of(service.requests(filter, q, PageRequest.of(page, size)).map(OperatorRequestRow::of));
     }
 
     @GET
@@ -81,12 +86,92 @@ public class OperatorResource {
             @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
             @Parameter(description = "Creado hasta esta fecha, ISO (yyyy-MM-dd), inclusive, hora de Lima.")
             @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+            @Parameter(description = "Búsqueda por texto (2-60 caracteres): código y referencia de la solicitud, razón "
+                    + "social o RUC de la PYME o del transportista, placa, conductor o id del envío.")
+            @QueryParam("q") String q,
             @Parameter(description = "Página 0-based (por omisión 0).")
             @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20).")
             @QueryParam("size") Integer size) {
         var filter = OperatorShipmentFilter.of(status, originCity, destinationCity, fromDate, toDate);
-        return ApiResponse.of(service.shipments(filter, PageRequest.of(page, size)).map(OperatorShipmentRow::of));
+        return ApiResponse.of(service.shipments(filter, q, PageRequest.of(page, size)).map(OperatorShipmentRow::of));
+    }
+
+    // ----- Ofertas y chat de una solicitud (solo lectura, ítem 1.13)
+    @GET
+    @Path("/requests/{id}/bids")
+    @Operation(summary = "Ofertas de una solicitud, de menor a mayor monto (solo lectura, para mediar una disputa)")
+    public ApiResponse<List<OperatorBidRow>> bids(@PathParam("id") UUID requestId) {
+        return ApiResponse.of(service.bids(requestId).stream().map(OperatorBidRow::of).toList());
+    }
+
+    @GET
+    @Path("/requests/{id}/threads")
+    @Operation(summary = "Hilos de chat de una solicitud (solo lectura). Queda auditado: OPERATOR_VIEWED_CHAT",
+            description = "El equipo de OnCargo puede revisar conversaciones para resolver disputas (política de "
+                    + "privacidad). Cada consulta se registra en la auditoría con el motivo, si se indica.")
+    public ApiResponse<List<OperatorThreadRow>> threads(
+            @PathParam("id") UUID requestId,
+            @Parameter(description = "Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría.")
+            @QueryParam("reason") String reason) {
+        return ApiResponse.of(service.threads(requestId, reason(reason)).stream().map(OperatorThreadRow::of).toList());
+    }
+
+    @GET
+    @Path("/requests/{id}/threads/{carrierOrgId}/messages")
+    @Operation(summary = "Mensajes de un hilo por cursor, en orden cronológico (solo lectura). Auditado al abrir el hilo",
+            description = "meta.nextCursor = valor para 'before'. Solo la primera página (sin 'before') se registra en "
+                    + "la auditoría como OPERATOR_VIEWED_CHAT.")
+    public ApiResponse<List<OperatorMessageRow>> messages(
+            @PathParam("id") UUID requestId, @PathParam("carrierOrgId") UUID carrierOrgId,
+            @Parameter(description = "Id de mensaje: devuelve los anteriores a él (omitir = los más recientes).")
+            @QueryParam("before") UUID before,
+            @Parameter(description = "Máximo de mensajes (1-100, por omisión 30).") @QueryParam("size") Integer size,
+            @Parameter(description = "Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría.")
+            @QueryParam("reason") String reason) {
+        Slice<pe.logyx.negotiation.application.MessageSummary> s =
+                service.messages(requestId, carrierOrgId, before, size, reason(reason));
+        return ApiResponse.of(s.map(OperatorMessageRow::of));
+    }
+
+    private static String reason(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        if (raw.trim().length() > 200) {
+            throw BusinessException.badRequest("LOGYX-VAL-001", "El motivo admite hasta 200 caracteres", "reason");
+        }
+        return raw.trim();
+    }
+
+    // ----- Parámetros de sistema (V18)
+    @GET
+    @Path("/parameters")
+    @Operation(summary = "Parámetros de sistema vigentes (comisión, SLA de asignación, umbrales de incidencias)",
+            description = "version 0 = rige el valor por omisión de la configuración; cada cambio sube la versión.")
+    public ApiResponse<List<ParameterRow>> parameters() {
+        return ApiResponse.of(service.parameters().stream().map(ParameterRow::of).toList());
+    }
+
+    @PUT
+    @Path("/parameters/{key}")
+    @Operation(summary = "Cambia un parámetro de sistema con motivo (queda en el historial y en la auditoría)",
+            description = "LOGYX-PAR-001 valor inválido o fuera de rango (value), LOGYX-PAR-002 falta el motivo, "
+                    + "LOGYX-PAR-003 aviso ≥ incumplimiento, LOGYX-PAR-004 otro operador lo cambió (expectedVersion). "
+                    + "404 si la clave no existe.")
+    public ApiResponse<ParameterRow> updateParameter(@PathParam("key") String key, @Valid @NotNull UpdateParameter req) {
+        return ApiResponse.of(ParameterRow.of(
+                service.updateParameter(ParameterKey.require(key), req.value(), req.reason(), req.expectedVersion())));
+    }
+
+    @GET
+    @Path("/parameters/history")
+    @Operation(summary = "Historial de cambios de parámetros, el más reciente primero")
+    public ApiResponse<List<ParameterChangeRow>> parameterHistory(
+            @Parameter(description = "Clave del parámetro (commission_rate, assignment_sla_hours, "
+                    + "incident_warn_hours, incident_breach_hours). Sin ella, todos.") @QueryParam("key") String key,
+            @Parameter(description = "Página 0-based (por omisión 0).") @QueryParam("page") Integer page,
+            @Parameter(description = "Tamaño de página (1-100, por omisión 20).") @QueryParam("size") Integer size) {
+        ParameterKey k = key == null || key.isBlank() ? null : ParameterKey.require(key);
+        return ApiResponse.of(service.parameterHistory(k, PageRequest.of(page, size)).map(ParameterChangeRow::of));
     }
 
     @GET
@@ -134,9 +219,11 @@ public class OperatorResource {
             @Parameter(description = "Estado de verificación (PENDING, VERIFIED, REJECTED, SUSPENDED); ALL = todos. "
                     + "Por omisión PENDING.") @QueryParam("status") String status,
             @Parameter(description = "Tipo de organización (PYME o CARRIER).") @QueryParam("type") String type,
+            @Parameter(description = "Búsqueda por texto (2-60 caracteres): razón social, RUC, ciudad, correo de un "
+                    + "usuario, placa de un vehículo o id.") @QueryParam("q") String q,
             @Parameter(description = "Página 0-based (por omisión 0).") @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20).") @QueryParam("size") Integer size) {
-        return ApiResponse.of(service.organizations(parseVerification(status), parseOrgType(type),
+        return ApiResponse.of(service.organizations(parseVerification(status), parseOrgType(type), q,
                 PageRequest.of(page, size)).map(OrganizationReviewRow::of));
     }
 

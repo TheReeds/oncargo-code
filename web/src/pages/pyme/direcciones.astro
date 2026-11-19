@@ -1,0 +1,22 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import PlacesManager from '@/features/places/components/PlacesManager';
+import { listPlaces } from '@/features/places/server';
+import { getCatalog } from '@/features/catalog/server';
+const token = Astro.locals.session!.token;
+const { cities } = await getCatalog();
+let places: Awaited<ReturnType<typeof listPlaces>> = [];
+let loadError: string | null = null;
+try {
+  places = await listPlaces(token, { includeArchived: true });
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus direcciones.';
+}
+---
+<AppShell title="Mis direcciones" active="direcciones">
+  <PageHeader title="Mis direcciones" subtitle="Tus almacenes y direcciones frecuentes, con contacto, horario e instrucciones, listos para publicar" />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus direcciones" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <PlacesManager client:load initial={places} cities={cities} />
+</AppShell>

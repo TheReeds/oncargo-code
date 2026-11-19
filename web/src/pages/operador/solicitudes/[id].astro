@@ -12,6 +12,7 @@ import { Countdown } from '@/components/domain/Countdown';
 import { Badge } from '@/components/ui/badge';
 import AssignFromDetail from '@/features/operator/components/AssignFromDetail';
 import OperatorBids from '@/features/operator/components/OperatorBids';
+import OperatorChat from '@/features/operator/components/OperatorChat';
 import { listBids } from '@/features/requests/server';
 import { getRequest, getSlaAlerts } from '@/features/operator/server';
 import { ApiError } from '@/lib/api/client';
@@ -78,6 +79,7 @@ const auctionLabel = a?.status === 'CLOSED' ? 'Cerrada' : a?.status === 'CANCELL
         </CardBody>
       </Card>
       {bids && <OperatorBids bids={bids} suggested={r.suggestedPrice} />}
+      <OperatorChat client:load requestId={r.id!} />
       <Card>
         <CardHeader><CardTitle>Solicitante</CardTitle></CardHeader>
         <CardBody className="flex flex-wrap items-center gap-3 text-sm">

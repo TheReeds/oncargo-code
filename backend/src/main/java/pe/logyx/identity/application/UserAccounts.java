@@ -84,4 +84,13 @@ public class UserAccounts {
     public Optional<Profile> byEmail(String email) {
         return profiles.findByEmail(email);
     }
+
+    /**
+     * Personas que reciben los avisos de una organización (V16): activas, con su contraseña propia (sin invitaciones
+     * pendientes) y sin conductores (no tienen centro de avisos). Lo usa {@code notification} dentro del despacho del
+     * outbox (SystemTx): ahí ve los perfiles de cualquier organización; bajo RLS, solo los de la propia.
+     */
+    public java.util.List<Profile> noticeRecipients(UUID organizationId) {
+        return profiles.listOrganizationUsers(organizationId).stream().filter(Profile::canLogIn).toList();
+    }
 }

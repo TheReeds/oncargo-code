@@ -24,6 +24,7 @@ import pe.logyx.shared.tenancy.SystemTx;
 import pe.logyx.shipment.application.event.ShipmentStatusChanged;
 import pe.logyx.shipment.application.event.ShipmentReassigned;
 import pe.logyx.identity.application.event.OrganizationVerificationChanged;
+import pe.logyx.identity.application.event.AccessRequested;
 import pe.logyx.marketplace.application.event.AuctionClosed;
 import pe.logyx.marketplace.application.event.BidWithdrawn;
 import pe.logyx.marketplace.application.event.RequestCancelled;
@@ -124,6 +125,23 @@ public class NotificationObservers {
                     name + " corrigió sus datos después del rechazo: revísala en la bandeja de verificación.",
                     NotificationTarget.ORGANIZATION, e.organizationId())).toList());
         }
+    }
+
+    /** V16 (roadmap 1.7/1.15): aviso personal a cada ADMIN para que cambie el rol de quien lo pide. */
+    void onAccessRequested(@Observes @Outboxed AccessRequested e) {
+        String what = switch (e.permission()) {
+            case "OPERATE" -> "operar (publicar, ofertar, aceptar y gestionar envíos)";
+            case "MANAGE_USERS" -> "gestionar usuarios y roles";
+            case "MANAGE_ORGANIZATION" -> "editar los datos de la empresa";
+            case "MANAGE_DRIVERS" -> "gestionar las cuentas de conductores";
+            default -> "más permisos";
+        };
+        String why = e.reason() == null ? "" : " Motivo: «" + e.reason() + "».";
+        String body = e.requesterName() + " pide permiso para " + what + " (hoy tiene el rol " + e.requesterRole() + ")."
+                + why + " Si estás de acuerdo, cámbiale el rol en Usuarios y roles.";
+        publisher.publish(e.adminProfileIds().stream().map(admin -> Notification.toPerson(e.organizationId(), admin,
+                NotificationType.ACCESS_REQUESTED, "Pedido de acceso de " + e.requesterName(), body,
+                NotificationTarget.USER, e.requesterProfileId())).toList());
     }
 
     void onAuctionClosed(@Observes @Outboxed AuctionClosed e) {

@@ -4,8 +4,14 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Response;
+import org.jboss.resteasy.reactive.RestResponse;
+import pe.logyx.shared.api.CsvWriter;
+import pe.logyx.shared.idempotency.IdempotencyKeys;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import pe.logyx.marketplace.application.*;
 import pe.logyx.marketplace.infrastructure.web.MarketplaceDtos.*;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -33,21 +39,93 @@ public class MarketplaceResource {
     @POST
     @Path("/shipment-requests")
     @RolesAllowed(Roles.PYME)
-    @ResponseStatus(201)
-    public ApiResponse<RequestView> publish(@Valid CreateRequest req) {
-        return ApiResponse.of(RequestView.of(publish.publish(req.toCommand())));
+    @Operation(summary = "Publica una solicitud. Con la cabecera Idempotency-Key (8-80 caracteres) un reintento o doble "
+            + "clic devuelve la solicitud ya creada (cabecera Idempotent-Replayed: true) en vez de crear otra")
+    @APIResponse(responseCode = "201", description = "Solicitud creada (o la ya creada con esa Idempotency-Key)",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiResponseRequestView")))
+    public RestResponse<ApiResponse<RequestView>> publish(
+            @Parameter(description = "Clave de idempotencia (UUID recomendado), válida 24 h por organización.")
+            @HeaderParam("Idempotency-Key") String idempotencyKey,
+            @Valid CreateRequest req) {
+        var out = publish.publishOnce(req.toCommand(IdempotencyKeys.validate(idempotencyKey)));
+        var builder = RestResponse.ResponseBuilder.create(RestResponse.Status.CREATED,
+                ApiResponse.of(RequestView.of(out.summary())));
+        if (out.replayed()) builder.header("Idempotent-Replayed", "true");
+        return builder.build();
     }
 
     @GET
     @Path("/shipment-requests/mine")
     @RolesAllowed(Roles.PYME)
+    @Operation(summary = "Mis solicitudes con filtros, orden y paginación en el servidor (meta.total). Sin page ni size "
+            + "devuelve todas las que cumplen el filtro")
     public ApiResponse<List<RequestView>> mine(
             @Parameter(description = "Página 0-based. Si se omite page y size, se devuelven todas.")
             @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20 cuando se pagina).")
-            @QueryParam("size") Integer size) {
-        if (page == null && size == null) return ApiResponse.of(RequestView.of(queries.myRequests()));
-        return ApiResponse.of(queries.myRequests(PageRequest.of(page, size)).map(RequestView::of));
+            @QueryParam("size") Integer size,
+            @Parameter(description = "PUBLISHED, MATCHED o CANCELLED.") @QueryParam("status") String status,
+            @Parameter(description = "Código de ciudad de origen (p. ej. LIMA).") @QueryParam("originCity") String originCity,
+            @Parameter(description = "Código de ciudad de destino.") @QueryParam("destinationCity") String destinationCity,
+            @Parameter(description = "Fecha de recojo desde, ISO (yyyy-MM-dd), inclusive.")
+            @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
+            @Parameter(description = "Fecha de recojo hasta, ISO (yyyy-MM-dd), inclusive.")
+            @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+            @Parameter(description = "Texto: código (OC-7K2QX, con o sin guion), referencia propia, ciudad o descripción.")
+            @QueryParam("q") String q,
+            @Parameter(description = "true: solo publicadas con ofertas por revisar.") @QueryParam("withBids") Boolean withBids,
+            @Parameter(description = "Orden: recent (por omisión), pickup, bids, price_desc o price_asc.")
+            @QueryParam("sort") String sort) {
+        var filter = MyRequestFilter.of(status, originCity, destinationCity, fromDate, toDate, q, withBids, sort);
+        if (page == null && size == null) return ApiResponse.of(RequestView.of(queries.exportMine(filter)));
+        return ApiResponse.of(queries.myRequests(filter, PageRequest.of(page, size)).map(RequestView::of));
+    }
+
+    @GET
+    @Path("/shipment-requests/mine/export")
+    @Produces(CsvWriter.MEDIA_TYPE)
+    @RolesAllowed(Roles.PYME)
+    @Operation(summary = "Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) las solicitudes que cumplen los "
+            + "mismos filtros que /mine. Máximo 10 000 filas: si hay más, LOGYX-EXP-001")
+    public Response exportMine(@QueryParam("status") String status, @QueryParam("originCity") String originCity,
+                               @QueryParam("destinationCity") String destinationCity,
+                               @QueryParam("fromDate") @Schema(type = SchemaType.STRING, format = "date") String fromDate,
+                               @QueryParam("toDate") @Schema(type = SchemaType.STRING, format = "date") String toDate,
+                               @QueryParam("q") String q, @QueryParam("withBids") Boolean withBids,
+                               @QueryParam("sort") String sort) {
+        var filter = MyRequestFilter.of(status, originCity, destinationCity, fromDate, toDate, q, withBids, sort);
+        byte[] body = MarketplaceCsv.requests(queries.exportMine(filter));
+        String name = "solicitudes-" + java.time.LocalDate.now(java.time.ZoneId.of("America/Lima")) + ".csv";
+        return Response.ok(body, CsvWriter.MEDIA_TYPE)
+                .header("Content-Disposition", "attachment; filename=\"" + name + "\"").build();
+    }
+
+    @GET
+    @Path("/shipment-requests/mine/counts")
+    @RolesAllowed(Roles.PYME)
+    @Operation(summary = "Totales de mis solicitudes por estado, sin filtros (pestañas de filtro rápido)")
+    public ApiResponse<RequestCountsView> counts() {
+        var c = queries.myRequestCounts();
+        return ApiResponse.of(new RequestCountsView(c.all(), c.published(), c.matched(), c.cancelled(), c.withBids()));
+    }
+
+    @GET
+    @Path("/shipment-requests/mine/similar")
+    @RolesAllowed(Roles.PYME)
+    @Operation(summary = "Posibles duplicados: solicitudes publicadas en las últimas 24 h con la misma ruta, tipo de carga, "
+            + "peso y fecha de recojo (máximo 3)")
+    public ApiResponse<List<SimilarRequest>> similar(
+            @QueryParam("originCity") String originCity, @QueryParam("destinationCity") String destinationCity,
+            @QueryParam("cargoType") pe.logyx.catalog.domain.CargoType cargoType,
+            @QueryParam("weightKg") BigDecimal weightKg,
+            @QueryParam("pickupDate") @Schema(type = SchemaType.STRING, format = "date") String pickupDate) {
+        if (originCity == null || destinationCity == null || cargoType == null || weightKg == null || pickupDate == null) {
+            throw pe.logyx.shared.domain.BusinessException.badRequest("LOGYX-VAL-001",
+                    "Indica originCity, destinationCity, cargoType, weightKg y pickupDate", "originCity");
+        }
+        return ApiResponse.of(queries.similarRecent(originCity, destinationCity, cargoType, weightKg,
+                        MarketplaceFilter.date(pickupDate, "pickupDate")).stream()
+                .map(r -> new SimilarRequest(r.id(), r.code(), r.createdAt())).toList());
     }
 
     @GET

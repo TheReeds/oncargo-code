@@ -11,6 +11,10 @@ package pe.logyx.core.model
 fun UserInfo.has(permission: OrgPermission): Boolean =
     if (permissions.isNotEmpty()) permission in permissions else permission in defaultPermissions(role, organizationType)
 
+/** Permisos efectivos (los del servidor o, en sesiones previas a V14, los del rol). `:app` los provee a la UI (`LocalPermissions`). */
+fun permissionsOf(user: UserInfo): Set<OrgPermission> =
+    if (user.permissions.isNotEmpty()) user.permissions.toSet() else defaultPermissions(user.role, user.organizationType)
+
 /** Publicar, ofertar, aceptar, contraofertar, chatear, asignar, cancelar, flota, viajes, reservas, incidencias, documentos y reseñas. */
 val UserInfo.canOperate: Boolean get() = has(OrgPermission.OPERATE)
 

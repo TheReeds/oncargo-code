@@ -1,9 +1,16 @@
 package pe.logyx.notification.infrastructure.web;
 
+import pe.logyx.notification.application.NotificationService.CategoryPreference;
+import pe.logyx.notification.domain.model.NotificationCategory;
+import pe.logyx.notification.domain.model.NotificationPreference;
 import pe.logyx.notification.domain.model.NotificationTarget;
 import pe.logyx.notification.domain.model.NotificationType;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -17,17 +24,21 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/** Centro de notificaciones de la organización (los conductores no tienen centro propio en el MVP). */
+/**
+ * Centro de avisos de la persona (V16: cada uno tiene su leído; los conductores no tienen centro propio en el MVP) y
+ * sus preferencias de aviso.
+ */
 @Path("/api/v1/notifications")
 @RolesAllowed({Roles.PYME, Roles.CARRIER, Roles.OPERATOR})
 public class NotificationResource {
 
+    /** {@code mine} (V16): el aviso es de algo que tú creaste (tu solicitud, tu oferta): marca «Tuyo». */
     public record NotificationView(UUID id, NotificationType type, String title, String body,
                                    NotificationTarget relatedType, UUID relatedId, boolean read,
-                                   OffsetDateTime readAt, OffsetDateTime createdAt) {
+                                   OffsetDateTime readAt, OffsetDateTime createdAt, boolean mine) {
         static NotificationView of(Notification n) {
             return new NotificationView(n.id(), n.type(), n.title(), n.body(), n.relatedType(), n.relatedId(),
-                    n.isRead(), n.readAt(), n.createdAt());
+                    n.isRead(), n.readAt(), n.createdAt(), n.mine());
         }
     }
 
@@ -35,20 +46,37 @@ public class NotificationResource {
 
     public record MarkedRead(int updated) {}
 
+    /** Preferencia de una categoría de avisos ({@code inAppLocked}: el canal in-app no se puede apagar). */
+    public record NotificationPreferenceView(NotificationCategory category, String label, String description,
+                                             boolean inApp, boolean email, boolean inAppLocked) {
+        static NotificationPreferenceView of(CategoryPreference p) {
+            return new NotificationPreferenceView(p.category(), p.category().label(), p.category().description(),
+                    p.inApp(), p.email(), p.inAppLocked());
+        }
+    }
+
+    public record NotificationPreferenceChange(@NotNull NotificationCategory category, @NotNull Boolean inApp,
+                                               @NotNull Boolean email) {}
+
+    public record UpdateNotificationPreferences(@NotEmpty @Size(max = 20) List<@Valid @NotNull NotificationPreferenceChange> preferences) {}
+
     @Inject NotificationService service;
 
     @GET
-    @Operation(summary = "Notificaciones de mi organización, recientes primero (siempre paginado)")
+    @Operation(summary = "Mis avisos, recientes primero (siempre paginado)",
+            description = "V16: avisos por persona; marcar uno como leído no cambia el de tus compañeros.")
     public ApiResponse<List<NotificationView>> list(
             @Parameter(description = "true = solo no leídas.") @QueryParam("unread") Boolean unread,
+            @Parameter(description = "true = solo los de algo que tú creaste («Tuyo»).") @QueryParam("mine") Boolean mine,
             @Parameter(description = "Página 0-based (por omisión 0).") @QueryParam("page") Integer page,
             @Parameter(description = "Tamaño de página (1-100, por omisión 20).") @QueryParam("size") Integer size) {
-        return ApiResponse.of(service.list(Boolean.TRUE.equals(unread), PageRequest.of(page, size))
+        return ApiResponse.of(service.list(Boolean.TRUE.equals(unread), Boolean.TRUE.equals(mine), PageRequest.of(page, size))
                 .map(NotificationView::of));
     }
 
     @GET
     @Path("/unread-count")
+    @Operation(summary = "Cuántos avisos tengo sin leer (solo los míos)")
     public ApiResponse<UnreadCount> unreadCount() {
         return ApiResponse.of(new UnreadCount(service.unreadCount()));
     }
@@ -63,5 +91,24 @@ public class NotificationResource {
     @Path("/read-all")
     public ApiResponse<MarkedRead> markAllRead() {
         return ApiResponse.of(new MarkedRead(service.markAllRead()));
+    }
+
+    @GET
+    @Path("/preferences")
+    @Operation(summary = "Mis preferencias de aviso", description = "Categorías que aplican a tu tipo de cuenta, con "
+            + "los canales in-app y correo (valores por defecto si nunca las cambiaste).")
+    public ApiResponse<List<NotificationPreferenceView>> preferences() {
+        return ApiResponse.of(service.preferences().stream().map(NotificationPreferenceView::of).toList());
+    }
+
+    @PUT
+    @Path("/preferences")
+    @Operation(summary = "Cambiar mis preferencias de aviso", description = "Cualquier rol (también Lector). Solo "
+            + "cambian las categorías enviadas. 400 LOGYX-NTF-001 si se apaga el in-app de «Cuenta y accesos»; "
+            + "400 LOGYX-NTF-002 si la categoría no aplica a tu tipo de cuenta.")
+    public ApiResponse<List<NotificationPreferenceView>> updatePreferences(@Valid @NotNull UpdateNotificationPreferences req) {
+        return ApiResponse.of(service.updatePreferences(req.preferences().stream()
+                .map(c -> new NotificationPreference(c.category(), c.inApp(), c.email())).toList())
+                .stream().map(NotificationPreferenceView::of).toList());
     }
 }

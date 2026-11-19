@@ -95,10 +95,17 @@ import pe.logyx.core.model.isReadOnly
 import pe.logyx.core.data.refreshSignals
 import pe.logyx.core.designsystem.components.LiveEffect
 import pe.logyx.core.designsystem.components.LocalReadOnly
+import pe.logyx.core.designsystem.components.LocalPermissions
+import pe.logyx.core.designsystem.components.LocalRequestAccess
+import pe.logyx.core.data.AccessRepository
+import pe.logyx.core.data.userMessage
+import pe.logyx.core.model.OrgPermission
+import pe.logyx.core.model.permissionsOf
 import pe.logyx.core.designsystem.components.LocalScreenBanner
 import pe.logyx.core.designsystem.components.VerificationBanner
 import pe.logyx.core.designsystem.components.needsAttention
 import androidx.compose.runtime.CompositionLocalProvider
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.rounded.Notifications
 
 /** Raíz: decide entre carga, login y la app por rol según el estado de la sesión. */
@@ -197,9 +204,27 @@ private fun RoleShell(user: UserInfo, config: AppConfig) {
         }
     }
     val realtimeStatus by realtime.status.collectAsState()
+    // «Pedir acceso» (roadmap v2 1.7/1.15): el Lector avisa a los ADMIN desde el aviso "Modo lectura" de cada pantalla.
+    val accessRepo = koinInject<AccessRepository>()
+    val shellScope = androidx.compose.runtime.rememberCoroutineScope()
+    val shellContext = LocalContext.current
+    val requestAccess: ((OrgPermission) -> Unit)? = if (user.isReadOnly) { permission ->
+        shellScope.launch {
+            val text = accessRepo.request(permission).fold(
+                onSuccess = { shellContext.getString(R.string.access_request_sent) },
+                onFailure = { it.userMessage() },
+            )
+            android.widget.Toast.makeText(shellContext, text, android.widget.Toast.LENGTH_LONG).show()
+        }
+    } else null
     ProvideRealtimeStatus(realtimeStatus) {
-    // Rol Lector (B2): las acciones de escritura (LogyxButton(requiresOperate = true)) se deshabilitan y cada pantalla avisa.
-    CompositionLocalProvider(LocalReadOnly provides user.isReadOnly) {
+    // Rol (roadmap v2 1.7): permisos efectivos para `Can { }`; el Lector no ve las acciones de escritura
+    // (LogyxButton(requiresOperate = true)) y cada pantalla avisa con «Pedir acceso».
+    CompositionLocalProvider(
+        LocalReadOnly provides user.isReadOnly,
+        LocalPermissions provides permissionsOf(user),
+        LocalRequestAccess provides requestAccess,
+    ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {

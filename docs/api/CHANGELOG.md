@@ -5,6 +5,138 @@ retrocompatibles** (no se renombró ni eliminó ningún campo, path o schema), s
 señalado con ⚠️ en la fase 2. Los clientes deben regenerar/actualizar
 sus DTOs; los campos nuevos de respuesta son siempre seguros de ignorar.
 
+## 2026-11-17 — Ola 1, zona D: roles en la interfaz, avisos por persona, preferencias de aviso y autoría (V16)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.7, 1.15 y 1.8, más la matriz evento × canal de 2.2 (adelantada).
+`scripts/check-contract.sh`: **compatible** (todo aditivo). Migración `V16__per_person_notifications.sql` (función `app_profile()`,
+`notifications.profile_id` + `mine`, `notification_preferences` con RLS, `bids.created_by`, política `realtime_events_read` por persona).
+Módulo nuevo `activity` (solo lectura).
+
+### ⚠️ Cambios de comportamiento
+1. **Los avisos son por persona.** Cada aviso para "toda la organización" se guarda como una copia por persona activa (sin conductores
+   ni invitaciones pendientes), según sus preferencias. `GET /notifications`, `/unread-count`, `POST /{id}/read` y `/read-all`
+   devuelven y marcan **solo lo de quien llama**: un Lector que marca un aviso ya no lo hace desaparecer para sus compañeros (X-01/P-39).
+   Los avisos anteriores a V16 se copiaron a cada persona activa conservando si estaban leídos. Los `id` cambian por persona: no
+   compartas el `id` de un aviso entre usuarios.
+2. **`notification.created` (SSE) va a la persona** (`Recipient.user`), con **su** `unreadCount` y el campo nuevo `mine`. Ya no llega a
+   toda la organización. Los clientes no cambian: siguen leyendo `unreadCount`.
+3. **Preferencias**: si una persona apaga una categoría en la app, no se crea su copia (no cuenta en su contador). El correo sale
+   solo si la persona lo activó (por omisión: adjudicaciones, envíos, incidencias y cuenta).
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /notifications/preferences` | PYME, transportista, operador (cualquier rol, también Lector) | `NotificationPreferenceView[]{category, label, description, inApp, email, inAppLocked}`: solo las categorías que aplican a tu tipo de cuenta, con tus valores o los por defecto |
+| `PUT /notifications/preferences` | ídem (Lector incluido: está en `OrgAccessPolicy.viewerMayWrite`) | Cuerpo `{preferences: [{category, inApp, email}]}` (1–20). Cambia solo las enviadas; devuelve la lista completa. `400 LOGYX-NTF-001` si apagas el in-app de `ACCOUNT`; `400 LOGYX-NTF-002` si la categoría no aplica a tu tipo de cuenta |
+| `POST /organizations/me/access-requests` (202) | PYME, transportista, operador (cualquier rol, también Lector) | Cuerpo `{permission: READ\|OPERATE\|MANAGE_USERS\|MANAGE_ORGANIZATION\|MANAGE_DRIVERS, reason≤300?}` → `AccessRequestView{permission, notifiedAdmins}`. Avisa a cada ADMIN activo (aviso personal `ACCESS_REQUESTED`, `relatedType = USER`, `relatedId` = quien lo pide) y queda en la auditoría (`ACCESS_REQUESTED`). `409 LOGYX-ACC-001` si tu rol ya tiene el permiso; `429 LOGYX-ACC-002` si ya lo pediste en los últimos 10 min (`logyx.access-request.cooldown`); `409 LOGYX-ACC-003` si no hay otro ADMIN activo |
+| `GET /activity?subject=REQUEST\|BID\|SHIPMENT\|TRIP\|INCIDENT&id=` | PYME, transportista, operador | `ActivityView{createdBy: ActivityPerson{name, role}?, entries: ActivityEntryView[]{at, action, entity, entityId, actor?, organizationName, own}}`: quién creó el recurso y quién hizo cada acción (hasta 100, recientes primero). Lectura bajo RLS de `created_by` y `audit_log`: ves las acciones y las personas de tu organización (`actor` null si fue otra organización o el sistema); el operador ve todo. `action` = código de la auditoría (`REQUEST_PUBLISHED`, `BID_ACCEPTED`…) más `BID_PLACED` (de `bids.created_by`). El sujeto arrastra a sus hijos: solicitud → ofertas y contraofertas; envío → oferta, incidencias, documentos y reseñas; viaje → reservas. 404 si no ves el recurso |
+
+### Endpoints ampliados
+- **`GET /notifications?mine=true`**: solo los avisos de algo que tú creaste (tu solicitud, tu oferta).
+
+### Campos nuevos
+- `NotificationView.mine` (bool): el aviso es de algo que esta persona creó → marca «Tuyo». Para la PYME, el autor es quien publicó la
+  solicitud (`shipment_requests.created_by`); para el transportista, quien ofertó (`bids.created_by`, nuevo, lo rellena la BD con
+  `app_profile()`). Los avisos personales (`ACCESS_REQUESTED`) siempre son `mine`.
+- `NotificationType.ACCESS_REQUESTED`; `NotificationTarget.USER` (web: `/organizacion/usuarios?usuario=<id>`).
+- Evento SSE `notification.created`: `mine`.
+
+### Códigos nuevos
+`LOGYX-NTF-001` (400, `inApp`: «Cuenta y accesos» siempre llega a la app) · `LOGYX-NTF-002` (400, `category`: no aplica a tu tipo de
+cuenta) · `LOGYX-ACC-001` (409, `permission`: ya lo tienes) · `LOGYX-ACC-002` (429: pedido reciente) · `LOGYX-ACC-003` (409: sin otro ADMIN).
+
+### Para los demás agentes y clientes
+- **Web: `<Can>` es la fuente única para ocultar acciones** (`web/src/lib/permissions/react.tsx`). Ver `web/AGENTS.md` y la skill
+  (`references/web.md`). Android: `Can { }` / `rememberCan()` + `LocalPermissions` (`:core:designsystem`).
+- **Autoría en tu feature**: monta `features/activity/components/ActivityTrail` (`subject`, `id`, `initial` opcional) y/o `AuthorLine`
+  («Publicada por Ana R. (Operaciones)»). Ya está en el detalle de la solicitud PYME y en el de la incidencia. Falta en «Mis ofertas»
+  (BID, agente C), detalle del envío (SHIPMENT, agente B) y detalle del viaje (TRIP, agente C).
+- **Avisos nuevos** (`NotificationObservers`): `Notification.to(org, …)` sigue siendo "toda la organización" (se expande por persona);
+  `Notification.toPerson(org, profile, …)` es para una sola persona. Las categorías de preferencias están en `NotificationCategory`
+  (un tipo nuevo debe asignarse a una).
+- Android: `NotificationView.mine`, filtro «Solo míos», `POST /organizations/me/access-requests` desde el aviso "Modo lectura".
+
+## 2026-11-17 — Ola 1, zona A: solicitudes de la PYME (V17)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.1 a 1.5 (solo solicitudes). Todo **aditivo**: `scripts/check-contract.sh`
+compatible. Migración `V17__request_details_places_search.sql` (columnas de `shipment_requests`, `saved_places` con RLS,
+`idempotency_keys` con RLS, índices de código y referencia). Módulos nuevos: `places` y `search`.
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `GET /places` | PYME (VIEWER lee) | `PlaceView[]`, la usada más recientemente primero. Filtros `city`, `kind` (`PICKUP`/`DELIVERY` incluyen las `BOTH`), `q` (nombre, dirección o contacto), `includeArchived` |
+| `GET /places/{id}` · `POST /places` (201) · `PATCH /places/{id}` · `POST /places/{id}/archive` · `POST /places/{id}/restore` | PYME (escriben ADMIN y OPS; VIEWER 403 `AUTH-007`) | `PlaceView`. `PlaceRequest{label≤80, city, address≤200, contactName≤120, contactPhone (9 dígitos, +51 opcional), openingHours≤120, windowFrom/windowTo (HH:mm, ambos o ninguno), instructions≤300, kind}`; `PATCH` reemplaza los campos editables; una archivada no se edita (409 `PLC-002`); no hay DELETE (se archiva). RN07 no aplica: la libreta es privada |
+| `GET /search?q=&types=` | PYME, transportista, operador (el conductor 403) | `SearchResultView[]{type: REQUEST\|SHIPMENT\|COUNTERPART, id, code, title, subtitle, href}`, hasta 8 por tipo. `q` de 2 a 80 caracteres (400 `VAL-001` con `field=q`); `types` separados por coma. Busca por código (`OC-7K2QX`, también `oc 7k2qx` o `7k2qx`), referencia propia, ruta ("lima juliaca"), descripción, placa y conductor (envíos), razón social y, solo el operador, RUC. Corre bajo la RLS del usuario: nada que no vea ya. Contrapartes solo con relación (envío u oferta compartidos; no hay directorio) |
+| `GET /shipment-requests/mine/counts` | PYME | `{all, published, matched, cancelled, withBids}` sin filtros (pestañas de filtro rápido) |
+| `GET /shipment-requests/mine/similar?originCity&destinationCity&cargoType&weightKg&pickupDate` | PYME | `SimilarRequest[]{id, code, createdAt}` (máx. 3): publicadas en las últimas 24 h con la misma ruta, tipo, peso y fecha («Ya publicaste una igual hoy») |
+| `GET /shipment-requests/mine/export` | PYME | `text/csv` (UTF-8 con BOM, separador `;`, fechas de Lima, fórmulas neutralizadas con `'`) con los **mismos filtros** que `/mine`. Más de 10 000 filas: 400 `LOGYX-EXP-001`. Columnas: Código, Referencia, Origen, Destino, Tipo de carga, Descripción, Peso (kg), Valor declarado (S/), Fecha de recojo, Estado, Precio sugerido (S/), Ofertas, Mejor oferta (S/), Creada el, Motivo de cancelación |
+
+### Endpoints ampliados
+- **`POST /shipment-requests`**: cabecera opcional **`Idempotency-Key`** (8–80 caracteres `A-Za-z0-9._:-`, UUID recomendado). Con la misma clave de la misma organización en 24 h devuelve la solicitud ya creada (201, cabecera `Idempotent-Replayed: true`) en vez de crear otra; reintentos simultáneos se serializan (candado consultivo). Sin cabecera, igual que antes. Acepta además los campos nuevos de `CreateRequest` (todos opcionales).
+- **`GET /shipment-requests/mine`**: filtros `status`, `originCity`, `destinationCity`, `fromDate`/`toDate` (**fecha de recojo**, inclusive), `q` (código con o sin guion, referencia propia, ciudad o descripción), `withBids`, `sort` (`recent` por omisión, `pickup`, `bids`, `price_desc`, `price_asc`), `page`/`size` con `meta.total`. Sin `page` ni `size` devuelve todas las que cumplan el filtro (compatibilidad con Android; tope 10 000).
+
+### Campos nuevos
+- `CreateRequest`: `customerReference≤40`, `declaredValue` (S/ > 0), `pickupContactName/pickupContactPhone/pickupWindowFrom/pickupWindowTo/pickupInstructions` y los mismos `delivery*` (ventanas `HH:mm`, ambas o ninguna; teléfono 9 dígitos), `originPlaceId`/`destinationPlaceId` (solo ordenan la libreta por uso; ids ajenos se ignoran).
+- `RequestView`: **`code`** (legible, único, `OC-` + 5 caracteres sin 0/1/I/L/O/U; también lo hereda el envío), `declaredValue` (lo ven también los transportistas: la PYME declara el valor y el transportista responde según su póliza), y **privados** — `customerReference`, `pickup*` y `delivery*` — que solo ve la PYME dueña, el operador y el transportista adjudicado una vez adjudicada (`MATCHED`); para el resto vienen `null`. Quien ofertó y perdió tampoco los ve.
+- Las solicitudes existentes recibieron `code` en la migración (respaldo SQL).
+
+### Códigos nuevos
+`LOGYX-VAL-002` teléfono inválido (`field` = campo) · `LOGYX-REQ-006` ventana horaria incompleta o invertida (`pickupWindowTo`/`deliveryWindowTo`) · `LOGYX-REQ-007` valor declarado ≤ 0 (`declaredValue`) · `LOGYX-PLC-001` horario de la dirección inválido · `LOGYX-PLC-002` dirección archivada · `LOGYX-EXP-001` exportación de más de 10 000 filas.
+
+### Para el agente de envíos (B) y los clientes
+- **Código del envío:** el envío hereda el `code` de su solicitud. `shipment` es de B: agregar `ShipmentView.code` leyéndolo de la solicitud (`MarketplaceQueries.requestForParticipant(id).code()`) o con `shipments.code` copiado al adjudicar. La búsqueda (`/search`) ya halla envíos por el código de su solicitud (join `shipments → shipment_requests`).
+- **Contactos en paradas:** `ShipmentRequest.details().pickup()` / `.delivery()` (`StopDetails{contactName, contactPhone, windowFrom, windowTo, instructions}`, teléfono ya normalizado a 9 dígitos) están disponibles desde `MarketplaceQueries.requestForParticipant`; al adjudicar, copiarlos a `shipment_stops` (columnas de B) y exponerlos en `StopView` solo a las partes y al conductor asignado.
+- Web: `npm run gen:api`. Android: mostrar `RequestView.code` donde hoy hay `id.slice(0,8)`.
+
+## 2026-11-17 — Ola 1 · agente E: operador (búsqueda, chat, parámetros), comisión, cotizador público y términos (V18)
+
+Origen: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.13, 1.14 y 2.17, y «Decisiones del dueño del producto» (comisión y legal).
+`scripts/check-contract.sh`: **compatible**. Migración `V18__system_parameters_commission_terms.sql` (tablas `system_parameters`,
+`system_parameter_history` y `terms_acceptances`, columna `shipments.commission_rate`).
+
+### ⚠️ Cambios de comportamiento
+1. **`POST /auth/register` exige `acceptTerms: true`** (Términos y condiciones, además de `acceptPrivacyPolicy`). Sin él: 400
+   `LOGYX-VAL-001` con `field = acceptTerms`. `termsVersion` (opcional) es la versión que el usuario leyó (la de `GET /public/legal`);
+   si no es la vigente: 409 `LOGYX-AUTH-012` (`field = termsVersion`). Se guarda versión y fecha en `terms_acceptances`. Los clientes que
+   registran cuentas (hoy solo la web; Android no registra) deben enviar `acceptTerms`.
+2. **SLA de asignación manual (RN10)** ya no es solo `logyx.operator.sla`: lo gobierna el parámetro `assignment_sla_hours`
+   (el operador lo cambia; mientras no lo haga rige la configuración). `GET /operator/sla-alerts` (`slaHours`) y `assignRequest` lo usan.
+
+### Endpoints nuevos
+| Método y path | Quién | Respuesta |
+|---|---|---|
+| `POST /public/pricing/quote` | **público** (sin JWT), límite por IP: 30 por 15 min → 429 `LOGYX-AUTH-429` + `Retry-After` | `PublicQuote{distanceKm, fuelCost, transportCost, tollCost, handlingFee, suggestedPrice, priceFloor, vatRate, suggestedNetOfVat, suggestedVat, commissionRate}`. Mismo cálculo que `POST /pricing/calculate` (km por carretera); precios con IGV incluido. No persiste nada. Errores: `LOGYX-PRC-001/002`, `LOGYX-VAL-001` (peso 1–60 000 kg) |
+| `GET /public/pricing/commission` | público | `PublicCommission{commissionRate, vatRate, paidBy: "CARRIER"}` para la página de precios |
+| `GET /public/legal` | público | `LegalInfo{termsVersion, termsStatus: DRAFT\|PUBLISHED}` |
+| `GET /pricing/commission?amount=` | cualquier rol autenticado (también VIEWER) | `CommissionInfo{commissionRate, vatRate, breakdown?}`; con `amount`: `Breakdown{amount, netOfVat, vat, commission, carrierNet}` (para el «cobras neto» del `BidSheet`) |
+| `GET /operator/parameters` | OPERATOR | `ParameterRow[]{key, label, description, kind: RATE\|HOURS, value, defaultValue, min, max, version, overridden, reason, updatedBy, updatedAt}` — `commission_rate`, `assignment_sla_hours`, `incident_warn_hours`, `incident_breach_hours`; `version 0` = rige el valor por omisión |
+| `PUT /operator/parameters/{key}` | OPERATOR | cuerpo `UpdateParameter{value, reason (3–300), expectedVersion?}` → `ParameterRow`. Errores: `LOGYX-PAR-001` valor inválido (`value`), `-002` falta motivo, `-003` aviso ≥ incumplimiento, `-004` otro operador lo cambió (409), 404 clave desconocida |
+| `GET /operator/parameters/history` | OPERATOR | `ParameterChangeRow[]` paginado (`?key=`), el más reciente primero |
+| `GET /operator/requests/{id}/bids` | OPERATOR (solo lectura) | `OperatorBidRow[]`, de menor a mayor monto |
+| `GET /operator/requests/{id}/threads?reason=` | OPERATOR | `OperatorThreadRow[]`. **Auditado** (`OPERATOR_VIEWED_CHAT`, con el motivo opcional) |
+| `GET /operator/requests/{id}/threads/{carrierOrgId}/messages?before&size&reason=` | OPERATOR | `OperatorMessageRow[]` por cursor (`meta.nextCursor`). Auditado al abrir el hilo (no al paginar con `before`) |
+
+### Endpoints ampliados
+- `GET /operator/requests`, `/operator/shipments` y `/operator/organizations`: parámetro opcional **`q`** (2–60 caracteres; `LOGYX-VAL-001`,
+  `field = q`). Solicitudes: código `OC-…`, referencia de la PYME, razón social/RUC del solicitante o del transportista adjudicado, placa de
+  una oferta, descripción o id. Envíos: código/referencia de la solicitud, razón social/RUC de ambas partes, placa, conductor, id del envío o de
+  la solicitud. Organizaciones: razón social, RUC, ciudad, correo de un usuario, placa de un vehículo o id (sin organizaciones operadoras).
+  Convive con los demás filtros.
+
+### Campos nuevos
+- `OperatorMetricsView.assignmentSlaHours`, `incidentWarnHours`, `incidentBreachHours`, `commissionRate` (parámetros vigentes; la UI colorea
+  las incidencias con estos umbrales en vez de 12/24 fijos).
+- `RegisterRequest.acceptTerms`, `termsVersion` (ver arriba).
+
+### Comisión: qué debe hacer el agente C (adjudicación)
+Columna `shipments.commission_rate NUMERIC(5,4) NULL` (V18; `NULL` = envío anterior). Al crear el envío (`AcceptBidUseCase` /
+`CreateShipmentUseCase`) guardar `pricing.application.CommissionService.currentRate()`. Para mostrar: `CommissionService.breakdown(amount, rateGuardada)`
+(IGV, comisión y neto del transportista) o `GET /pricing/commission?amount=` antes de adjudicar (la tasa vigente). Detalle en `docs/domain/business-rules.md` § Comisión.
+
+### Códigos nuevos
+`LOGYX-PAR-001..004` (parámetros), `LOGYX-AUTH-012` (versión de términos desactualizada).
+
 ## 2026-11-17 — Auditoría del operador, lecturas para paneles y P2/P3 (V15)
 
 Origen: `docs/reviews/2026-11-16-flow-gaps.md` F05, F15, F22, F29, F42, F44, F45, F46, F49, F51, F59 y lo pedido por los

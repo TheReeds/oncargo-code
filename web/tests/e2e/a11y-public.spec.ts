@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { goto } from './helpers/ui';
 
-/** Páginas públicas (landing, login, registro, privacidad) en claro y oscuro: cero violaciones WCAG 2.1 AA. */
-for (const theme of ['light', 'dark']) for (const path of ['/', '/login', '/registro', '/privacidad']) {
+/** Páginas públicas (landing, login, registro, privacidad, términos, precios, contacto) en claro y oscuro: cero violaciones WCAG 2.1 AA. */
+for (const theme of ['light', 'dark']) for (const path of ['/', '/login', '/registro', '/privacidad', '/terminos', '/precios', '/contacto']) {
   test(`axe ${path} ${theme}`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('logyx-theme', t), theme);
     await page.emulateMedia({ reducedMotion: 'reduce' }); // las animaciones de entrada alteran el color medido por axe

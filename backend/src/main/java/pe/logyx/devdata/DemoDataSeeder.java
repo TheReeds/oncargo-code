@@ -32,6 +32,10 @@ import pe.logyx.identity.application.AuthService;
 import pe.logyx.identity.application.RegisterCommand;
 import pe.logyx.identity.application.UserAccounts;
 import pe.logyx.marketplace.application.*;
+import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.places.application.PlaceService;
+import pe.logyx.places.domain.model.PlaceKind;
+import pe.logyx.places.domain.model.SavedPlace;
 import pe.logyx.shared.tenancy.OrgType;
 import pe.logyx.shipment.application.AssignDriverUseCase;
 import pe.logyx.shipment.application.ShipmentQueries;
@@ -88,6 +92,7 @@ public class DemoDataSeeder {
     @Inject UserAccounts accounts;
     @Inject FleetService fleet;
     @Inject PublishRequestUseCase publish;
+    @Inject PlaceService places;
     @Inject PlaceBidUseCase placeBid;
     @Inject AcceptBidUseCase acceptBid;
     @Inject AssignDriverUseCase assignDriver;
@@ -235,8 +240,14 @@ public class DemoDataSeeder {
         // ---------- Solicitudes publicadas en el corredor
         List<RequestSummary> r = as(pyme, () -> {
             List<RequestSummary> list = new ArrayList<>();
+            // La adjudicada (Lima → Juliaca) lleva referencia propia, valor declarado y contactos (visibles tras adjudicar).
             list.add(request("LIMA", "Av. Argentina 2450, Callao", "JULIACA", "Jr. San Román 456, Juliaca",
-                    CargoType.GENERAL, "Abarrotes en cajas (arroz, azúcar, aceite)", 6000, 2));
+                    CargoType.GENERAL, "Abarrotes en cajas (arroz, azúcar, aceite)", 6000, 2,
+                    new ShipmentRequest.Details("OC-4500123", new BigDecimal("18500.00"),
+                            new ShipmentRequest.StopDetails("Rosa Huanca", "987654321", java.time.LocalTime.of(8, 0),
+                                    java.time.LocalTime.of(12, 0), "Muelle 2 del almacén; pedir la guía en garita"),
+                            new ShipmentRequest.StopDetails("Luis Mamani", "951234567", java.time.LocalTime.of(14, 0),
+                                    java.time.LocalTime.of(18, 0), "Portón verde frente al mercado"))));
             list.add(request("AREQUIPA", "Parque Industrial, Calle 3 Mz. B", "PUNO", "Av. El Sol 820, Puno",
                     CargoType.PERISHABLE, "Lácteos refrigerados (yogur y queso fresco)", 4500, 1));
             list.add(request("LIMA", "Av. Industrial 1450, Ate", "CUSCO", "Av. de la Cultura 1200, Cusco",
@@ -253,6 +264,8 @@ public class DemoDataSeeder {
                     CargoType.OVERSIZED, "Maquinaria agrícola (tractor compacto)", 7500, 9));
             return list;
         });
+
+        as(pyme, () -> { seedPlaces(); return null; });
 
         // ---------- Ofertas
         UUID winning = as(carrier, () -> {
@@ -371,6 +384,24 @@ public class DemoDataSeeder {
                                    String description, int kg, int daysAhead) {
         return publish.publish(new PublishRequestCommand(from, fromAddress, to, toAddress, cargo, description,
                 BigDecimal.valueOf(kg), null, LocalDate.now().plusDays(daysAhead)));
+    }
+
+    private RequestSummary request(String from, String fromAddress, String to, String toAddress, CargoType cargo,
+                                   String description, int kg, int daysAhead, ShipmentRequest.Details details) {
+        return publish.publish(new PublishRequestCommand(from, fromAddress, to, toAddress, cargo, description,
+                BigDecimal.valueOf(kg), null, LocalDate.now().plusDays(daysAhead), details, null, null, null));
+    }
+
+    /** Libreta de direcciones de la PYME demo (como el usuario autenticado). */
+    private void seedPlaces() {
+        places.create(new SavedPlace.Data("Almacén Callao", pe.logyx.catalog.domain.City.LIMA, "Av. Argentina 2450, Callao",
+                "Rosa Huanca", "987654321", "Lun–Sáb 8:00–17:00", java.time.LocalTime.of(8, 0), java.time.LocalTime.of(17, 0),
+                "Muelle 2 del almacén; pedir la guía en garita", PlaceKind.PICKUP));
+        places.create(new SavedPlace.Data("Tienda Juliaca", pe.logyx.catalog.domain.City.JULIACA, "Jr. San Román 456, Juliaca",
+                "Luis Mamani", "951234567", "Lun–Dom 9:00–19:00", java.time.LocalTime.of(9, 0), java.time.LocalTime.of(19, 0),
+                "Portón verde frente al mercado", PlaceKind.DELIVERY));
+        places.create(new SavedPlace.Data("Depósito Ate", pe.logyx.catalog.domain.City.LIMA, "Av. Industrial 1450, Ate",
+                null, null, "Lun–Vie 7:00–16:00", null, null, null, PlaceKind.BOTH));
     }
 
     /** Oferta a {@code factor} × precio sugerido (nunca bajo el piso RN03). */

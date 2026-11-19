@@ -4,13 +4,17 @@ import RegisterForm from '@/features/auth/components/RegisterForm';
 import AuthShell from '@/features/auth/components/AuthShell.astro';
 import { AuthCard } from '@/components/ui/auth-card';
 import { getCatalog } from '@/features/catalog/server';
-const { cities } = await getCatalog();
+import { getLegal } from '@/features/legal/server';
+const [{ cities }, legal] = await Promise.all([getCatalog(), getLegal()]);
 const t = Astro.url.searchParams.get('tipo');
+// `next` solo admite la pantalla de nueva solicitud (el cotizador público la usa para conservar la cotización).
+const rawNext = Astro.url.searchParams.get('next') ?? '';
+const next = /^\/pyme\/solicitudes\/nueva(\?[A-Za-z0-9_=&%.\-]{0,200})?$/.test(rawNext) ? rawNext : undefined;
 ---
 <Public title="Crear cuenta" description="Registra tu empresa en OnCargo para publicar cargas o para ofertar como transportista." footer="compact">
   <AuthShell variant="registro">
     <AuthCard embedded className="mx-auto max-w-2xl" cardClassName="p-4 shadow-lg shadow-chrome/10 sm:p-7" title="Crea tu cuenta en OnCargo" subtitle="Registra tu empresa para publicar cargas u ofertar como transportista.">
-      <RegisterForm client:load cities={cities} initialType={t === 'transportista' ? 'CARRIER' : 'PYME'} />
+      <RegisterForm client:load cities={cities} initialType={t === 'transportista' ? 'CARRIER' : 'PYME'} termsVersion={legal.termsVersion} termsDraft={legal.termsStatus !== 'PUBLISHED'} next={next} />
       <Fragment slot="footer">¿Ya tienes cuenta? <a class="font-medium text-petrol-700 underline underline-offset-2" href="/login">Ingresa</a></Fragment>
     </AuthCard>
   </AuthShell>

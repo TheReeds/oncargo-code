@@ -56,7 +56,7 @@ public final class Api {
         var body = Map.of(
                 "organizationType", type, "legalName", name, "ruc", newRuc(), "city", "Juliaca",
                 "fullName", "Admin " + name, "email", email, "password", "Secreta123",
-                "acceptPrivacyPolicy", true);
+                "acceptPrivacyPolicy", true, "acceptTerms", true);
         var r = given().contentType(ContentType.JSON).body(body)
                 .post("/api/v1/auth/register").then().statusCode(201).extract();
         return new Session(r.path("data.accessToken"), r.path("data.user.organizationId"), email);

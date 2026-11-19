@@ -1,0 +1,70 @@
+---
+import AppShell from '@/components/layout/AppShell.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, Td, Th, Tr } from '@/components/ui/table';
+import { EmptyState } from '@/components/domain/EmptyState';
+import ParametersEditor from '@/features/operator/components/ParametersEditor';
+import { listParameters, parameterHistory } from '@/features/operator/server';
+import { formatParam } from '@/features/operator/parameters';
+import { formatDateTime } from '@/lib/format';
+import { History } from 'lucide-react';
+
+const token = Astro.locals.session!.token;
+const pageNo = Math.max(1, Number(Astro.url.searchParams.get('pagina')) || 1);
+let rows: Awaited<ReturnType<typeof listParameters>> = [];
+let history = { items: [] as Awaited<ReturnType<typeof parameterHistory>>['items'], meta: { page: 0, size: 10, total: 0 } };
+let loadError: string | null = null;
+try {
+  [rows, history] = await Promise.all([listParameters(token), parameterHistory(token, { page: pageNo - 1, size: 10 })]);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar los parámetros.';
+}
+const kindOf = Object.fromEntries(rows.map((r) => [r.key, r.kind]));
+const pages = Math.max(1, Math.ceil(history.meta.total / history.meta.size));
+const href = (p: number) => (p <= 1 ? '/operador/parametros' : `/operador/parametros?pagina=${p}`);
+---
+<AppShell title="Parámetros del sistema" active="operador-parametros" wide>
+  <PageHeader title="Parámetros del sistema" subtitle="La comisión de OnCargo, el SLA de asignación manual y los umbrales de las incidencias. Cada cambio queda con su motivo."
+    breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Parámetros del sistema' }]} />
+  {loadError && <Alert tone="error" title="No pudimos cargar los parámetros" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  {!loadError && (
+    <div class="space-y-6">
+      <Alert tone="info" title="Cómo funcionan los cambios">
+        Se aplican de inmediato a lo nuevo: la comisión se guarda en cada envío al adjudicarlo, así que no altera los envíos ya creados. Todo cambio sube la versión y se registra en el historial y en la auditoría.
+      </Alert>
+      <ParametersEditor client:load rows={rows} now={Date.now()} />
+
+      <Card>
+        <CardHeader><div><CardTitle>Historial de cambios</CardTitle><CardDescription>El más reciente primero. Es de solo lectura.</CardDescription></div></CardHeader>
+        {history.items.length === 0 ? (
+          <EmptyState compact icon={History} title="Aún no hay cambios" description="Los parámetros siguen con los valores de la configuración." />
+        ) : (
+          <>
+            <Table label="Historial de parámetros" stack dense>
+              <thead><tr><Th>Parámetro</Th><Th>Cambio</Th><Th>Motivo</Th><Th>Quién y cuándo</Th></tr></thead>
+              <tbody>
+                {history.items.map((h) => (
+                  <Tr data-testid="param-history-row">
+                    <Td primary><span class="font-medium text-ink-900">{h.label}</span><span class="ml-2 font-mono text-xs text-ink-500">v{h.version}</span></Td>
+                    <Td label="Cambio" className="whitespace-nowrap font-mono"><span class="text-ink-500">{formatParam(kindOf[h.key!], h.previousValue)}</span> → <span class="font-semibold text-ink-900">{formatParam(kindOf[h.key!], h.newValue)}</span></Td>
+                    <Td label="Motivo"><span class="block max-w-md text-ink-700">{h.reason}</span></Td>
+                    <Td label="Quién y cuándo"><span class="block">{h.changedByName ?? h.changedByEmail ?? 'Operador'}</span><span class="block text-xs text-ink-500">{formatDateTime(h.changedAt)}</span></Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+            {pages > 1 && (
+              <nav class="flex items-center justify-between border-t border-steel-200 px-4 py-3 text-sm sm:px-5" aria-label="Paginación del historial">
+                {pageNo > 1 ? <a class="font-medium text-petrol-700 hover:underline" href={href(pageNo - 1)} rel="prev">Anterior</a> : <span></span>}
+                <span class="text-ink-500">Página <span class="font-mono">{pageNo}</span> de <span class="font-mono">{pages}</span></span>
+                {pageNo < pages ? <a class="font-medium text-petrol-700 hover:underline" href={href(pageNo + 1)} rel="next">Siguiente</a> : <span></span>}
+              </nav>
+            )}
+          </>
+        )}
+      </Card>
+    </div>
+  )}
+</AppShell>

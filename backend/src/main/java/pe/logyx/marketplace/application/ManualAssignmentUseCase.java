@@ -41,8 +41,8 @@ public class ManualAssignmentUseCase {
     @Inject AcceptBidUseCase acceptance;
     @Inject pe.logyx.identity.application.OrganizationGuard guard;
 
-    @ConfigProperty(name = "logyx.operator.sla", defaultValue = "PT24H")
-    Duration sla;
+    /** RN10: el SLA es un parámetro de sistema editable por el operador (V18); por omisión {@code logyx.operator.sla}. */
+    @Inject pe.logyx.shared.config.SystemParameters parameters;
 
     /**
      * F29: la solicitud que el operador puede asignar ahora (RN10: publicada, sin ofertas y con SLA vencido o subasta
@@ -53,7 +53,7 @@ public class ManualAssignmentUseCase {
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
         Auction a = auctions.findByRequest(r.id()).orElseThrow();
         long bidCount = bids.countByAuctions(List.of(a.id())).getOrDefault(a.id(), 0L);
-        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), sla);
+        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), parameters.assignmentSla());
         return r;
     }
 
@@ -62,7 +62,7 @@ public class ManualAssignmentUseCase {
         ShipmentRequest r = requests.findById(requestId).orElseThrow(() -> BusinessException.notFound("Solicitud"));
         Auction a = auctions.findByRequestForUpdate(r.id()).orElseThrow();
         long bidCount = bids.countByAuctions(List.of(a.id())).getOrDefault(a.id(), 0L);   // operador lee todas
-        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), sla);   // RN10 + F07
+        ManualAssignmentPolicy.ensureSlaBreached(r, bidCount, !a.isOpen(), OffsetDateTime.now(), parameters.assignmentSla());   // RN10 + F07
 
         if (organizations.byIds(List.of(cmd.carrierOrgId())).values().stream()
                 .noneMatch(o -> o.type() == OrgType.CARRIER)) {

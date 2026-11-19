@@ -8,8 +8,16 @@ import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.Bid;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
+import jakarta.inject.Inject;
+import pe.logyx.catalog.domain.CargoType;
+import pe.logyx.catalog.domain.City;
+import pe.logyx.marketplace.application.MyRequestFilter;
+import pe.logyx.marketplace.application.RequestCounts;
+import pe.logyx.marketplace.domain.RequestCode;
+import pe.logyx.shared.domain.LikePatterns;
 import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.domain.Paged;
+import pe.logyx.shared.tenancy.SystemTx;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,6 +29,10 @@ import java.util.UUID;
 public class PanacheShipmentRequestRepository implements ShipmentRequestRepository {
 
     private static final java.time.ZoneId LIMA = java.time.ZoneId.of("America/Lima");
+    /** Ofertas por revisar de una solicitud (no retiradas): lo que cuenta la subasta. */
+    private static final String LIVE_BIDS = "(select count(b.id) from BidEntity b where b.requestId = r.id and b.status <> ?%d)";
+
+    @Inject SystemTx system;
 
     @Override
     public Optional<ShipmentRequest> findById(UUID id) {
@@ -94,6 +106,100 @@ public class PanacheShipmentRequestRepository implements ShipmentRequestReposito
                 .page(page.page(), page.size());
         long total = ShipmentRequestEntity.count(where.toString(), params.toArray());
         return new Paged<>(map(query.list()), page, total);
+    }
+
+    @Override
+    public Paged<ShipmentRequest> searchMine(UUID orgId, MyRequestFilter f, PageRequest page) {
+        List<Object> params = new ArrayList<>();
+        StringBuilder where = new StringBuilder("r.requesterOrgId = ?").append(add(params, orgId));
+        if (f.status() != null) where.append(" and r.status = ?").append(add(params, f.status()));
+        if (f.originCity() != null) where.append(" and r.originCity = ?").append(add(params, f.originCity()));
+        if (f.destinationCity() != null) where.append(" and r.destinationCity = ?").append(add(params, f.destinationCity()));
+        if (f.pickupFrom() != null) where.append(" and r.pickupDate >= ?").append(add(params, f.pickupFrom()));
+        if (f.pickupTo() != null) where.append(" and r.pickupDate <= ?").append(add(params, f.pickupTo()));
+        if (f.withBids()) {
+            where.append(" and r.status = ?").append(add(params, ShipmentRequest.Status.PUBLISHED));
+            where.append(" and ").append(LIVE_BIDS.formatted(add(params, Bid.Status.WITHDRAWN))).append(" > 0");
+        }
+        if (f.q() != null) {
+            String code = RequestCode.parse(f.q());
+            int like = add(params, LikePatterns.contains(f.q()));
+            where.append(" and (lower(r.customerReference) like ?").append(like).append(" escape '\\'")
+                    .append(" or lower(r.cargoDescription) like ?").append(like).append(" escape '\\'")
+                    .append(" or lower(r.code) like ?").append(like).append(" escape '\\'");
+            if (code != null) where.append(" or r.code = ?").append(add(params, code));
+            List<City> cities = java.util.Arrays.stream(City.values())
+                    .filter(c -> c.label.toLowerCase().contains(f.q().toLowerCase())).toList();
+            if (!cities.isEmpty()) {
+                int p = add(params, cities);
+                where.append(" or r.originCity in ?").append(p).append(" or r.destinationCity in ?").append(p);
+            }
+            where.append(")");
+        }
+        String order = switch (f.sort()) {
+            case RECENT -> " order by r.createdAt desc, r.id";
+            case PICKUP -> " order by r.pickupDate asc, r.createdAt desc, r.id";
+            case PRICE_DESC -> " order by r.suggestedPrice desc, r.createdAt desc, r.id";
+            case PRICE_ASC -> " order by r.suggestedPrice asc, r.createdAt desc, r.id";
+            case BIDS -> {
+                // solo las publicadas cuentan ofertas (igual que la lista)
+                int w = add(params, Bid.Status.WITHDRAWN);
+                int pub = add(params, ShipmentRequest.Status.PUBLISHED);
+                yield " order by (case when r.status = ?" + pub + " then " + LIVE_BIDS.formatted(w)
+                        + " else 0 end) desc, r.createdAt desc, r.id";
+            }
+        };
+        var em = ShipmentRequestEntity.getEntityManager();
+        var query = em.createQuery("select r from ShipmentRequestEntity r where " + where + order,
+                ShipmentRequestEntity.class);
+        var count = em.createQuery("select count(r) from ShipmentRequestEntity r where " + where, Long.class);
+        // La cuenta no usa el orden: sus parámetros son los del WHERE (los del ORDER BY van al final).
+        int whereParams = countParams(where.toString());
+        for (int i = 0; i < params.size(); i++) {
+            query.setParameter(i + 1, params.get(i));
+            if (i < whereParams) count.setParameter(i + 1, params.get(i));
+        }
+        query.setFirstResult(page.offset()).setMaxResults(page.size());
+        return new Paged<>(query.getResultList().stream().map(ShipmentRequestEntity::toDomain).toList(), page,
+                count.getSingleResult());
+    }
+
+    /** Cantidad de parámetros posicionales ({@code ?n}) usados en el WHERE: son los primeros, en orden. */
+    private static int countParams(String where) {
+        var m = java.util.regex.Pattern.compile("\\?(\\d+)").matcher(where);
+        int max = 0;
+        while (m.find()) max = Math.max(max, Integer.parseInt(m.group(1)));
+        return max;
+    }
+
+    @Override
+    public RequestCounts countMine(UUID orgId) {
+        var em = ShipmentRequestEntity.getEntityManager();
+        long published = ShipmentRequestEntity.count("requesterOrgId = ?1 and status = ?2", orgId, ShipmentRequest.Status.PUBLISHED);
+        long matched = ShipmentRequestEntity.count("requesterOrgId = ?1 and status = ?2", orgId, ShipmentRequest.Status.MATCHED);
+        long cancelled = ShipmentRequestEntity.count("requesterOrgId = ?1 and status = ?2", orgId, ShipmentRequest.Status.CANCELLED);
+        long withBids = em.createQuery("select count(r) from ShipmentRequestEntity r where r.requesterOrgId = ?1 and r.status = ?2 and "
+                        + LIVE_BIDS.formatted(3) + " > 0", Long.class)
+                .setParameter(1, orgId).setParameter(2, ShipmentRequest.Status.PUBLISHED)
+                .setParameter(3, Bid.Status.WITHDRAWN).getSingleResult();
+        return new RequestCounts(published + matched + cancelled, published, matched, cancelled, withBids);
+    }
+
+    @Override
+    public List<ShipmentRequest> findSimilar(UUID orgId, City origin, City destination, CargoType type,
+                                             java.math.BigDecimal weightKg, java.time.LocalDate pickupDate,
+                                             java.time.OffsetDateTime since, int max) {
+        return ShipmentRequestEntity.<ShipmentRequestEntity>find("requesterOrgId = ?1 and status = ?2 and originCity = ?3 "
+                        + "and destinationCity = ?4 and cargoType = ?5 and weightKg = ?6 and pickupDate = ?7 and createdAt >= ?8 "
+                        + "order by createdAt desc", orgId, ShipmentRequest.Status.PUBLISHED, origin, destination, type,
+                        weightKg, pickupDate, since)
+                .page(0, max).list().stream().map(ShipmentRequestEntity::toDomain).toList();
+    }
+
+    @Override
+    public boolean codeExists(String code) {
+        // Sistema: un código es único en toda la plataforma y bajo RLS la PYME solo vería los suyos.
+        return system.call(() -> ShipmentRequestEntity.count("code", code) > 0);
     }
 
     @Override

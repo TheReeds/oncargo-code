@@ -144,7 +144,8 @@
     <string name="ds_verification_suspended_title">Tu empresa está suspendida</string>
     <string name="ds_verification_suspended_text">Mientras dure la suspensión no puedes publicar, ofertar, reservar ni aceptar ofertas. Escríbenos para revisar tu caso.</string>
     <string name="ds_verification_note">Motivo: %1$s</string>
-    <string name="ds_read_only_notice">Tu rol Lector solo permite consultar. Pide a un administrador de tu empresa que haga cambios.</string>
+    <string name="ds_read_only_notice">Tu rol Lector solo permite consultar. Si necesitas operar, pide acceso a un administrador de tu empresa.</string>
+    <string name="ds_request_access">Pedir acceso</string>
     <string name="ds_read_only_action">No disponible con el rol Lector</string>
 
     <!-- V13-V15: negociación, posición, motivos y compatibilidad de flota -->

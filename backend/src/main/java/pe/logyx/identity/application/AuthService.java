@@ -30,6 +30,8 @@ public class AuthService {
     @Inject TenantContext tenant;
     @Inject RefreshSessions refreshSessions;
     @Inject AccountSessions sessions;
+    @Inject LegalTerms legalTerms;
+    @Inject pe.logyx.identity.application.port.out.TermsAcceptanceRepository termsAcceptances;
 
     /** Registra organización + usuario administrador. No hay usuario aún: corre sin RLS. */
     // SystemTx: sin usuario aún; verifica RUC/email en todas las organizaciones.
@@ -49,7 +51,12 @@ public class AuthService {
                     Profile.Role.ADMIN, OffsetDateTime.now());
             profiles.insert(admin);
 
-            audit.record(admin.id(), org.id(), "REGISTER", "organization", org.id(), "consentimiento Ley 29733 aceptado");
+            OffsetDateTime now = OffsetDateTime.now();
+            String terms = cmd.termsVersion() == null ? null : legalTerms.ensureCurrent(cmd.termsVersion());
+            if (terms != null) termsAcceptances.insert(admin.id(), org.id(), terms, now);
+            audit.record(admin.id(), org.id(), "REGISTER", "organization", org.id(),
+                    terms == null ? "consentimiento Ley 29733 aceptado"
+                            : "consentimiento Ley 29733 y términos " + terms + " aceptados");
             return issue(new UserAccount(admin, org));
         });
     }

@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name" translatable="false">OnCargo</string>
     <string name="tab_home">Inicio</string>
+    <string name="access_request_sent">Pedido enviado: avisamos a los administradores de tu empresa.</string>
     <string name="tab_loads">Cargas</string>
     <string name="tab_bids">Ofertas</string>
     <string name="tab_shipments">Envíos</string>

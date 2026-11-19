@@ -14,10 +14,12 @@ import jakarta.transaction.TransactionScoped;
  * <p>Al iniciar la transacción ejecuta, sobre la misma conexión que usará
  * Hibernate:
  * <pre>
- *   set_config('app.org_id', ..., true)   -- LOCAL: muere con la transacción
- *   SET LOCAL ROLE logyx_app              -- rol sin BYPASSRLS
+ *   set_config('app.org_id', ..., true)      -- LOCAL: muere con la transacción
+ *   set_config('app.org_type', ..., true)
+ *   set_config('app.profile_id', ..., true)  -- V16: app_profile(), políticas por persona (avisos, preferencias)
+ *   SET LOCAL ROLE logyx_app                 -- rol sin BYPASSRLS
  * </pre>
- * A partir de ahí PostgreSQL aplica las políticas RLS de V2. La conexión ya es del
+ * A partir de ahí PostgreSQL aplica las políticas RLS de V2 (y las por persona de V16). La conexión ya es del
  * usuario de la aplicación ({@code logyx_api}, miembro solo de {@code logyx_app}; ADR-0006),
  * así que el {@code SET ROLE} no da privilegios: fija el rol explícitamente. Sin usuario
  * (y fuera de {@link SystemTx}) no se fija organización y las políticas no devuelven filas.
@@ -41,9 +43,11 @@ public class TenantSessionBinder {
         var org = ctx.currentOrgId();
         if (org.isEmpty()) return;
 
-        em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true)")
+        em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true), "
+                        + "set_config('app.profile_id', ?3, true)")
                 .setParameter(1, org.get().toString())
                 .setParameter(2, ctx.orgType().name())
+                .setParameter(3, ctx.profileId().toString())
                 .getSingleResult();
         em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
     }

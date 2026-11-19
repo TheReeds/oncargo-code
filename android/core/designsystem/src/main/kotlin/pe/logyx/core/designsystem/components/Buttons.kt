@@ -63,7 +63,8 @@ enum class ButtonSize(val height: Int, val textSp: Int, val iconDp: Int) {
  * Botón estándar de OnCargo. Microcopy: verbo + objeto ("Enviar oferta", "Aceptar oferta").
  * Con [loading] se muestra un indicador, se deshabilita y se anuncia como ocupado.
  * [requiresOperate] = true marca una **acción de escritura** (ofertar, aceptar, asignar, cancelar, publicar, reservar…):
- * con el rol Lector (`LocalReadOnly`) queda deshabilitada.
+ * con el rol Lector (`LocalReadOnly`) **no se muestra** (roadmap v2 1.7); el aviso "Modo lectura" de la pantalla explica
+ * por qué y ofrece «Pedir acceso». Para bloques enteros (formularios, FAB) usa `Can { }`.
  */
 @Composable
 fun LogyxButton(
@@ -85,14 +86,12 @@ fun LogyxButton(
         .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier)
         .heightIn(min = size.height.dp)
     val busyDescription = stringResource(R.string.ds_loading_action)
-    // Rol Lector (B2): las acciones de escritura se deshabilitan; el aviso "Modo lectura" de la pantalla explica por qué.
-    val locked = requiresOperate && LocalReadOnly.current
-    val readOnlyDescription = stringResource(R.string.ds_read_only_action)
+    // Rol Lector: las acciones de escritura no se muestran; el aviso "Modo lectura" de la pantalla explica por qué.
+    if (requiresOperate && LocalReadOnly.current) return
     val semantic = Modifier.semantics {
         if (loading) contentDescription = "$text. $busyDescription"
-        else if (locked) contentDescription = "$text. $readOnlyDescription"
     }
-    val isEnabled = enabled && !loading && !locked
+    val isEnabled = enabled && !loading
     val padding = PaddingValues(horizontal = if (size == ButtonSize.Xl) 24.dp else 18.dp, vertical = 8.dp)
     val content: @Composable () -> Unit = {
         ButtonContent(text, icon, loading, size)

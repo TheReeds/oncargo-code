@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -113,6 +114,7 @@ fun NotificationsScreen(
 ) {
     val labelAll = stringResource(R.string.notifications_filter_all)
     val labelUnread = stringResource(R.string.notifications_filter_unread)
+    val labelMine = stringResource(R.string.notifications_filter_mine)
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
     LogyxScreen(
@@ -131,7 +133,7 @@ fun NotificationsScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             SegmentedControl(
                 options = NotificationFilter.entries, selected = state.filter, onSelect = onFilter,
-                optionLabel = { if (it == NotificationFilter.ALL) labelAll else labelUnread },
+                optionLabel = { when (it) { NotificationFilter.ALL -> labelAll; NotificationFilter.UNREAD -> labelUnread; NotificationFilter.MINE -> labelMine } },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             when {
@@ -144,8 +146,11 @@ fun NotificationsScreen(
                                 EmptyState(
                                     title = stringResource(R.string.notifications_empty_title),
                                     message = stringResource(
-                                        if (state.filter == NotificationFilter.UNREAD) R.string.notifications_empty_unread_message
-                                        else R.string.notifications_empty_message,
+                                        when (state.filter) {
+                                            NotificationFilter.UNREAD -> R.string.notifications_empty_unread_message
+                                            NotificationFilter.MINE -> R.string.notifications_empty_mine_message
+                                            NotificationFilter.ALL -> R.string.notifications_empty_message
+                                        },
                                     ),
                                 )
                             }
@@ -193,6 +198,7 @@ internal fun NotificationType.icon() = when (this) {
     NotificationType.REQUEST_CANCELLED, NotificationType.SHIPMENT_CANCELLED -> Icons.Rounded.Cancel
     NotificationType.BID_WITHDRAWN -> Icons.Rounded.RemoveCircleOutline
     NotificationType.ORGANIZATION_VERIFICATION -> Icons.Rounded.Verified
+    NotificationType.ACCESS_REQUESTED -> Icons.Rounded.Key
     NotificationType.UNKNOWN -> Icons.Rounded.Notifications
 }
 
@@ -218,7 +224,17 @@ private fun NotificationRow(n: NotificationView, onClick: () -> Unit) {
                 fontWeight = if (n.read) FontWeight.Medium else FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Text(n.body, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            Text(Fmt.dateTime(n.createdAt), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(Fmt.dateTime(n.createdAt), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                // V16: «Tuyo» = de algo que esta persona creó (su solicitud, su oferta).
+                if (n.mine) {
+                    Text(
+                        stringResource(R.string.notifications_mine_badge), style = MaterialTheme.typography.labelSmall,
+                        color = scheme.primary, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.background(scheme.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 1.dp),
+                    )
+                }
+            }
         }
         if (!n.read) Box(Modifier.padding(top = 6.dp).size(10.dp).background(scheme.primary, CircleShape))
     }

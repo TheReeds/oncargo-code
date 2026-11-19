@@ -9,7 +9,8 @@ import java.util.UUID;
  * Destinatario explícito de un evento en tiempo real (ADR-0007). Exactamente una de tres formas:
  * <ul>
  *   <li>{@link #org(UUID)}: los usuarios de esa organización, salvo sus conductores;</li>
- *   <li>{@link #user(UUID, UUID)}: un usuario concreto de la organización (el conductor del envío);</li>
+ *   <li>{@link #user(UUID, UUID)}: un usuario concreto de la organización (el conductor del envío, o la persona
+ *       destinataria de un aviso desde V16);</li>
  *   <li>{@link #broadcast(OrgType)}: todas las organizaciones de un tipo (solo datos públicos para ellas).</li>
  * </ul>
  */

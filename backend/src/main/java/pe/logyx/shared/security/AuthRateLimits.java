@@ -18,6 +18,7 @@ import java.util.Locale;
  *   <li>"olvidé mi contraseña" por IP ({@code forgot.per-ip}, 429) y por email ({@code forgot.per-email}: si se
  *       excede la respuesta es la misma, 202, pero no se envía correo; así no se revela si el email existe);</li>
  *   <li>canje de tokens de contraseña por IP ({@code reset.per-ip}) y refresh por IP ({@code refresh.per-ip});</li>
+ *   <li>cotizador público por IP ({@code public-quote.per-ip}, 30 por ventana);</li>
  *   <li>cambio de contraseña: tras {@code change-password.failures-per-user} contraseñas actuales incorrectas, 429.</li>
  * </ul>
  * La IP sale de la conexión o, detrás de un proxy confiable ({@code quarkus.http.proxy.*}), de X-Forwarded-For
@@ -37,6 +38,7 @@ public class AuthRateLimits {
     @ConfigProperty(name = "logyx.rate-limit.forgot.per-email", defaultValue = "3") int forgotPerEmail;
     @ConfigProperty(name = "logyx.rate-limit.reset.per-ip", defaultValue = "30") int resetPerIp;
     @ConfigProperty(name = "logyx.rate-limit.refresh.per-ip", defaultValue = "300") int refreshPerIp;
+    @ConfigProperty(name = "logyx.rate-limit.public-quote.per-ip", defaultValue = "30") int publicQuotePerIp;
     @ConfigProperty(name = "logyx.rate-limit.change-password.failures-per-user", defaultValue = "10")
     int changePasswordFailures;
 
@@ -75,6 +77,11 @@ public class AuthRateLimits {
 
     public void beforePasswordTokenUse(String ip) {
         acquireOr429("reset-ip:" + ip, resetPerIp);
+    }
+
+    /** Cotizador público (sin cuenta): por IP, {@code logyx.rate-limit.public-quote.per-ip} por ventana → 429. */
+    public void beforePublicQuote(String ip) {
+        acquireOr429("public-quote-ip:" + ip, publicQuotePerIp);
     }
 
     public void beforeRefresh(String ip) {

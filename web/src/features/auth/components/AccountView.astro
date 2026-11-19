@@ -24,6 +24,17 @@ const roleKey = (user?.role ?? role ?? 'ADMIN') as OrgRole;
         ]} />
       </CardBody>
     </Card>
+    {roleKey !== 'DRIVER' && (
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Avisos</CardTitle>
+            <CardDescription>Elige qué avisos recibes en la app y por correo. Solo cambia para ti.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardBody><a href="/cuenta/avisos" class="text-sm font-medium text-petrol-700 hover:underline">Elegir mis avisos</a></CardBody>
+      </Card>
+    )}
     <Card>
       <CardHeader>
         <div>

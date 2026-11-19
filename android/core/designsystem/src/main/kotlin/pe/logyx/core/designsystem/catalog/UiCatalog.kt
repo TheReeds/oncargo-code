@@ -139,7 +139,9 @@ fun UiCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 VerificationBanner(VerificationStatus.REJECTED, "El RUC no coincide con la razón social.")
                 VerificationBanner(VerificationStatus.SUSPENDED, null)
                 ReadOnlyNotice()
-                ProvideReadOnly(true) { LogyxButton("Enviar oferta (requiere operar)", {}, variant = ButtonVariant.Money, requiresOperate = true) }
+                // Con el rol Lector el botón de escritura no se muestra (roadmap v2 1.7); `Can { }` hace lo mismo con bloques.
+                ProvideReadOnly(true) { LogyxButton("Enviar oferta (oculto para el Lector)", {}, variant = ButtonVariant.Money, requiresOperate = true) }
+                LogyxButton("Enviar oferta (requiere operar)", {}, variant = ButtonVariant.Money, requiresOperate = true)
             }
             Section("Indicador en vivo") {
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {

@@ -20,11 +20,11 @@ Cuentas demo: ver `../AGENTS.md`. Solo el servidor de Astro habla con la API (`A
 ```
 src/
 ├── pages/                  # Rutas finas: leen sesión, llaman a features/*/server.ts, renderizan
-│   ├── index, login, olvide, restablecer, registro, privacidad, conductor, cuenta, sin-acceso (403), logout(POST)
+│   ├── index, login, olvide, restablecer, registro, privacidad, terminos, precios, contacto, conductor, cuenta, sin-acceso (403), logout(POST)
 │   ├── organizacion/       # index (perfil de la empresa), usuarios (solo MANAGE_USERS)
 │   ├── pyme/               # index (panel), solicitudes/{index,nueva,[id]}, envios
 │   ├── transportista/      # marketplace, ofertas, flota, envios
-│   ├── operador/           # index (panel), incidencias, organizaciones (verificación RN01), auditoria, solicitudes/{index,[id]}, envios/{index,[id]} (solo rol OPERATOR)
+│   ├── operador/           # index (panel), incidencias, organizaciones (verificación RN01), auditoria, parametros, solicitudes/{index,[id]}, envios/{index,[id]} (solo rol OPERATOR)
 │   └── notificaciones, incidencias/{index,[id]}, organizaciones/[id], documentos/{[id],subir} (proxy autenticado de archivos)
 ├── features/<feature>/     # auth, organization, catalog, requests, shipments, marketplace, fleet (compatibility.ts), verification, dashboard, negotiation, reputation, documents, incidents, notifications, operator, trips
 │   ├── server.ts           #   llamadas a la API (solo servidor)
@@ -37,13 +37,13 @@ src/
 ├── layouts/                # Base.astro (monta <Overlays/>: Toaster + ConfirmHost), Public.astro
 ├── lib/api/                # schema.d.ts (GENERADO), client.ts (openapi-fetch + unwrap + ApiError), server.ts (tipos)
 ├── lib/session.ts          # cookie httpOnly, claims del JWT (+ `permissions`), homeFor(rol)
-├── lib/permissions.ts      # permisos por rol (espejo de OrgAccessPolicy), `can(session, p)`, etiquetas de rol, aviso Lector
-├── lib/use-can.ts          # `useCan('OPERATE')` / `usePermissions()` para islas React (SSR + cliente)
-├── lib/request-context.ts  # solo servidor: AsyncLocalStorage con los permisos de la petición (lo activa el middleware)
+├── lib/permissions/        # FUENTE ÚNICA de permisos: index.ts (puro: `can`, etiquetas, `WRITE_ROUTES`, `openRequestAccess`) y react.tsx (`<Can>`, `useCan`, `useRole`)
+├── lib/use-can.ts          # compatibilidad: re-exporta `useCan`/`usePermissions`/`useRole` de lib/permissions/react
+├── lib/request-context.ts  # solo servidor: AsyncLocalStorage con permisos y rol de la petición (`runWithSession`, lo activa el middleware)
 ├── lib/actions.ts          # requireToken(ctx) y run(fn) → ApiError→ActionError con el mensaje en español de la API (+ `field` y código anexos e invisibles)
 ├── lib/action-error.ts     # splitActionError(error) → {message, field, code}; toFormErrors(error, campos); RN07_FIELD_MESSAGE
 ├── lib/limits.ts           # LIMITS: longitudes máximas de textos libres (espejo de los @Size del backend)
-├── lib/contact.ts          # SUPPORT_EMAIL (a quién escribir por verificación/suspensión)
+├── lib/contact.ts          # SUPPORT_EMAIL (soporte@oncargo.tech), PRIVACY_EMAIL, SUPPORT_HOURS, WHATSAPP_NUMBER/whatsappUrl() (solo con PUBLIC_WHATSAPP_NUMBER), notifyCityHref()
 ├── lib/format.ts           # S/ 1,850.00 · 28 nov · 08:00 · etiquetas de enums
 ├── middleware.ts           # protege rutas, redirige por rol (PYME / CARRIER / DRIVER→/conductor), 401→/login?expired=1
 └── styles/global.css       # tokens de DESIGN.md en @theme de Tailwind
@@ -164,6 +164,42 @@ Contrato: `docs/api/CHANGELOG.md` (V14 y V15) y ADR-0009.
 - **Mis ofertas.** `features/marketplace/bid-state.ts`: `bidState(solicitud)` → Pendiente / Aceptada / **Perdida** / **Cancelada** / Retirada, y `standingText(myBidStanding)` ("Vas 2.º de 5", "A menos de 5 % de la mejor"; la API nunca entrega montos ajenos, RN04). El cierre de la subasta (`closeReason`, `closedAt`) sale bajo el estado. También en la fila "Ofertada" del marketplace.
 - **Conductor.** `/conductor` suma "Viajes anteriores" (`GET /driver/shipments?scope=HISTORY`) y el acceso a `/cuenta`.
 - e2e: `account`, `roles`, `organization`, `operator-audit`, `bid-standing` (todas con axe en claro y oscuro). Helpers nuevos en `helpers/api.ts`: `mailbox`/`resetLinkFor` (buzón dev, el más reciente primero), `inviteUser`, `userWithRole` (crea y activa un usuario OPS/VIEWER/ADMIN por API), `raw` (códigos de error), `orgUsers`. Las cuentas seed `pyme.ops@logyx.pe` y `pyme.viewer@logyx.pe` solo se usan para leer (login), nunca se les cambia la contraseña.
+
+## Solicitudes de la PYME: duplicar, direcciones, búsqueda y CSV (V17, Ola 1 zona A)
+Contrato: `docs/api/CHANGELOG.md` (2026-11-17, V17 zona A).
+- **Lista en el servidor.** `/pyme/solicitudes` (`RequestsTable`, una isla): filtros, orden y paginación (20) en el servidor (`GET /shipment-requests/mine`), con la URL como estado (`estado` = `PUBLISHED|MATCHED|CANCELLED|REVIEW`, `origen`, `destino`, `desde`, `hasta`, `q`, `orden`, `pagina`); `features/requests/filters.ts` traduce URL → API (lo comparten la página y el proxy CSV). Contadores de las pestañas: `GET /mine/counts`. Mismo patrón que `OperatorListing` (navegar con `window.location`).
+- **Exportar CSV.** `components/ui/export-button` (`<ExportButton href="/exportar/solicitudes?…" />`) baja el archivo y, si la API lo rechaza (más de 10 000 filas), lo explica en un aviso. `pages/exportar/[recurso].ts` es el proxy autenticado (cookie → Bearer): para exportar otro recurso agrega su entrada a `RESOURCES` (path de la API + traducción de la URL).
+- **Duplicar.** Menú de fila y botón del detalle → `/pyme/solicitudes/nueva?from=<id>`: `nueva.astro` carga la solicitud, precarga todo menos la fecha (`features/requests/dates.ts#nextWeekSameDay`: mismo día de la semana, la semana siguiente, nunca pasada) y `RequestForm` recibe `initial` + `duplicatedFrom`; la cotización se recalcula sola al abrir. Falta el botón en `TrackingSplit` (es de `shipments`).
+- **Doble publicación.** `RequestForm` genera una `Idempotency-Key` (`crypto.randomUUID`) por formulario y la manda a `requests.create`; antes de publicar pregunta `requests.similar` y, si hay una igual de las últimas 24 h, muestra «Ya publicaste una igual hoy» con «Publicar de todos modos».
+- **Libreta.** `features/places/` (`server`, `actions`, `PlacesManager`) y `/pyme/direcciones` (entrada «Mis direcciones» en `AppShell`). En el formulario, cada extremo ofrece «Mis direcciones» (combobox filtrado por ciudad y tipo; elegir una copia dirección, contacto, ventana e instrucciones) y la casilla «Guardar esta dirección» (se guarda tras publicar). Escribir a mano la dirección suelta la dirección elegida. Escrituras con `<Can>` (VIEWER solo lee, con el aviso de solo lectura).
+- **Contactos y horarios** (`<details>` nativo, sin encabezados dentro del `summary`): privados hasta adjudicar; el detalle de la PYME los muestra en su tarjeta. Los errores del backend (`LOGYX-VAL-002` teléfono, `LOGYX-REQ-006` ventana) caen bajo su campo y abren la sección.
+- **Ctrl+K** (`components/layout/CommandMenu`): además de secciones y tema, busca de verdad (`actions.search.query`, 200 ms de espera, `shouldFilter={false}` y filtrado propio de secciones). Grupos Solicitudes / Envíos / Contrapartes con el código en mono; `Enter` abre el `href` que entrega la API (según rol).
+- e2e: `request-details.spec.ts` (duplicar, doble clic, duplicado reciente, contactos privados, libreta completa, lector, filtros + CSV + paginación, Ctrl+K, axe claro/oscuro). Corre contra el `astro dev` y la API que ya tengas: `E2E_BASE_URL=http://localhost:4321 E2E_API_URL=http://localhost:8080 npx playwright test tests/e2e/request-details.spec.ts --workers=1`.
+
+## Ola 1 · agente E: operador, visitante y legal (2026-11-17)
+Contrato: `docs/api/CHANGELOG.md` (V18). Roadmap: `docs/product/2026-11-17-roadmap-v2.md` ítems 1.13, 1.14, 2.17 y «Decisiones del dueño».
+- **Páginas públicas** (`PUBLIC` y `OPEN_WITH_SESSION` del middleware): `/terminos` (borrador pendiente de revisión legal; texto en `features/legal/terms-content.ts`, versión y estado desde `GET /public/legal` vía `features/legal/server.ts`), `/precios` (comisión + IGV + ejemplo real de `POST /public/pricing/quote`, cacheado 10 min), `/contacto`. Enlaces en `layouts/Public.astro` (cabecera «Precios»; pie completo y compacto).
+- **Registro**: `RegisterForm` con segunda casilla `acceptTerms` + `termsVersion` (props desde `registro.astro`) y `next` (solo `/pyme/solicitudes/nueva?…`; lo usa el cotizador). La API responde 409 `LOGYX-AUTH-012` si el texto cambió; el formulario lo muestra como error general.
+- **Cotizador de la landing**: `CorridorExplorer` calcula local al instante y confirma con la acción pública `landing.quote` (`features/landing/actions.ts`; reenvía la IP del visitante en `X-Forwarded-For`: el límite del backend es por IP). Los parámetros de la nueva solicitud son `origen`, `destino`, `peso`, `tipo`; la pantalla de nueva solicitud (zona A) puede leerlos para precargar.
+- **Operador**: `/operador/parametros` (`features/operator/components/ParametersEditor`, `parameters.ts`: % ↔ fracción sin coma flotante), `SearchInput` (`components/ui/search-input`) en los listados con `q` en la URL, `OperatorChat` (detalle de solicitud y de envío; el chat se pide a demanda porque cada lectura se audita), `ageTone(hours, active, {warn, breach})` con los umbrales vigentes de `/operator/metrics`.
+- e2e: `operator-params.spec.ts`; `public.spec.ts`/`auth.spec.ts`/`a11y-public.spec.ts` ampliados. Helpers: `registerAccount` envía `acceptTerms`. Con el backend de :8080 usa `E2E_API_URL=http://localhost:8080`.
+
+## Roles en la interfaz, avisos por persona y autoría (V16, 2026-11-17, Ola 1 zona D)
+Contrato: `docs/api/CHANGELOG.md` (zona D, V16) y ADR-0009 §8.
+- **`<Can>` (fuente única).** `import { Can, useCan, useRole } from '@/lib/permissions/react'`. `<Can>` oculta sin `OPERATE` (por omisión);
+  `permission="MANAGE_USERS"`; `readOnly` (o `readOnly="No puedes …"`) pone en su lugar `ReadOnlyNotice` con «Pedir acceso»; `fallback`
+  propio. En `.astro`: `can(Astro.locals.session, p)`. Ocultar acciones, nunca información. `Base.astro` escribe `data-perms` y `data-role`.
+- **Rutas de escritura**: `WRITE_ROUTES` (`lib/permissions`) → `middleware.ts` redirige al listado con `?sinPermiso=<clave>`; `AppShell`
+  muestra el aviso. Hoy: `/pyme/solicitudes/nueva`, `/transportista/viajes/nuevo`.
+- **«Pedir acceso»**: `features/access` (action `access.request`, `RequestAccessDialog`, `RequestAccessButton`, `RequestAccessHost`
+  montado en `AppShell` para quien no es ADMIN). `openRequestAccess(p)` lo abre desde cualquier sitio; `toast.error` de un `AUTH-007`
+  agrega la acción «Pedir acceso». `UserMenu`: rol de la persona en el topbar, «Mis avisos» y «Pedir acceso» (Lector).
+- **Avisos por persona**: campana y `/notificaciones` cuentan y marcan solo lo tuyo; «Tuyo» (`mine`) y la pestaña «Solo míos»;
+  `/cuenta/avisos` (`NotificationPreferences`, actions `notifications.preferences|updatePreferences`). `ACCESS_REQUESTED` →
+  `/organizacion/usuarios?usuario=<id>` (`lib/notification-links.ts`).
+- **Autoría**: `features/activity` (`ActivityTrail`, `AuthorLine`, action `activity.get`, etiquetas en `labels.ts` sobre las de la
+  auditoría). Montado en `/pyme/solicitudes/[id]` y `/incidencias/[id]`.
+- e2e: `roles-v16.spec.ts` (Lector: redirección con aviso, menú con rol, pedir acceso → aviso al ADMIN, avisos por persona, preferencias, autoría; axe claro y oscuro).
 
 ## Pendientes conocidos
 Mapa con ruta por carretera (hoy línea recta entre ciudades). La suite e2e no cubre aún el registro de conductor desde Flota ni el estado de vehículo; capturas en `docs/screenshots/`.

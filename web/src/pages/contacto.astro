@@ -1,0 +1,48 @@
+---
+import Public from '@/layouts/Public.astro';
+import { Clock, Mail, MapPin, MessageCircle, ShieldCheck } from '@lucide/astro';
+import { PRIVACY_EMAIL, SUPPORT_EMAIL, SUPPORT_HOURS, notifyCityHref, whatsappUrl } from '@/lib/contact';
+import { buttonVariants } from '@/components/ui/button';
+import { getCatalog } from '@/features/catalog/server';
+
+const { cities } = await getCatalog().catch(() => ({ cities: [] as { code?: string; name?: string }[] }));
+const wa = whatsappUrl('Hola, quiero información sobre OnCargo.');
+const channels = [
+  ...(wa ? [{ icon: MessageCircle, t: 'WhatsApp', d: 'Escríbenos y te respondemos en horario de atención.', href: wa, label: 'Abrir WhatsApp', external: true }] : []),
+  { icon: Mail, t: 'Soporte', d: 'Verificación de tu empresa, cuenta, envíos y dudas de uso.', href: `mailto:${SUPPORT_EMAIL}`, label: SUPPORT_EMAIL, external: false },
+  { icon: ShieldCheck, t: 'Privacidad y datos', d: 'Derechos de acceso, rectificación, cancelación y oposición (Ley 29733).', href: `mailto:${PRIVACY_EMAIL}`, label: PRIVACY_EMAIL, external: false },
+];
+---
+<Public title="Contacto" description="Escríbenos a soporte@oncargo.tech o por WhatsApp. Horario de atención, ciudades que cubrimos y cómo pedir que lleguemos a la tuya.">
+  <section class="mx-auto w-full max-w-[1280px] px-4 py-12 lg:px-10 lg:py-16" aria-labelledby="contacto-t">
+    <p class="mk-eyebrow">Contacto</p>
+    <h1 id="contacto-t" class="mk-h2 mt-3 max-w-[20ch] text-ink-900">¿Con quién hablo en OnCargo?</h1>
+    <p class="mk-lead mt-4 text-base text-ink-700">Elige el canal que prefieras. Si es sobre un envío en curso, ten a mano el código de la solicitud.</p>
+
+    <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Canales de contacto">
+      {channels.map((c) => (
+        <li class="mk-card flex flex-col rounded-card border border-steel-200 bg-surface p-5">
+          <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><c.icon size={18} aria-hidden="true" /></span>
+          <h2 class="mt-3 text-[15px] font-semibold text-ink-900">{c.t}</h2>
+          <p class="mt-1 flex-1 text-sm text-ink-700">{c.d}</p>
+          <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noopener' : undefined} class={buttonVariants({ variant: 'outline' }) + ' mt-4 w-full justify-center break-all'}>{c.label}</a>
+        </li>
+      ))}
+    </ul>
+
+    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+      <section class="rounded-card border border-steel-200 bg-surface p-5" aria-labelledby="horario-t">
+        <div class="flex items-center gap-2"><Clock size={18} class="text-petrol-700" aria-hidden="true" /><h2 id="horario-t" class="text-[15px] font-semibold text-ink-900">Horario de atención</h2></div>
+        <p class="mt-2 text-sm text-ink-700" data-testid="support-hours">{SUPPORT_HOURS}.</p>
+        <p class="mt-1 text-sm text-ink-500">Fuera de horario, escríbenos y respondemos el siguiente día hábil.</p>
+      </section>
+      <section class="rounded-card border border-steel-200 bg-surface p-5" aria-labelledby="ciudades-t">
+        <div class="flex items-center gap-2"><MapPin size={18} class="text-petrol-700" aria-hidden="true" /><h2 id="ciudades-t" class="text-[15px] font-semibold text-ink-900">Ciudades que cubrimos</h2></div>
+        <ul class="mt-3 flex flex-wrap gap-1.5" aria-label="Ciudades del corredor">
+          {cities.map((c) => <li class="rounded-full border border-steel-200 bg-steel-100 px-2.5 py-0.5 text-[13px] text-ink-700">{c.name}</li>)}
+        </ul>
+        <p class="mt-3 text-sm text-ink-700">¿Tu ciudad no está? <a href={notifyCityHref()} class="font-medium text-petrol-700 underline underline-offset-2">Avísame cuando lleguen a mi ciudad</a>.</p>
+      </section>
+    </div>
+  </section>
+</Public>

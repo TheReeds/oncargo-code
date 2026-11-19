@@ -14,5 +14,10 @@ import { trips } from '@/features/trips/actions';
 import { operator } from '@/features/operator/actions';
 import { routing } from '@/features/routing/actions';
 import { organization } from '@/features/organization/actions';
+import { access } from '@/features/access/actions';
+import { activity } from '@/features/activity/actions';
+import { places } from '@/features/places/actions';
+import { searchActions } from '@/features/search/actions';
+import { landing } from '@/features/landing/actions';
 
-export const server = { auth, password, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization };
+export const server = { auth, password, requests, marketplace, fleet, shipments, negotiation, reputation, documents, incidents, notifications, operator, trips, routing, organization, landing, access, activity, places, search: searchActions };

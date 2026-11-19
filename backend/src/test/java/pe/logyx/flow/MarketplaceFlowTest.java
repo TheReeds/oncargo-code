@@ -172,7 +172,7 @@ class MarketplaceFlowTest {
         Map<String, Object> body = new java.util.HashMap<>(Map.of(
                 "organizationType", "PYME", "legalName", "Sin Consentimiento SAC", "ruc", Api.newRuc(),
                 "fullName", "X", "email", "x" + System.nanoTime() + "@test.pe", "password", "Secreta123",
-                "acceptPrivacyPolicy", false));
+                "acceptPrivacyPolicy", false, "acceptTerms", true));
         given().contentType("application/json").body(body).post("/api/v1/auth/register")
                 .then().statusCode(400).body("error.field", is("acceptPrivacyPolicy"));
 

@@ -28,6 +28,7 @@ import { RouteLine } from '@/components/domain/RouteLine';
 import { KpiTile, KpiGrid } from '@/components/domain/KpiTile';
 import { DescriptionList } from '@/components/ui/description-list';
 import { QuickFilters } from '@/components/ui/quick-filters';
+import { ExportButton } from '@/components/ui/export-button';
 import { CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/domain/EmptyState';
@@ -38,6 +39,7 @@ import { FileDropzone } from '@/components/ui/file-dropzone';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { PasswordInput } from '@/components/ui/password-input';
 import { FilterBar } from '@/components/ui/filter-bar';
+import { SearchInput } from '@/components/ui/search-input';
 import { Timeline } from '@/components/ui/timeline';
 import { TimeSelect } from '@/components/ui/time-select';
 import { CapacityBar } from '@/components/domain/CapacityBar';
@@ -326,6 +328,7 @@ export default function UiCatalog() {
         <Section id="composicion" title="Composición" note="Piezas compartidas para pantallas completas: FilterBar (listados), Timeline (paradas/hitos), VerifiedBadge (RUC verificado), AuthCard (login/registro).">
           <Card>
             <FilterBar count={12} noun={['carga', 'cargas']} active onClear={() => toast.info('Filtros limpiados')} sort={<Select id="d-fb-s" aria-label="Ordenar por" value="pickup" onValueChange={() => {}} options={[{ value: 'pickup', label: 'Recojo más próximo' }]} className="h-9 w-44" />}>
+              <Field label="Buscar (SearchInput)" htmlFor="d-fb-q" hint="Enter o lupa para buscar; la X limpia"><SearchInput id="d-fb-q" value="" onSearch={(t) => toast.info(t ? `Buscar «${t}»` : 'Búsqueda limpia')} placeholder="Razón social, RUC, placa…" /></Field>
               <Field label="Origen" htmlFor="d-fb-o"><Combobox id="d-fb-o" value="" onValueChange={() => {}} options={[{ value: 'LIMA', label: 'Lima' }]} placeholder="Todas las ciudades" allowClear /></Field>
               <Field label="Destino" htmlFor="d-fb-d"><Combobox id="d-fb-d" value="" onValueChange={() => {}} options={[{ value: 'JULIACA', label: 'Juliaca' }]} placeholder="Todas las ciudades" allowClear /></Field>
             </FilterBar>
@@ -343,7 +346,7 @@ export default function UiCatalog() {
           </Card>
         </Section>
 
-        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
+        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; ExportButton (exportar CSV con aviso de error); EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
           <KpiGrid>
             <KpiTile label="Solicitudes activas" value={10} context="3 con subasta abierta" icon={Truck} href="#paneles" tone="petrol" />
             <KpiTile label="Ahorro vs sugerido" value="S/ 1,240" context="en 4 envíos" icon={Gavel} tone="money" delta={{ value: '+8%', direction: 'up', good: true }} />
@@ -351,7 +354,7 @@ export default function UiCatalog() {
             <KpiTile label="Incidencias abiertas" value={1} context="requiere atención" tone="alert" loading />
           </KpiGrid>
           <Card>
-            <CardHeader><div><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Redimensiona la ventana: bajo 720 px del contenedor las filas pasan a tarjetas.</CardDescription></div><QuickFilters label="Estado" value={quick} onValueChange={setQuick} options={[{ value: '', label: 'Todas', count: 13 }, { value: 'PUBLISHED', label: 'Publicadas', count: 10 }, { value: 'MATCHED', label: 'Adjudicadas', count: 3 }]} /></CardHeader>
+            <CardHeader><div><CardTitle>Solicitudes recientes</CardTitle><CardDescription>Redimensiona la ventana: bajo 720 px del contenedor las filas pasan a tarjetas.</CardDescription></div><div className="flex flex-wrap items-center gap-2"><ExportButton href="/exportar/solicitudes" /><QuickFilters label="Estado" value={quick} onValueChange={setQuick} options={[{ value: '', label: 'Todas', count: 13 }, { value: 'PUBLISHED', label: 'Publicadas', count: 10 }, { value: 'MATCHED', label: 'Adjudicadas', count: 3 }]} /></div></CardHeader>
             <Table label="Solicitudes recientes" stack sticky>
               <thead><tr><Th>Ruta</Th><Th sort={dir} onSort={() => setDir(dir === 'asc' ? 'desc' : 'asc')}>Recojo</Th><Th>Estado</Th><Th className="text-right">Sugerido</Th><Th><span className="sr-only">Acciones</span></Th></tr></thead>
               <tbody>

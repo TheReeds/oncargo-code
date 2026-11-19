@@ -10,7 +10,7 @@ export const CARGO_MULT = { GENERAL: 1, FRAGILE: 1.3, PERISHABLE: 1.25, HAZARDOU
 export type CargoKey = keyof typeof CARGO_MULT;
 export const FLOOR_RATIO = 0.75;
 
-const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+export const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export function km(a: CityCode, b: CityCode): number {
   return DIST_KM[CODES.indexOf(a)][CODES.indexOf(b)];

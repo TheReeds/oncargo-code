@@ -10,6 +10,8 @@ import { INCIDENT_CATEGORY_LABELS } from '@/lib/format';
 import { buttonVariants } from '@/components/ui/button';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { formatDateTime } from '@/lib/format';
+import ActivityTrail, { AuthorLine } from '@/features/activity/components/ActivityTrail';
+import { getActivity } from '@/features/activity/server';
 const s = Astro.locals.session!;
 const orgType = (s.orgType ?? 'PYME') as 'PYME' | 'CARRIER' | 'OPERATOR';
 let incident = null;
@@ -29,6 +31,7 @@ if (incident?.shipmentId) {
     shipmentStatus = sh?.status;
   } catch { /* sin ruta */ }
 }
+const activity = incident?.id ? await getActivity(s.token, 'INCIDENT', incident.id).catch(() => null) : null;
 const back = orgType === 'OPERATOR' ? '/operador/incidencias' : '/incidencias';
 const active = orgType === 'OPERATOR' ? 'operador-incidencias' : 'incidencias';
 ---
@@ -40,9 +43,11 @@ const active = orgType === 'OPERATOR' ? 'operador-incidencias' : 'incidencias';
         <Fragment slot="meta">
           <StatusPill status={incident.status!} />
           <span>Reportada {formatDateTime(incident.createdAt)}</span>
+          <AuthorLine subject="INCIDENT" createdBy={activity?.createdBy} />
         </Fragment>
       </PageHeader>
       <IncidentDetail client:load initial={incident} orgType={orgType} route={route} shipmentStatus={shipmentStatus} />
+      <div class="mt-5"><ActivityTrail client:idle subject="INCIDENT" id={incident.id!} initial={activity as never} liveTypes={['incident.updated']} /></div>
     </>
   ) : (
     <>

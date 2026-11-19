@@ -8,7 +8,7 @@ import { getCatalog } from '@/features/catalog/server';
 const t = Astro.locals.session!.token;
 const q = Astro.url.searchParams;
 const get = (k: string) => q.get(k) ?? '';
-const filters = { status: get('estado'), origin: get('origen'), dest: get('destino'), from: get('desde'), to: get('hasta') };
+const filters = { status: get('estado'), origin: get('origen'), dest: get('destino'), from: get('desde'), to: get('hasta'), q: get('q').trim().slice(0, 60) };
 const pageNo = Math.max(1, Number(get('pagina')) || 1);
 const { cities } = await getCatalog();
 let result = { items: [] as Awaited<ReturnType<typeof listShipments>>['items'], meta: { page: 0, size: 20, total: 0 } };
@@ -19,7 +19,7 @@ try {
   if (m) counts = { PENDING: m.shipmentsPending ?? 0, IN_TRANSIT: m.shipmentsInTransit ?? 0, DELIVERED: m.shipmentsDelivered ?? 0 };
   const query: OperatorListQuery = {
     status: filters.status || undefined, originCity: filters.origin || undefined, destinationCity: filters.dest || undefined,
-    fromDate: filters.from || undefined, toDate: (filters.to || filters.from) || undefined, page: pageNo - 1, size: 20,
+    fromDate: filters.from || undefined, toDate: (filters.to || filters.from) || undefined, q: filters.q.length >= 2 ? filters.q : undefined, page: pageNo - 1, size: 20,
   };
   result = await listShipments(t, query);
 } catch (e) {

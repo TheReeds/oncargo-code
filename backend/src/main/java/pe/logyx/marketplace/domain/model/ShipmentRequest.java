@@ -4,9 +4,11 @@ import pe.logyx.catalog.domain.CargoType;
 import pe.logyx.catalog.domain.City;
 import pe.logyx.shared.domain.BusinessException;
 import pe.logyx.shared.domain.ContactInfoPolicy;
+import pe.logyx.shared.domain.PeruPhone;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -23,6 +25,65 @@ public final class ShipmentRequest {
     /** Precio calculado por el motor de costos al publicar (piso = RN03). */
     public record Pricing(BigDecimal distanceKm, BigDecimal suggestedPrice, BigDecimal priceFloor) {}
 
+    /**
+     * Contacto, ventana horaria e instrucciones de un extremo (recojo o entrega). Datos <b>privados</b> de la PYME:
+     * no se ven en el marketplace ni antes de adjudicar; tras adjudicar los ven las partes (y el conductor, vía las
+     * paradas del envío). Son campos propios, no texto libre: RN07 no aplica (decisión de producto 2026-11-17).
+     */
+    public record StopDetails(String contactName, String contactPhone, LocalTime windowFrom, LocalTime windowTo,
+                              String instructions) {
+        public static final StopDetails NONE = new StopDetails(null, null, null, null, null);
+
+        public boolean isEmpty() {
+            return contactName == null && contactPhone == null && windowFrom == null && windowTo == null
+                    && instructions == null;
+        }
+
+        /** Normaliza (recorta, teléfono de 9 dígitos) y valida; {@code prefix} = "pickup" | "delivery" para el {@code field}. */
+        static StopDetails clean(StopDetails d, String prefix) {
+            if (d == null) return NONE;
+            if ((d.windowFrom == null) != (d.windowTo == null)) {
+                throw BusinessException.badRequest("LOGYX-REQ-006",
+                        "Indica el inicio y el fin de la ventana horaria, o ninguno", prefix + "WindowTo");
+            }
+            if (d.windowFrom != null && !d.windowFrom.isBefore(d.windowTo)) {
+                throw BusinessException.badRequest("LOGYX-REQ-006",
+                        "La ventana horaria debe terminar después de empezar", prefix + "WindowTo");
+            }
+            return new StopDetails(blankToNull(d.contactName), PeruPhone.normalize(d.contactPhone, prefix + "ContactPhone"),
+                    d.windowFrom, d.windowTo, blankToNull(d.instructions));
+        }
+    }
+
+    /**
+     * Datos opcionales de la solicitud: referencia propia de la PYME (n.º de OC o pedido), valor declarado de la carga
+     * (decisión legal: el transportista responde según su póliza y la PYME declara valor y naturaleza) y los
+     * {@link StopDetails} de recojo y entrega.
+     */
+    public record Details(String customerReference, BigDecimal declaredValue, StopDetails pickup, StopDetails delivery) {
+        public static final Details NONE = new Details(null, null, StopDetails.NONE, StopDetails.NONE);
+
+        static Details clean(Details d) {
+            if (d == null) return NONE;
+            String ref = blankToNull(d.customerReference);
+            if (ref != null && ref.length() > 40) {
+                throw BusinessException.badRequest("LOGYX-VAL-001", "La referencia admite hasta 40 caracteres",
+                        "customerReference");
+            }
+            if (d.declaredValue != null && (d.declaredValue.signum() <= 0
+                    || d.declaredValue.compareTo(new BigDecimal("99999999999.99")) > 0)) {
+                throw BusinessException.badRequest("LOGYX-REQ-007",
+                        "El valor declarado debe ser mayor a 0", "declaredValue");
+            }
+            return new Details(ref, d.declaredValue, StopDetails.clean(d.pickup, "pickup"),
+                    StopDetails.clean(d.delivery, "delivery"));
+        }
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
     private final UUID id;
     private final UUID requesterOrgId;
     private final UUID createdBy;
@@ -36,6 +97,9 @@ public final class ShipmentRequest {
     private String cancelReason;
     /** Solicitud cancelada de la que se republicó esta (F07, F06). */
     private final UUID republishedFrom;
+    /** Código legible y único ({@link pe.logyx.marketplace.domain.RequestCode}); lo hereda el envío. */
+    private final String code;
+    private final Details details;
 
     public ShipmentRequest(UUID id, UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
                            Status status, UUID assignedCarrierOrgId, OffsetDateTime createdAt) {
@@ -45,6 +109,14 @@ public final class ShipmentRequest {
     public ShipmentRequest(UUID id, UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
                            Status status, UUID assignedCarrierOrgId, OffsetDateTime createdAt, String cancelReason,
                            UUID republishedFrom) {
+        this(id, requesterOrgId, createdBy, cargo, pricing, status, assignedCarrierOrgId, createdAt, cancelReason,
+                republishedFrom, null, Details.NONE);
+    }
+
+    /** Constructor completo (rehidratación y solicitudes de contrato directo, que reciben su código aparte). */
+    public ShipmentRequest(UUID id, UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
+                           Status status, UUID assignedCarrierOrgId, OffsetDateTime createdAt, String cancelReason,
+                           UUID republishedFrom, String code, Details details) {
         this.id = id;
         this.requesterOrgId = requesterOrgId;
         this.createdBy = createdBy;
@@ -55,6 +127,8 @@ public final class ShipmentRequest {
         this.createdAt = createdAt;
         this.cancelReason = cancelReason;
         this.republishedFrom = republishedFrom;
+        this.code = code;
+        this.details = details == null ? Details.NONE : details;
     }
 
     public static ShipmentRequest publish(UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing) {
@@ -64,12 +138,19 @@ public final class ShipmentRequest {
     /** RN07: direcciones y descripción las ven los transportistas; no admiten datos de contacto. */
     public static ShipmentRequest publish(UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
                                           UUID republishedFrom) {
+        return publish(requesterOrgId, createdBy, cargo, pricing, republishedFrom, null, Details.NONE);
+    }
+
+    /** Con código legible y datos opcionales (referencia, valor declarado, contactos); ver {@link Details}. */
+    public static ShipmentRequest publish(UUID requesterOrgId, UUID createdBy, Cargo cargo, Pricing pricing,
+                                          UUID republishedFrom, String code, Details details) {
+        Details cleanDetails = Details.clean(details);
         Cargo clean = new Cargo(cargo.originCity(), ContactInfoPolicy.clean(cargo.originAddress(), "originAddress"),
                 cargo.destinationCity(), ContactInfoPolicy.clean(cargo.destinationAddress(), "destinationAddress"),
                 cargo.cargoType(), ContactInfoPolicy.clean(cargo.cargoDescription(), "cargoDescription"),
                 cargo.weightKg(), cargo.volumeM3(), cargo.pickupDate());
         return new ShipmentRequest(UUID.randomUUID(), requesterOrgId, createdBy, clean, pricing,
-                Status.PUBLISHED, null, OffsetDateTime.now(), null, republishedFrom);
+                Status.PUBLISHED, null, OffsetDateTime.now(), null, republishedFrom, code, cleanDetails);
     }
 
     public boolean isPublished() { return status == Status.PUBLISHED; }
@@ -137,4 +218,6 @@ public final class ShipmentRequest {
     public OffsetDateTime createdAt() { return createdAt; }
     public String cancelReason() { return cancelReason; }
     public UUID republishedFrom() { return republishedFrom; }
+    public String code() { return code; }
+    public Details details() { return details; }
 }

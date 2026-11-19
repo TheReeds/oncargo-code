@@ -1,17 +1,33 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import { Alert } from '@/components/ui/alert';
 import RequestsTable from '@/features/requests/components/RequestsTable';
-import { listMine } from '@/features/requests/server';
+import { PAGE_SIZE } from '@/features/requests/components/RequestsTable';
+import { listMinePage, myCounts } from '@/features/requests/server';
+import { apiQuery, filtersFromUrl } from '@/features/requests/filters';
+import { getCatalog } from '@/features/catalog/server';
 import { Plus } from '@lucide/astro';
 import { can } from '@/lib/permissions';
 const session = Astro.locals.session!;
-const requests = await listMine(session.token);
+const token = session.token;
+const filters = filtersFromUrl(Astro.url.searchParams);
+const pageNo = Math.max(1, Number(Astro.url.searchParams.get('pagina')) || 1);
+const { cities } = await getCatalog();
+let result = { items: [] as Awaited<ReturnType<typeof listMinePage>>['items'], meta: { page: 0, size: PAGE_SIZE, total: 0 } };
+let counts: Awaited<ReturnType<typeof myCounts>> | undefined;
+let loadError: string | null = null;
+try {
+  [result, counts] = await Promise.all([listMinePage(token, { ...apiQuery(filters), page: pageNo - 1, size: PAGE_SIZE }), myCounts(token).catch(() => undefined)]);
+} catch (e) {
+  loadError = e instanceof Error ? e.message : 'No pudimos cargar tus solicitudes.';
+}
 const canOperate = can(session, 'OPERATE');
 ---
 <AppShell title="Solicitudes" active="solicitudes">
   <PageHeader title="Solicitudes" subtitle="Tus cargas publicadas y su subasta">
     {canOperate && <a slot="actions" href="/pyme/solicitudes/nueva" class="inline-flex h-10 items-center gap-2 rounded-input bg-petrol-700 px-4 text-sm font-medium text-on-solid hover:bg-petrol-800"><Plus size={16} /> Publicar solicitud</a>}
   </PageHeader>
-  <RequestsTable client:load requests={requests} />
+  {loadError && <Alert tone="error" title="No pudimos cargar tus solicitudes" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
+  <RequestsTable client:load rows={result.items} cities={cities} filters={filters} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} counts={counts} anyRequests={(counts?.all ?? result.meta.total) > 0 || result.items.length > 0} />
 </AppShell>

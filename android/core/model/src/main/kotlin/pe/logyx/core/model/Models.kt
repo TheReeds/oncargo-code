@@ -178,6 +178,10 @@ data class RequestView(
     val bestBidCarrierTrustScore: Double? = null,
     /** Solo para el transportista con oferta no retirada (V15). */
     val myBidStanding: MyBidStanding? = null,
+    /** Código legible y único de la solicitud, p. ej. `OC-7K2QX` (V17); el envío lo hereda. */
+    val code: String? = null,
+    /** Valor declarado de la carga en soles, opcional (V17). */
+    val declaredValue: Double? = null,
 )
 
 @Serializable
@@ -470,10 +474,19 @@ data class NotificationView(
     val read: Boolean = false,
     val readAt: String? = null,
     val createdAt: String? = null,
+    /** V16: el aviso es de algo que tú creaste (tu solicitud, tu oferta): marca «Tuyo». */
+    val mine: Boolean = false,
 )
 
 @Serializable
 data class UnreadCount(val unread: Int = 0)
+
+/** V16: «Pedir acceso» a los ADMIN (`POST /organizations/me/access-requests`). */
+@Serializable
+data class CreateAccessRequest(val permission: OrgPermission, val reason: String? = null)
+
+@Serializable
+data class AccessRequestView(val permission: OrgPermission? = null, val notifiedAdmins: Int = 0)
 
 @Serializable
 data class MarkedRead(val updated: Int = 0)

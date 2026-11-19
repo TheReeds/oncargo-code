@@ -35,6 +35,73 @@
           }
         }
       },
+      "AccessRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "permission" : {
+            "$ref" : "#/components/schemas/OrgPermission"
+          },
+          "notifiedAdmins" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ActivityEntryView" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "action" : {
+            "type" : "string"
+          },
+          "entity" : {
+            "type" : "string"
+          },
+          "entityId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "actor" : {
+            "$ref" : "#/components/schemas/ActivityPerson"
+          },
+          "organizationName" : {
+            "type" : "string"
+          },
+          "own" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ActivityPerson" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ActivitySubject" : {
+        "type" : "string",
+        "enum" : [ "REQUEST", "BID", "SHIPMENT", "TRIP", "INCIDENT" ]
+      },
+      "ActivityView" : {
+        "type" : "object",
+        "properties" : {
+          "createdBy" : {
+            "$ref" : "#/components/schemas/ActivityPerson"
+          },
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ActivityEntryView"
+            }
+          }
+        }
+      },
       "AddIncidentComment" : {
         "type" : "object",
         "required" : [ "body" ],
@@ -51,6 +118,28 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/AcceptResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseAccessRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/AccessRequestView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseActivityView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ActivityView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -84,6 +173,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/BidView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseCommissionInfo" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CommissionInfo"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -139,6 +239,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/IncidentView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseLegalInfo" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/LegalInfo"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -299,6 +410,20 @@
           }
         }
       },
+      "ApiResponseListNotificationPreferenceView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationPreferenceView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListNotificationView" : {
         "type" : "object",
         "properties" : {
@@ -306,6 +431,34 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/NotificationView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListOperatorBidRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OperatorBidRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListOperatorMessageRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OperatorMessageRow"
             }
           },
           "meta" : {
@@ -341,6 +494,20 @@
           }
         }
       },
+      "ApiResponseListOperatorThreadRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OperatorThreadRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListOrganizationReviewRow" : {
         "type" : "object",
         "properties" : {
@@ -362,6 +529,48 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/OrganizationUser"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListParameterChangeRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParameterChangeRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListParameterRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParameterRow"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListPlaceView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PlaceView"
             }
           },
           "meta" : {
@@ -411,6 +620,20 @@
           }
         }
       },
+      "ApiResponseListSearchResultView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SearchResultView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponseListShipmentView" : {
         "type" : "object",
         "properties" : {
@@ -418,6 +641,20 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ShipmentView"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseListSimilarRequest" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SimilarRequest"
             }
           },
           "meta" : {
@@ -594,6 +831,17 @@
           }
         }
       },
+      "ApiResponseParameterRow" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ParameterRow"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponsePasswordTokenInfo" : {
         "type" : "object",
         "properties" : {
@@ -605,11 +853,44 @@
           }
         }
       },
+      "ApiResponsePlaceView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PlaceView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponsePublicCommission" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PublicCommission"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
       "ApiResponsePublicOrganization" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/PublicOrganization"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponsePublicQuote" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PublicQuote"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -632,6 +913,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/ReputationView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ApiResponseRequestCountsView" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RequestCountsView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -956,6 +1248,26 @@
         "type" : "string",
         "enum" : [ "PENDING", "CONFIRMED", "REJECTED", "CANCELLED" ]
       },
+      "Breakdown" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "number"
+          },
+          "netOfVat" : {
+            "type" : "number"
+          },
+          "vat" : {
+            "type" : "number"
+          },
+          "commission" : {
+            "type" : "number"
+          },
+          "carrierNet" : {
+            "type" : "number"
+          }
+        }
+      },
       "CancelRequestBody" : {
         "type" : "object",
         "properties" : {
@@ -1112,6 +1424,20 @@
         "type" : "string",
         "enum" : [ "TIMEOUT", "MAX_BIDS", "ACCEPTED", "CANCELLED" ]
       },
+      "CommissionInfo" : {
+        "type" : "object",
+        "properties" : {
+          "commissionRate" : {
+            "type" : "number"
+          },
+          "vatRate" : {
+            "type" : "number"
+          },
+          "breakdown" : {
+            "$ref" : "#/components/schemas/Breakdown"
+          }
+        }
+      },
       "CounterOfferStatus" : {
         "type" : "string",
         "enum" : [ "PENDING", "ACCEPTED", "REJECTED", "EXPIRED" ]
@@ -1157,6 +1483,19 @@
           }
         }
       },
+      "CreateAccessRequest" : {
+        "type" : "object",
+        "required" : [ "permission" ],
+        "properties" : {
+          "permission" : {
+            "$ref" : "#/components/schemas/OrgPermission"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 300
+          }
+        }
+      },
       "CreateRequest" : {
         "type" : "object",
         "required" : [ "originCity", "originAddress", "destinationCity", "destinationAddress", "cargoType", "cargoDescription", "weightKg", "pickupDate" ],
@@ -1198,6 +1537,61 @@
           },
           "pickupDate" : {
             "$ref" : "#/components/schemas/LocalDate"
+          },
+          "customerReference" : {
+            "type" : "string",
+            "maxLength" : 40
+          },
+          "declaredValue" : {
+            "type" : "number",
+            "minimum" : 0.01,
+            "multipleOf" : 0.01
+          },
+          "pickupContactName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "pickupContactPhone" : {
+            "type" : "string",
+            "maxLength" : 20
+          },
+          "pickupWindowFrom" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "pickupWindowTo" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "pickupInstructions" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "deliveryContactName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "deliveryContactPhone" : {
+            "type" : "string",
+            "maxLength" : 20
+          },
+          "deliveryWindowFrom" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "deliveryWindowTo" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "deliveryInstructions" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "originPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "destinationPlaceId" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -1594,6 +1988,17 @@
           }
         }
       },
+      "LegalInfo" : {
+        "type" : "object",
+        "properties" : {
+          "termsVersion" : {
+            "type" : "string"
+          },
+          "termsStatus" : {
+            "type" : "string"
+          }
+        }
+      },
       "LocalDate" : {
         "type" : "string",
         "format" : "date",
@@ -1775,13 +2180,55 @@
           }
         }
       },
+      "NotificationCategory" : {
+        "type" : "string",
+        "enum" : [ "BIDS", "AWARDS", "REQUESTS", "NEGOTIATION", "SHIPMENTS", "INCIDENTS", "REVIEWS", "TRIPS", "SMART_LOAD", "ACCOUNT" ]
+      },
+      "NotificationPreferenceChange" : {
+        "type" : "object",
+        "required" : [ "category", "inApp", "email" ],
+        "properties" : {
+          "category" : {
+            "$ref" : "#/components/schemas/NotificationCategory"
+          },
+          "inApp" : {
+            "type" : "boolean"
+          },
+          "email" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "NotificationPreferenceView" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "$ref" : "#/components/schemas/NotificationCategory"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "inApp" : {
+            "type" : "boolean"
+          },
+          "email" : {
+            "type" : "boolean"
+          },
+          "inAppLocked" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "NotificationTarget" : {
         "type" : "string",
-        "enum" : [ "REQUEST", "BID", "COUNTER_OFFER", "SHIPMENT", "INCIDENT", "REVIEW", "TRIP", "SMART_LOAD", "ORGANIZATION" ]
+        "enum" : [ "REQUEST", "BID", "COUNTER_OFFER", "SHIPMENT", "INCIDENT", "REVIEW", "TRIP", "SMART_LOAD", "ORGANIZATION", "USER" ]
       },
       "NotificationType" : {
         "type" : "string",
-        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION" ]
+        "enum" : [ "NEW_BID", "BID_ACCEPTED", "BID_REJECTED", "COUNTER_OFFER", "NEW_MESSAGE", "SHIPMENT_STATUS_CHANGE", "INCIDENT_REPORTED", "INCIDENT_RESOLVED", "NEW_REVIEW", "TRIP_BOOKING_REQUESTED", "TRIP_BOOKING_CONFIRMED", "TRIP_BOOKING_REJECTED", "TRIP_BOOKING_CANCELLED", "TRIP_CANCELLED", "SMART_LOAD_SUGGESTED", "SMART_LOAD_ACCEPTED", "AUCTION_CLOSED", "REQUEST_CANCELLED", "SHIPMENT_CANCELLED", "BID_WITHDRAWN", "ORGANIZATION_VERIFICATION", "ACCESS_REQUESTED" ]
       },
       "NotificationView" : {
         "type" : "object",
@@ -1812,6 +2259,9 @@
           },
           "createdAt" : {
             "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "mine" : {
+            "type" : "boolean"
           }
         }
       },
@@ -1848,6 +2298,76 @@
             "items" : {
               "$ref" : "#/components/schemas/IncidentAlertView"
             }
+          }
+        }
+      },
+      "OperatorBidRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "carrierRucVerified" : {
+            "type" : "boolean"
+          },
+          "carrierTrustScore" : {
+            "type" : "number"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/Status3"
+          },
+          "vehicleType" : {
+            "$ref" : "#/components/schemas/Type"
+          },
+          "vehiclePlate" : {
+            "type" : "string"
+          },
+          "assignedByOperator" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "OperatorMessageRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "senderOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "senderName" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "proposedPrice" : {
+            "type" : "number"
+          },
+          "system" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -1898,6 +2418,21 @@
             "type" : "number"
           },
           "gmvDelivered" : {
+            "type" : "number"
+          },
+          "assignmentSlaHours" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incidentWarnHours" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "incidentBreachHours" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "commissionRate" : {
             "type" : "number"
           }
         }
@@ -2003,6 +2538,39 @@
           },
           "hasActiveIncident" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "OperatorThreadRow" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierOrgId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "carrierName" : {
+            "type" : "string"
+          },
+          "bidId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "bidAmount" : {
+            "type" : "number"
+          },
+          "bidStatus" : {
+            "$ref" : "#/components/schemas/Status3"
+          },
+          "messageCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lastMessage" : {
+            "type" : "string"
+          },
+          "lastMessageAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -2139,6 +2707,91 @@
           }
         }
       },
+      "ParameterChangeRow" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "previousValue" : {
+            "type" : "string"
+          },
+          "newValue" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "changedBy" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "changedByName" : {
+            "type" : "string"
+          },
+          "changedByEmail" : {
+            "type" : "string"
+          },
+          "changedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "ParameterRow" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          },
+          "defaultValue" : {
+            "type" : "string"
+          },
+          "min" : {
+            "type" : "string"
+          },
+          "max" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "overridden" : {
+            "type" : "boolean"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
       "PasswordTokenInfo" : {
         "type" : "object",
         "properties" : {
@@ -2188,6 +2841,104 @@
           }
         }
       },
+      "PlaceKind" : {
+        "type" : "string",
+        "enum" : [ "PICKUP", "DELIVERY", "BOTH" ]
+      },
+      "PlaceRequest" : {
+        "type" : "object",
+        "required" : [ "label", "city", "address" ],
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 80
+          },
+          "city" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "address" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "contactName" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "contactPhone" : {
+            "type" : "string",
+            "maxLength" : 20
+          },
+          "openingHours" : {
+            "type" : "string",
+            "maxLength" : 120
+          },
+          "windowFrom" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "windowTo" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "instructions" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/PlaceKind"
+          }
+        }
+      },
+      "PlaceView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "city" : {
+            "$ref" : "#/components/schemas/City"
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "contactName" : {
+            "type" : "string"
+          },
+          "contactPhone" : {
+            "type" : "string"
+          },
+          "openingHours" : {
+            "type" : "string"
+          },
+          "windowFrom" : {
+            "type" : "string"
+          },
+          "windowTo" : {
+            "type" : "string"
+          },
+          "instructions" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/PlaceKind"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "lastUsedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
       "PostMessage" : {
         "type" : "object",
         "required" : [ "body" ],
@@ -2210,6 +2961,20 @@
           "message" : {
             "type" : "string",
             "maxLength" : 500
+          }
+        }
+      },
+      "PublicCommission" : {
+        "type" : "object",
+        "properties" : {
+          "commissionRate" : {
+            "type" : "number"
+          },
+          "vatRate" : {
+            "type" : "number"
+          },
+          "paidBy" : {
+            "type" : "string"
           }
         }
       },
@@ -2239,6 +3004,66 @@
           },
           "verificationStatus" : {
             "$ref" : "#/components/schemas/VerificationStatus"
+          }
+        }
+      },
+      "PublicQuote" : {
+        "type" : "object",
+        "properties" : {
+          "distanceKm" : {
+            "type" : "number"
+          },
+          "fuelCost" : {
+            "type" : "number"
+          },
+          "transportCost" : {
+            "type" : "number"
+          },
+          "tollCost" : {
+            "type" : "number"
+          },
+          "handlingFee" : {
+            "type" : "number"
+          },
+          "suggestedPrice" : {
+            "type" : "number"
+          },
+          "priceFloor" : {
+            "type" : "number"
+          },
+          "vatRate" : {
+            "type" : "number"
+          },
+          "suggestedNetOfVat" : {
+            "type" : "number"
+          },
+          "suggestedVat" : {
+            "type" : "number"
+          },
+          "commissionRate" : {
+            "type" : "number"
+          }
+        }
+      },
+      "PublicQuoteRequest" : {
+        "type" : "object",
+        "required" : [ "originCity", "destinationCity", "weightKg", "cargoType" ],
+        "properties" : {
+          "originCity" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "destinationCity" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "weightKg" : {
+            "type" : "number",
+            "maximum" : 60000,
+            "minimum" : 1
+          },
+          "cargoType" : {
+            "$ref" : "#/components/schemas/CargoType"
           }
         }
       },
@@ -2365,6 +3190,14 @@
           },
           "acceptPrivacyPolicy" : {
             "type" : "boolean"
+          },
+          "acceptTerms" : {
+            "type" : "boolean"
+          },
+          "termsVersion" : {
+            "type" : "string",
+            "description" : "Versión de los Términos y condiciones que el usuario leyó (la de GET /public/legal). Si se omite se asume la vigente; si no es la vigente, 409 LOGYX-AUTH-012",
+            "maxLength" : 40
           }
         }
       },
@@ -2440,6 +3273,31 @@
             "items" : {
               "$ref" : "#/components/schemas/ReviewView"
             }
+          }
+        }
+      },
+      "RequestCountsView" : {
+        "type" : "object",
+        "properties" : {
+          "all" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "published" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "matched" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "cancelled" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "withBids" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       },
@@ -2535,6 +3393,45 @@
           },
           "myBidStanding" : {
             "$ref" : "#/components/schemas/MyBidStanding"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "declaredValue" : {
+            "type" : "number"
+          },
+          "customerReference" : {
+            "type" : "string"
+          },
+          "pickupContactName" : {
+            "type" : "string"
+          },
+          "pickupContactPhone" : {
+            "type" : "string"
+          },
+          "pickupWindowFrom" : {
+            "type" : "string"
+          },
+          "pickupWindowTo" : {
+            "type" : "string"
+          },
+          "pickupInstructions" : {
+            "type" : "string"
+          },
+          "deliveryContactName" : {
+            "type" : "string"
+          },
+          "deliveryContactPhone" : {
+            "type" : "string"
+          },
+          "deliveryWindowFrom" : {
+            "type" : "string"
+          },
+          "deliveryWindowTo" : {
+            "type" : "string"
+          },
+          "deliveryInstructions" : {
+            "type" : "string"
           }
         }
       },
@@ -2779,6 +3676,33 @@
           }
         }
       },
+      "SearchHitType" : {
+        "type" : "string",
+        "enum" : [ "REQUEST", "SHIPMENT", "COUNTERPART" ]
+      },
+      "SearchResultView" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/SearchHitType"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "subtitle" : {
+            "type" : "string"
+          },
+          "href" : {
+            "type" : "string"
+          }
+        }
+      },
       "ShipmentReviewsView" : {
         "type" : "object",
         "properties" : {
@@ -2873,6 +3797,20 @@
           },
           "cancelledByOrgId" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "SimilarRequest" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
           }
         }
       },
@@ -3327,6 +4265,20 @@
           }
         }
       },
+      "UpdateNotificationPreferences" : {
+        "type" : "object",
+        "required" : [ "preferences" ],
+        "properties" : {
+          "preferences" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationPreferenceChange"
+            },
+            "maxItems" : 20,
+            "minItems" : 1
+          }
+        }
+      },
       "UpdateOrganizationRequest" : {
         "type" : "object",
         "properties" : {
@@ -3353,6 +4305,28 @@
           "address" : {
             "type" : "string",
             "maxLength" : 200
+          }
+        }
+      },
+      "UpdateParameter" : {
+        "type" : "object",
+        "required" : [ "value", "reason" ],
+        "properties" : {
+          "value" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 20
+          },
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "minLength" : 3,
+            "maxLength" : 300
+          },
+          "expectedVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
           }
         }
       },
@@ -3473,6 +4447,51 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/v1/activity" : {
+      "get" : {
+        "summary" : "Quién creó un recurso y quién hizo cada acción",
+        "description" : "Lectura de created_by y de la auditoría bajo RLS: cada organización ve sus propias acciones y a sus personas; el operador ve todo. Hasta 100 acciones, recientes primero. 404 si no ves el recurso.",
+        "parameters" : [ {
+          "description" : "Id del recurso.",
+          "name" : "id",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "required" : true
+        }, {
+          "description" : "REQUEST, BID, SHIPMENT, TRIP o INCIDENT.",
+          "name" : "subject",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/ActivitySubject"
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseActivityView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Activity Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/auth/change-password" : {
       "post" : {
         "summary" : "Cambiar mi contraseña",
@@ -4647,8 +5666,16 @@
     },
     "/api/v1/notifications" : {
       "get" : {
-        "summary" : "Notificaciones de mi organización, recientes primero (siempre paginado)",
+        "summary" : "Mis avisos, recientes primero (siempre paginado)",
+        "description" : "V16: avisos por persona; marcar uno como leído no cambia el de tus compañeros.",
         "parameters" : [ {
+          "description" : "true = solo los de algo que tú creaste («Tuyo»).",
+          "name" : "mine",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
           "description" : "Página 0-based (por omisión 0).",
           "name" : "page",
           "in" : "query",
@@ -4696,6 +5723,73 @@
         } ]
       }
     },
+    "/api/v1/notifications/preferences" : {
+      "put" : {
+        "summary" : "Cambiar mis preferencias de aviso",
+        "description" : "Cualquier rol (también Lector). Solo cambian las categorías enviadas. 400 LOGYX-NTF-001 si se apaga el in-app de «Cuenta y accesos»; 400 LOGYX-NTF-002 si la categoría no aplica a tu tipo de cuenta.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateNotificationPreferences"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListNotificationPreferenceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Mis preferencias de aviso",
+        "description" : "Categorías que aplican a tu tipo de cuenta, con los canales in-app y correo (valores por defecto si nunca las cambiaste).",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListNotificationPreferenceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/notifications/read-all" : {
       "post" : {
         "responses" : {
@@ -4725,6 +5819,7 @@
     },
     "/api/v1/notifications/unread-count" : {
       "get" : {
+        "summary" : "Cuántos avisos tengo sin leer (solo los míos)",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -4743,7 +5838,6 @@
             "description" : "Not Allowed"
           }
         },
-        "summary" : "Unread Count",
         "tags" : [ "Notification Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
@@ -4949,6 +6043,13 @@
             "format" : "int32"
           }
         }, {
+          "description" : "Búsqueda por texto (2-60 caracteres): razón social, RUC, ciudad, correo de un usuario, placa de un vehículo o id.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "description" : "Tamaño de página (1-100, por omisión 20).",
           "name" : "size",
           "in" : "query",
@@ -5139,6 +6240,134 @@
         } ]
       }
     },
+    "/api/v1/operator/parameters" : {
+      "get" : {
+        "summary" : "Parámetros de sistema vigentes (comisión, SLA de asignación, umbrales de incidencias)",
+        "description" : "version 0 = rige el valor por omisión de la configuración; cada cambio sube la versión.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListParameterRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/parameters/history" : {
+      "get" : {
+        "summary" : "Historial de cambios de parámetros, el más reciente primero",
+        "parameters" : [ {
+          "description" : "Clave del parámetro (commission_rate, assignment_sla_hours, incident_warn_hours, incident_breach_hours). Sin ella, todos.",
+          "name" : "key",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Página 0-based (por omisión 0).",
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "Tamaño de página (1-100, por omisión 20).",
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListParameterChangeRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/parameters/{key}" : {
+      "put" : {
+        "summary" : "Cambia un parámetro de sistema con motivo (queda en el historial y en la auditoría)",
+        "description" : "LOGYX-PAR-001 valor inválido o fuera de rango (value), LOGYX-PAR-002 falta el motivo, LOGYX-PAR-003 aviso ≥ incumplimiento, LOGYX-PAR-004 otro operador lo cambió (expectedVersion). 404 si la clave no existe.",
+        "parameters" : [ {
+          "name" : "key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateParameter"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseParameterRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/operator/requests" : {
       "get" : {
         "summary" : "Listado global paginado de solicitudes, más recientes primero",
@@ -5171,6 +6400,13 @@
           "schema" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }, {
+          "description" : "Búsqueda por texto (2-60 caracteres): código OC-…, referencia de la PYME, razón social o RUC del solicitante o del transportista adjudicado, placa, descripción de la carga o id.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
           }
         }, {
           "description" : "Tamaño de página (1-100, por omisión 20).",
@@ -5268,6 +6504,41 @@
         } ]
       }
     },
+    "/api/v1/operator/requests/{id}/bids" : {
+      "get" : {
+        "summary" : "Ofertas de una solicitud, de menor a mayor monto (solo lectura, para mediar una disputa)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListOperatorBidRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/operator/requests/{id}/candidates" : {
       "get" : {
         "summary" : "Vehículos disponibles con capacidad para la solicitud (para asignar manualmente)",
@@ -5286,6 +6557,114 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponseListAssignmentCandidateView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/requests/{id}/threads" : {
+      "get" : {
+        "summary" : "Hilos de chat de una solicitud (solo lectura). Queda auditado: OPERATOR_VIEWED_CHAT",
+        "description" : "El equipo de OnCargo puede revisar conversaciones para resolver disputas (política de privacidad). Cada consulta se registra en la auditoría con el motivo, si se indica.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría.",
+          "name" : "reason",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListOperatorThreadRow"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Operator Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "OPERATOR" ]
+        } ]
+      }
+    },
+    "/api/v1/operator/requests/{id}/threads/{carrierOrgId}/messages" : {
+      "get" : {
+        "summary" : "Mensajes de un hilo por cursor, en orden cronológico (solo lectura). Auditado al abrir el hilo",
+        "description" : "meta.nextCursor = valor para 'before'. Solo la primera página (sin 'before') se registra en la auditoría como OPERATOR_VIEWED_CHAT.",
+        "parameters" : [ {
+          "name" : "carrierOrgId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Id de mensaje: devuelve los anteriores a él (omitir = los más recientes).",
+          "name" : "before",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Motivo de la consulta (opcional, hasta 200 caracteres); queda en la auditoría.",
+          "name" : "reason",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Máximo de mensajes (1-100, por omisión 30).",
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListOperatorMessageRow"
                 }
               }
             }
@@ -5335,6 +6714,13 @@
           "schema" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }, {
+          "description" : "Búsqueda por texto (2-60 caracteres): código y referencia de la solicitud, razón social o RUC de la PYME o del transportista, placa, conductor o id del envío.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
           }
         }, {
           "description" : "Tamaño de página (1-100, por omisión 20).",
@@ -5472,6 +6858,47 @@
         "tags" : [ "Organization Resource" ],
         "security" : [ {
           "SecurityScheme" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/organizations/me/access-requests" : {
+      "post" : {
+        "summary" : "Pedir un permiso a los administradores de mi organización",
+        "description" : "Cualquier rol, también Lector. Avisa (in-app y, según sus preferencias, por correo) a cada ADMIN activo para que cambie tu rol; queda en la auditoría. 409 LOGYX-ACC-001 si tu rol ya tiene el permiso; 429 LOGYX-ACC-002 si ya lo pediste en los últimos 10 minutos; 409 LOGYX-ACC-003 si no hay otro ADMIN activo.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAccessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAccessRequestView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Access Request Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
         } ]
       }
     },
@@ -5816,6 +7243,249 @@
         } ]
       }
     },
+    "/api/v1/places" : {
+      "get" : {
+        "summary" : "Direcciones guardadas de la organización: la usada más recientemente primero",
+        "parameters" : [ {
+          "description" : "Código de ciudad (p. ej. LIMA).",
+          "name" : "city",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Incluye las archivadas (por omisión no).",
+          "name" : "includeArchived",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "description" : "PICKUP, DELIVERY o BOTH: PICKUP/DELIVERY incluyen las que sirven para ambos.",
+          "name" : "kind",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Texto en el nombre, la dirección o el contacto.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListPlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/places/{id}" : {
+      "patch" : {
+        "summary" : "Edita una dirección activa (reemplaza los campos editables); archivada: LOGYX-PLC-002",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/places/{id}/archive" : {
+      "post" : {
+        "summary" : "Archiva la dirección (no se borra; deja de ofrecerse al publicar)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/places/{id}/restore" : {
+      "post" : {
+        "summary" : "Restaura una dirección archivada",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Places Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
     "/api/v1/pricing/calculate" : {
       "post" : {
         "requestBody" : {
@@ -5854,6 +7524,112 @@
         "security" : [ {
           "SecurityScheme" : [ ]
         } ]
+      }
+    },
+    "/api/v1/pricing/commission" : {
+      "get" : {
+        "summary" : "Comisión vigente de OnCargo (porcentaje que retiene al transportista) y desglose de un monto",
+        "description" : "El precio adjudicado incluye IGV (18 %); la comisión se calcula sobre ese total y el transportista cobra el neto. Con amount devuelve el desglose; sin él, solo las tasas. Cualquier rol autenticado (también VIEWER: es lectura).",
+        "parameters" : [ {
+          "description" : "Monto en soles a desglosar (opcional, > 0).",
+          "name" : "amount",
+          "in" : "query",
+          "schema" : {
+            "type" : "number"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCommissionInfo"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Pricing Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/public/legal" : {
+      "get" : {
+        "summary" : "Versión vigente de los Términos y condiciones y su estado",
+        "description" : "Sin JWT. El registro (POST /auth/register) exige acceptTerms=true y acepta termsVersion; si no es la vigente responde 409 LOGYX-AUTH-012.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseLegalInfo"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Legal Resource" ]
+      }
+    },
+    "/api/v1/public/pricing/commission" : {
+      "get" : {
+        "summary" : "Cuánto cobra OnCargo: la comisión vigente (la paga el transportista) y el IGV",
+        "description" : "Sin JWT. Para la página de precios.",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePublicCommission"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Public Pricing Resource" ]
+      }
+    },
+    "/api/v1/public/pricing/quote" : {
+      "post" : {
+        "summary" : "Cotización pública de un flete (sin cuenta): precio de referencia, piso y desglose de IGV",
+        "description" : "Sin JWT. Límite por IP (429 LOGYX-AUTH-429 con Retry-After). No persiste nada. Mismo cálculo que POST /pricing/calculate: ciudades del corredor (LOGYX-PRC-001), origen distinto del destino (LOGYX-PRC-002).",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublicQuoteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePublicQuote"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Public Pricing Resource" ]
       }
     },
     "/api/v1/return-loads" : {
@@ -5924,8 +7700,59 @@
         } ]
       }
     },
+    "/api/v1/search" : {
+      "get" : {
+        "summary" : "Busca solicitudes, envíos y contrapartes por código (OC-7K2QX), referencia propia, ruta, placa o (operador) RUC o razón social. Solo devuelve lo que el usuario ya puede ver (RLS); hasta 8 por tipo",
+        "parameters" : [ {
+          "description" : "Texto, de 2 a 80 caracteres.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Tipos separados por coma: REQUEST, SHIPMENT, COUNTERPART (por omisión todos).",
+          "name" : "types",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListSearchResultView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Search Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME", "CARRIER", "OPERATOR" ]
+        } ]
+      }
+    },
     "/api/v1/shipment-requests" : {
       "post" : {
+        "summary" : "Publica una solicitud. Con la cabecera Idempotency-Key (8-80 caracteres) un reintento o doble clic devuelve la solicitud ya creada (cabecera Idempotent-Replayed: true) en vez de crear otra",
+        "parameters" : [ {
+          "description" : "Clave de idempotencia (UUID recomendado), válida 24 h por organización.",
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -5937,8 +7764,8 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Solicitud creada (o la ya creada con esa Idempotency-Key)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -5957,7 +7784,6 @@
             "description" : "Bad Request"
           }
         },
-        "summary" : "Publish",
         "tags" : [ "Marketplace Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME" ]
@@ -6059,7 +7885,30 @@
     },
     "/api/v1/shipment-requests/mine" : {
       "get" : {
+        "summary" : "Mis solicitudes con filtros, orden y paginación en el servidor (meta.total). Sin page ni size devuelve todas las que cumplen el filtro",
         "parameters" : [ {
+          "description" : "Código de ciudad de destino.",
+          "name" : "destinationCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Fecha de recojo desde, ISO (yyyy-MM-dd), inclusive.",
+          "name" : "fromDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Código de ciudad de origen (p. ej. LIMA).",
+          "name" : "originCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "description" : "Página 0-based. Si se omite page y size, se devuelven todas.",
           "name" : "page",
           "in" : "query",
@@ -6068,12 +7917,48 @@
             "format" : "int32"
           }
         }, {
+          "description" : "Texto: código (OC-7K2QX, con o sin guion), referencia propia, ciudad o descripción.",
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "description" : "Tamaño de página (1-100, por omisión 20 cuando se pagina).",
           "name" : "size",
           "in" : "query",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }, {
+          "description" : "Orden: recent (por omisión), pickup, bids, price_desc o price_asc.",
+          "name" : "sort",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "PUBLISHED, MATCHED o CANCELLED.",
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Fecha de recojo hasta, ISO (yyyy-MM-dd), inclusive.",
+          "name" : "toDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "description" : "true: solo publicadas con ofertas por revisar.",
+          "name" : "withBids",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -6094,7 +7979,166 @@
             "description" : "Not Allowed"
           }
         },
-        "summary" : "Mine",
+        "tags" : [ "Marketplace Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/mine/counts" : {
+      "get" : {
+        "summary" : "Totales de mis solicitudes por estado, sin filtros (pestañas de filtro rápido)",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRequestCountsView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Marketplace Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/mine/export" : {
+      "get" : {
+        "summary" : "Exporta a CSV (UTF-8 con BOM, separador ;, fechas de Lima) las solicitudes que cumplen los mismos filtros que /mine. Máximo 10 000 filas: si hay más, LOGYX-EXP-001",
+        "parameters" : [ {
+          "name" : "destinationCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fromDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "name" : "originCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sort",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "toDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "name" : "withBids",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "text/csv;charset=UTF-8" : { }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Marketplace Resource" ],
+        "security" : [ {
+          "SecurityScheme" : [ "PYME" ]
+        } ]
+      }
+    },
+    "/api/v1/shipment-requests/mine/similar" : {
+      "get" : {
+        "summary" : "Posibles duplicados: solicitudes publicadas en las últimas 24 h con la misma ruta, tipo de carga, peso y fecha de recojo (máximo 3)",
+        "parameters" : [ {
+          "name" : "cargoType",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/CargoType"
+          }
+        }, {
+          "name" : "destinationCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "originCity",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "pickupDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "name" : "weightKg",
+          "in" : "query",
+          "schema" : {
+            "type" : "number"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListSimilarRequest"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
         "tags" : [ "Marketplace Resource" ],
         "security" : [ {
           "SecurityScheme" : [ "PYME" ]

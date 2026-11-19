@@ -39,6 +39,28 @@ class ContractV13V15ParsingTest {
     private val u = "11111111-1111-1111-1111-111111111111"
     private inline fun <reified T> parse(json: String): T = LogyxJson.decodeFromString<T>(json)
 
+    // --- V16 (zona D): avisos por persona y «Pedir acceso» ---
+    @Test fun `NotificationView trae mine y los tipos nuevos de V16`() {
+        val n = parse<NotificationView>(
+            """{"id":"$u","type":"ACCESS_REQUESTED","title":"Pedido de acceso de Ana","body":"Ana pide permiso para operar.",
+            "relatedType":"USER","relatedId":"$u","read":false,"createdAt":"2026-11-17T10:00:00Z","mine":true}""",
+        )
+        assertEquals(NotificationType.ACCESS_REQUESTED, n.type)
+        assertEquals(NotificationTarget.USER, n.relatedType)
+        assertTrue(n.mine)
+        // Sin el campo (backend anterior a V16): no es «Tuyo»
+        assertFalse(parse<NotificationView>("""{"id":"$u","type":"NEW_BID","title":"t","body":"b"}""").mine)
+    }
+
+    @Test fun `AccessRequestView y su cuerpo`() {
+        val v = parse<pe.logyx.core.model.AccessRequestView>("""{"permission":"OPERATE","notifiedAdmins":2}""")
+        assertEquals(OrgPermission.OPERATE, v.permission)
+        assertEquals(2, v.notifiedAdmins)
+        val body = LogyxJson.encodeToString(pe.logyx.core.model.CreateAccessRequest.serializer(),
+            pe.logyx.core.model.CreateAccessRequest(OrgPermission.OPERATE, "Publico las cargas de Arequipa"))
+        assertTrue(body.contains("\"permission\":\"OPERATE\"") && body.contains("Arequipa"))
+    }
+
     // --- V14 ---
     @Test fun `UserInfo trae verificacion, RUC valido y permisos`() {
         val user = parse<UserInfo>(

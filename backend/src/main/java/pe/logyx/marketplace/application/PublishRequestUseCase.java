@@ -12,13 +12,17 @@ import pe.logyx.marketplace.application.port.out.ShipmentRequestRepository;
 import pe.logyx.marketplace.domain.AuctionClosingPolicy;
 import pe.logyx.marketplace.domain.model.Auction;
 import pe.logyx.marketplace.domain.model.ShipmentRequest;
+import pe.logyx.places.application.PlaceService;
 import pe.logyx.pricing.application.PricingService;
 import pe.logyx.pricing.domain.model.PriceQuote;
 import pe.logyx.shared.audit.AuditService;
+import pe.logyx.shared.idempotency.IdempotencyKeys;
 import pe.logyx.shared.tenancy.TenantContext;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.UUID;
 
 /** La PYME publica una solicitud: se cotiza (precio sugerido + piso RN03) y la subasta abre en el acto. */
 @ApplicationScoped
@@ -31,6 +35,15 @@ public class PublishRequestUseCase {
     @Inject RequestSummaries summaries;
     @Inject AuditService audit;
     @Inject TenantContext tenant;
+    @Inject RequestCodes codes;
+    @Inject IdempotencyKeys idempotency;
+    @Inject PlaceService places;
+
+    /** Ámbito de {@code idempotency_keys} para esta escritura. */
+    public static final String IDEMPOTENCY_SCOPE = "shipment_request";
+
+    /** La solicitud y si es la ya creada por una petición anterior con la misma {@code Idempotency-Key}. */
+    public record Published(RequestSummary summary, boolean replayed) {}
 
     @ConfigProperty(name = "logyx.auction.duration") Duration auctionDuration;
     @ConfigProperty(name = "logyx.auction.max-bids") int maxBids;
@@ -38,6 +51,25 @@ public class PublishRequestUseCase {
     @Transactional
     public RequestSummary publish(PublishRequestCommand cmd) {
         return publish(cmd, null);
+    }
+
+    /**
+     * Publica con protección contra doble publicación: con {@code Idempotency-Key}, una segunda petición con la misma
+     * clave (doble clic, reintento de red) devuelve la solicitud ya creada en las últimas 24 h en vez de crear otra.
+     */
+    @Transactional
+    public Published publishOnce(PublishRequestCommand cmd) {
+        String key = cmd.idempotencyKey();
+        if (key == null) return new Published(publish(cmd, null), false);
+        idempotency.lock(IDEMPOTENCY_SCOPE, key);   // serializa los reintentos simultáneos con la misma clave
+        var previous = idempotency.find(IDEMPOTENCY_SCOPE, key);
+        if (previous.isPresent()) {
+            var existing = requests.findOwned(previous.get(), tenant.orgId());
+            if (existing.isPresent()) return new Published(summaries.of(existing.get(), false), true);
+        }
+        RequestSummary created = publish(cmd, null);
+        idempotency.remember(IDEMPOTENCY_SCOPE, key, created.request().id());
+        return new Published(created, false);
     }
 
     /** {@code republishedFrom}: solicitud cancelada de la que sale esta (F07), o null. */
@@ -52,14 +84,18 @@ public class PublishRequestUseCase {
                 new ShipmentRequest.Cargo(origin, cmd.originAddress(), destination, cmd.destinationAddress(),
                         cmd.cargoType(), cmd.cargoDescription(), cmd.weightKg(), cmd.volumeM3(), cmd.pickupDate()),
                 new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()),
-                republishedFrom);
+                republishedFrom, codes.next(), cmd.details());
         requests.save(r);
+        var used = new ArrayList<UUID>();
+        used.add(cmd.originPlaceId());
+        used.add(cmd.destinationPlaceId());
+        places.markUsed(used);                                                             // la libreta ordena por uso
 
         Auction a = new AuctionClosingPolicy(auctionDuration, maxBids).open(r.id(), OffsetDateTime.now());
         auctions.save(a);
 
         audit.record(tenant.profileId(), org.id(), republishedFrom == null ? "REQUEST_PUBLISHED" : "REQUEST_REPUBLISHED",
-                "shipment_request", r.id(), republishedFrom == null ? null : "desde=" + republishedFrom);
+                "shipment_request", r.id(), (republishedFrom == null ? "" : "desde=" + republishedFrom + " ") + "codigo=" + r.code());
         return summaries.of(r, false);
     }
 }

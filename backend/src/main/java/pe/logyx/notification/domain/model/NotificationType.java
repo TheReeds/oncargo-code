@@ -8,5 +8,7 @@ public enum NotificationType {
     SMART_LOAD_SUGGESTED, SMART_LOAD_ACCEPTED,
     /** V13: subasta cerrada por tiempo (F07), solicitud cancelada (F16), envío cancelado (F06), oferta retirada (F08),
      *  decisión del operador sobre la verificación de la organización (RN01). */
-    AUCTION_CLOSED, REQUEST_CANCELLED, SHIPMENT_CANCELLED, BID_WITHDRAWN, ORGANIZATION_VERIFICATION
+    AUCTION_CLOSED, REQUEST_CANCELLED, SHIPMENT_CANCELLED, BID_WITHDRAWN, ORGANIZATION_VERIFICATION,
+    /** V16: un Lector pidió acceso; le llega a cada ADMIN de su organización. */
+    ACCESS_REQUESTED
 }

@@ -39,6 +39,7 @@ public class DirectContractUseCase {
     @Inject CreateShipmentUseCase shipments;
     @Inject PricingService pricing;
     @Inject SystemTx system;
+    @Inject RequestCodes codes;
 
     public Contract create(DirectContractCommand cmd) {
         PriceQuote quote = pricing.quote(cmd.originCity(), cmd.destinationCity(), cmd.weightKg(), cmd.cargoType());
@@ -49,7 +50,8 @@ public class DirectContractUseCase {
                             cmd.destinationAddress(), cmd.cargoType(), cmd.cargoDescription(), cmd.weightKg(), null,
                             cmd.pickupDate()),
                     new ShipmentRequest.Pricing(quote.distanceKm(), quote.suggestedPrice(), quote.priceFloor()),
-                    ShipmentRequest.Status.MATCHED, cmd.carrierOrgId(), now);
+                    ShipmentRequest.Status.MATCHED, cmd.carrierOrgId(), now, null, null, codes.next(),
+                    ShipmentRequest.Details.NONE);
             requests.save(r);
 
             Auction a = Auction.open(r.id(), now, now, 1);

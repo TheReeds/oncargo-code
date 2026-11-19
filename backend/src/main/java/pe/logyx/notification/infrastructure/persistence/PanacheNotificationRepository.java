@@ -7,6 +7,7 @@ import pe.logyx.shared.domain.PageRequest;
 import pe.logyx.shared.domain.Paged;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,39 +15,40 @@ import java.util.UUID;
 public class PanacheNotificationRepository implements NotificationRepository {
 
     @Override
-    public Optional<Notification> findOwned(UUID id, UUID orgId) {
-        return NotificationEntity.<NotificationEntity>find("id = ?1 and orgId = ?2", id, orgId)
+    public Optional<Notification> findOwned(UUID id, UUID profileId) {
+        return NotificationEntity.<NotificationEntity>find("id = ?1 and profileId = ?2", id, profileId)
                 .firstResultOptional().map(NotificationEntity::toDomain);
     }
 
     @Override
-    public Paged<Notification> listByOrg(UUID orgId, boolean unreadOnly, PageRequest page) {
-        String where = "orgId = ?1" + (unreadOnly ? " and readAt is null" : "");
-        var q = NotificationEntity.<NotificationEntity>find(where + " order by createdAt desc, id", orgId)
+    public Paged<Notification> listByProfile(UUID profileId, boolean unreadOnly, boolean mineOnly, PageRequest page) {
+        String where = "profileId = ?1" + (unreadOnly ? " and readAt is null" : "") + (mineOnly ? " and mine = true" : "");
+        var q = NotificationEntity.<NotificationEntity>find(where + " order by createdAt desc, id", profileId)
                 .page(page.page(), page.size());
         return new Paged<>(q.list().stream().map(NotificationEntity::toDomain).toList(), page,
-                NotificationEntity.count(where, orgId));
+                NotificationEntity.count(where, profileId));
     }
 
     @Override
-    public long countUnread(UUID orgId) {
-        return NotificationEntity.count("orgId = ?1 and readAt is null", orgId);
+    public long countUnread(UUID profileId) {
+        return NotificationEntity.count("profileId = ?1 and readAt is null", profileId);
     }
 
     @Override
-    public int markAllRead(UUID orgId, OffsetDateTime now) {
-        return NotificationEntity.update("readAt = ?1 where orgId = ?2 and readAt is null", now, orgId);
+    public boolean markRead(UUID id, UUID profileId, OffsetDateTime now) {
+        // Solo read_at: logyx_app tiene UPDATE únicamente sobre esa columna (V16).
+        return NotificationEntity.update("readAt = ?1 where id = ?2 and profileId = ?3 and readAt is null",
+                now, id, profileId) > 0;
     }
 
     @Override
-    public void save(Notification n) {
-        NotificationEntity e = NotificationEntity.findById(n.id());
-        if (e == null) {
-            e = new NotificationEntity();
-            e.apply(n);
-            e.persist();
-        } else {
-            e.apply(n);
-        }
+    public int markAllRead(UUID profileId, OffsetDateTime now) {
+        return NotificationEntity.update("readAt = ?1 where profileId = ?2 and readAt is null", now, profileId);
+    }
+
+    @Override
+    public void insert(Notification n) {
+        Objects.requireNonNull(n.profileId(), "Un aviso guardado siempre es de una persona (V16)");
+        NotificationEntity.of(n).persist();
     }
 }

@@ -2,18 +2,54 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import RequestForm from '@/features/requests/components/RequestForm';
+import { nextWeekSameDay } from '@/features/requests/dates';
+import type { RequestFormValues } from '@/features/requests/components/RequestForm';
 import { getCatalog } from '@/features/catalog/server';
+import { getRequest } from '@/features/requests/server';
+import { listPlaces } from '@/features/places/server';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { can } from '@/lib/permissions';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-const canOperate = can(Astro.locals.session, 'OPERATE');
+const session = Astro.locals.session!;
+const canOperate = can(session, 'OPERATE');
 const { cities, cargo } = await getCatalog();
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+
+// «Duplicar»: /pyme/solicitudes/nueva?from=<id> precarga todo salvo la fecha (mismo día de la semana, la semana siguiente).
+const fromId = Astro.url.searchParams.get('from');
+let initial: Partial<RequestFormValues> | undefined;
+let duplicatedFrom: { id: string; code?: string } | undefined;
+if (canOperate && fromId && /^[0-9a-f-]{36}$/i.test(fromId)) {
+  const src = await getRequest(session.token, fromId).catch(() => null);
+  if (src) {
+    duplicatedFrom = { id: src.id!, code: src.code };
+    initial = {
+      originCity: src.originCity ?? '', originAddress: src.originAddress ?? '', destinationCity: src.destinationCity ?? '', destinationAddress: src.destinationAddress ?? '',
+      cargoType: src.cargoType ?? 'GENERAL', cargoDescription: src.cargoDescription ?? '', weightKg: src.weightKg != null ? String(src.weightKg) : '', volumeM3: src.volumeM3 != null ? String(src.volumeM3) : '',
+      pickupDate: nextWeekSameDay(src.pickupDate, today),
+      customerReference: src.customerReference ?? '', declaredValue: src.declaredValue != null ? String(src.declaredValue) : '',
+      pickupContactName: src.pickupContactName ?? '', pickupContactPhone: src.pickupContactPhone ?? '', pickupWindowFrom: src.pickupWindowFrom ?? '', pickupWindowTo: src.pickupWindowTo ?? '', pickupInstructions: src.pickupInstructions ?? '',
+      deliveryContactName: src.deliveryContactName ?? '', deliveryContactPhone: src.deliveryContactPhone ?? '', deliveryWindowFrom: src.deliveryWindowFrom ?? '', deliveryWindowTo: src.deliveryWindowTo ?? '', deliveryInstructions: src.deliveryInstructions ?? '',
+    };
+  }
+}
+// Desde el cotizador de la landing: ?origen=&destino=&peso=&tipo= (códigos del catálogo) precargan ruta, peso y tipo.
+if (canOperate && !initial) {
+  const q = Astro.url.searchParams;
+  const city = (k: string) => (cities.some((c) => c.code === q.get(k)) ? q.get(k)! : '');
+  const origin = city('origen'), dest = city('destino');
+  const kg = Math.round(Number(q.get('peso')));
+  const type = cargo.some((c) => c.code === q.get('tipo')) ? q.get('tipo')! : '';
+  if (origin || dest || kg > 0 || type) {
+    initial = { originCity: origin, destinationCity: dest && dest !== origin ? dest : '', weightKg: kg > 0 && kg <= 40000 ? String(kg) : '', ...(type ? { cargoType: type } : {}) };
+  }
+}
+const places = canOperate ? await listPlaces(session.token).catch(() => []) : [];
 ---
 <AppShell title="Nueva solicitud" active="nueva">
-  <PageHeader title="Nueva solicitud" subtitle="Describe tu carga; los transportistas competirán por ella" />
+  <PageHeader title={duplicatedFrom ? 'Publicar otra igual' : 'Nueva solicitud'} subtitle={duplicatedFrom ? 'Los datos de tu solicitud anterior ya están cargados; revisa la fecha y publica' : 'Describe tu carga; los transportistas competirán por ella'} />
   {canOperate
-    ? <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} />
+    ? <RequestForm client:load cities={cities} cargoTypes={cargo} today={today} places={places} initial={initial} duplicatedFrom={duplicatedFrom} />
     : <div class="space-y-4"><ReadOnlyNotice client:load>No puedes publicar solicitudes.</ReadOnlyNotice><a href="/pyme/solicitudes" class={cn(buttonVariants({ variant: 'outline' }))}>Volver a mis solicitudes</a></div>}
 </AppShell>

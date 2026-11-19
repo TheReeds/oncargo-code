@@ -29,10 +29,20 @@ class RowLevelSecurityTest {
     @Inject
     AuthService auth;
 
+    /** Perfil (sub del JWT) de la sesión: lo fija {@code TenantSessionBinder} como {@code app.profile_id} (V16). */
+    private static String profileOf(Session s) {
+        String payload = s.token().split("\\.")[1];
+        String json = new String(java.util.Base64.getUrlDecoder().decode(payload), java.nio.charset.StandardCharsets.UTF_8);
+        var m = java.util.regex.Pattern.compile("\"sub\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+        if (!m.find()) throw new IllegalStateException("token sin sub");
+        return m.group(1);
+    }
+
     private long countAs(Session s, String orgType, String sql) {
         return QuarkusTransaction.requiringNew().call(() -> {
-            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true)")
-                    .setParameter(1, s.orgId()).setParameter(2, orgType).getSingleResult();
+            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true), "
+                            + "set_config('app.profile_id', ?3, true)")
+                    .setParameter(1, s.orgId()).setParameter(2, orgType).setParameter(3, profileOf(s)).getSingleResult();
             em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
             return ((Number) em.createNativeQuery(sql).getSingleResult()).longValue();
         });
@@ -41,8 +51,9 @@ class RowLevelSecurityTest {
     /** Ejecuta un INSERT/UPDATE como logyx_app con el contexto de {@code s}; devuelve filas afectadas. */
     private int executeAs(Session s, String orgType, String sql) {
         return QuarkusTransaction.requiringNew().call(() -> {
-            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true)")
-                    .setParameter(1, s.orgId()).setParameter(2, orgType).getSingleResult();
+            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', ?2, true), "
+                            + "set_config('app.profile_id', ?3, true)")
+                    .setParameter(1, s.orgId()).setParameter(2, orgType).setParameter(3, profileOf(s)).getSingleResult();
             em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
             return em.createNativeQuery(sql).executeUpdate();
         });
@@ -280,9 +291,66 @@ class RowLevelSecurityTest {
         assertEquals(0, executeAs(a.carrier(), "CARRIER", "UPDATE notifications SET read_at = now() WHERE org_id = '"
                 + a.pyme().orgId() + "'"));
         var ex3 = assertThrows(Exception.class, () -> executeAs(a.pyme(), "PYME",
-                "INSERT INTO notifications (org_id, type, title, body) VALUES ('" + a.pyme().orgId()
-                        + "','NEW_BID','x','y')"));
+                "INSERT INTO notifications (org_id, profile_id, type, title, body) VALUES ('" + a.pyme().orgId()
+                        + "','" + profileOf(a.pyme()) + "','NEW_BID','x','y')"));
         assertTrue(rootMessage(ex3).contains("permission denied"), rootMessage(ex3));
+    }
+
+    @Inject
+    pe.logyx.identity.application.AuthService accounts;
+
+    /** V16: avisos y preferencias por persona. Un compañero de la misma organización no ve ni marca los avisos de otro. */
+    @Test
+    void avisosYPreferenciasSonDeCadaPersonaDentroDeLaOrganizacion() {
+        Flows.Bidding b = Flows.bidding("RLS Persona");
+        String email = "rls.ops" + System.nanoTime() + "@test.pe";
+        accounts.provisionUser(java.util.UUID.fromString(b.pyme().orgId()), email, "Miembro1234", "RLS OPS",
+                pe.logyx.identity.domain.model.Profile.Role.OPS);
+        Session colleague = login(email, "Miembro1234");
+        // Un aviso nuevo para la organización: una copia por persona
+        Session carrier2 = register("CARRIER", "RLS Persona C2");
+        bid(carrier2, b.requestId(), vehicle(carrier2, plate(), 8000), 350);
+
+        String mine = "SELECT count(*) FROM notifications WHERE profile_id = '" + profileOf(b.pyme()) + "'";
+        String theirs = "SELECT count(*) FROM notifications WHERE profile_id = '" + profileOf(colleague) + "'";
+        String org = "SELECT count(*) FROM notifications WHERE org_id = '" + b.pyme().orgId() + "'";
+        long own = countAs(b.pyme(), "PYME", mine);
+        assertTrue(own >= 2, "el admin tiene sus avisos");
+        assertEquals(own, countAs(b.pyme(), "PYME", org), "sin filtrar por persona, RLS solo devuelve los propios");
+        assertEquals(0, countAs(b.pyme(), "PYME", theirs), "no ve las copias de su compañero");
+        assertEquals(1, countAs(colleague, "PYME", theirs));
+        assertEquals(own + 1, countAsOwner(org));
+        // Marcar como leído el aviso de un compañero: 0 filas; el propio sí
+        assertEquals(0, executeAs(b.pyme(), "PYME", "UPDATE notifications SET read_at = now() WHERE profile_id = '"
+                + profileOf(colleague) + "'"));
+        assertEquals(1, countAsOwner(theirs + " AND read_at IS NULL"));
+        assertEquals(1, executeAs(colleague, "PYME", "UPDATE notifications SET read_at = now() WHERE profile_id = '"
+                + profileOf(colleague) + "'"));
+        // Solo read_at es editable (privilegio por columna)
+        var ex = assertThrows(Exception.class, () -> executeAs(colleague, "PYME",
+                "UPDATE notifications SET title = 'x', profile_id = '" + profileOf(b.pyme()) + "' WHERE profile_id = '"
+                        + profileOf(colleague) + "'"));
+        assertTrue(rootMessage(ex).contains("permission denied"), rootMessage(ex));
+        // Sin perfil en la sesión (fail-closed): nada
+        assertEquals(0L, QuarkusTransaction.requiringNew().call(() -> {
+            em.createNativeQuery("SELECT set_config('app.org_id', ?1, true), set_config('app.org_type', 'PYME', true)")
+                    .setParameter(1, b.pyme().orgId()).getSingleResult();
+            em.createNativeQuery("SET LOCAL ROLE logyx_app").executeUpdate();
+            return ((Number) em.createNativeQuery(org).getSingleResult()).longValue();
+        }));
+
+        // Preferencias: cada persona las suyas; no se escriben a nombre de otro
+        assertEquals(1, executeAs(colleague, "PYME", "INSERT INTO notification_preferences (profile_id, org_id, category, "
+                + "in_app, email) VALUES ('" + profileOf(colleague) + "','" + b.pyme().orgId() + "','BIDS',false,false)"));
+        String prefs = "SELECT count(*) FROM notification_preferences WHERE org_id = '" + b.pyme().orgId() + "'";
+        assertEquals(1, countAs(colleague, "PYME", prefs));
+        assertEquals(0, countAs(b.pyme(), "PYME", prefs), "el admin no lee las preferencias de su compañero");
+        var ex2 = assertThrows(Exception.class, () -> executeAs(b.pyme(), "PYME", "INSERT INTO notification_preferences "
+                + "(profile_id, org_id, category, in_app, email) VALUES ('" + profileOf(colleague) + "','"
+                + b.pyme().orgId() + "','TRIPS',false,false)"));
+        assertTrue(rootMessage(ex2).contains("row-level security"), rootMessage(ex2));
+        assertEquals(0, executeAs(b.pyme(), "PYME", "UPDATE notification_preferences SET in_app = true WHERE org_id = '"
+                + b.pyme().orgId() + "'"));
     }
 
     @Test
@@ -407,5 +475,55 @@ class RowLevelSecurityTest {
         assertEquals(0, executeAs(a, "PYME", "UPDATE profiles SET role = 'VIEWER', session_version = session_version + 1 "
                 + "WHERE organization_id = '" + b.orgId() + "'"));
         assertEquals(0L, countAs(a, "PYME", "SELECT count(*) FROM profiles WHERE organization_id = '" + b.orgId() + "'"));
+    }
+
+    // ----- V18: parámetros de sistema, historial y aceptación de términos
+
+    @Test
+    void soloElOperadorEscribeParametrosDeSistemaYElHistorialSoloSeInserta() {
+        Session pyme = register("PYME", "RLS Params Pyme");
+        Session carrier = register("CARRIER", "RLS Params Carrier");
+        Session op = operator();
+        String insert = "INSERT INTO system_parameters (param_key, param_value, version, reason) "
+                + "VALUES ('commission_rate', '0.09', 1, 'rls')";
+        // Cualquier organización autenticada lee (sin fila no hay nada que ver), pero no escribe
+        assertEquals(0L, countAs(pyme, "PYME", "SELECT count(*) FROM system_parameters WHERE param_key = 'zzz'"));
+        assertThrows(Exception.class, () -> executeAs(pyme, "PYME", insert));
+        assertThrows(Exception.class, () -> executeAs(carrier, "CARRIER", insert));
+        assertEquals(0, executeAs(pyme, "PYME", "UPDATE system_parameters SET param_value = '0'"));
+        assertThrows(Exception.class, () -> executeAs(pyme, "PYME", "DELETE FROM system_parameters"));
+        // El historial: solo lectura e inserción del operador, y a su propio nombre
+        assertEquals(0L, countAs(pyme, "PYME", "SELECT count(*) FROM system_parameter_history"));
+        assertThrows(Exception.class, () -> executeAs(pyme, "PYME", "INSERT INTO system_parameter_history "
+                + "(param_key, version, new_value, reason, changed_by_org) VALUES ('commission_rate', 1, '0.09', 'x', '"
+                + pyme.orgId() + "')"));
+        assertThrows(Exception.class, () -> executeAs(op, "OPERATOR", "INSERT INTO system_parameter_history "
+                + "(param_key, version, new_value, reason, changed_by_org) VALUES ('commission_rate', 1, '0.09', 'x', '"
+                + pyme.orgId() + "')"));   // changed_by_org distinto de la del operador
+        assertEquals(1, executeAs(op, "OPERATOR", "INSERT INTO system_parameter_history "
+                + "(param_key, version, new_value, reason, changed_by_org) VALUES ('rls_test_key', 1, '1', 'x', '"
+                + op.orgId() + "')"));
+        assertThrows(Exception.class, () -> executeAs(op, "OPERATOR", "UPDATE system_parameter_history SET reason = 'y'"));
+        assertThrows(Exception.class, () -> executeAs(op, "OPERATOR", "DELETE FROM system_parameter_history"));
+        assertEquals(1L, countAs(op, "OPERATOR", "SELECT count(*) FROM system_parameter_history WHERE param_key = 'rls_test_key'"));
+        assertEquals(0L, countAs(pyme, "PYME", "SELECT count(*) FROM system_parameter_history WHERE param_key = 'rls_test_key'"));
+        systemTx.run(() -> em.createNativeQuery("DELETE FROM system_parameter_history WHERE param_key = 'rls_test_key'").executeUpdate());
+    }
+
+    @Test
+    void cadaOrganizacionVeSusAceptacionesDeTerminosYNadieLasEscribe() {
+        Session a = register("PYME", "RLS Terminos A");
+        Session b = register("PYME", "RLS Terminos B");
+        Session op = operator();
+        assertEquals(1L, countAs(a, "PYME", "SELECT count(*) FROM terms_acceptances"));
+        assertEquals(0L, countAs(a, "PYME", "SELECT count(*) FROM terms_acceptances WHERE organization_id = '" + b.orgId() + "'"));
+        assertTrue(countAs(op, "OPERATOR", "SELECT count(*) FROM terms_acceptances") >= 2);
+        // Es evidencia: ni insertar (el registro corre sin usuario, por SystemTx), ni cambiar, ni borrar
+        assertThrows(Exception.class, () -> executeAs(a, "PYME", "INSERT INTO terms_acceptances (id, profile_id, organization_id, "
+                + "terms_version) VALUES (gen_random_uuid(), (SELECT id FROM profiles WHERE organization_id = '" + a.orgId()
+                + "' LIMIT 1), '" + a.orgId() + "', 'falsa')"));
+        assertThrows(Exception.class, () -> executeAs(a, "PYME", "UPDATE terms_acceptances SET terms_version = 'x'"));
+        assertThrows(Exception.class, () -> executeAs(a, "PYME", "DELETE FROM terms_acceptances"));
+        assertThrows(Exception.class, () -> executeAs(op, "OPERATOR", "DELETE FROM terms_acceptances"));
     }
 }

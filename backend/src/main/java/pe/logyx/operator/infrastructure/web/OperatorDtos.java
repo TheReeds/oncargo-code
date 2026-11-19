@@ -23,6 +23,11 @@ import pe.logyx.operator.application.AssignmentCandidate;
 import pe.logyx.operator.application.AuditRecord;
 import pe.logyx.operator.application.OperatorAlerts;
 import pe.logyx.operator.application.OperatorMetrics;
+import pe.logyx.marketplace.application.BidSummary;
+import pe.logyx.negotiation.application.MessageSummary;
+import pe.logyx.negotiation.application.ThreadSummary;
+import pe.logyx.shared.config.ParameterChange;
+import pe.logyx.shared.config.ParameterValue;
 import pe.logyx.shipment.application.ShipmentSummary;
 import pe.logyx.shipment.domain.model.Shipment;
 
@@ -166,11 +171,20 @@ public final class OperatorDtos {
                                       /** Precio acordado total de los envíos no cancelados (S/). */
                                       BigDecimal gmv,
                                       /** Precio acordado de los envíos ya entregados (S/). */
-                                      BigDecimal gmvDelivered) {
+                                      BigDecimal gmvDelivered,
+                                      /** SLA de asignación manual vigente, en horas (RN10; parámetro de sistema). */
+                                      long assignmentSlaHours,
+                                      /** Una incidencia activa pasa a ámbar desde estas horas (RN11; parámetro de sistema). */
+                                      long incidentWarnHours,
+                                      /** ...y a rojo (SLA incumplido) desde estas horas. */
+                                      long incidentBreachHours,
+                                      /** Comisión vigente al transportista (fracción: 0.08 = 8 %). */
+                                      BigDecimal commissionRate) {
         static OperatorMetricsView of(OperatorMetrics m) {
             return new OperatorMetricsView(m.openRequests(), m.requestsAtRisk(), m.matchedRequests(),
                     m.cancelledRequests(), m.shipmentsPending(), m.shipmentsInTransit(), m.shipmentsDelivered(),
-                    m.activeIncidents(), m.pymes(), m.carriers(), m.gmv(), m.gmvDelivered());
+                    m.activeIncidents(), m.pymes(), m.carriers(), m.gmv(), m.gmvDelivered(),
+                    m.assignmentSlaHours(), m.incidentWarnHours(), m.incidentBreachHours(), m.commissionRate());
         }
     }
 
@@ -192,6 +206,81 @@ public final class OperatorDtos {
             return new ManualAssignmentResult(o.shipmentId(), b.id(), b.requestId(), b.carrierOrgId(),
                     o.acceptedBid().carrierName(), b.amount(), b.vehiclePlate(), b.status(), b.assignedByOperator(),
                     o.rejectedBidIds());
+        }
+    }
+
+    // ----- Parámetros de sistema (V18)
+
+    /**
+     * Parámetro efectivo. {@code kind}: {@code RATE} (fracción, p. ej. 0.08 = 8 %) u {@code HOURS} (horas enteras).
+     * {@code version} 0 = rige el valor por omisión de la configuración (nadie lo cambió); {@code reason},
+     * {@code updatedBy} y {@code updatedAt} son nulos en ese caso.
+     */
+    public record ParameterRow(String key, String label, String description, String kind, String value,
+                               String defaultValue, String min, String max, int version, boolean overridden,
+                               String reason, UUID updatedBy, OffsetDateTime updatedAt) {
+        static ParameterRow of(ParameterValue v) {
+            var k = v.key();
+            return new ParameterRow(k.key(), k.label(), k.description(), k.kind().name(), v.value(), v.defaultValue(),
+                    k.min().toPlainString(), k.max().toPlainString(), v.version(), v.overridden(), v.reason(),
+                    v.updatedBy(), v.updatedAt());
+        }
+    }
+
+    /**
+     * Cambio de un parámetro. {@code value} en el formato del parámetro (fracción para RATE, horas para HOURS);
+     * {@code reason} obligatorio (3–300); {@code expectedVersion} opcional: la versión que el operador estaba viendo
+     * (0 = valor por omisión) para no pisar el cambio de otro (409 {@code LOGYX-PAR-004}).
+     */
+    public record UpdateParameter(@NotBlank(message = "Indica el valor") @Size(max = 20) String value,
+                                  @NotBlank(message = "Indica el motivo del cambio") @Size(min = 3, max = 300) String reason,
+                                  @jakarta.validation.constraints.Min(0) Integer expectedVersion) {}
+
+    /** Fila del historial de un parámetro (la más reciente primero). */
+    public record ParameterChangeRow(long id, String key, String label, int version, String previousValue,
+                                     String newValue, String reason, UUID changedBy, String changedByName,
+                                     String changedByEmail, OffsetDateTime changedAt) {
+        static ParameterChangeRow of(ParameterChange c) {
+            return new ParameterChangeRow(c.id(), c.key() == null ? null : c.key().key(),
+                    c.key() == null ? null : c.key().label(), c.version(), c.previousValue(), c.newValue(), c.reason(),
+                    c.changedBy(), c.changedByName(), c.changedByEmail(), c.changedAt());
+        }
+    }
+
+    // ----- Ofertas y chat en solo lectura
+
+    public record OperatorBidRow(UUID id, UUID requestId, UUID carrierOrgId, String carrierName,
+                                 boolean carrierRucVerified, BigDecimal carrierTrustScore, BigDecimal amount,
+                                 String notes, Bid.Status status, Vehicle.Type vehicleType, String vehiclePlate,
+                                 boolean assignedByOperator, OffsetDateTime createdAt) {
+        static OperatorBidRow of(BidSummary s) {
+            Bid b = s.bid();
+            return new OperatorBidRow(b.id(), b.requestId(), b.carrierOrgId(), s.carrierName(), s.carrierRucVerified(),
+                    s.carrierTrustScore(), b.amount(), b.notes(), b.status(), b.vehicleType(), b.vehiclePlate(),
+                    b.assignedByOperator(), b.createdAt());
+        }
+    }
+
+    /** Hilo (solicitud, transportista); {@code bid*} son nulos si el transportista solo escribió. */
+    public record OperatorThreadRow(UUID requestId, UUID carrierOrgId, String carrierName, UUID bidId,
+                                    BigDecimal bidAmount, Bid.Status bidStatus, long messageCount, String lastMessage,
+                                    OffsetDateTime lastMessageAt) {
+        static OperatorThreadRow of(ThreadSummary t) {
+            Bid b = t.bid();
+            var last = t.lastMessage();
+            return new OperatorThreadRow(t.requestId(), t.carrierOrgId(), t.carrierName(), b == null ? null : b.id(),
+                    b == null ? null : b.amount(), b == null ? null : b.status(), t.messageCount(),
+                    last == null ? null : last.body(), last == null ? null : last.createdAt());
+        }
+    }
+
+    /** Mensaje de un hilo; {@code system}: aviso automático (contra-ofertas). {@code senderOrgId} dice de quién es. */
+    public record OperatorMessageRow(UUID id, UUID senderOrgId, String senderName, String body,
+                                     BigDecimal proposedPrice, boolean system, OffsetDateTime createdAt) {
+        static OperatorMessageRow of(MessageSummary s) {
+            var m = s.message();
+            return new OperatorMessageRow(m.id(), m.senderOrgId(), s.senderName(), m.body(), m.proposedPrice(),
+                    m.system(), m.createdAt());
         }
     }
 }

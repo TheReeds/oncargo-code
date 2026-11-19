@@ -5,8 +5,8 @@ const sections = [
   { id: 'responsable', h: 'Responsable del tratamiento', p: 'OnCargo (nombre comercial de la plataforma conocida antes como LOGYX) conecta a empresas (PYMEs) con transportistas del corredor Lima–Sierra Sur. El responsable del tratamiento del banco de datos personales que se genera a partir de tu registro y uso de la plataforma sigue siendo el mismo de siempre: solo cambió el nombre comercial.' },
   { id: 'datos', h: 'Datos que recopilamos', p: 'Datos de la empresa (razón social, RUC, ciudad, teléfono), datos del usuario (nombre, correo electrónico), datos de conductores y vehículos registrados por los transportistas (nombre, licencia, placa) y datos operativos de cada envío (rutas, paradas, horas).' },
   { id: 'finalidades', h: 'Finalidades', p: 'Crear y gestionar tu cuenta, publicar solicitudes y ofertas, generar y dar seguimiento a los envíos, verificar la identidad de las empresas mediante su RUC, y mejorar la seguridad y calidad del servicio.' },
-  { id: 'comparticion', h: 'Compartición de datos', p: 'Cuando una oferta es aceptada, la PYME y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos tus datos personales a terceros.' },
-  { id: 'derechos', h: 'Tus derechos (ARCO)', p: 'Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a privacidad@logyx.pe. Atenderemos tu solicitud en los plazos que establece la Ley 29733 y su reglamento.' },
+  { id: 'comparticion', h: 'Compartición de datos', p: 'Cuando una oferta es aceptada, la PYME y el transportista involucrados acceden a los datos necesarios para ejecutar el envío. No vendemos tus datos personales a terceros. Para resolver una disputa o una incidencia, el equipo de OnCargo puede revisar las ofertas y las conversaciones de una solicitud; cada consulta queda registrada en una auditoría interna.' },
+  { id: 'derechos', h: 'Tus derechos (ARCO)', p: 'Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a privacidad@oncargo.tech. Atenderemos tu solicitud en los plazos que establece la Ley 29733 y su reglamento.' },
   { id: 'seguridad', h: 'Seguridad y conservación', p: 'Aplicamos medidas técnicas y organizativas para proteger tu información, incluido el aislamiento de datos por organización. Conservamos los datos mientras mantengas tu cuenta y durante los plazos legales aplicables.' },
 ];
 const summary = [
@@ -63,7 +63,7 @@ const summary = [
           <Mail size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
           <div class="text-sm">
             <p class="font-semibold text-ink-900">¿Quieres ejercer tus derechos?</p>
-            <p class="mt-1 text-ink-700">Escribe a <a href="mailto:privacidad@logyx.pe" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@logyx.pe</a> indicando tu nombre, tu RUC y qué derecho quieres ejercer.</p>
+            <p class="mt-1 text-ink-700">Escribe a <a href="mailto:privacidad@oncargo.tech" class="font-medium text-petrol-700 underline underline-offset-2">privacidad@oncargo.tech</a> indicando tu nombre, tu RUC y qué derecho quieres ejercer.</p>
           </div>
         </div>
         <p class="mt-6 rounded-input border border-amber-500/40 bg-amber-50 p-3 text-sm leading-6 text-amber-700">Este texto es un borrador para el MVP y debe ser revisado por asesoría legal antes de su publicación.</p>
@@ -74,7 +74,7 @@ const summary = [
           <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><Scale size={18} aria-hidden="true" /></span>
           <h2 id="arco-t" class="mt-3 text-[15px] font-semibold text-ink-900">Derechos ARCO</h2>
           <p class="mt-1 text-sm text-ink-500">Acceso, rectificación, cancelación y oposición.</p>
-          <a href="mailto:privacidad@logyx.pe" class="mt-3 inline-flex items-center gap-1.5 break-all text-sm font-medium text-petrol-700 underline underline-offset-2"><Mail size={14} aria-hidden="true" />privacidad@logyx.pe</a>
+          <a href="mailto:privacidad@oncargo.tech" class="mt-3 inline-flex items-center gap-1.5 break-all text-sm font-medium text-petrol-700 underline underline-offset-2"><Mail size={14} aria-hidden="true" />privacidad@oncargo.tech</a>
           <p class="mt-2 text-xs text-ink-500">Indica tu nombre, tu RUC y el derecho que quieres ejercer.</p>
         </section>
         <section class="mk-dark rounded-card p-5" aria-labelledby="una-frase-t">

@@ -1,0 +1,88 @@
+---
+import Public from '@/layouts/Public.astro';
+import { ArrowRight, Building2, Calculator, Receipt, Truck } from '@lucide/astro';
+import { getExampleQuote, getPublicCommission } from '@/features/legal/server';
+import { formatMoney } from '@/lib/format';
+import { SUPPORT_EMAIL } from '@/lib/contact';
+import { buttonVariants } from '@/components/ui/button';
+
+const [commission, example] = await Promise.all([getPublicCommission(), getExampleQuote()]);
+const rate = commission?.commissionRate ?? null;
+const pct = rate == null ? null : `${(Math.round(rate * 10000) / 100).toLocaleString('es-PE', { maximumFractionDigits: 2 })} %`;
+const vatPct = `${Math.round((commission?.vatRate ?? 0.18) * 100)} %`;
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const ex = example && rate != null ? (() => {
+  const total = example.suggestedPrice!;
+  const fee = r2(total * rate);
+  return { total, net: example.suggestedNetOfVat!, vat: example.suggestedVat!, fee, carrierNet: r2(total - fee), km: example.distanceKm! };
+})() : null;
+
+const cards = [
+  { icon: Building2, t: 'Para tu empresa (PYME)', big: 'Sin costo', d: 'Publicar tu carga y comparar ofertas no tiene costo. Pagas el precio de la oferta que aceptes, sin recargos de OnCargo.' },
+  { icon: Truck, t: 'Para el transportista', big: pct ? `${pct} del precio` : 'Comisión', d: 'OnCargo retiene una comisión sobre el precio adjudicado. Antes de enviar tu oferta ves cuánto cobras neto.' },
+  { icon: Receipt, t: 'IGV', big: `${vatPct} incluido`, d: 'El precio adjudicado es final e incluye el IGV; lo ves desglosado en tu solicitud y en tu envío.' },
+];
+const steps = [
+  'Publicas tu carga y la plataforma calcula un precio sugerido con km por carretera.',
+  'Los transportistas ofertan; ninguna oferta baja del 75 % del precio sugerido.',
+  'Aceptas una oferta: ese es el precio final, con IGV incluido.',
+  'La comisión se calcula con la tasa vigente y se guarda en tu envío: un cambio futuro no lo altera.',
+];
+---
+<Public title="Precios y comisión" description="Cuánto cuesta usar OnCargo: publicar es gratis para las empresas, el transportista paga una comisión sobre el precio adjudicado y el precio incluye IGV.">
+  <header class="mk-dark relative isolate overflow-hidden">
+    <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
+    <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">
+      <p class="mk-eyebrow mk-eyebrow--inv">Precios y comisión</p>
+      <h1 class="mk-display mt-4 max-w-[18ch] text-white">Precios claros, antes de registrarte</h1>
+      <p class="mk-lead mt-5 text-base text-white/85 sm:text-lg">Quién paga qué, cuánto es el IGV y cómo se calcula tu precio. Sin letra chica.</p>
+    </div>
+  </header>
+
+  <div class="mx-auto w-full max-w-[1280px] px-4 lg:px-10">
+    <ul class="relative z-10 -mt-20 grid gap-3 sm:-mt-24 sm:grid-cols-3 sm:gap-4" aria-label="Resumen de precios">
+      {cards.map((c) => (
+        <li class="mk-card rounded-card border border-steel-200 bg-surface p-5 shadow-lg shadow-chrome/10">
+          <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><c.icon size={18} aria-hidden="true" /></span>
+          <p class="mt-3 text-sm font-medium text-ink-500">{c.t}</p>
+          <p class="mk-num mt-1 text-2xl font-semibold text-ink-900" data-testid="price-card-title">{c.big}</p>
+          <p class="mt-2 text-sm text-ink-700">{c.d}</p>
+        </li>
+      ))}
+    </ul>
+
+    <div class="grid gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+      <section aria-labelledby="como-t">
+        <h2 id="como-t" class="mk-h2 text-ink-900">Cómo se calcula tu precio</h2>
+        <ol class="mt-6 space-y-4">
+          {steps.map((s, i) => (
+            <li class="flex gap-3 text-[15px] leading-7 text-ink-700"><span class="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-petrol-50 font-mono text-xs font-semibold text-petrol-700" aria-hidden="true">{i + 1}</span><span>{s}</span></li>
+          ))}
+        </ol>
+        <p class="mt-6 text-sm text-ink-500">¿Cómo se paga? Hoy el pago se coordina entre la empresa y el transportista con la factura correspondiente; OnCargo todavía no procesa pagos dentro de la plataforma.</p>
+      </section>
+
+      <section aria-labelledby="ejemplo-t" class="rounded-card border border-steel-200 bg-surface p-5 sm:p-6">
+        <div class="flex items-center gap-2"><Calculator size={18} class="text-petrol-700" aria-hidden="true" /><h2 id="ejemplo-t" class="text-lg font-semibold text-ink-900">Un ejemplo con números reales</h2></div>
+        {ex ? (
+          <>
+            <p class="mt-1 text-sm text-ink-500">Lima → Juliaca · <span class="font-mono">{Math.round(ex.km).toLocaleString('en-US')} km</span> · 3 t de carga general, adjudicada al precio sugerido.</p>
+            <dl class="mt-4 divide-y divide-steel-200 rounded-input border border-steel-200 px-3.5 text-sm" data-testid="price-example">
+              <div class="flex items-center justify-between py-2"><dt class="font-semibold text-ink-900">Precio adjudicado <span class="font-normal text-ink-500">(lo que paga la empresa)</span></dt><dd class="money text-lg">{formatMoney(ex.total)}</dd></div>
+              <div class="flex items-center justify-between py-1.5"><dt class="text-ink-700">Valor de venta</dt><dd class="mk-num text-ink-900">{formatMoney(ex.net)}</dd></div>
+              <div class="flex items-center justify-between py-1.5"><dt class="text-ink-700">IGV ({vatPct})</dt><dd class="mk-num text-ink-900">{formatMoney(ex.vat)}</dd></div>
+              <div class="flex items-center justify-between py-1.5"><dt class="text-ink-700">Comisión de OnCargo al transportista ({pct})</dt><dd class="mk-num text-ink-900">− {formatMoney(ex.fee)}</dd></div>
+              <div class="flex items-center justify-between py-2"><dt class="font-semibold text-ink-900">El transportista cobra neto</dt><dd class="money text-lg" data-testid="price-example-net">{formatMoney(ex.carrierNet)}</dd></div>
+            </dl>
+            <p class="mt-3 text-xs text-ink-500">Ejemplo calculado con la cotización de la plataforma; el precio real depende de la subasta.</p>
+          </>
+        ) : (
+          <p class="mt-3 text-sm text-ink-700">No pudimos cargar el ejemplo ahora. Prueba el cotizador del corredor para ver el precio de tu ruta.</p>
+        )}
+        <a href="/#corredor" class={buttonVariants({ variant: 'outline' }) + ' mt-5'}>Cotizar mi ruta <ArrowRight size={16} aria-hidden="true" /></a>
+      </section>
+    </div>
+
+    <p class="pb-16 text-sm text-ink-500">¿Dudas sobre precios? Escribe a <a href={`mailto:${SUPPORT_EMAIL}`} class="font-medium text-petrol-700 underline underline-offset-2">{SUPPORT_EMAIL}</a>. Más detalle en los <a href="/terminos" class="font-medium text-petrol-700 underline underline-offset-2">términos y condiciones</a>.</p>
+  </div>
+</Public>

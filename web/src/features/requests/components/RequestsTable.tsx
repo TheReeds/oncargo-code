@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Search, SearchX, Gavel, Eye, Plus, MoreHorizontal, Ban, RotateCcw, Repeat2 } from 'lucide-react';
+import { Search, SearchX, Gavel, Eye, Plus, MoreHorizontal, Ban, RotateCcw, Repeat2, Copy } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
-import { DateRangePicker, type DateRangeValue } from '@/components/ui/date-picker';
+import { DateRangePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
@@ -15,6 +16,7 @@ import { StatusPill } from '@/components/domain/StatusPill';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { Countdown } from '@/components/domain/Countdown';
 import { Button } from '@/components/ui/button';
+import { ExportButton } from '@/components/ui/export-button';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatKm, formatMoney, formatTons } from '@/lib/format';
 import type { RequestView } from '@/lib/api/server';
 import { CancelRequestDialog } from './CancelRequestButton';
@@ -22,74 +24,62 @@ import { RescheduleDialog } from './RecoveryDialogs';
 import { useCan } from '@/lib/use-can';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 
-const PAGE_SIZE = 10;
-type SortKey = 'createdAt' | 'pickupDate' | 'bids' | 'price';
-type Sort = { key: SortKey; dir: 'asc' | 'desc' };
+export const PAGE_SIZE = 20;
+export type RequestFilters = { status: string; origin: string; dest: string; from: string; to: string; q: string; sort: string };
+export type RequestCounts = { all?: number; published?: number; matched?: number; cancelled?: number; withBids?: number };
 const SORT_OPTIONS = [
-  { value: 'createdAt:desc', label: 'Más recientes' },
-  { value: 'pickupDate:asc', label: 'Recojo más próximo' },
-  { value: 'bids:desc', label: 'Más ofertas' },
-  { value: 'price:desc', label: 'Mayor precio sugerido' },
-  { value: 'price:asc', label: 'Menor precio sugerido' },
+  { value: 'recent', label: 'Más recientes' },
+  { value: 'pickup', label: 'Recojo más próximo' },
+  { value: 'bids', label: 'Más ofertas' },
+  { value: 'price_desc', label: 'Mayor precio sugerido' },
+  { value: 'price_asc', label: 'Menor precio sugerido' },
 ];
 const bids = (r: RequestView) => (r.status === 'PUBLISHED' ? (r.auction?.bidCount ?? 0) : 0);
-const VALUE: Record<SortKey, (r: RequestView) => number | string> = {
-  createdAt: (r) => r.createdAt ?? '',
-  pickupDate: (r) => r.pickupDate ?? '',
-  bids,
-  price: (r) => r.suggestedPrice ?? 0,
-};
 
-export default function RequestsTable({ requests }: { requests: RequestView[] }) {
+/** Parámetros de URL de la lista (también los usa la exportación CSV, con los nombres de la API). */
+function toQuery(f: RequestFilters, page = 1) {
+  const q = new URLSearchParams();
+  if (f.status) q.set('estado', f.status);
+  if (f.origin) q.set('origen', f.origin);
+  if (f.dest) q.set('destino', f.dest);
+  if (f.from) { q.set('desde', f.from); if (f.to) q.set('hasta', f.to); }
+  if (f.q) q.set('q', f.q);
+  if (f.sort && f.sort !== 'recent') q.set('orden', f.sort);
+  if (page > 1) q.set('pagina', String(page));
+  return q;
+}
+
+/**
+ * «Mis solicitudes»: filtros, orden y paginación en el SERVIDOR (`GET /shipment-requests/mine`), con los filtros en la
+ * URL (se pueden compartir y sobreviven al recargar). «Exportar CSV» baja exactamente lo que se está viendo.
+ */
+export default function RequestsTable({ rows, cities, filters, page, size, total, counts, anyRequests }: {
+  rows: RequestView[]; cities: { code?: string; name?: string }[]; filters: RequestFilters; page: number; size: number; total: number; counts?: RequestCounts;
+  /** false = la organización aún no tiene ninguna solicitud (estado vacío de bienvenida). */
+  anyRequests: boolean;
+}) {
   const canOperate = useCan('OPERATE');
-  const [status, setStatus] = useState('');
-  const [city, setCity] = useState('');
-  const [q, setQ] = useState('');
-  const [range, setRange] = useState<DateRangeValue>({ from: '', to: '' });
-  const [sort, setSort] = useState<Sort>({ key: 'createdAt', dir: 'desc' });
-  const [page, setPage] = useState(1);
+  const [f, setF] = useState(filters);
+  const [navigating, setNavigating] = useState(false);
+  const cityOptions = useMemo(() => cities.map((c) => ({ value: c.code!, label: c.name! })), [cities]);
+  const filtered = !!(f.status || f.origin || f.dest || f.from || f.q);
 
-  const cityOptions = useMemo(() => {
-    const codes = new Set<string>();
-    requests.forEach((r) => { if (r.originCity) codes.add(r.originCity); if (r.destinationCity) codes.add(r.destinationCity); });
-    return [...codes].map((c) => ({ value: c, label: CITY_LABELS[c] ?? c })).sort((a, b) => a.label.localeCompare(b.label, 'es'));
-  }, [requests]);
-
-  const counts = useMemo(() => {
-    const c = { '': requests.length, PUBLISHED: 0, MATCHED: 0, CANCELLED: 0 } as Record<string, number>;
-    requests.forEach((r) => { if (r.status && r.status in c) c[r.status]++; });
-    return c;
-  }, [requests]);
-  const toReview = useMemo(() => requests.filter((r) => bids(r) > 0).length, [requests]);
-
-  const rows = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    const get = VALUE[sort.key];
-    const sign = sort.dir === 'asc' ? 1 : -1;
-    return requests
-      .filter((r) => !status || (status === 'REVIEW' ? bids(r) > 0 : r.status === status))
-      .filter((r) => !city || r.originCity === city || r.destinationCity === city)
-      .filter((r) => !range.from || ((r.pickupDate ?? '') >= range.from && (r.pickupDate ?? '') <= (range.to || range.from)))
-      .filter((r) => !term || [CITY_LABELS[r.originCity!], CITY_LABELS[r.destinationCity!], r.cargoDescription].join(' ').toLowerCase().includes(term))
-      .sort((a, b) => {
-        const x = get(a), y = get(b);
-        return (x < y ? -1 : x > y ? 1 : 0) * sign || (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
-      });
-  }, [requests, status, city, q, range, sort]);
-
-  const filtered = !!(status || city || q || range.from);
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const current = Math.min(page, pageCount);
-  const visible = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
-  const reset = () => { setStatus(''); setCity(''); setQ(''); setRange({ from: '', to: '' }); setPage(1); };
-  const change = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(1); };
-  const toggle = (key: SortKey, first: 'asc' | 'desc' = 'asc') => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 'asc' ? 'desc' : 'asc') : first }));
-  const dirOf = (key: SortKey) => (sort.key === key ? sort.dir : null);
+  function go(next: RequestFilters, p = 1) {
+    setF(next);
+    setNavigating(true);
+    const qs = toQuery(next, p).toString();
+    window.location.href = window.location.pathname + (qs ? `?${qs}` : '');
+  }
+  const set = (patch: Partial<RequestFilters>) => go({ ...f, ...patch });
+  const reset = () => go({ status: '', origin: '', dest: '', from: '', to: '', q: '', sort: f.sort });
+  const exportQs = toQuery(f).toString();
+  const exportHref = `/exportar/solicitudes${exportQs ? `?${exportQs}` : ''}`;
+  const [qText, setQText] = useState(filters.q);
 
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [recover, setRecover] = useState<{ mode: 'reopen' | 'republish'; r: RequestView } | null>(null);
 
-  if (requests.length === 0)
+  if (!anyRequests)
     return (
       <Card>
         <EmptyState title="Aún no tienes solicitudes" description="Publica tu primera carga y recibe ofertas de transportistas en minutos." action={canOperate ? <Button asChild><a href="/pyme/solicitudes/nueva"><Plus />Publicar solicitud</a></Button> : undefined} />
@@ -97,46 +87,46 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
     );
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-3" aria-busy={navigating || undefined}>
       <ReadOnlyNotice>No puedes publicar ni cancelar solicitudes.</ReadOnlyNotice>
       <QuickFilters
         label="Estado de la solicitud"
-        value={status}
-        onValueChange={change(setStatus)}
+        value={f.status}
+        onValueChange={(v) => set({ status: v })}
         options={[
-          { value: '', label: 'Todas', count: counts[''] },
-          { value: 'REVIEW', label: 'Con ofertas por elegir', count: toReview },
-          { value: 'PUBLISHED', label: 'Publicadas', count: counts.PUBLISHED },
-          { value: 'MATCHED', label: 'Adjudicadas', count: counts.MATCHED },
-          { value: 'CANCELLED', label: 'Canceladas', count: counts.CANCELLED },
+          { value: '', label: 'Todas', count: counts?.all },
+          { value: 'REVIEW', label: 'Con ofertas por elegir', count: counts?.withBids },
+          { value: 'PUBLISHED', label: 'Publicadas', count: counts?.published },
+          { value: 'MATCHED', label: 'Adjudicadas', count: counts?.matched },
+          { value: 'CANCELLED', label: 'Canceladas', count: counts?.cancelled },
         ]}
       />
-      <Card className="min-w-0 overflow-hidden">
+      <Card className={cn('min-w-0 overflow-hidden transition-opacity', navigating && 'pointer-events-none opacity-60')}>
         <FilterBar
-          count={rows.length}
+          count={total}
           noun={['solicitud', 'solicitudes']}
           active={filtered}
           onClear={reset}
-          sort={<Select aria-label="Ordenar por" className="h-9 w-52" value={`${sort.key}:${sort.dir}`} onValueChange={(v) => { const [key, dir] = v.split(':'); setSort({ key: key as SortKey, dir: dir as 'asc' | 'desc' }); setPage(1); }} options={SORT_OPTIONS} />}
+          extra={<ExportButton href={exportHref} />}
+          sort={<Select aria-label="Ordenar por" className="h-9 w-52" value={f.sort} onValueChange={(v) => set({ sort: v })} options={SORT_OPTIONS} />}
         >
           <Field label="Buscar" htmlFor="f-q">
-            <div className="relative">
+            <form role="search" onSubmit={(e) => { e.preventDefault(); set({ q: qText.trim() }); }} className="relative">
               <Search className="pointer-events-none absolute left-3 top-3 size-4 text-ink-500" aria-hidden="true" />
-              <Input id="f-q" className="pl-9" placeholder="Ruta o descripción de la carga" value={q} onChange={(e) => change(setQ)(e.target.value)} />
-            </div>
+              <Input id="f-q" className="pl-9" placeholder="Código, referencia, ruta o carga" value={qText} onChange={(e) => setQText(e.target.value)} onBlur={() => qText.trim() !== f.q && set({ q: qText.trim() })} maxLength={80} />
+            </form>
           </Field>
-          <Field label="Ciudad de la ruta" htmlFor="f-city">
-            <Combobox id="f-city" value={city} onValueChange={change(setCity)} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear />
-          </Field>
-          <Field label="Fecha de recojo" htmlFor="f-range" className="sm:col-span-2 xl:col-span-2">
-            <DateRangePicker id="f-range" value={range} onValueChange={change(setRange)} placeholder="Cualquier fecha" />
+          <Field label="Origen" htmlFor="f-o"><Combobox id="f-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+          <Field label="Destino" htmlFor="f-d"><Combobox id="f-d" value={f.dest} onValueChange={(v) => set({ dest: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
+          <Field label="Fecha de recojo" htmlFor="f-range">
+            <DateRangePicker id="f-range" value={{ from: f.from, to: f.to }} onValueChange={(r) => set({ from: r.from, to: r.to })} placeholder="Cualquier fecha" />
           </Field>
         </FilterBar>
         {rows.length === 0 ? (
           <EmptyState
             icon={SearchX}
             title="No hay solicitudes con estos filtros"
-            description="Prueba con otra ciudad o amplía el rango de fechas."
+            description="Prueba con otra ciudad, otro código o amplía el rango de fechas."
             action={<Button type="button" variant="outline" onClick={reset}>Limpiar filtros</Button>}
           />
         ) : (
@@ -144,23 +134,22 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
             <Table label="Tus solicitudes" stack>
               <thead>
                 <tr>
-                  <Th>Ruta</Th><Th>Carga</Th>
-                  <Th sort={dirOf('pickupDate')} onSort={() => toggle('pickupDate')}>Recojo</Th>
-                  <Th>Estado</Th>
-                  <Th sort={dirOf('bids')} onSort={() => toggle('bids', 'desc')}>Subasta</Th>
-                  <Th className="text-right" sort={dirOf('price')} onSort={() => toggle('price', 'desc')}>Sugerido</Th>
+                  <Th>Ruta</Th><Th>Carga</Th><Th>Recojo</Th><Th>Estado</Th><Th>Subasta</Th>
+                  <Th className="text-right">Sugerido</Th>
                   <Th><span className="sr-only">Acciones</span></Th>
                 </tr>
               </thead>
               <tbody>
-                {visible.map((r) => {
+                {rows.map((r) => {
                   const n = bids(r);
                   const open = r.status === 'PUBLISHED';
+                  const route = `${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`;
                   return (
                     <Tr key={r.id}>
                       <Td primary>
                         <a href={`/pyme/solicitudes/${r.id}`} className="whitespace-nowrap font-medium text-petrol-700 hover:underline">{CITY_LABELS[r.originCity!]} → {CITY_LABELS[r.destinationCity!]}</a>
-                        <div className="font-mono text-xs text-ink-500">{formatKm(r.distanceKm)}</div>
+                        <div className="font-mono text-xs text-ink-500"><span className="font-semibold text-ink-700">{r.code}</span> · {formatKm(r.distanceKm)}</div>
+                        {r.customerReference && <div className="max-w-52 truncate font-mono text-xs text-ink-500" title={r.customerReference}>Ref. {r.customerReference}</div>}
                       </Td>
                       <Td label="Carga"><div><div>{CARGO_LABELS[r.cargoType!]}</div><div className="font-mono text-xs text-ink-500">{formatTons(r.weightKg)}</div></div></Td>
                       <Td label="Recojo" className="whitespace-nowrap">{formatDate(r.pickupDate)}</Td>
@@ -182,12 +171,13 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
                       </Td>
                       <Td label="Sugerido" className="text-right"><span className="money">{formatMoney(r.suggestedPrice)}</span></Td>
                       <Td actions className="text-right">
-                        <Button asChild variant={n > 0 ? 'money' : 'outline'} size="sm"><a href={`/pyme/solicitudes/${r.id}`}>{n > 0 ? <><Gavel />Comparar ofertas</> : <><Eye />Ver detalle</>}<span className="sr-only"> de {CITY_LABELS[r.originCity!]} a {CITY_LABELS[r.destinationCity!]}</span></a></Button>
-                        {canOperate && (open || r.status === 'CANCELLED') && (
+                        <Button asChild variant={n > 0 ? 'money' : 'outline'} size="sm"><a href={`/pyme/solicitudes/${r.id}`}>{n > 0 ? <><Gavel />Comparar ofertas</> : <><Eye />Ver detalle</>}<span className="sr-only"> de {route}</span></a></Button>
+                        {canOperate && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="flex-none!" aria-label={`Más acciones de ${CITY_LABELS[r.originCity!]} a ${CITY_LABELS[r.destinationCity!]}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="flex-none!" aria-label={`Más acciones de ${route}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onSelect={() => { window.location.href = `/pyme/solicitudes/${r.id}`; }}><Eye />Ver detalle</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => { window.location.href = `/pyme/solicitudes/nueva?from=${r.id}`; }}><Copy />Duplicar</DropdownMenuItem>
                               {open && r.auction?.status === 'CLOSED' && r.auction.closeReason === 'TIMEOUT' && <DropdownMenuItem onSelect={() => setRecover({ mode: 'reopen', r })}><RotateCcw />Reabrir subasta</DropdownMenuItem>}
                               {r.status === 'CANCELLED' && <DropdownMenuItem onSelect={() => setRecover({ mode: 'republish', r })}><Repeat2 />Republicar solicitud</DropdownMenuItem>}
                               {open && <DropdownMenuItem destructive onSelect={() => setCancelId(r.id!)}><Ban />Cancelar solicitud</DropdownMenuItem>}
@@ -200,7 +190,7 @@ export default function RequestsTable({ requests }: { requests: RequestView[] })
                 })}
               </tbody>
             </Table>
-            <Pagination page={current} size={PAGE_SIZE} total={rows.length} onPageChange={setPage} className="border-t border-steel-200 px-4 py-3" />
+            {total > size && <Pagination page={page} size={size} total={total} onPageChange={(p) => go(f, p)} className="border-t border-steel-200 px-4 py-3" />}
           </>
         )}
       </Card>

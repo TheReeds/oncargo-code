@@ -61,6 +61,7 @@ fun dataModule(baseUrl: String) = module {
     single<RequestsRepository> { DefaultRequestsRepository(get()) }
     single<ShipmentsRepository> { DefaultShipmentsRepository(get()) }
     single<DocumentsRepository> { DefaultDocumentsRepository(get()) }
+    single<AccessRepository> { DefaultAccessRepository(get()) }
     single<IncidentsRepository> { DefaultIncidentsRepository(get()) }
     single<NegotiationRepository> { DefaultNegotiationRepository(get()) }
     single<ReputationRepository> { DefaultReputationRepository(get()) }

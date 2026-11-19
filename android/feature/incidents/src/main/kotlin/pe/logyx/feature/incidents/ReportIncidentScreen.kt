@@ -45,6 +45,7 @@ import pe.logyx.core.designsystem.components.LogyxButton
 import pe.logyx.core.designsystem.components.LogyxConfirmDialog
 import pe.logyx.core.designsystem.components.LogyxDropdown
 import pe.logyx.core.designsystem.components.LogyxScreen
+import pe.logyx.core.designsystem.components.Can
 import pe.logyx.core.designsystem.components.LogyxTextField
 import pe.logyx.core.designsystem.components.MessageEffect
 import pe.logyx.core.designsystem.components.asString
@@ -124,6 +125,8 @@ fun ReportIncidentScreen(
     val snackbar = rememberLogyxSnackbarState()
     MessageEffect(state.message, snackbar, onMessageShown)
     LogyxScreen(stringResource(R.string.incidents_report_title), onBack = onBack, snackbar = snackbar) { padding ->
+        // Roadmap v2 1.7: el Lector no ve el formulario (la pantalla ya muestra "Modo lectura" con «Pedir acceso»).
+        Can {
         Column(
             Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -155,6 +158,7 @@ fun ReportIncidentScreen(
                 stringResource(R.string.incidents_submit), onSubmit,
                 variant = ButtonVariant.Primary, loading = state.submitting, requiresOperate = true,
             )
+        }
         }
     }
     if (state.confirming) {

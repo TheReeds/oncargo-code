@@ -327,10 +327,12 @@ class LogyxApi(
     }
 
     // --- Notificaciones ---
-    suspend fun notifications(unreadOnly: Boolean = false, page: Int = 0, size: Int = 20): pe.logyx.core.model.Page<NotificationView> {
+    /** V16: avisos de la persona; [mineOnly] = solo los de algo que creó («Tuyo»). */
+    suspend fun notifications(unreadOnly: Boolean = false, page: Int = 0, size: Int = 20, mineOnly: Boolean = false): pe.logyx.core.model.Page<NotificationView> {
         val env = callEnvelope<List<NotificationView>> {
             client.get("api/v1/notifications") {
                 if (unreadOnly) parameter("unread", true)
+                if (mineOnly) parameter("mine", true)
                 parameter("page", page); parameter("size", size)
             }
         }
@@ -340,6 +342,10 @@ class LogyxApi(
     suspend fun unreadCount(): UnreadCount = get("api/v1/notifications/unread-count")
     suspend fun markNotificationRead(id: String): NotificationView = post("api/v1/notifications/$id/read")
     suspend fun markAllNotificationsRead(): MarkedRead = post("api/v1/notifications/read-all")
+
+    // --- Pedir acceso (V16, roadmap v2 1.7/1.15): cualquier rol, también Lector ---
+    suspend fun requestAccess(body: pe.logyx.core.model.CreateAccessRequest): pe.logyx.core.model.AccessRequestView =
+        post("api/v1/organizations/me/access-requests", body)
 
     // --- Viajes publicados (fase 4) ---
     suspend fun createTrip(body: CreateTripRequest): TripView = post("api/v1/trips", body)

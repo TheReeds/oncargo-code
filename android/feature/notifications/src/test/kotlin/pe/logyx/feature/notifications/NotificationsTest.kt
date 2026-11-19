@@ -32,10 +32,12 @@ private class FakeNotifications(var all: List<NotificationView>) : Notifications
     var failUnreadCount = false
     var failMarkAll = false
     val listCalls = mutableListOf<Pair<Boolean, Int>>()
+    val mineCalls = mutableListOf<Boolean>()
 
-    override suspend fun list(unreadOnly: Boolean, page: Int): Result<Page<NotificationView>> {
+    override suspend fun list(unreadOnly: Boolean, page: Int, mineOnly: Boolean): Result<Page<NotificationView>> {
         listCalls += unreadOnly to page
-        val src = if (unreadOnly) all.filter { !it.read } else all
+        mineCalls += mineOnly
+        val src = all.filter { (!unreadOnly || !it.read) && (!mineOnly || it.mine) }
         return Result.success(Page(src.drop(page * 20).take(20), page, 20, src.size))
     }
     override suspend fun unreadCount(): Result<Int> =
@@ -85,6 +87,19 @@ class NotificationsTest {
         c.onSignal(RealtimeEvent(RealtimeTypes.NOTIFICATION_CREATED, data = JsonObject(mapOf("unreadCount" to JsonPrimitive(3)))))
         c.onSignal(null)
         assertEquals(2, c.count.value)
+    }
+
+    @Test fun filtroSoloMiosPideMineYMuestraSoloLosTuyos() {
+        val repo = FakeNotifications(listOf(notif(1).copy(mine = true), notif(2), notif(3, read = true).copy(mine = true)))
+        val m = vm(repo)
+        assertEquals(3, m.state.value.items.size)
+        m.setFilter(NotificationFilter.MINE)
+        assertEquals(true, repo.mineCalls.last())
+        assertEquals(listOf("n1", "n3"), m.state.value.items.map { it.id })
+        assertTrue(m.state.value.items.all { it.mine })
+        m.setFilter(NotificationFilter.ALL)
+        assertEquals(false, repo.mineCalls.last())
+        assertEquals(3, m.state.value.items.size)
     }
 
     @Test fun loadsFirstPageAndUpdatesCounter() {

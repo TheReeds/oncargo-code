@@ -46,7 +46,7 @@ export async function registerAccount(type: 'PYME' | 'CARRIER', city = type === 
   const id = uid();
   const acc = { email: `e2e-${id}@prueba.pe`, password: PASSWORD, name: `E2E ${type === 'PYME' ? 'Empresa' : 'Transportes'} ${id} SAC`, ruc: validRuc() };
   const r = await call<{ accessToken: string }>('POST', '/auth/register', undefined, {
-    organizationType: type, legalName: acc.name, ruc: acc.ruc, city, fullName: `Tester ${id}`, email: acc.email, password: acc.password, acceptPrivacyPolicy: true,
+    organizationType: type, legalName: acc.name, ruc: acc.ruc, city, fullName: `Tester ${id}`, email: acc.email, password: acc.password, acceptPrivacyPolicy: true, acceptTerms: true,
   });
   return { ...acc, token: r.accessToken };
 }
@@ -67,7 +67,7 @@ export function isoDate(daysFromNow: number) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
 }
 
-export type NewRequest = Partial<{ originCity: string; destinationCity: string; weightKg: number; cargoType: string; pickupDate: string; cargoDescription: string }>;
+export type NewRequest = Partial<{ originCity: string; destinationCity: string; weightKg: number; cargoType: string; pickupDate: string; cargoDescription: string }> & Record<string, unknown>;
 export const createRequest = (token: string, o: NewRequest = {}) =>
   call<any>('POST', '/shipment-requests', token, {
     originCity: 'LIMA', originAddress: 'Av. Argentina 1234, Callao', destinationCity: 'JULIACA', destinationAddress: 'Jr. Lima 456, Juliaca',

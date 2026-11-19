@@ -3,6 +3,8 @@ package pe.logyx.marketplace.application;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import pe.logyx.catalog.domain.CargoType;
+import pe.logyx.catalog.domain.City;
 import pe.logyx.fleet.application.FleetService;
 import pe.logyx.fleet.domain.model.Vehicle;
 import pe.logyx.marketplace.application.port.out.BidRepository;
@@ -25,6 +27,9 @@ import java.util.UUID;
 @Transactional
 public class MarketplaceQueries {
 
+    /** Tope de filas de una exportación CSV (roadmap 1.5). */
+    public static final int EXPORT_MAX_ROWS = 10_000;
+
     @Inject ShipmentRequestRepository requests;
     @Inject BidRepository bids;
     @Inject RequestSummaries summaries;
@@ -41,6 +46,39 @@ public class MarketplaceQueries {
     public Paged<RequestSummary> myRequests(PageRequest page) {
         Paged<ShipmentRequest> p = Paged.slice(requests.listByRequester(tenant.orgId()), page);
         return new Paged<>(summaries.of(p.items(), false), page, p.total());
+    }
+
+    /** "Mis solicitudes" filtradas, ordenadas y paginadas en el servidor. */
+    public Paged<RequestSummary> myRequests(MyRequestFilter filter, PageRequest page) {
+        Paged<ShipmentRequest> p = requests.searchMine(tenant.orgId(), filter, page);
+        return new Paged<>(summaries.of(p.items(), false), page, p.total());
+    }
+
+    /** Sin paginar, para la exportación CSV: hasta {@link #EXPORT_MAX_ROWS} filas o 400 si el filtro trae más. */
+    public List<RequestSummary> exportMine(MyRequestFilter filter) {
+        Paged<ShipmentRequest> p = requests.searchMine(tenant.orgId(), filter, new PageRequest(0, 1));
+        if (p.total() > EXPORT_MAX_ROWS) {
+            throw BusinessException.badRequest("LOGYX-EXP-001", "Hay " + p.total() + " solicitudes: el máximo para exportar es "
+                    + EXPORT_MAX_ROWS + ". Acota por estado, ciudad o fechas", "status");
+        }
+        List<ShipmentRequest> all = new java.util.ArrayList<>();
+        for (int page = 0; all.size() < p.total(); page++) {
+            var chunk = requests.searchMine(tenant.orgId(), filter, new PageRequest(page, PageRequest.MAX_SIZE)).items();
+            if (chunk.isEmpty()) break;
+            all.addAll(chunk);
+        }
+        return summaries.of(all, false);
+    }
+
+    public RequestCounts myRequestCounts() {
+        return requests.countMine(tenant.orgId());
+    }
+
+    /** Duplicado reciente: publicadas por la PYME en las últimas 24 h con la misma ruta, tipo, peso y fecha de recojo. */
+    public List<ShipmentRequest> similarRecent(String originCity, String destinationCity, CargoType cargoType,
+                                               BigDecimal weightKg, java.time.LocalDate pickupDate) {
+        return requests.findSimilar(tenant.orgId(), City.require(originCity), City.require(destinationCity), cargoType,
+                weightKg, pickupDate, java.time.OffsetDateTime.now().minusHours(24), 3);
     }
 
     /**

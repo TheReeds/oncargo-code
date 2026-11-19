@@ -69,7 +69,7 @@ export default function OperatorPanel({ metrics: m0, alerts: a0, loadedAt }: { m
       )}
 
       <MetricsGrid m={metrics} slaHours={alerts.slaHours ?? 24} expiring={alerts.expiringAuctions?.length ?? 0} />
-      <SlaAlerts alerts={alerts} onAssign={setTarget} />
+      <SlaAlerts alerts={alerts} onAssign={setTarget} ageThresholds={{ warn: metrics.incidentWarnHours ?? 12, breach: metrics.incidentBreachHours ?? 24 }} />
       <AssignSheet request={target} onClose={() => setTarget(null)} onAssigned={assigned} />
     </div>
   );

@@ -3,7 +3,6 @@ package pe.logyx.app
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -33,14 +32,15 @@ class AccountStatusTest {
     }
 
     @Test
-    fun write_button_is_disabled_for_viewer_and_enabled_otherwise() {
+    fun write_button_is_hidden_for_viewer_and_enabled_otherwise() {
+        // Roadmap v2 1.7: el Lector no ve las acciones de escritura (antes se deshabilitaban).
         var readOnly = androidx.compose.runtime.mutableStateOf(true)
         compose.setContent {
             LogyxTheme {
                 ProvideReadOnly(readOnly.value) { LogyxButton("Enviar oferta", {}, variant = ButtonVariant.Money, requiresOperate = true) }
             }
         }
-        compose.onNodeWithText("Enviar oferta").assertIsNotEnabled()
+        compose.onAllNodes(hasText("Enviar oferta")).assertCountEquals(0)
         readOnly.value = false
         compose.onNodeWithText("Enviar oferta").assertIsEnabled()
     }

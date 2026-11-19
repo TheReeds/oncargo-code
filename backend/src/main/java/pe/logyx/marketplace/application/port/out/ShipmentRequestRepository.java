@@ -26,6 +26,18 @@ public interface ShipmentRequestRepository {
     long countByStatus(ShipmentRequest.Status status);
     /** Listado global (operador, vía RLS), más recientes primero. */
     Paged<ShipmentRequest> searchAll(pe.logyx.marketplace.application.OperatorRequestFilter filter, PageRequest page);
+    /** "Mis solicitudes" con filtros y orden en el servidor (RLS + filtro explícito por organización). */
+    Paged<ShipmentRequest> searchMine(UUID requesterOrgId, pe.logyx.marketplace.application.MyRequestFilter filter,
+                                      PageRequest page);
+    /** Totales por estado de la PYME (más "con ofertas por revisar"). */
+    pe.logyx.marketplace.application.RequestCounts countMine(UUID requesterOrgId);
+    /** Publicadas de la PYME con la misma ruta, tipo, peso y fecha de recojo, creadas desde {@code since}; las más recientes primero. */
+    List<ShipmentRequest> findSimilar(UUID requesterOrgId, pe.logyx.catalog.domain.City origin,
+                                      pe.logyx.catalog.domain.City destination, pe.logyx.catalog.domain.CargoType type,
+                                      java.math.BigDecimal weightKg, java.time.LocalDate pickupDate,
+                                      java.time.OffsetDateTime since, int max);
+    /** ¿Existe ya este código? Lee sin RLS (el código es único para toda la plataforma). */
+    boolean codeExists(String code);
     /** Más recientes primero. */
     List<ShipmentRequest> listByIds(Collection<UUID> ids);
     /** Inserta o actualiza. */

@@ -9,13 +9,14 @@ const q = Astro.url.searchParams;
 const STATUSES = ['PENDING', 'REJECTED', 'SUSPENDED', 'VERIFIED', 'ALL'];
 const status = STATUSES.includes(q.get('estado') ?? '') ? q.get('estado')! : 'PENDING';
 const type = ['PYME', 'CARRIER'].includes(q.get('tipo') ?? '') ? q.get('tipo')! : '';
+const text = (q.get('q') ?? '').trim().slice(0, 60);
 const pageNo = Math.max(1, Number(q.get('pagina')) || 1);
 let result = { items: [] as Awaited<ReturnType<typeof listOrganizations>>['items'], meta: { page: 0, size: 20, total: 0 } };
 let counts: Record<string, number> = {};
 let loadError: string | null = null;
 try {
   const [page, ...totals] = await Promise.all([
-    listOrganizations(t, { status, type: type || undefined, page: pageNo - 1, size: 20 }),
+    listOrganizations(t, { status, type: type || undefined, q: text.length >= 2 ? text : undefined, page: pageNo - 1, size: 20 }),
     ...['PENDING', 'REJECTED', 'SUSPENDED', 'VERIFIED'].map((s) => listOrganizations(t, { status: s, size: 1 }).then((r) => [s, r.meta.total] as const)),
   ]);
   result = page;
@@ -28,5 +29,5 @@ try {
   <PageHeader title="Verificación de empresas" subtitle="Revisa a las PYMEs y transportistas que se registran: solo las verificadas publican, ofertan y reservan."
     breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Verificación de empresas' }]} />
   {loadError && <Alert tone="error" title="No pudimos cargar las empresas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
-  {!loadError && <OrganizationsInbox client:load rows={result.items} filters={{ status, type }} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} counts={counts} />}
+  {!loadError && <OrganizationsInbox client:load rows={result.items} filters={{ status, type, q: text }} page={result.meta.page + 1} size={result.meta.size} total={result.meta.total} counts={counts} />}
 </AppShell>

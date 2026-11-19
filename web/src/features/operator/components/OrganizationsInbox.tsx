@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
+import { SearchInput } from '@/components/ui/search-input';
 import { FilterBar } from '@/components/ui/filter-bar';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { Pagination } from '@/components/ui/pagination';
@@ -23,7 +24,7 @@ import { CITY_LABELS, formatDateTime, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { OrganizationReviewRow } from '../server';
 
-export type OrgFilters = { status: string; type: string };
+export type OrgFilters = { status: string; type: string; q: string };
 type Decision = 'verify' | 'reject' | 'suspend';
 
 const STATUS_OPTIONS = [
@@ -62,7 +63,7 @@ export default function OrganizationsInbox({ rows, filters, page, size, total, c
   const [navigating, setNavigating] = useState(false);
   const [detail, setDetail] = useState<OrganizationReviewRow | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
-  const hasFilters = f.status !== 'PENDING' || !!f.type;
+  const hasFilters = f.status !== 'PENDING' || !!f.type || !!f.q;
 
   function go(next: OrgFilters, p = 1) {
     setF(next);
@@ -70,6 +71,7 @@ export default function OrganizationsInbox({ rows, filters, page, size, total, c
     const q = new URLSearchParams();
     if (next.status && next.status !== 'PENDING') q.set('estado', next.status);
     if (next.type) q.set('tipo', next.type);
+    if (next.q) q.set('q', next.q);
     if (p > 1) q.set('pagina', String(p));
     const qs = q.toString();
     window.location.href = window.location.pathname + (qs ? `?${qs}` : '');
@@ -103,12 +105,13 @@ export default function OrganizationsInbox({ rows, filters, page, size, total, c
       <QuickFilters label="Estado de verificación" value={f.status} onValueChange={(v) => set({ status: v })} options={STATUS_OPTIONS.map((o) => ({ ...o, count: o.value === 'ALL' ? Object.values(counts).reduce((a, b) => a + b, 0) : counts[o.value] }))} />
 
       <Card className={cn('min-w-0 overflow-hidden transition-opacity', navigating && 'pointer-events-none opacity-60')}>
-        <FilterBar count={total} noun={['empresa', 'empresas']} active={hasFilters} onClear={() => go({ status: 'PENDING', type: '' })}>
+        <FilterBar count={total} noun={['empresa', 'empresas']} active={hasFilters} onClear={() => go({ status: 'PENDING', type: '', q: '' })}>
+          <Field label="Buscar" htmlFor="o-q" hint="Razón social, RUC, ciudad, correo o placa" className="sm:col-span-2"><SearchInput id="o-q" value={f.q} onSearch={(text) => text.length === 1 ? undefined : set({ q: text })} placeholder="Escribe al menos 2 caracteres" maxLength={60} /></Field>
           <Field label="Tipo de empresa" htmlFor="o-type"><Select id="o-type" value={f.type || 'ALL'} onValueChange={(v) => set({ type: v === 'ALL' ? '' : v })} options={TYPE_OPTIONS} /></Field>
         </FilterBar>
         {rows.length === 0 ? (
           hasFilters || f.status !== 'PENDING'
-            ? <EmptyState icon={SearchX} title={emptyTitle} description="Prueba con otro estado o tipo de empresa." action={<Button variant="outline" onClick={() => go({ status: 'PENDING', type: '' })}><SearchX /> Ver pendientes</Button>} />
+            ? <EmptyState icon={SearchX} title={emptyTitle} description="Prueba con otro estado o tipo de empresa." action={<Button variant="outline" onClick={() => go({ status: 'PENDING', type: '', q: '' })}><SearchX /> Ver pendientes</Button>} />
             : <EmptyState icon={Check} title={emptyTitle} description="Cuando una empresa se registre y espere la revisión, aparecerá aquí." />
         ) : (
           <Table label="Empresas por verificar" stack dense>

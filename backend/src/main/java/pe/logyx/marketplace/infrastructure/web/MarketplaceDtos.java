@@ -20,6 +20,7 @@ import pe.logyx.marketplace.domain.model.ShipmentRequest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import pe.logyx.shared.domain.TimeOfDay;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,13 +36,44 @@ public final class MarketplaceDtos {
             @NotBlank @Size(max = 300) String cargoDescription,
             @NotNull @DecimalMin(value = "1", message = "El peso debe ser mayor a 0") @DecimalMax("40000") BigDecimal weightKg,
             @DecimalMin("0.01") BigDecimal volumeM3,
-            @NotNull @FutureOrPresent(message = "La fecha de recojo no puede ser pasada") LocalDate pickupDate) {
+            @NotNull @FutureOrPresent(message = "La fecha de recojo no puede ser pasada") LocalDate pickupDate,
+            /** Referencia propia de la PYME (n.º de OC o pedido). Privada: no la ven los transportistas antes de adjudicar. */
+            @Size(max = 40) String customerReference,
+            /** Valor declarado de la carga en soles (opcional; el transportista responde según su póliza). */
+            @DecimalMin(value = "0.01", message = "El valor declarado debe ser mayor a 0") @Digits(integer = 12, fraction = 2) BigDecimal declaredValue,
+            /** Contacto, ventana (HH:mm) e instrucciones del recojo: privados hasta adjudicar (RN07, decisión 2026-11-17). */
+            @Size(max = 120) String pickupContactName,
+            @Size(max = 20) String pickupContactPhone,
+            @Pattern(regexp = TimeOfDay.PATTERN, message = "Usa el formato HH:mm") String pickupWindowFrom,
+            @Pattern(regexp = TimeOfDay.PATTERN, message = "Usa el formato HH:mm") String pickupWindowTo,
+            @Size(max = 300) String pickupInstructions,
+            @Size(max = 120) String deliveryContactName,
+            @Size(max = 20) String deliveryContactPhone,
+            @Pattern(regexp = TimeOfDay.PATTERN, message = "Usa el formato HH:mm") String deliveryWindowFrom,
+            @Pattern(regexp = TimeOfDay.PATTERN, message = "Usa el formato HH:mm") String deliveryWindowTo,
+            @Size(max = 300) String deliveryInstructions,
+            /** Direcciones guardadas de las que se publica: solo sirven para ordenar la libreta por uso. */
+            UUID originPlaceId, UUID destinationPlaceId) {
 
-        PublishRequestCommand toCommand() {
+        PublishRequestCommand toCommand(String idempotencyKey) {
+            var details = new ShipmentRequest.Details(customerReference, declaredValue,
+                    new ShipmentRequest.StopDetails(pickupContactName, pickupContactPhone,
+                            TimeOfDay.parse(pickupWindowFrom, "pickupWindowFrom"),
+                            TimeOfDay.parse(pickupWindowTo, "pickupWindowTo"), pickupInstructions),
+                    new ShipmentRequest.StopDetails(deliveryContactName, deliveryContactPhone,
+                            TimeOfDay.parse(deliveryWindowFrom, "deliveryWindowFrom"),
+                            TimeOfDay.parse(deliveryWindowTo, "deliveryWindowTo"), deliveryInstructions));
             return new PublishRequestCommand(originCity, originAddress, destinationCity, destinationAddress,
-                    cargoType, cargoDescription, weightKg, volumeM3, pickupDate);
+                    cargoType, cargoDescription, weightKg, volumeM3, pickupDate, details, originPlaceId,
+                    destinationPlaceId, idempotencyKey);
         }
     }
+
+    /** Aviso de posible duplicado: una solicitud publicada hoy con la misma ruta, tipo, peso y fecha de recojo. */
+    public record SimilarRequest(UUID id, String code, OffsetDateTime createdAt) {}
+
+    /** Totales de "Mis solicitudes" por estado (sin filtros): para las pestañas de filtro rápido. */
+    public record RequestCountsView(long all, long published, long matched, long cancelled, long withBids) {}
 
     /** Cancelar una solicitud publicada: motivo opcional (lo ven los transportistas que ofertaron; RN07). */
     public record CancelRequestBody(@Size(max = 500) String reason) {}
@@ -102,7 +134,19 @@ public final class MarketplaceDtos {
                               /** Solo para la PYME dueña: Trust Score del transportista de la mejor oferta. */
                               BigDecimal bestBidCarrierTrustScore,
                               /** Solo para el transportista con oferta: su posición sin montos ajenos. */
-                              MyBidStanding myBidStanding) {
+                              MyBidStanding myBidStanding,
+                              /** Código legible y único (OC-7K2QX); también lo hereda el envío. */
+                              String code,
+                              /** Valor declarado de la carga en soles (opcional); lo ven también los transportistas. */
+                              BigDecimal declaredValue,
+                              /** Privado: solo la PYME dueña, el operador y el transportista adjudicado (tras adjudicar). */
+                              String customerReference,
+                              /** Privado, ídem: contacto, ventana (HH:mm) e instrucciones del recojo. Nulos si no se ven. */
+                              String pickupContactName, String pickupContactPhone, String pickupWindowFrom,
+                              String pickupWindowTo, String pickupInstructions,
+                              /** Privado, ídem: contacto, ventana (HH:mm) e instrucciones de la entrega. */
+                              String deliveryContactName, String deliveryContactPhone, String deliveryWindowFrom,
+                              String deliveryWindowTo, String deliveryInstructions) {
 
         static RequestView of(RequestSummary s) {
             ShipmentRequest r = s.request();
@@ -110,6 +154,10 @@ public final class MarketplaceDtos {
             var p = r.pricing();
             Auction a = s.auction();
             BidSummary best = s.bestBid();
+            var d = r.details();
+            boolean priv = s.showPrivate();
+            var pk = priv ? d.pickup() : ShipmentRequest.StopDetails.NONE;
+            var dl = priv ? d.delivery() : ShipmentRequest.StopDetails.NONE;
             AuctionView av = a == null ? null
                     : new AuctionView(a.id(), a.status(), a.closesAt(), a.maxBids(), s.bidCount(), a.closeReason(),
                             a.closedAt());
@@ -121,7 +169,11 @@ public final class MarketplaceDtos {
                     VehicleRequirementPolicy.minimumFor(c.weightKg(), c.cargoType()), s.requesterTrustScore(),
                     VehicleCargoCompatibility.allowedFor(c.cargoType()), r.cancelReason(), r.republishedFrom(),
                     best == null ? null : best.bid().amount(), best == null ? null : best.carrierName(),
-                    best == null ? null : best.carrierTrustScore(), MyBidStanding.of(s.myStanding()));
+                    best == null ? null : best.carrierTrustScore(), MyBidStanding.of(s.myStanding()),
+                    r.code(), d.declaredValue(), priv ? d.customerReference() : null,
+                    pk.contactName(), pk.contactPhone(), TimeOfDay.format(pk.windowFrom()), TimeOfDay.format(pk.windowTo()),
+                    pk.instructions(), dl.contactName(), dl.contactPhone(), TimeOfDay.format(dl.windowFrom()),
+                    TimeOfDay.format(dl.windowTo()), dl.instructions());
         }
 
         static List<RequestView> of(List<RequestSummary> list) {

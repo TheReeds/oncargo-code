@@ -7,6 +7,7 @@ import { FilterBar } from '@/components/ui/filter-bar';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
+import { SearchInput } from '@/components/ui/search-input';
 import { DateRangePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
@@ -16,7 +17,7 @@ import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatMoney, for
 import type { CityItem } from '@/lib/api/server';
 import type { OperatorRequestRow, OperatorShipmentRow } from '../server';
 
-export type ListingFilters = { status: string; origin: string; dest: string; from: string; to: string };
+export type ListingFilters = { status: string; origin: string; dest: string; from: string; to: string; q: string };
 type Kind = 'requests' | 'shipments';
 
 const STATUS: Record<Kind, { value: string; label: string }[]> = {
@@ -49,8 +50,8 @@ export default function OperatorListing({ kind, rows, cities, filters, page, siz
   const [navigating, setNavigating] = useState(false);
   const t = TEXT[kind];
   const cityOptions = useMemo(() => cities.map((c) => ({ value: c.code!, label: c.name! })), [cities]);
-  const hasFilters = !!(f.status || f.origin || f.dest || f.from);
-  const showCounts = !!counts && !(f.origin || f.dest || f.from);
+  const hasFilters = !!(f.status || f.origin || f.dest || f.from || f.q);
+  const showCounts = !!counts && !(f.origin || f.dest || f.from || f.q);
   const statusOptions = STATUS[kind].map((o) => ({ ...o, count: showCounts ? counts![o.value] : undefined }));
 
   function go(next: ListingFilters, p = 1) {
@@ -61,25 +62,27 @@ export default function OperatorListing({ kind, rows, cities, filters, page, siz
     if (next.origin) q.set('origen', next.origin);
     if (next.dest) q.set('destino', next.dest);
     if (next.from) { q.set('desde', next.from); if (next.to) q.set('hasta', next.to); }
+    if (next.q) q.set('q', next.q);
     if (p > 1) q.set('pagina', String(p));
     const qs = q.toString();
     window.location.href = window.location.pathname + (qs ? `?${qs}` : '');
   }
   const set = (patch: Partial<ListingFilters>) => go({ ...f, ...patch });
-  const clear = () => go({ status: '', origin: '', dest: '', from: '', to: '' });
+  const clear = () => go({ status: '', origin: '', dest: '', from: '', to: '', q: '' });
 
   return (
     <div className="min-w-0 space-y-3" aria-busy={navigating || undefined}>
       <QuickFilters label="Estado" value={f.status} onValueChange={(v) => set({ status: v })} options={statusOptions} />
       <Card className={cn('min-w-0 overflow-hidden transition-opacity', navigating && 'pointer-events-none opacity-60')}>
         <FilterBar count={total} noun={t.noun} active={hasFilters} onClear={clear}>
+          <Field label="Buscar" htmlFor="l-q" hint={kind === 'requests' ? 'Código, referencia, razón social, RUC o placa' : 'Razón social, RUC, placa, conductor o código'} className="sm:col-span-2"><SearchInput id="l-q" value={f.q} onSearch={(text) => text.length === 1 ? undefined : set({ q: text })} placeholder="Escribe al menos 2 caracteres" maxLength={60} /></Field>
           <Field label="Origen" htmlFor="l-o"><Combobox id="l-o" value={f.origin} onValueChange={(v) => set({ origin: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
           <Field label="Destino" htmlFor="l-d"><Combobox id="l-d" value={f.dest} onValueChange={(v) => set({ dest: v })} options={cityOptions} placeholder="Todas las ciudades" searchPlaceholder="Buscar ciudad…" allowClear /></Field>
           <Field label="Fecha de creación" htmlFor="l-f" className="sm:col-span-2 xl:col-span-2"><DateRangePicker id="l-f" value={{ from: f.from, to: f.to }} onValueChange={(r) => set({ from: r.from, to: r.to })} placeholder="Cualquier fecha" /></Field>
         </FilterBar>
         {rows.length === 0 ? (
           hasFilters
-            ? <EmptyState icon={SearchX} title={`No hay ${t.noun[1]} con estos filtros`} description="Prueba con otro estado o amplía el rango de fechas." action={<Button variant="outline" onClick={clear}><SearchX /> Limpiar filtros</Button>} />
+            ? <EmptyState icon={SearchX} title={`No hay ${t.noun[1]} con estos filtros`} description={f.q ? `Nada coincide con «${f.q}». Prueba con otra razón social, RUC, placa o código.` : 'Prueba con otro estado o amplía el rango de fechas.'} action={<Button variant="outline" onClick={clear}><SearchX /> Limpiar filtros</Button>} />
             : <EmptyState icon={kind === 'requests' ? FileText : Truck} title={t.empty} description={t.emptyHint} />
         ) : (
           <Table label={t.label} stack dense>

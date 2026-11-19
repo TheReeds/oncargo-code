@@ -117,8 +117,8 @@ fun ChatComposer(
     placeholder: String = stringResource(R.string.ds_chat_placeholder),
     maxLength: Int = 1000,
 ) {
-    // Rol Lector: no puede escribir (POST 403 AUTH-007); la pantalla muestra el aviso "Modo lectura".
-    val enabled = enabled && !LocalReadOnly.current
+    // Rol Lector: no puede escribir (POST 403 AUTH-007): sin campo de redacción; la pantalla muestra el aviso "Modo lectura".
+    if (LocalReadOnly.current) return
     Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding().imePadding()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.Top) {

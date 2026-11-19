@@ -132,11 +132,12 @@ public class RealtimeProjector {
 
     // ----- Notificaciones: síncrono en la misma transacción del despacho (ver NotificationPublisher)
 
+    /** V16: avisos por persona → el evento va a esa persona, con su contador de no leídas (y {@code mine}). */
     void onNotifications(@Observes NotificationsPublished e) {
         e.items().forEach(i -> emit(NOTIFICATION_CREATED, data("notificationId", i.notificationId(),
                         "notificationType", i.type(), "relatedType", i.relatedType(), "relatedId", i.relatedId(),
-                        "unreadCount", i.unreadCount()),
-                Recipient.org(i.orgId())));
+                        "unreadCount", i.unreadCount(), "mine", i.mine()),
+                i.profileId() == null ? Recipient.org(i.orgId()) : Recipient.user(i.orgId(), i.profileId())));
     }
 
     void onReview(@Observes @Outboxed ReviewSubmitted e) {

@@ -40,7 +40,7 @@ entre competidores), envíos y ubicaciones, documentos/evidencias (guías, fotos
 | Exposición de secretos | Nada en el repo: `infra/.env` y `infra/secrets/` en `.gitignore`; claves JWT montadas como secretos; contraseñas de BD por env | Rotación manual |
 | CORS abusivo | En prod CORS desactivado (`CORS_ENABLED=false`): el navegador nunca llama a la API directamente (SSR); Android no usa CORS | Si se habilita, `CORS_ORIGINS` explícito |
 | Fuga de datos personales en logs | Logs sin emails/RUC/teléfonos/tokens: solo ids y contadores; `quarkus.hibernate-orm.log.sql=false`; el outbox guarda solo tipo de excepción y mensaje. Swagger UI desactivado en prod | El stack trace de un 500 puede incluir valores de una restricción SQL; las contraseñas demo del seed se loguean solo en perfil dev |
-| Denegación de servicio | Límites de body (12 MB), `mem_limit` en compose, pools acotados, `CONNECTION LIMIT` de `logyx_api` | Sin WAF ni rate limit general (poner en el proxy) |
+| Denegación de servicio | Límites de body (12 MB), `mem_limit` en compose, pools acotados, `CONNECTION LIMIT` de `logyx_api` | Sin WAF ni rate limit general (poner en el proxy). Endpoints públicos con límite por IP: login, registro, olvidé, canje, refresh y el **cotizador público** (`POST /public/pricing/quote`, 30 por 15 min, `logyx.rate-limit.public-quote.per-ip`) |
 | Repudio | `audit_log` en acciones críticas con usuario y organización | — |
 
 ## Checklist de despliegue

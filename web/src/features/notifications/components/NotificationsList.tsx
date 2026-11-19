@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { NotificationItem, type NotificationRow } from './NotificationItem';
 
 type Row = NotificationRow & { relatedType?: string; relatedId?: string };
+type Filter = 'all' | 'unread' | 'mine';
 const SIZE = 20;
 const TZ = 'America/Lima';
 
@@ -41,9 +42,12 @@ function groupByDay(rows: Row[], now = Date.now()) {
   return groups;
 }
 
-/** Página /notificaciones: Todas / No leídas, agrupadas por día, con marcar leídas y enlace directo al objeto. */
+/**
+ * Página /notificaciones: Todas / No leídas / Solo míos (V16: avisos por persona; «Tuyo» = de algo que creaste), agrupadas
+ * por día, con marcar leídas (solo para ti) y enlace directo al objeto.
+ */
 export default function NotificationsList({ orgType }: { orgType: NotifOrg }) {
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [filter, setFilter] = useState<Filter>('all');
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -52,11 +56,11 @@ export default function NotificationsList({ orgType }: { orgType: NotifOrg }) {
   const [busy, setBusy] = useState(false);
 
   const seq = useRef(0);
-  const load = useCallback(async (f: 'all' | 'unread', p: number) => {
+  const load = useCallback(async (f: Filter, p: number) => {
     setError(null);
     const mine = ++seq.current;
     const [list, count] = await Promise.all([
-      actions.notifications.list({ unread: f === 'unread', page: p - 1, size: SIZE }),
+      actions.notifications.list({ unread: f === 'unread', mine: f === 'mine', page: p - 1, size: SIZE }),
       actions.notifications.unreadCount(),
     ]);
     if (mine !== seq.current) return; // respuesta obsoleta (cambió el filtro o la página)
@@ -95,10 +99,11 @@ export default function NotificationsList({ orgType }: { orgType: NotifOrg }) {
   return (
     <Card className="min-w-0 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-steel-200 px-4 py-2 sm:px-5">
-        <Tabs value={filter} onValueChange={(v) => { setFilter(v as 'all' | 'unread'); setPage(1); setRows(null); }}>
+        <Tabs value={filter} onValueChange={(v) => { setFilter(v as Filter); setPage(1); setRows(null); }}>
           <TabsList aria-label="Filtrar notificaciones" className="border-b-0">
             <TabsTrigger value="all" aria-controls={undefined}>Todas</TabsTrigger>
             <TabsTrigger value="unread" aria-controls={undefined}>No leídas{unread ? <span className="ml-1.5 rounded-full bg-petrol-700 px-1.5 font-mono text-[11px] tabular-nums text-on-solid">{unread}</span> : null}</TabsTrigger>
+            <TabsTrigger value="mine" aria-controls={undefined}>Solo míos</TabsTrigger>
           </TabsList>
         </Tabs>
         <Button variant="outline" size="sm" onClick={readAll} loading={busy} disabled={unread === 0}><CheckCheck /> Marcar todas como leídas</Button>
@@ -107,8 +112,9 @@ export default function NotificationsList({ orgType }: { orgType: NotifOrg }) {
       {rows === null ? (
         <SkeletonList rows={5} />
       ) : rows.length === 0 && !error ? (
-        <EmptyState icon={filter === 'unread' ? CheckCheck : BellOff} title={filter === 'unread' ? 'No tienes notificaciones sin leer' : 'Todavía no tienes notificaciones'}
-          description={filter === 'unread' ? 'Estás al día. Las nuevas aparecerán aquí al instante.' : 'Aquí verás ofertas, mensajes, cambios en tus envíos e incidencias.'} />
+        <EmptyState icon={filter === 'unread' ? CheckCheck : BellOff}
+          title={filter === 'unread' ? 'No tienes notificaciones sin leer' : filter === 'mine' ? 'Nada tuyo por ahora' : 'Todavía no tienes notificaciones'}
+          description={filter === 'unread' ? 'Estás al día. Las nuevas aparecerán aquí al instante.' : filter === 'mine' ? 'Aquí verás los avisos de las solicitudes y ofertas que tú creaste.' : 'Aquí verás ofertas, mensajes, cambios en tus envíos e incidencias.'} />
       ) : (
         <div>
           {groups.map((g) => (

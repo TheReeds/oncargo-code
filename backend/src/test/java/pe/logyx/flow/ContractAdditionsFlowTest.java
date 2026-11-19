@@ -90,7 +90,7 @@ class ContractAdditionsFlowTest {
         Map<String, Object> body = new HashMap<>(Map.of(
                 "organizationType", "PYME", "legalName", "Dup SAC", "ruc", "20100070971",
                 "fullName", "X", "email", "dup" + System.nanoTime() + "@test.pe", "password", "Secreta123",
-                "acceptPrivacyPolicy", true));
+                "acceptPrivacyPolicy", true, "acceptTerms", true));
         given().contentType("application/json").body(body).post("/api/v1/auth/register").then().statusCode(400)
                 .body("error.code", is("LOGYX-ORG-001")).body("error.field", is("ruc"));
 

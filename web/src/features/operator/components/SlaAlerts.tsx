@@ -59,7 +59,7 @@ function SlaClock({ h, sla }: { h: number; sla: number }) {
   );
 }
 
-export function SlaAlerts({ alerts, onAssign }: { alerts: Alerts; onAssign: (r: SlaRequest) => void }) {
+export function SlaAlerts({ alerts, onAssign, ageThresholds }: { alerts: Alerts; onAssign: (r: SlaRequest) => void; /** Umbrales vigentes de color de las incidencias (parámetros de sistema). */ ageThresholds?: { warn: number; breach: number } }) {
   const noBids = useMemo(() => [...(alerts.requestsWithoutBids ?? [])].sort((a, b) => (b.hoursWithoutBids ?? 0) - (a.hoursWithoutBids ?? 0)), [alerts.requestsWithoutBids]);
   const expiring = useMemo(() => [...(alerts.expiringAuctions ?? [])].sort((a, b) => (a.auctionClosesAt ?? '').localeCompare(b.auctionClosesAt ?? '')), [alerts.expiringAuctions]);
   const incidents = useMemo(() => [...(alerts.shipmentsWithIncidents ?? [])].sort((a, b) => (b.hoursOpen ?? 0) - (a.hoursOpen ?? 0)), [alerts.shipmentsWithIncidents]);
@@ -97,7 +97,7 @@ export function SlaAlerts({ alerts, onAssign }: { alerts: Alerts; onAssign: (r: 
       </Section>
 
       <Section id="incidencias" title="Envíos con incidencias" count={incidents.length} tone="red" icon={ShieldAlert} link={{ href: '/operador/incidencias', label: 'Abrir bandeja' }}
-        hint="Incidencias abiertas o en revisión (RN11): congelan el avance de las paradas hasta que las resuelvas. Ámbar pasadas 12 h, rojo pasadas 24 h.">
+        hint={`Incidencias abiertas o en revisión (RN11): congelan el avance de las paradas hasta que las resuelvas. Ámbar pasadas ${ageThresholds?.warn ?? 12} h, rojo pasadas ${ageThresholds?.breach ?? 24} h.`}>
         {incidents.length === 0 ? (
           <Positive title="Sin incidencias activas">Los envíos avanzan con normalidad.</Positive>
         ) : (
@@ -108,7 +108,7 @@ export function SlaAlerts({ alerts, onAssign }: { alerts: Alerts; onAssign: (r: 
                 <Tr key={i.incidentId}>
                   <Td primary className="whitespace-nowrap font-medium text-ink-900"><a href={`/incidencias/${i.incidentId}`} className="hover:underline">{INCIDENT_CATEGORY_LABELS[i.category!] ?? i.category}</a></Td>
                   <Td label="Estado"><StatusPill status={i.status!} /></Td>
-                  <Td label="Abierta hace" className={cn('whitespace-nowrap text-right font-mono tabular-nums', ageTone(i.hoursOpen ?? 0, true))}>{formatOpenTime(i.hoursOpen ?? 0)}</Td>
+                  <Td label="Abierta hace" className={cn('whitespace-nowrap text-right font-mono tabular-nums', ageTone(i.hoursOpen ?? 0, true, ageThresholds))}>{formatOpenTime(i.hoursOpen ?? 0)}</Td>
                   <Td label="Ruta" className="min-w-56"><RouteLine size="sm" origin={i.originCity!} destination={i.destinationCity!} /></Td>
                   <Td label="Partes"><div className="min-w-0"><span className="block max-w-[15rem] truncate font-medium text-ink-900">{i.requesterName}</span><span className="block max-w-[15rem] truncate text-xs text-ink-500">{i.carrierName}</span></div></Td>
                   <Td actions className="relative whitespace-nowrap text-right">

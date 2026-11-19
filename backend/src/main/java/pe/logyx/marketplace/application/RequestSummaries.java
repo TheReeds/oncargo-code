@@ -60,8 +60,17 @@ public class RequestSummaries {
             return new RequestSummary(r, a, a == null ? 0 : counts.getOrDefault(a.id(), 0L),
                     o == null ? null : o.legalName(), myBids.get(r.id()),
                     o != null && o.rucVerified(), trust.get(r.requesterOrgId()), best.get(r.id()),
-                    standings.get(r.id()));
+                    standings.get(r.id()), canSeePrivate(r));
         }).toList();
+    }
+
+    /**
+     * Datos privados de la solicitud (referencia, contactos, ventanas, instrucciones): la PYME dueña, el operador y el
+     * transportista adjudicado cuando ya se adjudicó. Nunca los transportistas que solo miran o que ofertaron y perdieron.
+     */
+    private boolean canSeePrivate(ShipmentRequest r) {
+        return r.isOwnedBy(tenant.orgId()) || tenant.orgType() == OrgType.OPERATOR
+                || (r.status() == ShipmentRequest.Status.MATCHED && tenant.orgId().equals(r.assignedCarrierOrgId()));
     }
 
     /** Mejor oferta pendiente por solicitud, solo para la PYME dueña (en la misma consulta, sin N+1). */

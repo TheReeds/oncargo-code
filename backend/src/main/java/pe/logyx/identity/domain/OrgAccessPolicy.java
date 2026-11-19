@@ -23,11 +23,16 @@ public final class OrgAccessPolicy {
 
     private OrgAccessPolicy() {}
 
-    /** Escrituras permitidas a un VIEWER: su propia cuenta y sesión, leer avisos y el cotizador (sin efectos). */
+    /**
+     * Escrituras permitidas a un VIEWER: su propia cuenta y sesión, leer avisos y sus preferencias de aviso (V16), pedir
+     * acceso a los ADMIN (V16) y el cotizador (sin efectos).
+     */
     private static final List<Pattern> VIEWER_WRITES = List.of(
             Pattern.compile("/api/v1/auth/[a-z-]+(/[a-z-]+)?"),
             Pattern.compile("/api/v1/notifications/[^/]+/read"),
             Pattern.compile("/api/v1/notifications/read-all"),
+            Pattern.compile("/api/v1/notifications/preferences"),
+            Pattern.compile("/api/v1/organizations/me/access-requests"),
             Pattern.compile("/api/v1/pricing/calculate"));
 
     public static boolean isSafeMethod(String method) {

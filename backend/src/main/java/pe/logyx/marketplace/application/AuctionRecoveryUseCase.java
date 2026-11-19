@@ -74,6 +74,6 @@ public class AuctionRecoveryUseCase {
         }
         return publish.publish(new PublishRequestCommand(c.originCity().name(), c.originAddress(),
                 c.destinationCity().name(), c.destinationAddress(), c.cargoType(), c.cargoDescription(), c.weightKg(),
-                c.volumeM3(), date), old.id());
+                c.volumeM3(), date, old.details(), null, null, null), old.id());
     }
 }

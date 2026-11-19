@@ -8,6 +8,7 @@ import pe.logyx.marketplace.domain.model.ShipmentRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -78,12 +79,47 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
     @Column(name = "republished_from")
     public UUID republishedFrom;
 
+    public String code;
+
+    @Column(name = "customer_reference")
+    public String customerReference;
+
+    @Column(name = "declared_value")
+    public BigDecimal declaredValue;
+
+    @Column(name = "pickup_contact_name")
+    public String pickupContactName;
+    @Column(name = "pickup_contact_phone")
+    public String pickupContactPhone;
+    @Column(name = "pickup_window_from")
+    public LocalTime pickupWindowFrom;
+    @Column(name = "pickup_window_to")
+    public LocalTime pickupWindowTo;
+    @Column(name = "pickup_instructions")
+    public String pickupInstructions;
+
+    @Column(name = "delivery_contact_name")
+    public String deliveryContactName;
+    @Column(name = "delivery_contact_phone")
+    public String deliveryContactPhone;
+    @Column(name = "delivery_window_from")
+    public LocalTime deliveryWindowFrom;
+    @Column(name = "delivery_window_to")
+    public LocalTime deliveryWindowTo;
+    @Column(name = "delivery_instructions")
+    public String deliveryInstructions;
+
     ShipmentRequest toDomain() {
         return new ShipmentRequest(id, requesterOrgId, createdBy,
                 new ShipmentRequest.Cargo(originCity, originAddress, destinationCity, destinationAddress,
                         cargoType, cargoDescription, weightKg, volumeM3, pickupDate),
                 new ShipmentRequest.Pricing(distanceKm, suggestedPrice, priceFloor),
-                status, assignedCarrierOrgId, createdAt, cancelReason, republishedFrom);
+                status, assignedCarrierOrgId, createdAt, cancelReason, republishedFrom, code,
+                new ShipmentRequest.Details(customerReference, declaredValue,
+                        new ShipmentRequest.StopDetails(pickupContactName, pickupContactPhone, pickupWindowFrom,
+                                pickupWindowTo, pickupInstructions),
+                        new ShipmentRequest.StopDetails(deliveryContactName, deliveryContactPhone, deliveryWindowFrom,
+                                deliveryWindowTo, deliveryInstructions)));
     }
 
     void apply(ShipmentRequest r) {
@@ -109,5 +145,19 @@ public class ShipmentRequestEntity extends PanacheEntityBase {
         createdAt = r.createdAt();
         cancelReason = r.cancelReason();
         republishedFrom = r.republishedFrom();
+        code = r.code();
+        var d = r.details();
+        customerReference = d.customerReference();
+        declaredValue = d.declaredValue();
+        pickupContactName = d.pickup().contactName();
+        pickupContactPhone = d.pickup().contactPhone();
+        pickupWindowFrom = d.pickup().windowFrom();
+        pickupWindowTo = d.pickup().windowTo();
+        pickupInstructions = d.pickup().instructions();
+        deliveryContactName = d.delivery().contactName();
+        deliveryContactPhone = d.delivery().contactPhone();
+        deliveryWindowFrom = d.delivery().windowFrom();
+        deliveryWindowTo = d.delivery().windowTo();
+        deliveryInstructions = d.delivery().instructions();
     }
 }

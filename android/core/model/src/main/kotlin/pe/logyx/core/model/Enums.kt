@@ -56,11 +56,14 @@ enum class NotificationType {
     SMART_LOAD_SUGGESTED, SMART_LOAD_ACCEPTED,
     // V13 (huecos P1)
     AUCTION_CLOSED, REQUEST_CANCELLED, SHIPMENT_CANCELLED, BID_WITHDRAWN, ORGANIZATION_VERIFICATION,
+    // V16: un Lector pidió acceso (llega a cada ADMIN)
+    ACCESS_REQUESTED,
     /** Valor que este cliente no conoce (se mapea con `coerceInputValues`). */
     UNKNOWN,
 }
 
-@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION }
+/** V16: `USER` = una persona de tu organización (quien pidió acceso). */
+@Serializable enum class NotificationTarget { REQUEST, BID, COUNTER_OFFER, SHIPMENT, INCIDENT, REVIEW, TRIP, SMART_LOAD, ORGANIZATION, USER }
 
 @Serializable enum class ReviewDirection { PYME_TO_CARRIER, CARRIER_TO_PYME }
 

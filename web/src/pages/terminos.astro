@@ -1,0 +1,75 @@
+---
+import Public from '@/layouts/Public.astro';
+import { Alert } from '@/components/ui/alert';
+import { FileText, Mail, Scale, ShieldCheck, Truck, Receipt } from '@lucide/astro';
+import { TERMS_SECTIONS } from '@/features/legal/terms-content';
+import { getLegal } from '@/features/legal/server';
+import { SUPPORT_EMAIL } from '@/lib/contact';
+
+const legal = await getLegal();
+const draft = legal.termsStatus !== 'PUBLISHED';
+const summary = [
+  { icon: Truck, t: 'Quién responde por la carga', d: 'El transportista, según su póliza; la PYME declara el valor y la naturaleza.' },
+  { icon: Receipt, t: 'Precio, IGV y comisión', d: 'El precio adjudicado incluye IGV. La comisión la paga el transportista.' },
+  { icon: Scale, t: 'Versionados', d: 'Guardamos la versión y la fecha en que los aceptaste.' },
+];
+---
+<Public title="Términos y condiciones" description="Términos y condiciones de uso de OnCargo: cuentas, subasta, precios y comisión, y responsabilidad por la carga. Borrador pendiente de revisión legal.">
+  <header class="mk-dark relative isolate overflow-hidden">
+    <div class="mk-grid absolute inset-0 -z-10" aria-hidden="true"></div>
+    <div class="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-12 sm:pb-32 sm:pt-16 lg:px-10 lg:pb-36 lg:pt-20">
+      {draft && <p class="inline-flex items-center gap-1.5 rounded-full border border-amber-500/60 bg-chrome/40 px-3 py-1 text-xs font-semibold text-white"><FileText size={13} class="text-amber-500" aria-hidden="true" /> Borrador — pendiente de revisión legal</p>}
+      <h1 class="mk-display mt-5 max-w-[16ch] text-white">Términos y condiciones</h1>
+      <p class="mk-lead mt-5 text-base text-white/85 sm:text-lg">Las reglas de uso de OnCargo: cómo funcionan las cuentas, la subasta, los precios y quién responde por la carga.</p>
+      <p class="mt-6 inline-flex items-center gap-2 text-sm text-white/85"><ShieldCheck size={15} class="text-emerald-500" aria-hidden="true" /> Versión <span class="font-mono" data-testid="terms-version">{legal.termsVersion}</span></p>
+    </div>
+  </header>
+
+  <div class="mx-auto w-full max-w-[1280px] px-4 lg:px-10">
+    <ul class="relative z-10 -mt-20 grid gap-3 sm:-mt-24 sm:grid-cols-3 sm:gap-4" aria-label="En resumen">
+      {summary.map((s) => (
+        <li class="mk-card rounded-card border border-steel-200 bg-surface p-5 shadow-lg shadow-chrome/10">
+          <span class="grid size-9 place-items-center rounded-full bg-petrol-50 text-petrol-700"><s.icon size={18} aria-hidden="true" /></span>
+          <p class="mt-3 text-[15px] font-semibold text-ink-900">{s.t}</p>
+          <p class="mt-1 text-sm text-ink-500">{s.d}</p>
+        </li>
+      ))}
+    </ul>
+
+    <div class="grid gap-x-10 gap-y-8 py-12 sm:py-16 lg:grid-cols-[210px_minmax(0,1fr)]">
+      <aside class="print:hidden lg:sticky lg:top-24 lg:self-start" aria-label="En esta página">
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">En esta página</p>
+        <nav class="mt-3" aria-label="Contenido de los términos">
+          <ol class="space-y-0.5 border-l border-steel-200 text-sm">
+            {TERMS_SECTIONS.map((s, i) => (
+              <li><a href={`#${s.id}`} class="-ml-px flex gap-2 border-l-2 border-transparent py-1.5 pl-3 text-ink-700 transition-colors hover:border-petrol-700 hover:text-petrol-700"><span class="font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</span>{s.h}</a></li>
+            ))}
+          </ol>
+        </nav>
+      </aside>
+
+      <article class="min-w-0 max-w-[68ch]">
+        {draft && (
+          <Alert tone="warning" title="Borrador — pendiente de revisión legal" className="mb-8">
+            Este texto todavía no fue revisado por asesoría legal y puede cambiar. Cuando se publique la versión definitiva, te pediremos aceptarla de nuevo.
+          </Alert>
+        )}
+        <div class="space-y-9 text-[15px] leading-7 text-ink-700">
+          {TERMS_SECTIONS.map((s, i) => (
+            <section id={s.id} class="scroll-mt-24" aria-labelledby={`${s.id}-t`}>
+              <h2 id={`${s.id}-t`} class="mb-2 flex items-baseline gap-3 text-lg font-semibold text-ink-900"><span class="font-mono text-sm text-ink-500" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{s.h}</h2>
+              {s.p.map((t) => <p class="mt-2 text-pretty first:mt-0">{t}</p>)}
+            </section>
+          ))}
+        </div>
+        <div class="mt-10 flex items-start gap-3 rounded-card border border-steel-200 bg-petrol-50 p-5">
+          <Mail size={20} class="mt-0.5 shrink-0 text-petrol-700" aria-hidden="true" />
+          <div class="text-sm">
+            <p class="font-semibold text-ink-900">¿Dudas sobre estos términos?</p>
+            <p class="mt-1 text-ink-700">Escribe a <a href={`mailto:${SUPPORT_EMAIL}`} class="font-medium text-petrol-700 underline underline-offset-2">{SUPPORT_EMAIL}</a>. También puedes leer la <a href="/privacidad" class="font-medium text-petrol-700 underline underline-offset-2">política de privacidad</a>.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</Public>

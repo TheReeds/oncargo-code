@@ -10,6 +10,7 @@ import { RouteLine } from '@/components/domain/RouteLine';
 import { Badge } from '@/components/ui/badge';
 import { StopTimeline } from '@/features/shipments/components/StopTimeline';
 import DocumentsPanel from '@/features/documents/components/DocumentsPanel';
+import OperatorChat from '@/features/operator/components/OperatorChat';
 import ShipmentIncidents from '@/features/incidents/components/ShipmentIncidents';
 import { getShipment } from '@/features/operator/server';
 import ShipmentActions from '@/features/shipments/components/ShipmentActions';
@@ -64,6 +65,7 @@ const done = stops.filter((x) => x.status === 'COMPLETED').length;
           <StopTimeline stops={stops} />
         </CardBody>
       </Card>
+      {s.requestId && <OperatorChat client:load requestId={s.requestId} />}
       <ShipmentIncidents client:load shipmentId={s.id!} />
       <DocumentsPanel client:load shipmentId={s.id!} perspective="OPERATOR" status={s.status!} hasActiveIncident={s.hasActiveIncident ?? false} />
     </div>

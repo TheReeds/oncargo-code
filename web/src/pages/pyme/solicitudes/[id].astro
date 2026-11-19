@@ -12,11 +12,18 @@ import { AuctionCard, RequestHeaderActions, RequestHeaderMeta, RequestLiveSync }
 import NegotiationPanel from '@/features/negotiation/components/NegotiationPanel';
 import { listThreads } from '@/features/negotiation/server';
 import { getRequest, listBids } from '@/features/requests/server';
+// Autoría (zona D, roadmap v2 1.8): quién publicó y quién hizo cada acción.
+import ActivityTrail, { AuthorLine } from '@/features/activity/components/ActivityTrail';
+import { getActivity } from '@/features/activity/server';
 import { ApiError } from '@/lib/api/client';
-import { CARGO_LABELS, CITY_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatKm, formatTons } from '@/lib/format';
+import { CARGO_LABELS, CITY_LABELS, VEHICLE_LABELS, formatDate, formatDateTime, formatKm, formatMoney, formatTons } from '@/lib/format';
+import { can } from '@/lib/permissions';
+import { Copy } from '@lucide/astro';
 
 const { id } = Astro.params;
-const token = Astro.locals.session!.token;
+const session = Astro.locals.session!;
+const token = session.token;
+const canOperate = can(session, 'OPERATE');
 let r;
 try {
   r = await getRequest(token, id!);
@@ -26,6 +33,7 @@ try {
 }
 const bids = await listBids(token, id!).catch((e) => { if (e instanceof ApiError && e.status !== 401) return []; throw e; });
 const threads = await listThreads(token, id!).catch(() => []);
+const activity = await getActivity(token, 'REQUEST', id!).catch(() => null);
 const hilo = Astro.url.searchParams.get('hilo');
 const a = r.auction;
 const created = Astro.url.searchParams.has('creada');
@@ -36,20 +44,33 @@ const summary = [
   { label: 'Peso', value: formatTons(r.weightKg), mono: true, hint: r.weightKg ? `${new Intl.NumberFormat('es-PE').format(r.weightKg)} kg` : undefined },
   { label: 'Volumen', value: r.volumeM3 ? `${r.volumeM3} m³` : '—', mono: true },
   { label: 'Fecha de recojo', value: formatDate(r.pickupDate) },
+  { label: 'Tu referencia', value: r.customerReference, mono: true },
+  { label: 'Valor declarado', value: r.declaredValue != null ? formatMoney(r.declaredValue) : undefined, mono: true },
   { label: 'Distancia', value: formatKm(r.distanceKm), mono: true },
   { label: 'Vehículo mínimo', value: r.minVehicleType ? (VEHICLE_LABELS[r.minVehicleType] ?? r.minVehicleType) : undefined },
   { label: 'Descripción', value: r.cargoDescription, span: true },
 ];
+const window_ = (from?: string, to?: string) => (from && to ? `${from} – ${to}` : undefined);
+const stopRows = (k: 'pickup' | 'delivery') => [
+  { label: 'Contacto', value: r[`${k}ContactName`] },
+  { label: 'Teléfono', value: r[`${k}ContactPhone`], mono: true },
+  { label: 'Ventana horaria', value: window_(r[`${k}WindowFrom`], r[`${k}WindowTo`]), mono: true },
+  { label: 'Instrucciones', value: r[`${k}Instructions`], span: true },
+];
+const pickupRows = stopRows('pickup'), deliveryRows = stopRows('delivery');
+const hasContacts = [...pickupRows, ...deliveryRows].some((x) => x.value);
 ---
 <AppShell title="Detalle de solicitud" active="solicitudes">
   <PageHeader title={route} subtitle={r.cargoDescription} breadcrumbs={[{ label: 'Solicitudes', href: '/pyme/solicitudes' }, { label: route }]}>
     <Fragment slot="meta">
       <RequestHeaderMeta client:load status={r.status!} verified={r.requesterRucVerified} />
-      <span class="font-mono text-xs">#{r.id!.slice(0, 8)}</span>
+      <span class="font-mono text-xs font-semibold text-ink-700" data-testid="request-code">{r.code ?? `#${r.id!.slice(0, 8)}`}</span>
       <span>Creada {formatDateTime(r.createdAt)}</span>
+      <AuthorLine subject="REQUEST" createdBy={activity?.createdBy} />
     </Fragment>
     <div slot="actions" class="flex flex-wrap items-center gap-3">
       <RequestHeaderActions client:load requestId={r.id!} status={r.status!} verified={r.requesterRucVerified} auction={a ?? null} pickupDate={r.pickupDate} />
+      {canOperate && <a href={`/pyme/solicitudes/nueva?from=${r.id}`} class={buttonVariants({ variant: 'outline' })}><Copy size={16} /> Duplicar</a>}
       {shipment && <a href={`/pyme/envios?id=${shipment.id}`} class={buttonVariants({ variant: 'outline' })}>Ver envío y documentos</a>}
     </div>
   </PageHeader>
@@ -75,12 +96,23 @@ const summary = [
         </CardBody>
       </Card>
 
+      {hasContacts && (
+        <Card className="max-lg:order-2">
+          <CardHeader><CardTitle>Contactos y horarios</CardTitle><span class="text-xs text-ink-500">Privados: los verá el transportista que adjudiques</span></CardHeader>
+          <CardBody className="grid gap-6 sm:grid-cols-2">
+            <div><h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-500">Recojo</h3><DescriptionList cols={1} items={pickupRows} /></div>
+            <div><h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-500">Entrega</h3><DescriptionList cols={1} items={deliveryRows} /></div>
+          </CardBody>
+        </Card>
+      )}
+
       <div class="max-lg:order-1"><BidComparison client:load bids={bids} suggested={r.suggestedPrice} requestId={r.id!} requestStatus={r.status!} floor={r.priceFloor} /></div>
       <div class="max-lg:order-3"><NegotiationPanel client:load requestId={r.id!} requestStatus={r.status!} initialThreads={threads} initialCarrierOrgId={hilo && threads.some((t) => t.carrierOrgId === hilo) ? hilo : null} /></div>
     </div>
 
     <aside class="order-1 lg:order-2 lg:sticky lg:top-20 lg:self-start">
       <AuctionCard client:load auction={a ?? null} suggested={r.suggestedPrice} floor={r.priceFloor} />
+      <div class="mt-5"><ActivityTrail client:idle subject="REQUEST" id={r.id!} initial={activity as never} liveTypes={['bid.placed', 'request.matched', 'auction.updated', 'counter_offer.updated']} /></div>
     </aside>
   </div>
 </AppShell>

@@ -3,7 +3,7 @@
 Quarkus 3.40 · Java 21 · PostgreSQL 16 (Flyway) · JWT RSA · Hibernate ORM Panache.
 Contexto general: `../AGENTS.md`, `../docs/architecture/overview.md`, ADR-0001 (RLS), ADR-0002 (hexagonal),
 ADR-0004 (eventos de dominio, notificaciones, escrituras del operador), ADR-0005 (almacenamiento de documentos) y
-ADR-0006 (dos usuarios de BD, outbox transaccional, S3). Despliegue: `../infra/README.md`; seguridad: `../docs/security.md`.
+ADR-0006 (dos usuarios de BD, outbox transaccional, S3) y ADR-0010 (parámetros de sistema administrables, comisión y términos versionados). Despliegue: `../infra/README.md`; seguridad: `../docs/security.md`.
 
 ## Correr y testear
 ```bash
@@ -64,13 +64,18 @@ sobre los objetos de dominio.
 | `documents` | upload/descarga de documentos y evidencia de entrega; puerto `DocumentStorage` | `documents` (V5) |
 | `reputation` | calificaciones post-entrega (RN06) y Trust Score bayesiano (RN09) | `reviews`, `reputation_scores` (V6) |
 | `incident` | incidencias, comentarios y estados (RN11) | `incidents`, `incident_comments` (V7) |
-| `notification` | centro de notificaciones alimentado por eventos | `notifications` (V8) |
-| `operator` | alertas SLA, métricas (con GMV), candidatos y asignación manual (RN10), verificación de organizaciones y **visor de auditoría** (`AuditQueries` → puerto `AuditLogReader` → `NativeAuditLogReader`, SQL nativo con LEFT JOIN a `profiles`/`organizations`); sin tablas propias | políticas de escritura (V9); índices de `audit_log` y `requests_bidder_read` (V15) |
+| `notification` | centro de avisos **por persona** alimentado por eventos, preferencias in-app/correo (V16) | `notifications` (V8, `profile_id`/`mine` V16), `notification_preferences` (V16) |
+| `activity` | autoría y rastro de acciones de un recurso (`GET /activity`), solo lectura bajo RLS | sin tablas (lee `audit_log`, `created_by`) |
+| `operator` | alertas SLA, métricas (con GMV y parámetros vigentes), **búsqueda `q`** (`OperatorSearchReader` → `NativeOperatorSearchReader`, SQL nativo bajo las políticas `*_operator`), **ofertas y chat en solo lectura con auditoría `OPERATOR_VIEWED_CHAT`**, **parámetros de sistema** (`/operator/parameters`, historial), candidatos y asignación manual (RN10), verificación de organizaciones y **visor de auditoría** (`AuditQueries` → puerto `AuditLogReader` → `NativeAuditLogReader`, SQL nativo con LEFT JOIN a `profiles`/`organizations`); sin tablas propias | políticas de escritura (V9); índices de `audit_log` y `requests_bidder_read` (V15) |
 | `trip` | viajes publicados (RN12), reservas de espacio, cargas de retorno (RF61–RF63) y Smart Load Planner (OE07) | `carrier_trips`, `trip_bookings`, `smart_load_suggestions`, `smart_load_items` (V10) |
+| `shared/config` (V18) | **parámetros de sistema editables por el operador**: `SystemParameters` (lectura cacheada 10 s por `SystemTx`, escritura del operador con versión, motivo, historial y auditoría; sin fila rige la configuración) + `domain/ParameterKey` (tipos y límites: `commission_rate`, `assignment_sla_hours`, `incident_warn_hours`, `incident_breach_hours`) | `system_parameters`, `system_parameter_history` (V18) |
+| `pricing` (ola 1) | además del cálculo: **comisión** (`CommissionPolicy` puro + `CommissionService.currentRate()/breakdown()`), `GET /pricing/commission`, **cotizador público** `POST /public/pricing/quote` y `GET /public/pricing/commission` (sin JWT, `AuthRateLimits.beforePublicQuote`) | `shipments.commission_rate` (V18) |
 | `shared/outbox` | outbox transaccional de eventos (ADR-0006) | `outbox_events` (V11) |
 | `realtime` | stream SSE `GET /api/v1/events/stream` alimentado por el outbox (ADR-0007) | `realtime_events` (V12) |
 | `routing` | rutas y km por carretera entre ciudades del catálogo, orden óptimo de paradas, desvíos, `GET /api/v1/routes` (ADR-0008) | sin tablas: dataset `resources/routing/routes.json` |
 | (varios) | huecos de flujo 2026-11-16: verificación de organizaciones, retiro de ofertas, cancelación/reasignación de envíos, estado final RF55, grupos de carga | columnas y políticas en V13 (sin tablas nuevas) |
+| `places` (V17) | libreta de direcciones y almacenes frecuentes por organización (`SavedPlace`, `PlaceService`; archivo, sin borrado; orden por uso) | `saved_places` (V17, RLS por organización) |
+| `search` (V17) | búsqueda global Ctrl+K: solicitudes, envíos y contrapartes por código, referencia, ruta, placa o RUC (`SearchQuery`, `SearchService`, `NativeSearchReader` con SQL nativo **bajo RLS, nunca `SystemTx`**) | sin tablas; índices `lower(code)`, `lower(customer_reference)` (V17) |
 | `identity` (V14, ADR-0009) | contraseñas (olvidé/restablecer, cambio, invitaciones), sesiones revocables (`sv`), refresh del móvil, usuarios y roles de la organización, perfil editable | `password_tokens`, `refresh_tokens` + columnas de `profiles`/`organizations` (V14) |
 
 Dependencias entre módulos nuevos (todas por `application`): `negotiation → marketplace`; `documents → shipment`;
@@ -233,6 +238,23 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   desactivado no se asigna (`LOGYX-FLT-003`).
 - **Perfil de la organización** (`OrganizationProfileService`, `GET|PATCH /organizations/me`): ver ADR-0009 §7.
 
+## Avisos por persona, preferencias, «Pedir acceso» y autoría (V16, Ola 1 zona D, ADR-0009 §8)
+- **`app_profile()`**: `TenantSessionBinder` fija también `app.profile_id` (sub del JWT). Políticas por persona: `notifications`
+  (`org_id = app_org() AND profile_id = app_profile()`; `logyx_app` solo actualiza `read_at`), `notification_preferences`,
+  `realtime_events_read` (lo dirigido a un `user_id` solo lo lee esa persona). En tests RLS fija los tres (`profileOf(session)`).
+- **Aviso nuevo**: en `NotificationObservers`, `Notification.to(org, …)` = toda la organización (el publisher lo expande en una fila por
+  persona activa sin conductores ni invitaciones pendientes, `UserAccounts.noticeRecipients`) o `Notification.toPerson(org, perfil, …)`.
+  Todo `NotificationType` debe tener categoría en `NotificationCategory.of` (preferencias). `NotificationPublisher` aplica las
+  preferencias (`NotificationPreferencePolicy`), marca `mine` con `ResourceAuthors` (autor de la solicitud/oferta en esa organización)
+  y encola el correo (`NotificationMailer` → `QuarkusNotificationMailer`, **después del commit**, `logyx.web.url` para los enlaces).
+  `notification.created` va a `Recipient.user(org, perfil)`.
+- **«Pedir acceso»**: `AccessRequestService` (`POST /organizations/me/access-requests`, VIEWER permitido): auditoría
+  `ACCESS_REQUESTED` (es también el límite: `logyx.access-request.cooldown`, PT10M) + evento `AccessRequested` → aviso personal a cada ADMIN.
+- **Autoría**: módulo `activity` (`GET /activity?subject=&id=`), SQL nativo de solo lectura bajo RLS sobre `audit_log`, `profiles`
+  y `bids.created_by` (V16, DEFAULT `app_profile()`). Sin SystemTx. Una acción auditada nueva aparece sola; si su `entity` es hija de
+  un sujeto nuevo, agrégala en `NativeActivityReader.entities`.
+- Tests: `PerPersonNotificationFlowTest`, `NotificationPreferencePolicyTest`, `RowLevelSecurityTest.avisosYPreferenciasSonDeCadaPersonaDentroDeLaOrganizacion`.
+
 ## RLS, dos datasources y SystemTx (ADR-0001, ADR-0006) — no romper
 - **Dos datasources sobre la misma BD.** Por defecto = dueño del esquema (`logyx_owner` en prod; `quarkus` en dev/test):
   Flyway y `SystemTx`. `app` = `logyx_api` (LOGIN, miembro solo de `logyx_app`): todo lo demás. Hibernate elige con
@@ -258,6 +280,8 @@ Claves generadas por el servidor; formato por firma binaria (`documents/domain/F
   - `RequestSummaries.bidCounts`: conteo agregado de ofertas para transportistas (sin montos ni competidores).
   - `RequestSummaries.standings` (V15, RN04): posición del transportista en las solicitudes donde ofertó (`BidRepository.rankings`: conteos y el
     mejor monto; `BidStandingPolicy` lo convierte en banda). Del `SystemTx` solo sale `BidStanding{rank, bidCount, best, vsBest, finalStanding}`: nunca un monto ni un id ajeno.
+  - `SystemParameters` (V18): lectura de `system_parameters` (datos de la plataforma, también sin usuario: endpoints públicos y jobs) con caché de 10 s; la escritura va en la transacción del operador con RLS (`params_operator_*`).
+  - `AuthService.register` (V18): inserta `terms_acceptances` (versión + fecha de los términos) junto con el alta.
   - `NotificationPublisher.publish`: la notificación es para otra organización; `notifications` no tiene política
     de INSERT para `logyx_app` (ADR-0004). Se une a la transacción del despacho del outbox.
   - `ReputationRecalculator.recalculate`: quien califica actualiza la reputación de otra organización;
@@ -320,13 +344,15 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 |---|---|
 | GEN | `404` no encontrado ("Solicitud no encontrada", "Envío no encontrado": `BusinessException.notFound` concuerda el género), `403` regla de permiso de negocio, `500` |
 | HTTP | `LOGYX-HTTP-<status>` errores del framework (ruta inexistente 404, método 405, formato 406/415, cuerpo 413) con mensaje en español; siempre JSON (`ExceptionMappers.json`, `PayloadTooLargeHandler` para el 413 de Vert.x) |
-| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token o sesión revocada (`sv`), `403` rol sin permiso, `429` demasiados intentos (login/registro/olvidé/canje/refresh/cambio de contraseña), `005` enlace de contraseña inválido, vencido o usado (`token`), `006` contraseña actual incorrecta (`currentPassword`), `007` (403) VIEWER solo lectura, `008` (403) solo el ADMIN de la organización, `009` (401) refresh inválido/vencido/reutilizado/revocado, `010` nueva contraseña igual a la actual (`newPassword`), `011` invitación sin aceptar la política de privacidad (`acceptPrivacyPolicy`) |
+| AUTH | `001` credenciales, `002` email ya registrado, `401` sin token o sesión revocada (`sv`), `403` rol sin permiso, `429` demasiados intentos (login/registro/olvidé/canje/refresh/cambio de contraseña), `005` enlace de contraseña inválido, vencido o usado (`token`), `006` contraseña actual incorrecta (`currentPassword`), `007` (403) VIEWER solo lectura, `008` (403) solo el ADMIN de la organización, `009` (401) refresh inválido/vencido/reutilizado/revocado, `010` nueva contraseña igual a la actual (`newPassword`), `011` invitación sin aceptar la política de privacidad (`acceptPrivacyPolicy`), `012` (409) versión de los términos desactualizada (`termsVersion`; el registro exige `acceptTerms`) |
 | USR | `001` último ADMIN activo, `002` no puedes desactivarte, `003` invitación ya aceptada, `004` rol no permitido (`role`, DRIVER), `005` el usuario es conductor (se gestiona en Flota), `006` reenviar a un usuario desactivado |
-| VAL | `001` Bean Validation (`field` = propiedad) |
+| VAL | `001` Bean Validation (`field` = propiedad), `002` teléfono inválido (`PeruPhone`, 9 dígitos con +51 opcional) |
 | ORG | `001` RUC inválido, `002` RUC duplicado, `003` (403) sin verificar por el operador (RN01), `004` (403) suspendida, `005` operadora no se verifica, `006` falta motivo (`reason`), `007` razón social/RUC no editables (verificada o suspendida) |
 | FLT | `001` placa duplicada, `002` estado "en ruta" lo controla el envío, `003` conductor desactivado (`driverId`) |
 | PRC | `001` ciudad fuera del corredor, `002` origen = destino |
-| REQ | `002` cancelar solo publicadas, `003` fecha de recojo pasada (`pickupDate`), `004` solo se republica una cancelada |
+| REQ | `002` cancelar solo publicadas, `003` fecha de recojo pasada (`pickupDate`), `004` solo se republica una cancelada, `006` ventana horaria incompleta o invertida (`pickupWindowTo`/`deliveryWindowTo`), `007` valor declarado ≤ 0 (`declaredValue`) |
+| PLC | `001` horario de la dirección guardada inválido (`windowTo`), `002` dirección archivada (se restaura antes de editar) |
+| EXP | `001` exportación CSV de más de 10 000 filas (acota los filtros) |
 | AUC | `001` subasta no abierta, `002` subasta cerrada, `003` solo se reabre una cerrada por tiempo |
 | BID | `001` bajo el piso (RN03), `003` ya ofertó (o retiró), `004` no admite aceptar, `005` no se puede retirar |
 | CAP | `001` sin capacidad (RN02), `002` vehículo no disponible, `003` tipo de vehículo no apto para la carga, `004` volumen, `005` vehículo comprometido en otro envío solapado (F11) |
@@ -337,6 +363,7 @@ Formato `LOGYX-<ÁREA>-<NNN>`, respuesta `{ error: { code, message, field }, met
 | REV | `001` no entregado, `002` sin foto (RN06), `003` ya calificó |
 | INC | `001` ya hay activa, `002` transición inválida (`status`), `003` faltan notas (`resolutionNotes`), `004` cerrada, `005` envío cancelado, `006` estado final del envío faltante o incoherente (`shipmentOutcome`, RF55) |
 | OPS | `001` SLA no vencido (RN10), `002` no es transportista (`carrierOrgId`), `003` transportista no verificado o suspendido |
+| PAR | `001` valor inválido o fuera de rango (`value`), `002` falta el motivo (`reason`), `003` (409) aviso de incidencias ≥ incumplimiento, `004` (409) otro operador cambió el parámetro (`expectedVersion`) |
 | RTM | `001` (429) más de `logyx.realtime.max-connections-per-user` streams abiertos del usuario |
 | RTE | `001` ruta con menos de 2 paradas (`stops`), `002` más de 25 paradas (`stops`) |
 | TRP | `001` capacidad > vehículo (RN12, `capacityKg`), `002` salida no futura (`departureAt`), `003` viaje sin reservas, `004` peso > restante (`weightKg`), `005` transición de viaje inválida, `006` reserva ya resuelta, `007` viaje con envíos ya salidos, `008` sugerencia ya resuelta, `009` sugerencia vencida, `010` carga no compatible con el vehículo (`cargoType`), `011` carga de la sugerencia ya no disponible, `012` monto para una carga que no es del plan |
@@ -382,3 +409,11 @@ generado → viaje en `FILLING`); 1 sugerencia Smart Load `PENDING` para `carrie
 `carrier@logyx.pe` ve 3 cargas de retorno (Juliaca → Arequipa, Juliaca → Lima quinua y Puno → Tacna) en `/return-loads` y en el dashboard.
 En dev `logyx.auction.duration=PT72H` para que las subastas sigan abiertas. Dev Services recrea la BD
 en cada arranque, así que el seed corre cada vez.
+
+## Solicitud de la PYME: código, datos opcionales, libreta, búsqueda y CSV (V17, Ola 1 zona A)
+- **Código** `OC-XXXXX` (`marketplace/domain/RequestCode`, alfabeto sin 0/1/I/L/O/U): lo asigna `RequestCodes.next()` (comprueba con `SystemTx` porque bajo RLS una PYME no ve los códigos ajenos; el índice único cubre la carrera). Toda solicitud nueva lo necesita (`DirectContractUseCase` también); el envío lo hereda (`shipment` lo lee de la solicitud, ver CHANGELOG).
+- **Datos privados** (`ShipmentRequest.Details`: referencia, valor declarado, `StopDetails` de recojo y entrega): viajan en la fila de la solicitud; `RequestView` los entrega según `RequestSummary.showPrivate` (PYME dueña, operador, transportista adjudicado con `MATCHED`). El valor declarado es público para transportistas. Un campo nuevo privado: agrégalo a `RequestView` con el mismo patrón (`priv ? x : null`) y a `canSeePrivate`, no confíes en la UI.
+- **Idempotencia** (`shared/idempotency/IdempotencyKeys`, tabla `idempotency_keys` con RLS): `lock` (candado consultivo de la transacción) → `find` → crear → `remember`, todo en la misma transacción del caso de uso (`PublishRequestUseCase.publishOnce`). Reutilizable para otras escrituras (otro `scope`).
+- **Libreta** (`places`): `PlaceService.markUsed` lo llama `PublishRequestUseCase` con `originPlaceId`/`destinationPlaceId`. Un recurso nuevo que necesite una dirección guardada la lee por `PlaceService`, nunca por su repositorio.
+- **Búsqueda** (`search`): el lector nativo cruza `shipment_requests`, `shipments`, `bids` y `organizations` y confía en la RLS; la referencia propia solo se busca para PYME/operador (o el transportista adjudicado). Tipo de resultado nuevo → `SearchHitType`, `SearchReader`, `SearchService` (href por rol) y test en `SearchFlowTest`.
+- **Listados filtrados y CSV**: `MyRequestFilter` → `searchMine` (JPQL con `?n`, comodines de usuario escapados con `LikePatterns`); el CSV usa la **misma consulta** que el JSON (`MarketplaceQueries.exportMine`) y `shared/api/CsvWriter`. Otros módulos que exporten: reutiliza `CsvWriter` y el tope `EXPORT_MAX_ROWS`.

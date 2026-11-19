@@ -54,7 +54,8 @@ interface ReputationRepository {
 
 /** Centro de notificaciones in-app (RF49, RF51). */
 interface NotificationsRepository {
-    suspend fun list(unreadOnly: Boolean = false, page: Int = 0): Result<Page<NotificationView>>
+    /** V16: avisos por persona; [mineOnly] = solo los de algo que creé. */
+    suspend fun list(unreadOnly: Boolean = false, page: Int = 0, mineOnly: Boolean = false): Result<Page<NotificationView>>
     suspend fun unreadCount(): Result<Int>
     suspend fun markRead(id: String): Result<NotificationView>
     suspend fun markAllRead(): Result<Int>
@@ -100,8 +101,18 @@ class DefaultReputationRepository(private val api: LogyxApi) : ReputationReposit
 }
 
 class DefaultNotificationsRepository(private val api: LogyxApi) : NotificationsRepository {
-    override suspend fun list(unreadOnly: Boolean, page: Int) = apiCall { api.notifications(unreadOnly, page) }
+    override suspend fun list(unreadOnly: Boolean, page: Int, mineOnly: Boolean) = apiCall { api.notifications(unreadOnly, page, mineOnly = mineOnly) }
     override suspend fun unreadCount() = apiCall { api.unreadCount().unread }
     override suspend fun markRead(id: String) = apiCall { api.markNotificationRead(id) }
     override suspend fun markAllRead() = apiCall { api.markAllNotificationsRead().updated }
+}
+
+/** «Pedir acceso» a los ADMIN de la organización (V16, roadmap v2 1.7/1.15). Cualquier rol, también Lector. */
+interface AccessRepository {
+    suspend fun request(permission: pe.logyx.core.model.OrgPermission, reason: String? = null): Result<pe.logyx.core.model.AccessRequestView>
+}
+
+class DefaultAccessRepository(private val api: LogyxApi) : AccessRepository {
+    override suspend fun request(permission: pe.logyx.core.model.OrgPermission, reason: String?) =
+        apiCall { api.requestAccess(pe.logyx.core.model.CreateAccessRequest(permission, reason?.takeIf { it.isNotBlank() })) }
 }

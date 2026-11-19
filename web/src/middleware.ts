@@ -2,11 +2,12 @@ import { defineMiddleware } from 'astro:middleware';
 import { ApiError } from './lib/api/client';
 import type { MiddlewareHandler } from 'astro';
 import { clearSession, homeFor, readSession } from './lib/session';
-import { runWithPermissions } from './lib/request-context';
+import { runWithSession } from './lib/request-context';
+import { can, writeRouteFor } from './lib/permissions';
 
-const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/olvide', '/restablecer'];
+const PUBLIC = ['/', '/login', '/registro', '/privacidad', '/terminos', '/precios', '/contacto', '/olvide', '/restablecer'];
 /** Públicas que también ve quien ya tiene sesión (no se redirigen a su home). */
-const OPEN_WITH_SESSION = ['/privacidad', '/olvide', '/restablecer'];
+const OPEN_WITH_SESSION = ['/privacidad', '/terminos', '/precios', '/contacto', '/olvide', '/restablecer'];
 /** Páginas con un token en la URL: sin `Referer` hacia ningún sitio. */
 const NO_REFERRER = ['/restablecer', '/olvide'];
 const isAsset = (p: string) => !p.startsWith('/_actions') && (p.startsWith('/_') || p.startsWith('/favicon') || p.includes('.'));
@@ -33,7 +34,7 @@ const handle = defineMiddleware(async (ctx, next) => {
   const home = homeFor(session);
   if (isPublic) {
     // Usuarios con sesión: / y /login van a su home (privacidad y el restablecimiento de contraseña se ven siempre).
-    if (OPEN_WITH_SESSION.includes(pathname)) return runWithPermissions(session.permissions, next);
+    if (OPEN_WITH_SESSION.includes(pathname)) return runWithSession(session, next);
     return ctx.redirect(home);
   }
 
@@ -45,12 +46,16 @@ const handle = defineMiddleware(async (ctx, next) => {
     || (pathname === '/transportista' || pathname.startsWith('/transportista/')) && session.orgType !== 'CARRIER'
     || (pathname === '/operador' || pathname.startsWith('/operador/')) && session.orgType !== 'OPERATOR'
     || (pathname === '/organizacion' || pathname.startsWith('/organizacion/')) && (session.orgType !== 'PYME' && session.orgType !== 'CARRIER');
-  if (denied) return runWithPermissions(session.permissions, () => next('/sin-acceso'));
+  if (denied) return runWithSession(session, () => next('/sin-acceso'));
   if (pathname === '/conductor' && !driverOnly) return ctx.redirect(home);
+  // Páginas que solo sirven para escribir (roadmap v2 1.7): sin el permiso se vuelve al listado con un aviso
+  // (`AppShell` lo muestra con «Pedir acceso»). El backend igual respondería 403 (`AUTH-007`).
+  const writeRoute = writeRouteFor(pathname);
+  if (writeRoute && !can(session, writeRoute.needs)) return ctx.redirect(`${writeRoute.redirect}?sinPermiso=${writeRoute.key}`);
 
   try {
-    // Los permisos viajan en un AsyncLocalStorage para que las islas React los lean durante el SSR (`lib/use-can.ts`).
-    return await runWithPermissions(session.permissions, next);
+    // Permisos y rol viajan en un AsyncLocalStorage para que las islas React los lean durante el SSR (`lib/permissions/react.tsx`).
+    return await runWithSession(session, next);
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
       clearSession(ctx.cookies);

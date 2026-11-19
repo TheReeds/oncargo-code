@@ -187,7 +187,7 @@ class IncidentAndOperatorFlowTest {
     void operadorNoSeRegistraPublicamente() {
         Map<String, Object> body = Map.of("organizationType", "OPERATOR", "legalName", "Falso Operador",
                 "ruc", Api.newRuc(), "fullName", "X", "email", "falso" + System.nanoTime() + "@test.pe",
-                "password", "Secreta123", "acceptPrivacyPolicy", true);
+                "password", "Secreta123", "acceptPrivacyPolicy", true, "acceptTerms", true);
         io.restassured.RestAssured.given().contentType("application/json").body(body)
                 .post("/api/v1/auth/register").then().statusCode(403);
     }
