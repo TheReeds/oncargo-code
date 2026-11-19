@@ -87,7 +87,8 @@ services:
       BILLING_ISSUER_NAME: ${BILLING_ISSUER_NAME:-OnCargo}
       BILLING_ISSUER_RUC: ${BILLING_ISSUER_RUC:-}
       # Correo (V14 contraseñas e invitaciones; V24 avisos, resumen diario y baja). Proveedor por definir: ver README.
-      SMTP_HOST: ${SMTP_HOST:-}
+      # Nunca vacío: Quarkus toma "" como valor ausente y el backend no arranca (quarkus.mailer.host).
+      SMTP_HOST: ${SMTP_HOST:-localhost}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
