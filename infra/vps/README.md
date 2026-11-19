@@ -120,7 +120,9 @@ cd /opt/oncargo/src/infra/vps && docker compose ps            # 5 servicios; db,
 sudo ufw status | head -3; sudo iptables -S DOCKER-USER; sudo fail2ban-client status
 systemctl list-timers 'oncargo-*'; sudo oncargo-health -v
 ```
-Historial: 2026-11-19, 6.8.0-147 → 6.8.0-149-generic (RESULTADO_REINICIO).
+Historial: 2026-11-19 12:05 (Lima), 6.8.0-147 → 6.8.0-149-generic: SSH de vuelta en ~2 min, los 5 contenedores en marcha y
+`healthy` ~30 s después, UFW activo, `DOCKER-USER` aplicado tras Docker (primera regla de `FORWARD`), fail2ban con sus 4 jails,
+timers activos, `oncargo-health` en OK y sin `/var/run/reboot-required`. No hizo falta ningún arreglo.
 
 ## Pendiente del dueño
 Necesitan cuentas o paneles del dueño; el resto del servidor ya está listo para cada uno.
