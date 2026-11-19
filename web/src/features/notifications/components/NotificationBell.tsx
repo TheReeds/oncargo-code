@@ -86,7 +86,7 @@ export default function NotificationBell() {
           <div className="min-w-0"><h2 className="text-sm font-semibold text-ink-900">Notificaciones</h2>{unread > 0 && <p className="text-xs text-ink-500"><span className="font-mono tabular-nums">{unread}</span> sin leer</p>}</div>
           <Button variant="ghost" size="sm" onClick={readAll} disabled={busy || unread === 0}><CheckCheck /> Marcar todas como leídas</Button>
         </div>
-        <div className="max-h-[min(26rem,65vh)] overflow-y-auto">
+        <div className="lx-gutter max-h-[min(26rem,65vh)] overflow-y-auto">
           {error ? (
             <div role="alert" className="space-y-2 px-4 py-6 text-center text-sm text-ink-700">
               <p>No pudimos cargar tus notificaciones. Inténtalo de nuevo.</p>

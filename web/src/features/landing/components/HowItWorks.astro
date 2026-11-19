@@ -1,135 +1,160 @@
 ---
-/** "Cómo funciona" en 4 pasos con mocks fieles del producto (cifras de las reglas reales: 20 min, 5 ofertas, piso 75 %, tarifa del backend). */
-import { Check, MapPin, Camera, Star, Timer, ShieldCheck, ArrowRight, Calendar, Weight } from '@lucide/astro';
+/**
+ * «Cómo funciona»: 4 pasos numerados, un mensaje por paso y su mock al lado (izquierda/derecha alternadas).
+ * Lenguaje del video promocional: número en círculo cian, eyebrow en mayúsculas, titular corto, tarjeta blanca con sombra suave.
+ * Ruta con la geometría real por carretera (`ROUTE_PATHS`, routes.json) y km del dataset; tarifas y reglas de la subasta reales.
+ */
+import { Check, MapPin, Timer, ShieldCheck, ArrowRight, Calendar, Weight } from '@lucide/astro';
 import { Badge } from '@/components/ui/badge';
 import { formatMoney, formatNumber } from '@/lib/format';
-import { km, quote } from '../pricing';
+import { ROUTE_PATHS, CITIES } from '../corridor-data';
+import { km, quote, routeKey } from '../pricing';
 
-const dist = km('LIMA', 'AREQUIPA');
+const dist = km('LIMA', 'JULIACA');
 const q = quote(dist, 3.2);
 const offer = (p: number) => Math.round(q.suggested * (1 - p / 100) * 100) / 100;
 const A = offer(5.8), B = offer(3.1), C = offer(2.1);
-const breakdown: [string, number][] = [['Combustible', q.fuel], ['Transporte', q.transport], ['Peajes', q.tolls], ['Manipuleo', q.handling]];
-const card = 'mk-card mk-rv group relative flex flex-col overflow-hidden rounded-card border border-steel-200 bg-surface p-5 sm:p-7';
+const city = (c: string) => CITIES.find((x) => x.code === c)!;
+const lima = city('LIMA'), juliaca = city('JULIACA');
+const routePath = ROUTE_PATHS[routeKey('LIMA', 'JULIACA')];
+
+const steps = [
+  { n: 1, eyebrow: 'Publica', title: 'Describe tu carga', text: 'Ruta, peso y fecha.' },
+  { n: 2, eyebrow: 'Precio sugerido', title: 'Un precio justo desde el inicio', text: 'Calculado según la distancia real por carretera.' },
+  { n: 3, eyebrow: 'Ofertas', title: 'Compara y acepta', text: 'Precio, vehículo y Trust Score. Si nadie oferta en 24 h, te asignamos un transportista.' },
+  { n: 4, eyebrow: 'Seguimiento', title: 'Cada parada, en tiempo real', text: 'Aviso en cada parada y foto de la entrega.' },
+];
+const stops = [
+  { c: 'Lima', s: 'Carga recogida', state: 'done' },
+  { c: 'Nazca', s: 'Parada completada', state: 'done' },
+  { c: 'Arequipa', s: 'En camino…', state: 'now' },
+  { c: 'Juliaca', s: 'Destino', state: 'todo' },
+];
+const mock = 'relative overflow-hidden rounded-2xl border border-steel-200 bg-surface p-5 shadow-[0_22px_48px_-28px_rgb(8_31_70/0.45)] sm:p-6';
+const field = 'flex items-center gap-2 rounded-input border border-steel-200 bg-steel-100/60 px-3 py-2.5 text-sm';
 ---
-<section id="como-funciona" class="relative border-b border-steel-200 bg-steel-100" aria-labelledby="como-funciona-t">
+<section id="como-funciona" class="hiw relative border-b border-steel-200 bg-steel-100" aria-labelledby="como-funciona-t">
   <div class="mx-auto w-full max-w-[1280px] px-4 py-12 lg:px-10 lg:py-16">
-    <div class="grid items-end gap-4 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
-      <div class="mk-rv">
-        <p class="mk-eyebrow">Cómo funciona</p>
-        <h2 id="como-funciona-t" class="mk-h2 mt-3 text-ink-900">Los transportistas ofertan. <span class="text-petrol-700">Tú eliges.</span></h2>
-      </div>
+    <div class="mk-rv">
+      <p class="mk-eyebrow">Cómo funciona</p>
+      <h2 id="como-funciona-t" class="mk-h2 mt-3 text-ink-900">Los transportistas ofertan. <span class="text-petrol-700">Tú eliges.</span></h2>
     </div>
 
-    <ol class="mt-9 grid gap-4 lg:grid-cols-12 lg:gap-5">
-      <!-- 1 · Publica -->
-      <li class:list={[card, 'lg:col-span-7']} style="--i:0">
-        <div class="flex items-start gap-4">
-          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">01</span>
-          <div>
-            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 1: </span>Publica tu solicitud</h3>
-            <p class="mt-1.5 max-w-prose text-pretty text-sm text-ink-700">Ruta, peso y fecha. Ves el precio sugerido antes de publicar.</p>
+    <ol class="mt-10 space-y-12 lg:mt-14 lg:space-y-12">
+      {steps.map((s, i) => (
+        <li class="grid items-center gap-6 lg:grid-cols-2 lg:gap-16">
+          <div class:list={['mk-rv max-w-md', i % 2 === 1 && 'lg:order-2 lg:pl-8']}>
+            <p class="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-ink-700">
+              <span class="hiw-n grid size-7 place-items-center rounded-full text-[13px] font-bold tracking-normal" aria-hidden="true">{s.n}</span>
+              <span class="sr-only">Paso {s.n}: </span>{s.eyebrow}
+            </p>
+            <h3 class="mt-4 text-balance text-3xl font-[650] leading-[1.08] tracking-[-0.025em] text-ink-900 lg:text-4xl">{s.title}</h3>
+            <p class="mt-3 text-pretty text-base text-ink-700">{s.text}</p>
           </div>
-        </div>
-        <div class="mt-5 grid flex-1 gap-4 rounded-input border border-steel-200 bg-steel-100/70 p-4 sm:grid-cols-[1fr_1fr]" aria-hidden="true">
-          <div class="space-y-2.5 text-sm">
-            <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><MapPin size={15} class="text-petrol-700" /><span class="text-ink-500">Origen</span><span class="ml-auto font-medium text-ink-900">Lima</span></div>
-            <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><MapPin size={15} class="text-emerald-700" /><span class="text-ink-500">Destino</span><span class="ml-auto font-medium text-ink-900">Arequipa</span></div>
-            <div class="grid grid-cols-2 gap-2.5">
-              <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><Weight size={15} class="text-ink-500" /><span class="mk-num ml-auto font-medium text-ink-900">3.2 t</span></div>
-              <div class="flex items-center gap-2 rounded-input border border-steel-200 bg-surface px-3 py-2"><Calendar size={15} class="text-ink-500" /><span class="ml-auto font-medium text-ink-900">28 nov</span></div>
-            </div>
-            <p class="text-xs text-ink-500"><span class="mk-num">{formatNumber(dist, 1)} km</span> por carretera · Carga general</p>
-          </div>
-          <dl class="rounded-input border border-steel-200 bg-surface px-3.5 py-2 text-sm">
-            <p class="pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">Cotización estimada</p>
-            {breakdown.map(([k, v]) => <div class="flex items-center justify-between py-1"><dt class="text-ink-700">{k}</dt><dd class="mk-num text-ink-900">{formatMoney(v)}</dd></div>)}
-            <div class="mt-1 flex items-center justify-between border-t border-steel-200 py-2"><dt class="font-semibold text-ink-900">Sugerido</dt><dd class="money text-base">{formatMoney(q.suggested)}</dd></div>
-          </dl>
-        </div>
-      </li>
 
-      <!-- 2 · Ofertan -->
-      <li class:list={[card, 'lg:col-span-5']} style="--i:1">
-        <div class="flex items-start gap-4">
-          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">02</span>
-          <div>
-            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 2: </span>Los transportistas ofertan</h3>
-            <p class="mt-1.5 text-pretty text-sm text-ink-700">Si nadie oferta en 24 h, te asignamos un transportista compatible.</p>
-          </div>
-        </div>
-        <div class="mt-5 flex-1 rounded-input border border-steel-200 bg-steel-100/70 p-4" aria-hidden="true">
-          <div class="flex items-center justify-between">
-            <Badge tone="amber"><Timer size={12} /> Cierra en <span class="mk-num">12:41</span></Badge>
-            <span class="flex items-center gap-2 text-xs text-ink-500"><span class="flex gap-0.5">{[0, 1, 2, 3, 4].map((i) => <span class:list={['h-1.5 w-4 rounded-full', i < 3 ? 'bg-petrol-700' : 'bg-steel-200']}></span>)}</span><span class="mk-num">3 de 5</span></span>
-          </div>
-          <ul class="mt-3 space-y-2 text-sm">
-            {[['Transportes Andinos', C], ['Ruta Andina', B]].map(([n, a]) => (
-              <li class="flex items-center justify-between rounded-input border border-steel-200 bg-surface px-3 py-2"><span class="flex items-center gap-1.5 text-ink-700"><ShieldCheck size={14} class="text-emerald-700" />{n}</span><span class="mk-num text-ink-900">{formatMoney(a as number)}</span></li>
-            ))}
-            <li class="flex items-center justify-between rounded-input border border-emerald-700/30 bg-emerald-50 px-3 py-2"><span class="flex items-center gap-1.5 text-ink-700"><Check size={14} class="text-emerald-700" stroke-width={3} />Logística Altiplano</span><span class="money">{formatMoney(A)}</span></li>
-          </ul>
-        </div>
-      </li>
+          <div class:list={[i % 2 === 0 ? 'mk-rv-r' : 'mk-rv-l', 'w-full max-w-xl', i % 2 === 1 ? 'lg:order-1 lg:justify-self-center' : 'lg:justify-self-center']} aria-hidden="true">
+            {s.n === 1 && (
+              <div class={mock}>
+                <div class="space-y-2.5">
+                  <div class={field}><MapPin size={16} class="text-petrol-700" /><span class="text-ink-500">Origen</span><span class="ml-auto font-medium text-ink-900">Lima</span></div>
+                  <div class={field}><MapPin size={16} class="text-emerald-700" /><span class="text-ink-500">Destino</span><span class="ml-auto font-medium text-ink-900">Juliaca</span></div>
+                  <div class="grid grid-cols-2 gap-2.5">
+                    <div class={field}><Weight size={16} class="text-ink-500" /><span class="mk-num ml-auto font-medium text-ink-900">3.2 t</span></div>
+                    <div class={field}><Calendar size={16} class="text-ink-500" /><span class="ml-auto font-medium text-ink-900">28 nov</span></div>
+                  </div>
+                </div>
+                <p class="mt-4 text-xs text-ink-500">Carga general · <span class="mk-num">{formatNumber(dist, 1)} km</span> por carretera</p>
+              </div>
+            )}
 
-      <!-- 3 · Aceptas -->
-      <li class:list={[card, 'lg:col-span-5']} style="--i:0">
-        <div class="flex items-start gap-4">
-          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">03</span>
-          <div>
-            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 3: </span>Aceptas la mejor oferta</h3>
-            <p class="mt-1.5 text-pretty text-sm text-ink-700">Compara precio, vehículo y Trust Score.</p>
-          </div>
-        </div>
-        <div class="mt-5 grid flex-1 grid-cols-2 gap-3" aria-hidden="true">
-          <div class="rounded-input border-2 border-emerald-700/50 bg-emerald-50 p-3">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">Mejor precio</p>
-            <p class="money mt-1 text-lg">{formatMoney(A)}</p>
-            <p class="mk-num mt-0.5 text-[11px] font-medium text-emerald-700">−5.8 % vs sugerido</p>
-            <p class="mt-2 text-xs text-ink-700">Camión mediano</p>
-            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><Star size={12} class="text-amber-700" /> Trust <span class="mk-num">86</span>/100</p>
-            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><ShieldCheck size={12} class="text-emerald-700" /> Verificada</p>
-            <p class="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-input bg-emerald-700 text-[13px] font-medium text-on-solid">Aceptar oferta <ArrowRight size={13} /></p>
-          </div>
-          <div class="rounded-input border border-steel-200 bg-surface p-3">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">Otra oferta</p>
-            <p class="mk-num mt-1 text-lg font-semibold text-ink-900">{formatMoney(C)}</p>
-            <p class="mk-num mt-0.5 text-[11px] font-medium text-ink-500">−2.1 % vs sugerido</p>
-            <p class="mt-2 text-xs text-ink-700">Camión grande</p>
-            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><Star size={12} class="text-amber-700" /> Trust <span class="mk-num">92</span>/100</p>
-            <p class="mt-1 flex items-center gap-1 text-xs text-ink-700"><ShieldCheck size={12} class="text-emerald-700" /> Verificada</p>
-            <p class="mt-3 inline-flex h-8 w-full items-center justify-center rounded-input border border-steel-200 text-[13px] font-medium text-ink-700">Ver detalle</p>
-          </div>
-        </div>
-      </li>
+            {s.n === 2 && (
+              <div class={mock + ' !p-0'}>
+                <div class="hiw-grid relative aspect-[3/2]">
+                  <svg viewBox="10 0 720 480" class="absolute inset-0 size-full" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path d={routePath} pathLength="1" stroke="var(--color-steel-200)" stroke-width="9" opacity="0.7" />
+                    <path d={routePath} pathLength="1" class="mk-draw hiw-route" style="--len:1" stroke-width="9" />
+                    <circle cx={lima.x} cy={lima.y} r="13" fill="var(--color-surface)" class="hiw-ring" stroke-width="7" />
+                    <circle cx={juliaca.x} cy={juliaca.y} r="13" fill="var(--color-surface)" class="hiw-ring-end" stroke-width="7" />
+                    <text x={lima.x + 24} y={lima.y - 12} class="hiw-label" font-size="30">Lima</text>
+                    <text x={juliaca.x} y={juliaca.y + 54} text-anchor="middle" class="hiw-label" font-size="30">Juliaca</text>
+                  </svg>
+                  <p class="mk-num absolute right-3 top-3 rounded-full bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-ink-900 shadow-[0_6px_18px_-8px_rgb(8_31_70/0.45)] sm:right-4 sm:top-4 sm:text-sm">{formatNumber(dist, 1)} km <span class="font-sans font-medium text-ink-700">por carretera</span></p>
+                </div>
+                <div class="flex items-center justify-between border-t border-steel-200 px-5 py-3.5 text-sm sm:px-6">
+                  <span class="text-ink-700">Sugerido para <span class="mk-num">3.2</span> t</span>
+                  <span class="money text-base">{formatMoney(q.suggested)}</span>
+                </div>
+              </div>
+            )}
 
-      <!-- 4 · Sigues -->
-      <li class:list={[card, 'lg:col-span-7']} style="--i:1">
-        <div class="flex items-start gap-4">
-          <span class="mk-num text-5xl font-semibold leading-none text-ink-500" aria-hidden="true">04</span>
-          <div>
-            <h3 class="text-xl font-semibold tracking-tight text-ink-900"><span class="sr-only">Paso 4: </span>Sigues el envío parada por parada</h3>
-            <p class="mt-1.5 max-w-prose text-pretty text-sm text-ink-700">Con aviso en cada parada y foto de la entrega.</p>
+            {s.n === 3 && (
+              <div class={mock}>
+                <div class="flex items-center justify-between">
+                  <Badge tone="amber"><Timer size={12} /> Cierra en <span class="mk-num">12:41</span></Badge>
+                  <span class="flex items-center gap-2 text-xs text-ink-500"><span class="flex gap-0.5">{[0, 1, 2, 3, 4].map((k) => <span class:list={['h-1.5 w-4 rounded-full', k < 3 ? 'bg-petrol-700' : 'bg-steel-200']}></span>)}</span><span class="mk-num">3 de 5</span></span>
+                </div>
+                <ul class="mt-4 space-y-2 text-sm">
+                  {[['Transportes Andinos', C], ['Ruta Andina', B]].map(([n, a]) => (
+                    <li class="flex items-center justify-between rounded-input border border-steel-200 px-3 py-2.5"><span class="flex items-center gap-1.5 text-ink-700"><ShieldCheck size={14} class="text-emerald-700" />{n}</span><span class="mk-num text-ink-900">{formatMoney(a as number)}</span></li>
+                  ))}
+                  <li class="rounded-input border-2 border-emerald-700/50 bg-emerald-50 px-3 py-2.5">
+                    <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 font-medium text-ink-900"><Check size={14} class="text-emerald-700" stroke-width={3} />Logística Altiplano</span><span class="money">{formatMoney(A)}</span></div>
+                    <div class="mt-2 flex items-center justify-between gap-3 text-xs text-ink-700"><span>Mejor precio · <span class="mk-num">−5.8 %</span> · Trust <span class="mk-num">86</span>/100</span><span class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-input bg-emerald-700 px-3 text-[13px] font-medium text-on-solid">Aceptar <ArrowRight size={13} /></span></div>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {s.n === 4 && (
+              <div class={mock}>
+                <div class="flex items-center justify-between">
+                  <p class="text-base font-semibold text-ink-900">En ruta</p>
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"><span class="mk-pulse size-1.5 rounded-full bg-emerald-500"></span>En vivo</span>
+                </div>
+                <ol class="mt-5">
+                  {stops.map((p, k) => (
+                    <li class:list={['relative flex items-start gap-4', k < stops.length - 1 && 'pb-6']}>
+                      {k < stops.length - 1 && (
+                        <span class:list={['absolute bottom-0 left-[11px] top-6 w-0.5 -translate-x-1/2 rounded', p.state === 'done' ? 'hiw-seg-done' : 'bg-steel-200']} aria-hidden="true">
+                          {p.state === 'now' && <span class="hiw-seg-fill absolute inset-x-0 top-0 block h-1/2 rounded"></span>}
+                        </span>
+                      )}
+                      <span class:list={['relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center rounded-full', p.state === 'todo' ? 'border-[3px] border-steel-200 bg-surface' : 'hiw-node', p.state === 'now' && 'hiw-now mk-ping']}>{p.state === 'done' && <Check size={13} stroke-width={3.5} class="hiw-node-i" />}</span>
+                      <span><span class:list={['block text-[15px] font-semibold leading-6', p.state === 'todo' ? 'text-ink-700' : 'text-ink-900']}>{p.c}</span><span class="block text-xs text-ink-500">{p.s}</span></span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
-        </div>
-        <div class="mt-5 grid flex-1 gap-4 rounded-input border border-steel-200 bg-steel-100/70 p-4 sm:grid-cols-[1.2fr_0.8fr]" aria-hidden="true">
-          <ol class="relative space-y-3 text-sm">
-            <span class="absolute bottom-3 left-[9px] top-3 w-0.5 rounded bg-steel-200"></span>
-            {[['Recojo en Lima', '28 nov · 08:12', 'done'], ['Paso por Ica', '28 nov · 11:20', 'done'], ['En ruta por Nazca', '28 nov · 14:40', 'now'], ['Entrega en Arequipa', 'Estimada 29 nov', 'todo']].map(([t, h, s]) => (
-              <li class="relative flex items-center gap-3">
-                <span class:list={['relative z-10 grid size-5 shrink-0 place-items-center rounded-full', s === 'done' && 'bg-emerald-500 text-on-solid', s === 'now' && 'border-[3px] border-petrol-700 bg-surface mk-ping text-petrol-700', s === 'todo' && 'border-2 border-ink-400 bg-surface']}>{s === 'done' && <Check size={11} stroke-width={3} />}</span>
-                <span><span class:list={['block font-medium', s === 'todo' ? 'text-ink-500' : 'text-ink-900']}>{t}</span><span class="mk-num block text-xs text-ink-500">{h}</span></span>
-              </li>
-            ))}
-          </ol>
-          <div class="flex flex-col justify-between gap-3 rounded-input border border-steel-200 bg-surface p-3 text-sm">
-            <p class="flex items-center gap-2 font-medium text-ink-900"><Camera size={15} class="text-petrol-700" /> Foto de evidencia</p>
-            <div class="grid h-14 place-items-center rounded-input bg-steel-100 text-xs text-ink-500">Entrega confirmada</div>
-            <p class="flex items-center gap-0.5 text-amber-700">{[0, 1, 2, 3, 4].map(() => <Star size={14} fill="currentColor" />)}<span class="mk-num ml-1.5 text-xs text-ink-700">5.0</span></p>
-          </div>
-        </div>
-      </li>
+        </li>
+      ))}
     </ol>
-    <p class="mt-4 text-xs text-ink-500">Ejemplo ilustrativo: empresas y horas de muestra; km, tarifas y reglas de la subasta reales.</p>
+    <p class="mt-10 text-xs text-ink-500">Ejemplo ilustrativo: empresas y horas de muestra; km, tarifas y reglas de la subasta reales.</p>
   </div>
 </section>
+
+<style>
+  .hiw { --hiw-cyan: #00bfe9; --hiw-navy: #081f46; }
+  /* Texto navy sobre cian: 7:1 (blanco sobre #00bfe9 daría 2.1:1) */
+  .hiw-n { background: var(--hiw-cyan); color: var(--hiw-navy); }
+  .hiw-grid {
+    background-image:
+      linear-gradient(to right, var(--color-steel-200) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-steel-200) 1px, transparent 1px);
+    background-size: 25% 25%;
+    background-color: color-mix(in srgb, var(--color-steel-100) 70%, var(--color-surface));
+  }
+  .hiw-route { stroke: var(--hiw-cyan); }
+  .hiw-ring { stroke: var(--hiw-cyan); }
+  .hiw-ring-end { stroke: var(--color-ink-900); }
+  .hiw-label { fill: var(--color-ink-900); font-weight: 650; font-family: var(--font-sans); }
+  .hiw-node { background: var(--hiw-cyan); color: var(--hiw-navy); }
+  .hiw-now { color: var(--hiw-cyan); }
+  .hiw-seg-done, .hiw-seg-fill { background: var(--hiw-cyan); }
+  @media (prefers-reduced-motion: no-preference) {
+    /* El tramo hacia el siguiente nodo se llena despacio y vuelve a empezar */
+    .hiw-seg-fill { height: 0; animation: hiw-seg 5.5s ease-in-out infinite; }
+  }
+  @keyframes hiw-seg { 0% { height: 0; } 70%, 100% { height: 100%; } }
+</style>

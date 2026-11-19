@@ -19,7 +19,7 @@ export function Sheet({ open, onOpenChange, title, description, children }: { op
               <X className="size-4" />
             </Dialog.Close>
           </div>
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="lx-gutter flex-1 overflow-y-auto overscroll-contain">{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

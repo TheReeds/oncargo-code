@@ -145,7 +145,7 @@ export default function SavedSearches({ filters, vehicles }: { filters: SearchFi
           ) : items!.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-ink-700" data-testid="saved-empty">Aún no guardaste búsquedas. Elige filtros y pulsa «Guardar búsqueda».</p>
           ) : (
-            <ul className="max-h-80 divide-y divide-steel-200 overflow-y-auto" aria-label="Búsquedas guardadas">
+            <ul className="lx-gutter max-h-80 divide-y divide-steel-200 overflow-y-auto" aria-label="Búsquedas guardadas">
               {items!.map((s) => (
                 <li key={s.id} className="flex items-start gap-3 px-4 py-3" data-testid="saved-item">
                   <div className="min-w-0 flex-1">

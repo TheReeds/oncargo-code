@@ -112,7 +112,7 @@ const mayRequestAccess = session.role !== 'ADMIN' && session.role !== null;
         <a href="/" aria-label="LOGYX inicio"><Logo dark /></a>
         <button id="menu-close" type="button" class="rounded-input p-1.5 text-white/70 hover:bg-white/10 hover:text-white lg:hidden" aria-label="Cerrar menú"><X size={18} /></button>
       </div>
-      <nav class="flex-1 overflow-y-auto px-3 py-2" aria-label="Secciones">
+      <nav class="lx-scroll-chrome flex-1 overflow-y-auto overscroll-contain px-3 py-2" aria-label="Secciones">
         {groups.map((g) => (
           <div class="mb-3">
             {g.label && <p class="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/65">{g.label}</p>}

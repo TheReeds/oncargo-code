@@ -158,7 +158,7 @@ function ChatPanelInner({ requestId, carrierOrgId, readOnly: readOnlyProp, close
         aria-label="Mensajes de la conversación"
         tabIndex={0}
         onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}
-        className="min-h-48 flex-1 overflow-y-auto bg-surface p-4"
+        className="lx-gutter min-h-48 flex-1 overflow-y-auto bg-surface p-4"
       >
         <ul className="space-y-3">
         {loading ? (

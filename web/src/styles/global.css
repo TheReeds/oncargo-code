@@ -80,6 +80,35 @@ html[data-theme='dark'] .maplibregl-ctrl-attrib a { color: var(--color-ink-700);
   button:disabled { cursor: not-allowed; }
 }
 
+/* ── Scrollbars (guía modern-web-guidance `customize-scrollbar-color-and-thickness`) ─────────
+   Delgadas y de la marca en toda la web: pulgar con contraste ≥ 3:1 sobre la superficie (WCAG 1.4.11) y riel
+   transparente, sin flechas ni el gris del sistema. `scrollbar-color` se hereda, pero se repite en `*` para que
+   los contenedores oscuros (`.lx-scroll-chrome`, `.mk-dark`) recalculen su propio pulgar. Sin transiciones
+   (WebKit parpadea si `scrollbar-color` cambia animado). */
+:root {
+  --scrollbar-thumb: #76859b; /* 3.3:1 sobre steel-100 y 3.7:1 sobre blanco */
+  --scrollbar-track: transparent;
+}
+html[data-theme='dark'] { --scrollbar-thumb: var(--color-ink-400); } /* #6b7c93: 4.4:1 sobre el fondo y 4.0:1 sobre la superficie */
+.lx-scroll-chrome, .mk-dark { --scrollbar-thumb: rgb(255 255 255 / 0.4); } /* sidebar y bloques marinos: 3.7:1 sobre #0e1726 */
+@media (prefers-contrast: more) {
+  :root { --scrollbar-thumb: var(--color-ink-700); --scrollbar-track: var(--color-steel-200); }
+  .lx-scroll-chrome, .mk-dark { --scrollbar-thumb: rgb(255 255 255 / 0.85); --scrollbar-track: rgb(255 255 255 / 0.12); }
+}
+@layer base {
+  * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+}
+/* Respaldo para WebKit/Blink sin `scrollbar-color` */
+@supports not (scrollbar-color: auto) {
+  * { scrollbar-width: auto; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+  *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: var(--scrollbar-track); }
+}
+/* Contenedores cuyo contenido cambia de alto (listas filtradas, hojas, diálogos): la barra no mueve el layout */
+.lx-gutter, [cmdk-list] { scrollbar-gutter: stable; }
+[role='dialog'], [role='alertdialog'] { scrollbar-gutter: stable both-edges; }
+
 @utility tnum { font-variant-numeric: tabular-nums; }
 @utility money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--color-emerald-700); font-weight: 600; }
 
