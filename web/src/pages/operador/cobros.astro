@@ -2,7 +2,9 @@
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionCard } from '@/components/domain/SectionCard';
+import { RouteLine } from '@/components/domain/RouteLine';
+import { Scale } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import SettlementsList from '@/features/settlements/components/SettlementsList';
 import SettlementKpis from '@/features/settlements/components/SettlementKpis';
@@ -10,7 +12,7 @@ import CommissionCollections from '@/features/settlements/components/CommissionC
 import OperatorCommissionPanel from '@/features/settlements/components/OperatorCommissionPanel';
 import { listCommissionCollections, listSettlements, settlementSummary } from '@/features/settlements/server';
 import { apiQuery, filtersFromUrl, PAGE_SIZE } from '@/features/settlements/filters';
-import { CITY_LABELS, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { limaDateOf } from '@/lib/lima-date';
 const token = Astro.locals.session!.token;
 const filters = filtersFromUrl(Astro.url.searchParams);
@@ -37,7 +39,6 @@ for (const r of pending.items) {
   byCarrier.set(r.carrierOrgId!, cur);
 }
 const carriers = [...byCarrier.values()].sort((a, b) => b.amount - a.amount);
-const route = (o?: string, d?: string) => `${CITY_LABELS[o ?? ''] ?? o} → ${CITY_LABELS[d ?? ''] ?? d}`;
 ---
 <AppShell title="Cobros" active="operador-cobros" wide>
   <PageHeader title="Cobros" subtitle="Cobros de todos los envíos entregados, disputas por resolver y comisión pendiente por transportista." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Cobros' }]} />
@@ -45,20 +46,22 @@ const route = (o?: string, d?: string) => `${CITY_LABELS[o ?? ''] ?? o} → ${CI
   <div class="space-y-4">
     {summary && <div><SettlementKpis client:load summary={summary} perspective="OPERATOR" /></div>}
     {disputed.length > 0 && (
-      <Card data-testid="disputes-card">
-        <CardHeader><div><CardTitle>Disputas por resolver</CardTitle><CardDescription>Abre el envío para ver el motivo y cerrar la disputa.</CardDescription></div></CardHeader>
-        <ul class="divide-y divide-steel-200 border-t border-steel-200">
-          {disputed.map((r) => (
-            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
-              <span class="font-mono text-xs text-ink-500">{r.code}</span>
-              <span class="font-medium text-ink-900">{route(r.originCity, r.destinationCity)}</span>
-              <span class="text-ink-700">{r.requesterName} · {r.carrierName}</span>
-              <span class="text-xs text-ink-500">Entregado {r.deliveredAt ? formatDate(limaDateOf(r.deliveredAt)) : '—'}</span>
-              <a class={buttonVariants({ variant: 'outline', size: 'sm', className: 'ml-auto' })} href={`/operador/envios/${r.shipmentId}`}>Resolver<span class="sr-only"> la disputa de {r.code}</span></a>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <div data-testid="disputes-card">
+        <SectionCard flush icon={Scale} tone="alert" title="Disputas por resolver" count={disputed.length} description="Abre el envío para ver el motivo y cerrar la disputa.">
+          <ul class="divide-y divide-steel-200">
+            {disputed.map((r) => (
+              <li class="grid gap-x-4 gap-y-1.5 px-4 py-3 text-sm sm:px-5 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
+                <div class="min-w-0">
+                  <RouteLine size="sm" origin={r.originCity!} destination={r.destinationCity!} />
+                  <div class="mt-0.5 font-mono text-xs text-ink-500">{r.code} · Entregado {r.deliveredAt ? formatDate(limaDateOf(r.deliveredAt)) : '—'}</div>
+                </div>
+                <div class="min-w-0 truncate text-ink-700">{r.requesterName} <span class="text-ink-500">·</span> {r.carrierName}</div>
+                <a class={buttonVariants({ variant: 'outline', size: 'sm', className: 'justify-self-start md:justify-self-end' })} href={`/operador/envios/${r.shipmentId}`}>Resolver<span class="sr-only"> la disputa de {r.code}</span></a>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      </div>
     )}
     <div><OperatorCommissionPanel client:load carriers={carriers} truncated={pending.meta.total > pending.items.length} /></div>
     <div>

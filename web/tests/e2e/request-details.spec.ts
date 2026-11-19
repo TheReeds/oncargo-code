@@ -29,7 +29,7 @@ test.describe('Solicitudes PYME: duplicar, protección contra doble publicación
     await expect(page.getByLabel('Descripción de la carga')).toHaveValue('Rollos de tela paletizados');
     await expect(page.getByLabel('Tu referencia')).toHaveValue('OC 4500123');
     await expect(page.getByLabel('Nombre de contacto').first()).toHaveValue('María Quispe');
-    await expect(page.getByText('Precio sugerido')).toBeVisible();
+    await expect(page.getByText('Precio sugerido', { exact: true })).toBeVisible();
     // Fecha: mismo día de la semana, una semana después (nunca pasada)
     const nextWeek = api.isoDate(10);
     const [, m, d] = nextWeek.split('-').map(Number);
@@ -57,7 +57,7 @@ test.describe('Solicitudes PYME: duplicar, protección contra doble publicación
     await expect(page.getByRole('combobox', { name: 'Ciudad de destino' })).toContainText('Puno');
     await expect(page.getByLabel('Peso')).toHaveValue(/4.?200/);
     await expect(page.getByRole('combobox', { name: 'Tipo de carga' })).toContainText('Frágil');
-    await expect(page.getByText('Precio sugerido')).toBeVisible();
+    await expect(page.getByText('Precio sugerido', { exact: true })).toBeVisible();
     // Valores inválidos se ignoran sin romper
     await goto(page, '/pyme/solicitudes/nueva?origen=MARTE&destino=LIMA&peso=-5&tipo=XX');
     await expect(page.getByRole('combobox', { name: 'Ciudad de origen' })).toContainText('Selecciona');

@@ -61,7 +61,7 @@ export default function DocumentsPanel({ shipmentId, perspective, status, readOn
   const open = (list: DocumentView[], d: DocumentView) => { setViewerList(list); setViewing(list.findIndex((x) => x.id === d.id)); };
 
   if (error) return <Alert tone="error" title="No pudimos cargar los documentos" action={<Button size="sm" variant="outline" onClick={load}>Reintentar</Button>}>{error}</Alert>;
-  if (!docs) return <div className="space-y-3" aria-busy="true" aria-label="Cargando documentos"><Skeleton className="h-28 w-full" /><Skeleton className="h-20 w-full" /></div>;
+  if (!docs) return <div className="space-y-3" role="status" aria-busy="true" aria-label="Cargando documentos"><Skeleton className="h-28 w-full" /><Skeleton className="h-20 w-full" /></div>;
 
   const hasPhoto = docs.some((d) => d.type === 'DELIVERY_PHOTO');
   const readOnly = ro || perspective === 'OPERATOR' || !canOperate;

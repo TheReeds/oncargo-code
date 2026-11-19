@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SearchX, Truck, Plus, MoreHorizontal, Download, Trash2, Pencil, Gavel, PackageCheck } from 'lucide-react';
+import { SearchX, Truck, Plus, MoreHorizontal, Download, Trash2, Pencil, Gavel, PackageCheck, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -26,6 +26,8 @@ import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { StatusPill } from '@/components/domain/StatusPill';
 import { RouteLine } from '@/components/domain/RouteLine';
 import { KpiTile, KpiGrid } from '@/components/domain/KpiTile';
+import { SectionCard } from '@/components/domain/SectionCard';
+import { BarChart } from '@/components/domain/BarChart';
 import { DescriptionList } from '@/components/ui/description-list';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { ExportButton } from '@/components/ui/export-button';
@@ -349,7 +351,7 @@ export default function UiCatalog() {
           </Card>
         </Section>
 
-        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; ExportButton (exportar CSV con aviso de error); CopyButton (copiar al portapapeles con aviso accesible); EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
+        <Section id="paneles" title="Paneles de datos" note="Piezas de los dashboards: KpiTile (tone, delta, unit, loading) en KpiGrid; Table con stack (tarjetas por container query), sticky, dense, Th ordenable y label; DescriptionList; QuickFilters; SectionCard (tarjeta con encabezado estándar: ícono, título, subtítulo, contador, acción); BarChart (columnas de una serie con eje y escala redonda; abajo con 1, 3 y 12 meses); ExportButton (exportar CSV con aviso de error); CopyButton (copiar al portapapeles con aviso accesible); EmptyState icon/compact; SkeletonList; CardFooter/CardDescription.">
           <KpiGrid>
             <KpiTile label="Solicitudes activas" value={10} context="3 con subasta abierta" icon={Truck} href="#paneles" tone="petrol" />
             <KpiTile label="Ahorro vs sugerido" value="S/ 1,240" context="en 4 envíos" icon={Gavel} tone="money" delta={{ value: '+8%', direction: 'up', good: true }} />
@@ -374,6 +376,17 @@ export default function UiCatalog() {
             </Table>
             <CardFooter><span className="text-ink-500">2 de 13 solicitudes</span><Button size="sm" variant="ghost">Ver todas</Button></CardFooter>
           </Card>
+          <SectionCard icon={Gavel} tone="warn" title="SectionCard" count={3} description="Encabezado de los paneles: ícono con tono, título, subtítulo, contador y acción a la derecha." action={<Button size="sm" variant="ghost">Ver todas</Button>}>
+            <p className="text-sm text-ink-700">Úsala para toda tarjeta de contenido. Con <code className="font-mono text-xs">flush</code> el contenido (tabla o lista con divisores) llega hasta el borde.</p>
+          </SectionCard>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {[[{ key: '2026-11', label: 'nov 2026', value: 9309 }], [{ key: '2026-09', label: 'sep 2026', value: 4200 }, { key: '2026-10', label: 'oct 2026', value: 0 }, { key: '2026-11', label: 'nov 2026', value: 9309 }],
+              Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, label: `mes ${i + 1}`, shortLabel: String(i + 1), value: Math.round(2000 + 9000 * Math.abs(Math.sin(i))) }))].map((data, i) => (
+              <SectionCard key={i} icon={BarChart3} tone="petrol" title={`BarChart · ${data.length} ${data.length === 1 ? 'mes' : 'meses'}`} description="Ancho máximo de columna, eje y redondo, tooltip.">
+                <BarChart label="Gasto por mes" data={data} formatValue={formatMoney} height={180} />
+              </SectionCard>
+            ))}
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Card><CardHeader><CardTitle>Detalle de carga</CardTitle></CardHeader><CardBody>
               <DescriptionList items={[{ label: 'Peso', value: '2.5 t', mono: true }, { label: 'Distancia', value: '1,133 km', mono: true }, { label: 'Precio sugerido', value: 'S/ 1,850.00', money: true }, { label: 'Recojo', value: '28 nov · 08:00', hint: 'Av. Argentina 1234, Callao' }, { label: 'Notas', value: 'Carga frágil, no apilar', span: true }]} />

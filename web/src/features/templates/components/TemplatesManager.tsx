@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
-import { Archive, ArchiveRestore, CalendarClock, CirclePause, CirclePlay, CirclePlus, FilePen, MoreHorizontal, Send, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, CalendarClock, CirclePause, CirclePlay, CirclePlus, FilePen, FileStack, MoreHorizontal, Send, Trash2 } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/toaster';
 import { EmptyState } from '@/components/domain/EmptyState';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
+import { SectionCard } from '@/components/domain/SectionCard';
 import { Can } from '@/lib/permissions/react';
 import { CARGO_LABELS, CITY_LABELS, formatDate, formatDateTime, formatTons } from '@/lib/format';
 import { splitActionError } from '@/lib/action-error';
@@ -41,6 +43,8 @@ export default function TemplatesManager({ initial, drafts: initialDrafts, today
   }
 
   const active = templates.filter((t) => !t.archived), archived = templates.length - active.length;
+  const scheduled = active.filter((t) => t.schedule && !t.schedule.paused && !t.schedule.finished).length;
+  const paused = active.filter((t) => t.schedule?.paused).length;
   const rows = templates.filter((t) => (view === 'archived' ? t.archived : !t.archived));
 
   async function act(label: string, call: () => Promise<{ error?: { message: string } | undefined }>, ok: string) {
@@ -82,20 +86,25 @@ export default function TemplatesManager({ initial, drafts: initialDrafts, today
     return (
       <Card>
         <EmptyState
+          icon={FileStack}
           title="Aún no tienes plantillas"
-          description="Guarda una carga que repites como plantilla y publícala en un clic, o prográmala para que se publique sola."
+          description="Guarda una carga que repites como plantilla y publícala en un clic, o prográmala para que se publique sola. Al publicar, elige «Guardar como plantilla»; también puedes hacerlo desde el detalle de una solicitud."
           action={<Can fallback={null}><Button asChild><a href="/pyme/solicitudes/nueva"><CirclePlus />Crear desde una solicitud nueva</a></Button></Can>}
         />
-        <p className="px-6 pb-6 text-center text-sm text-ink-500">Al publicar, elige «Guardar como plantilla». También puedes guardar una solicitud ya publicada desde su detalle.</p>
       </Card>
     );
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-5">
+      <KpiGrid>
+        <KpiTile label="Plantillas activas" value={active.length} tone="petrol" icon={FileStack} context={archived ? `${archived} ${archived === 1 ? 'archivada' : 'archivadas'}` : 'listas para publicar'} />
+        <KpiTile label="Programadas" value={scheduled} tone="money" icon={CalendarClock} context="se publican solas" />
+        <KpiTile label="Pausadas" value={paused} tone={paused ? 'warn' : 'petrol'} icon={CirclePause} context={paused ? 'no se publican hasta reanudarlas' : 'ninguna en pausa'} />
+        <KpiTile label="Borradores por confirmar" value={drafts.length} tone={drafts.length ? 'warn' : 'petrol'} icon={FilePen} context={drafts.length ? 'revisa y publica' : 'nada pendiente'} />
+      </KpiGrid>
       {drafts.length > 0 && (
-        <Card aria-labelledby="drafts-title">
-          <CardHeader><CardTitle id="drafts-title">Borradores por confirmar ({drafts.length})</CardTitle></CardHeader>
-          <CardBody className="divide-y divide-steel-200 p-0">
+        <SectionCard flush icon={FilePen} tone="warn" title="Borradores por confirmar" count={drafts.length} description="Se generaron desde una programación y esperan tu visto bueno.">
+          <div className="divide-y divide-steel-200">
             {drafts.map((d) => (
               <div key={d.runId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
@@ -110,8 +119,8 @@ export default function TemplatesManager({ initial, drafts: initialDrafts, today
                 </Can>
               </div>
             ))}
-          </CardBody>
-        </Card>
+          </div>
+        </SectionCard>
       )}
 
       <QuickFilters label="Estado de las plantillas" value={view} onValueChange={setView}
@@ -154,7 +163,7 @@ export default function TemplatesManager({ initial, drafts: initialDrafts, today
                     <Td label="Última publicación" className="whitespace-nowrap text-sm">{t.lastPublishedAt ? formatDateTime(t.lastPublishedAt) : <span className="text-ink-500">Nunca</span>}</Td>
                     <Td actions className="text-right">
                       <Can fallback={null}>
-                        {!t.archived && <Button size="sm" onClick={() => setPublishing(t)}><Send />Publicar ahora<span className="sr-only"> {t.name}</span></Button>}
+                        {!t.archived && <Button size="sm" variant="outline" onClick={() => setPublishing(t)}><Send />Publicar ahora<span className="sr-only"> {t.name}</span></Button>}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="flex-none!" aria-label={`Más acciones de ${t.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent>

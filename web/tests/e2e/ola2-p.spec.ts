@@ -83,7 +83,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('heading', { name: 'Publicar desde plantilla' })).toBeVisible();
       await expect(page.getByText('Plantilla cargada')).toBeVisible();
       await expect(page.getByLabel('Descripción de la carga')).toHaveValue('Rollos de tela');
-      await expect(page.getByText('Precio sugerido')).toBeVisible();
+      await expect(page.getByText('Precio sugerido', { exact: true })).toBeVisible();
       await expectNoSeriousViolations(page);
       await page.getByLabel('Descripción de la carga').fill('Rollos de tela, 200 unidades');
       // El botón queda bajo la barra de `astro dev`: se dispara el clic sin pasar por el puntero.

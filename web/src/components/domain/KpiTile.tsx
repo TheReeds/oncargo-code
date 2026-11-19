@@ -55,7 +55,11 @@ export function KpiTile({ label, value, context, icon: Icon, href, tone = 'defau
   return href ? <a href={href} className="block h-full rounded-card" aria-label={undefined}>{body}</a> : body;
 }
 
-/** Rejilla de KPIs: 2 columnas en móvil, 4 desde ancho de contenedor ≥ 56rem. `cols={3}` para tres. */
+/**
+ * Rejilla de KPIs: 2 columnas en móvil, 4 desde `lg` (`cols={3}` para tres). Úsala siempre con un número PAR por fila
+ * completa: 4 u 8 tiles con `cols` 4; 3 o 6 con `cols={3}`. Nunca 4 + 3 en dos filas de anchos distintos: si tienes 7, suma o
+ * quita uno. En móvil, un último tile impar ocupa todo el ancho (no queda un hueco).
+ */
 export function KpiGrid({ children, cols = 4, className }: { children: ReactNode; cols?: 2 | 3 | 4; className?: string }) {
-  return <div className={cn('grid grid-cols-2 gap-3 sm:gap-4', cols === 4 && 'lg:grid-cols-4', cols === 3 && 'lg:grid-cols-3', className)}>{children}</div>;
+  return <div className={cn('grid grid-cols-2 gap-3 max-lg:[&>:last-child:nth-child(odd)]:col-span-2 sm:gap-4', cols === 4 && 'lg:grid-cols-4', cols === 3 && 'lg:grid-cols-3', className)}>{children}</div>;
 }

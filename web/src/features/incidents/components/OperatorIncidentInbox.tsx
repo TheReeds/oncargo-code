@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { actions } from 'astro:actions';
-import { SearchX } from 'lucide-react';
+import { SearchX, ShieldAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { QuickFilters } from '@/components/ui/quick-filters';
 import { Field } from '@/components/ui/field';
+import { FilterBar } from '@/components/ui/filter-bar';
 import { Select } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -79,17 +80,19 @@ export default function OperatorIncidentInbox() {
     load();
   }
 
+  const filtered = scope !== 'ALL' || severity !== 'ALL';
   return (
-    <Card className="space-y-4 p-4">
-      <div className="flex flex-wrap items-end gap-4">
-        <QuickFilters label="Filtrar incidencias" value={scope} onValueChange={(v) => { setScope(v as Scope); setPage(1); }} options={SCOPES} />
-        <Field label="Severidad" htmlFor="op-inc-sev" className="w-44">
-          <Select id="op-inc-sev" value={severity} onValueChange={(v) => { setSeverity(v); setPage(1); }} options={[{ value: 'ALL', label: 'Todas' }, ...SEVERITY_OPTIONS]} />
-        </Field>
-      </div>
-      {error && <Alert tone="error" title="No pudimos cargar las incidencias" action={<Button size="sm" variant="outline" onClick={load}>Reintentar</Button>}>{error}</Alert>}
-      {rows === null ? <SkeletonList rows={4} /> : rows.length === 0 ? (
-        <EmptyState icon={SearchX} title="No hay incidencias con estos filtros" description="Las nuevas aparecen aquí apenas se reportan." compact />
+    <div className="min-w-0 space-y-3">
+      <QuickFilters label="Filtrar incidencias" value={scope} onValueChange={(v) => { setScope(v as Scope); setPage(1); }} options={SCOPES} />
+      <Card className="min-w-0 overflow-hidden">
+        <FilterBar count={rows === null ? undefined : total} noun={['incidencia', 'incidencias']} active={filtered} onClear={() => { setScope('ALL'); setSeverity('ALL'); setPage(1); }}>
+          <Field label="Severidad" htmlFor="op-inc-sev">
+            <Select id="op-inc-sev" value={severity} onValueChange={(v) => { setSeverity(v); setPage(1); }} options={[{ value: 'ALL', label: 'Todas' }, ...SEVERITY_OPTIONS]} />
+          </Field>
+        </FilterBar>
+        {error && <div className="p-4"><Alert tone="error" title="No pudimos cargar las incidencias" action={<Button size="sm" variant="outline" onClick={load}>Reintentar</Button>}>{error}</Alert></div>}
+      {rows === null ? <div className="p-4"><SkeletonList rows={4} /></div> : rows.length === 0 ? (
+        <EmptyState icon={filtered ? SearchX : ShieldAlert} title={filtered ? 'No hay incidencias con estos filtros' : 'No hay incidencias activas'} description="Las nuevas aparecen aquí apenas se reportan." compact action={filtered ? <Button variant="outline" size="sm" onClick={() => { setScope('ALL'); setSeverity('ALL'); setPage(1); }}>Limpiar filtros</Button> : undefined} />
       ) : (
         <Table label="Incidencias activas" stack>
           <thead>
@@ -106,7 +109,7 @@ export default function OperatorIncidentInbox() {
                   </div>
                 </Td>
                 <Td label="Partes"><span className="block text-sm text-ink-900">{r.requesterName}</span><span className="block text-xs text-ink-500">{r.carrierName}</span></Td>
-                <Td label="Plazo"><span className={breached(r) ? 'font-semibold text-red-600' : 'text-ink-700'}>{breached(r) ? 'Vencido' : 'Vence'} {formatDateTime(r.dueAt)}</span></Td>
+                <Td label="Plazo"><span className={breached(r) ? 'font-semibold text-red-700' : 'text-ink-700'}>{breached(r) ? 'Vencido' : 'Vence'} {formatDateTime(r.dueAt)}</span></Td>
                 <Td label="Responsable">{r.assigneeName ?? <span className="text-ink-500">Sin responsable</span>}</Td>
                 <Td label="Estado"><StatusPill status={r.status!} /></Td>
                 <Td actions>
@@ -120,7 +123,8 @@ export default function OperatorIncidentInbox() {
           </tbody>
         </Table>
       )}
-      {total > SIZE && <Pagination page={page} size={SIZE} total={total} onPageChange={setPage} />}
-    </Card>
+      {total > SIZE && <div className="border-t border-steel-200 px-4 py-3 sm:px-5"><Pagination page={page} size={SIZE} total={total} onPageChange={setPage} /></div>}
+      </Card>
+    </div>
   );
 }

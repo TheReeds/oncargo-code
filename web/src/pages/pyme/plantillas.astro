@@ -1,4 +1,6 @@
 ---
+import { buttonVariants } from '@/components/ui/button';
+import { Plus } from '@lucide/astro';
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
@@ -16,7 +18,9 @@ try {
 }
 ---
 <AppShell title="Plantillas" active="plantillas">
-  <PageHeader title="Plantillas" subtitle="Cargas que repites: publícalas en un clic o prográmalas" />
+  <PageHeader title="Plantillas" subtitle="Cargas que repites: publícalas en un clic o prográmalas">
+    <a slot="actions" href="/pyme/solicitudes/nueva" class={buttonVariants()}><Plus size={16} /> Nueva solicitud</a>
+  </PageHeader>
   {loadError && <Alert tone="error" title="No pudimos cargar tus plantillas" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   <TemplatesManager client:load initial={templates} drafts={drafts} today={today} />
 </AppShell>

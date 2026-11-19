@@ -78,7 +78,9 @@ Geist Sans (UI) y Geist Mono (cifras técnicas: placas, km, toneladas, IDs, mont
 | Acciones secundarias de una fila | `DropdownMenu` · ayuda breve: `Tooltip` |
 | Vistas alternas en una página | `Tabs` |
 | Listados largos | `Table` + `Pagination` · cargando: `Skeleton`/`SkeletonRows` · sin datos: `EmptyState` |
-| Estado de entidad / ruta / KPI / cuenta regresiva | `StatusPill` / `RouteLine` / `KpiTile` / `Countdown` |
+| Estado de entidad / ruta / KPI / cuenta regresiva | `StatusPill` / `RouteLine` / `KpiTile` (en `KpiGrid`, siempre con `tone` e `icon`) / `Countdown` |
+| Tarjeta de contenido con título, subtítulo, contador o acción | `SectionCard` (nunca `Card` + `CardHeader` a mano) |
+| Gráfico de un valor por mes/categoría | `BarChart` (+ la tabla con los mismos datos) |
 | Identidad de empresa o persona | `Avatar` |
 | Contraseña | `PasswordInput` (mostrar/ocultar) |
 | Barra de filtros de un listado | `FilterBar` |

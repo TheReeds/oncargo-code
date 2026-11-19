@@ -63,10 +63,10 @@ test.describe('Operador: auditoría y lecturas', () => {
     await hydrated(page);
 
     // Paginación en el servidor
-    await page.getByRole('button', { name: 'Página 2' }).click();
+    await page.getByRole('button', { name: 'Página 2', exact: true }).click();
     await expect(page).toHaveURL(/pagina=2/);
     await hydrated(page);
-    await expect(page.getByRole('button', { name: 'Página 2' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('button', { name: 'Página 2', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(rows.first()).toBeVisible();
   });
 

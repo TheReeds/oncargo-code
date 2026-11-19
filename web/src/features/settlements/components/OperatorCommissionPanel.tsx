@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { SectionCard } from '@/components/domain/SectionCard';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { Can } from '@/lib/permissions/react';
 import { formatMoney } from '@/lib/format';
@@ -13,15 +14,10 @@ export default function OperatorCommissionPanel({ carriers, truncated }: { carri
   const [all, setAll] = useState(false);
   const shown = all ? carriers : carriers.slice(0, 8);
   return (
-    <Card>
-      <CardHeader>
-        <div>
-          <CardTitle className="flex items-center gap-2"><Landmark className="size-4 text-ink-500" aria-hidden="true" />Comisión pendiente por transportista</CardTitle>
-          <CardDescription>Envíos entregados cuya comisión (con IGV) aún no se cobró.{truncated ? ' Se muestran los primeros 100 envíos.' : ''}</CardDescription>
-        </div>
-        {carriers.length > 0 && <Can><Button variant="money" onClick={() => setOpen({})}>Registrar cobro de comisión</Button></Can>}
-      </CardHeader>
-      {carriers.length === 0 ? <p className="px-5 pb-5 text-sm text-ink-500">No hay comisión pendiente de cobro.</p> : (
+    <SectionCard flush icon={Landmark} tone="money" title="Comisión pendiente por transportista" count={carriers.length}
+      description={`Envíos entregados cuya comisión (con IGV) aún no se cobró.${truncated ? ' Se muestran los primeros 100 envíos.' : ''}`}
+      action={carriers.length > 0 ? <Can><Button variant="money" onClick={() => setOpen({})}>Registrar cobro de comisión</Button></Can> : undefined}>
+      {carriers.length === 0 ? <EmptyState compact icon={Landmark} title="No hay comisión pendiente" description="Todas las comisiones de envíos entregados ya se cobraron." /> : (
         <Table label="Comisión pendiente por transportista" stack dense>
           <thead><tr><Th>Transportista</Th><Th className="text-right">Envíos</Th><Th className="text-right">Comisión con IGV</Th><Th className="relative"><span className="sr-only">Acciones</span></Th></tr></thead>
           <tbody>
@@ -38,6 +34,6 @@ export default function OperatorCommissionPanel({ carriers, truncated }: { carri
       )}
       {carriers.length > 8 && <div className="border-t border-steel-200 px-5 py-3"><Button variant="ghost" size="sm" onClick={() => setAll(!all)}>{all ? 'Ver menos' : `Ver los ${carriers.length - 8} restantes`}</Button></div>}
       {open && <CommissionCollectDialog carriers={carriers} initialCarrierId={open.carrierId} onClose={() => setOpen(null)} onDone={() => { setOpen(null); window.location.reload(); }} />}
-    </Card>
+    </SectionCard>
   );
 }

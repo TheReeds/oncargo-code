@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { actions } from 'astro:actions';
-import { Gavel, Inbox, Star } from 'lucide-react';
+import { Banknote, FileText, Gavel, Inbox, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { SectionCard } from '@/components/domain/SectionCard';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { confirm } from '@/components/ui/confirm-dialog';
 import { flash } from '@/components/ui/toaster';
@@ -82,11 +84,17 @@ export default function OffersInbox({ initial }: { initial: Inbox }) {
       </Card>
     );
 
+  const cheapest = rows.reduce<Row | null>((m, r) => (r.best && (!m || (r.best.amount ?? 0) < (m.best?.amount ?? 0)) ? r : m), null);
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-5">
       <ReadOnlyNotice>No puedes aceptar ofertas.</ReadOnlyNotice>
-      <p className="text-sm text-ink-700" aria-live="polite"><span className="font-mono font-semibold">{inbox.bids}</span> {inbox.bids === 1 ? 'oferta' : 'ofertas'} en <span className="font-mono font-semibold">{inbox.requests}</span> {inbox.requests === 1 ? 'solicitud' : 'solicitudes'}</p>
-      <Card className="min-w-0 overflow-hidden">
+      <KpiGrid cols={3}>
+        <KpiTile label="Ofertas por revisar" value={inbox.bids ?? 0} tone="warn" icon={Gavel} context="de transportistas, sin elegir" />
+        <KpiTile label="Solicitudes con ofertas" value={inbox.requests ?? 0} tone="petrol" icon={FileText} context="publicadas, con subasta abierta o cerrada" />
+        <KpiTile label="Mejor monto" value={formatMoney(cheapest?.best?.amount)} tone="money" icon={Banknote} context={cheapest ? `${CITY_LABELS[cheapest.originCity!]} → ${CITY_LABELS[cheapest.destinationCity!]}` : undefined} />
+      </KpiGrid>
+      <SectionCard flush icon={Gavel} tone="warn" title="Una oferta destacada por solicitud" count={rows.length}
+        description={`${inbox.bids} ${inbox.bids === 1 ? 'oferta' : 'ofertas'} en ${inbox.requests} ${inbox.requests === 1 ? 'solicitud' : 'solicitudes'}. Compara o acepta la mejor sin salir de aquí.`}>
         <Table label="Ofertas por solicitud" stack>
           <thead>
             <tr><Th>Solicitud</Th><Th>Ofertas</Th><Th>Mejor monto</Th><Th>Mejor Trust Score</Th><Th>Cierra en</Th><Th><span className="sr-only">Acciones</span></Th></tr>
@@ -115,7 +123,7 @@ export default function OffersInbox({ initial }: { initial: Inbox }) {
             })}
           </tbody>
         </Table>
-      </Card>
+      </SectionCard>
     </div>
   );
 }

@@ -112,7 +112,7 @@ function RequestRow({ r }: { r: OperatorRequestRow }) {
       <Td label="Solicitante"><span className="block max-w-48 truncate">{r.requesterName}</span></Td>
       <Td label="Creada" className="whitespace-nowrap">{formatDateTime(r.createdAt)}</Td>
       <Td label="Estado"><StatusPill status={r.status!} /></Td>
-      <Td label="Sugerido" className="text-right"><span className="money">{formatMoney(r.suggestedPrice)}</span></Td>
+      <Td label="Sugerido" className="whitespace-nowrap text-right"><span className="money">{formatMoney(r.suggestedPrice)}</span></Td>
       <Td actions className="relative text-right"><Button asChild variant="outline" size="sm"><a href={href}>Ver detalle<span className="sr-only"> de la solicitud {route(r.originCity, r.destinationCity)}</span></a></Button></Td>
     </Tr>
   );
@@ -123,12 +123,12 @@ function ShipmentRow({ r }: { r: OperatorShipmentRow }) {
   return (
     <Tr data-testid="operator-row">
       <Td primary><a href={href} className="whitespace-nowrap font-medium text-petrol-700 hover:underline">{route(r.originCity, r.destinationCity)}</a><div className="font-mono text-xs text-ink-500">{r.vehiclePlate ?? 'Sin vehículo'}</div></Td>
-      <Td label="Carga"><div className="max-w-56 truncate">{r.cargoDescription}</div><div className="font-mono text-xs text-ink-500">{formatTons(r.weightKg)}</div></Td>
-      <Td label="Solicitante"><span className="block max-w-44 truncate">{r.requesterName}</span></Td>
-      <Td label="Transportista"><span className="block max-w-44 truncate">{r.carrierName}</span><div className="max-w-44 truncate text-xs text-ink-500">{r.driverName ?? 'Sin conductor'}</div></Td>
+      <Td label="Carga"><div className="max-w-40 truncate">{r.cargoDescription}</div><div className="font-mono text-xs text-ink-500">{formatTons(r.weightKg)}</div></Td>
+      <Td label="Solicitante"><span className="block max-w-36 truncate">{r.requesterName}</span></Td>
+      <Td label="Transportista"><span className="block max-w-36 truncate">{r.carrierName}</span><div className="max-w-36 truncate text-xs text-ink-500">{r.driverName ?? 'Sin conductor'}</div></Td>
       <Td label="Creado" className="whitespace-nowrap">{formatDateTime(r.createdAt)}</Td>
       <Td label="Estado"><div className="flex flex-col items-start gap-1"><StatusPill status={r.status!} />{r.hasActiveIncident && <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700"><TriangleAlert className="size-3" aria-hidden="true" />Con incidencia</span>}</div></Td>
-      <Td label="Precio" className="text-right"><span className="money">{formatMoney(r.agreedPrice)}</span></Td>
+      <Td label="Precio" className="whitespace-nowrap text-right"><span className="money">{formatMoney(r.agreedPrice)}</span></Td>
       <Td actions className="relative text-right"><Button asChild variant="outline" size="sm"><a href={href}>Ver detalle<span className="sr-only"> del envío {route(r.originCity, r.destinationCity)}</span></a></Button></Td>
     </Tr>
   );

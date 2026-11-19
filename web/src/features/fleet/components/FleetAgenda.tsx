@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { actions } from 'astro:actions';
 import { CalendarRange, ChevronLeft, ChevronRight, FileWarning, Gavel, Lock, Route, Truck, UserRoundPlus, Users } from 'lucide-react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/form-controls';
 import { QuickFilters } from '@/components/ui/quick-filters';
@@ -14,6 +14,8 @@ import { Alert } from '@/components/ui/alert';
 import { Table, Th } from '@/components/ui/table';
 import { EmptyState } from '@/components/domain/EmptyState';
 import { StatusPill } from '@/components/domain/StatusPill';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { SectionCard } from '@/components/domain/SectionCard';
 import { toast } from '@/components/ui/toaster';
 import { splitActionError } from '@/lib/action-error';
 import { useLiveRefresh } from '@/lib/realtime';
@@ -182,11 +184,9 @@ function Unassigned({ items, drivers, onAssign, onBatchDone }: { items: Shipment
   const [batch, setBatch] = useState<ShipmentView[] | null>(null);
   if (items.length === 0) return null;
   return (
-    <Card data-testid="unassigned">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><UserRoundPlus className="size-4 text-amber-700" aria-hidden="true" />Sin conductor <span className="font-mono text-ink-500">({items.length})</span></CardTitle>
-        <Can><Button size="sm" variant="outline" disabled={sel.length < 2} onClick={() => setBatch(items.filter((s) => sel.includes(s.id!)))}>Asignar en lote{sel.length > 0 ? ` (${sel.length})` : ''}</Button></Can>
-      </CardHeader>
+    <div data-testid="unassigned">
+    <SectionCard flush icon={UserRoundPlus} tone="warn" title="Sin conductor" count={items.length} description="Envíos activos que aún no tienen quién los lleve."
+      action={<Can><Button size="sm" variant="outline" disabled={sel.length < 2} onClick={() => setBatch(items.filter((s) => sel.includes(s.id!)))}>Asignar en lote{sel.length > 0 ? ` (${sel.length})` : ''}</Button></Can>}>
       <ul className="divide-y divide-steel-200">
         {items.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 sm:px-5" data-testid="unassigned-row">
@@ -201,7 +201,8 @@ function Unassigned({ items, drivers, onAssign, onBatchDone }: { items: Shipment
         ))}
       </ul>
       {batch && <BatchDialog shipments={batch} drivers={drivers} open onOpenChange={(o) => { if (!o) setBatch(null); }} onDone={(ids) => { onBatchDone(ids); setSel((l) => l.filter((x) => !ids.includes(x))); }} />}
-    </Card>
+    </SectionCard>
+    </div>
   );
 }
 
@@ -236,8 +237,20 @@ export default function FleetAgenda({ initial, from, days, unassigned: unassigne
   const rows = (tab === 'vehicles' ? schedule.vehicles : schedule.drivers) ?? [];
   const range = `${formatDate(from)} al ${formatDate(to)}`;
 
+  const vehicleRows = schedule.vehicles ?? [];
+  const occupiedToday = vehicleRows.filter((r) => (r.slots ?? []).some((x) => x.kind !== 'BID' && x.from && x.to && x.from <= today && today <= x.to)).length;
+  const pendingBids = new Set(vehicleRows.flatMap((r) => (r.slots ?? []).filter((x) => x.kind === 'BID').map((x) => x.refId))).size;
+  const allExpiries = [...vehicleRows, ...(schedule.drivers ?? [])].flatMap((r) => r.expiries ?? []);
+  const expired = allExpiries.filter((x) => x.expired).length;
+
   return (
     <div className="space-y-5">
+      <KpiGrid>
+        <KpiTile label="Vehículos ocupados hoy" value={occupiedToday} tone="petrol" icon={Truck} context={`de ${vehicleRows.length} ${vehicleRows.length === 1 ? 'vehículo' : 'vehículos'}`} />
+        <KpiTile label="Envíos sin conductor" value={unassigned.length} tone={unassigned.length ? 'warn' : 'petrol'} icon={UserRoundPlus} context={unassigned.length ? 'por asignar' : 'todos tienen conductor'} />
+        <KpiTile label="Ofertas pendientes" value={pendingBids} tone="petrol" icon={Gavel} context="reservan un vehículo en estas fechas" />
+        <KpiTile label="Documentos por vencer" value={allExpiries.length} tone={expired ? 'alert' : allExpiries.length ? 'warn' : 'petrol'} icon={FileWarning} context={expired ? `${expired} ya ${expired === 1 ? 'venció' : 'vencieron'}` : 'en el rango de la agenda'} />
+      </KpiGrid>
       <Unassigned items={unassigned} drivers={driverOptions} onAssign={setAssigning} onBatchDone={() => refresh()} />
 
       <Card>

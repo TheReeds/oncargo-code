@@ -1,14 +1,28 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
-import { Card } from '@/components/ui/card';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
+import { SectionCard } from '@/components/domain/SectionCard';
 import SignalsList from '@/features/operator/components/SignalsList';
 import { getSignals } from '@/features/operator/server';
+import { Building2, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
 
 const s = Astro.locals.session!;
-const signals = await getSignals(s.token);
+const signals = (await getSignals(s.token)) ?? [];
+const high = signals.filter((x) => x.severity === 'HIGH').length;
+const orgs = new Set(signals.flatMap((x) => (x.organizations ?? []).map((o) => o.id))).size;
 ---
 <AppShell title="Señales" active="operador-senales" wide>
   <PageHeader title="Señales" subtitle="Datos repetidos entre empresas y tasas fuera de lo normal. Son indicios para revisar, no sanciones." breadcrumbs={[{ label: 'Panel de operación', href: '/operador' }, { label: 'Señales' }]} />
-  <Card><SignalsList signals={signals ?? []} /></Card>
+  <KpiGrid>
+    <KpiTile label="Señales activas" value={signals.length} tone={signals.length ? 'warn' : 'money'} icon={signals.length ? ShieldAlert : ShieldCheck} context={signals.length ? 'por revisar' : 'todo en orden'} />
+    <KpiTile label="Severidad alta" value={high} tone={high ? 'alert' : 'petrol'} icon={TriangleAlert} context="revisa primero estas" />
+    <KpiTile label="Severidad media" value={signals.length - high} tone="petrol" icon={ShieldAlert} context="para vigilar" />
+    <KpiTile label="Empresas implicadas" value={orgs} tone="petrol" icon={Building2} context="con al menos una señal" />
+  </KpiGrid>
+  <div class="mt-5">
+    <SectionCard flush icon={ShieldAlert} tone="warn" title="Señales por revisar" count={signals.length} description="Cada empresa enlaza a su ficha para revisar el contexto.">
+      <SignalsList signals={signals} />
+    </SectionCard>
+  </div>
 </AppShell>

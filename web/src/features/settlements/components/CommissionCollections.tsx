@@ -1,4 +1,6 @@
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Receipt } from 'lucide-react';
+import { EmptyState } from '@/components/domain/EmptyState';
+import { SectionCard } from '@/components/domain/SectionCard';
 import { Table, Td, Th, Tr } from '@/components/ui/table';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { CommissionCollection } from '../server';
@@ -6,9 +8,8 @@ import type { CommissionCollection } from '../server';
 /** Cobros de comisión que OnCargo registró (transportista: los suyos; operador: todos). */
 export default function CommissionCollections({ items, perspective, title = 'Cobros de comisión' }: { items: CommissionCollection[]; perspective: 'CARRIER' | 'OPERATOR'; title?: string }) {
   return (
-    <Card>
-      <CardHeader><div><CardTitle>{title}</CardTitle><CardDescription>{perspective === 'CARRIER' ? 'Lo que OnCargo ya cobró de tus envíos: comisión más su IGV.' : 'Cobros registrados por el equipo de OnCargo.'}</CardDescription></div></CardHeader>
-      {items.length === 0 ? <p className="px-5 pb-5 text-sm text-ink-500">Aún no hay cobros de comisión registrados.</p> : (
+    <SectionCard flush icon={Receipt} tone="petrol" title={title} count={items.length} description={perspective === 'CARRIER' ? 'Lo que OnCargo ya cobró de tus envíos: comisión más su IGV.' : 'Cobros registrados por el equipo de OnCargo.'}>
+      {items.length === 0 ? <EmptyState compact icon={Receipt} title="Aún no hay cobros de comisión" description={perspective === 'CARRIER' ? 'Cuando OnCargo cobre la comisión de tus envíos, lo verás aquí.' : 'Los cobros que registres aparecerán aquí.'} /> : (
         <Table label={title} stack dense>
           <thead><tr><Th>Fecha</Th>{perspective === 'OPERATOR' && <Th>Transportista</Th>}<Th>Forma de pago</Th><Th>Operación</Th><Th className="text-right">Envíos</Th><Th className="text-right">Monto</Th><Th>Nota</Th></tr></thead>
           <tbody>
@@ -26,6 +27,6 @@ export default function CommissionCollections({ items, perspective, title = 'Cob
           </tbody>
         </Table>
       )}
-    </Card>
+    </SectionCard>
   );
 }

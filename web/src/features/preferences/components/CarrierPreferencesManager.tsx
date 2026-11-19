@@ -9,6 +9,7 @@ import { confirm } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/toaster';
 import { Alert } from '@/components/ui/alert';
 import { EmptyState } from '@/components/domain/EmptyState';
+import { KpiGrid, KpiTile } from '@/components/domain/KpiTile';
 import { ReadOnlyNotice } from '@/components/domain/ReadOnlyNotice';
 import { TrustScore } from '@/components/domain/TrustScore';
 import { VerifiedBadge } from '@/components/domain/VerifiedBadge';
@@ -48,15 +49,18 @@ export default function CarrierPreferencesManager({ initial }: { initial: Carrie
     return (
       <Card>
         <EmptyState icon={Users} title="Aún no marcaste transportistas"
-          description="Marca como preferidos a los que te dan buen servicio: se destacan en sus ofertas y les avisamos cuando publicas. Bloquea a los que no quieres volver a ver."
+          description="Marca como preferidos a los que te dan buen servicio: se destacan en sus ofertas y les avisamos cuando publicas. Bloquea a los que no quieres volver a ver. Se marcan desde el botón «Marcar» de cada oferta."
           action={<Button asChild><a href="/pyme/solicitudes">Ver mis solicitudes</a></Button>} />
-        <p className="px-6 pb-6 text-center text-sm text-ink-500">Se marcan desde el botón «Marcar» de cada oferta.</p>
       </Card>
     );
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-5">
       <ReadOnlyNotice>No puedes cambiar tus transportistas marcados.</ReadOnlyNotice>
+      <KpiGrid cols={2}>
+        <KpiTile label="Preferidos" value={preferred} tone="money" icon={Star} context="se destacan en sus ofertas y les avisamos" />
+        <KpiTile label="Bloqueados" value={blocked} tone={blocked ? 'alert' : 'petrol'} icon={Ban} context="no ven tus solicitudes nuevas" />
+      </KpiGrid>
       <QuickFilters label="Marca" value={view} onValueChange={setView}
         options={[{ value: 'PREFERRED', label: 'Preferidos', count: preferred }, { value: 'BLOCKED', label: 'Bloqueados', count: blocked }]} />
       <Card className="min-w-0 overflow-hidden">

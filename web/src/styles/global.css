@@ -110,7 +110,7 @@ html[data-theme='dark'] { --scrollbar-thumb: var(--color-ink-400); } /* #6b7c93:
 [role='dialog'], [role='alertdialog'] { scrollbar-gutter: stable both-edges; }
 
 @utility tnum { font-variant-numeric: tabular-nums; }
-@utility money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--color-emerald-700); font-weight: 600; }
+@utility money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-emerald-700); font-weight: 600; }
 
 .select-chevron {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -131,9 +131,9 @@ html[data-theme='dark'] { --scrollbar-thumb: var(--color-ink-400); } /* #6b7c93:
 /* un contenedor no puede estilarse a sí mismo con @container: en pantallas estrechas el modo apilado no usa scroll interno */
 @media (max-width: 720px) { .lx-table[data-stack][data-sticky] { max-block-size: none; overflow-y: visible; } }
 @container (width < 720px) {
-  .lx-table[data-stack] table, .lx-table[data-stack] tbody, .lx-table[data-stack] tr, .lx-table[data-stack] td { display: block; }
+  .lx-table[data-stack] table, .lx-table[data-stack] tbody, .lx-table[data-stack] tfoot, .lx-table[data-stack] tr, .lx-table[data-stack] td { display: block; }
   .lx-table[data-stack] thead { display: none; } /* los th de cabecera salen del layout y del árbol accesible: cada celda lleva su etiqueta */
-  .lx-table[data-stack] tbody tr { margin: 0.75rem; padding: 0.25rem 0; border: 1px solid var(--color-steel-200); border-radius: var(--radius-card); background: var(--color-surface); }
+  .lx-table[data-stack] tbody tr, .lx-table[data-stack] tfoot tr { margin: 0.75rem; padding: 0.25rem 0; border: 1px solid var(--color-steel-200); border-radius: var(--radius-card); background: var(--color-surface); }
   .lx-table[data-stack] tbody tr:hover { background: var(--color-surface); }
   .lx-table[data-stack] td { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 0; padding: 0.375rem 1rem; text-align: right; min-width: 0; }
   .lx-table[data-stack] td[data-label]::before { content: attr(data-label); flex: none; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-500); text-align: left; }

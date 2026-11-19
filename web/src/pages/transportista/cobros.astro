@@ -1,4 +1,6 @@
 ---
+import { buttonVariants } from '@/components/ui/button';
+import { Landmark } from '@lucide/astro';
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import { Alert } from '@/components/ui/alert';
@@ -22,7 +24,7 @@ try {
 ---
 <AppShell title="Por cobrar" active="cobros">
   <PageHeader title="Por cobrar" subtitle="Registra tu comprobante, confirma los pagos que recibes y revisa la comisión de OnCargo.">
-    <a slot="actions" href="/organizacion/datos-de-cobro" class="inline-flex h-10 items-center rounded-input border border-steel-200 bg-surface px-4 text-sm font-medium text-ink-900 hover:bg-steel-100">Datos de cobro</a>
+    <a slot="actions" href="/organizacion/datos-de-cobro" class={buttonVariants({ variant: 'outline' })}><Landmark size={16} /> Datos de cobro</a>
   </PageHeader>
   {loadError && <Alert tone="error" title="No pudimos cargar tus cobros" className="mb-4">{loadError} Recarga la página para intentarlo de nuevo.</Alert>}
   <div class="space-y-4">

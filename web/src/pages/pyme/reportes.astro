@@ -1,6 +1,7 @@
 ---
 import AppShell from '@/components/layout/AppShell.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
+import { ExportButton } from '@/components/ui/export-button';
 import ReportView from '@/features/reports/components/ReportView';
 import { getOverview } from '@/features/reports/server';
 const token = Astro.locals.session!.token;
@@ -16,6 +17,8 @@ try {
 const range = { from: from ? overview?.from ?? from : '', to: from ? overview?.to ?? to : '' };
 ---
 <AppShell title="Reportes" active="reportes">
-  <PageHeader title="Reportes" subtitle="Cuánto gastas, cuánto ahorras frente al precio sugerido y cuánto te cuesta cada kg." />
+  <PageHeader title="Reportes" subtitle="Cuánto gastas, cuánto ahorras frente al precio sugerido y cuánto te cuesta cada kg." >
+    <ExportButton client:load slot="actions" size="default" href={`/exportar/reportes${range.from ? `?desde=${range.from}&hasta=${range.to}` : ''}`} />
+  </PageHeader>
   <ReportView client:load perspective="PYME" overview={overview} error={error} range={range} base="/pyme/reportes" />
 </AppShell>
